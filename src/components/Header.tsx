@@ -2,21 +2,32 @@
 
 import React, { useState } from "react";
 import { 
-  Wifi, 
   User, 
-  ArrowRight, 
+  Menu, 
+  X, 
+  ChevronDown, 
+  LogOut, 
   Store, 
   ShieldCheck, 
-  Menu, 
-  X,
-  Layers,
-  ChevronDown,
-  LogOut,
-  CheckCircle2
+  ArrowLeft, 
+  ArrowRight,
+  LayoutDashboard,
+  ShieldAlert
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-export type ActiveView = "home" | "features" | "pricing" | "portal" | "admin";
+export type ActiveView = 
+  | "home" 
+  | "how-it-works" 
+  | "features" 
+  | "benefits" 
+  | "results" 
+  | "sample-dashboard" 
+  | "client-proofs" 
+  | "pricing" 
+  | "faq"
+  | "portal"
+  | "admin";
 
 interface HeaderProps {
   currentView: ActiveView;
@@ -25,16 +36,22 @@ interface HeaderProps {
 }
 
 export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderProps) {
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isDashboardView = currentView === "portal" || currentView === "admin";
+
   const navItems: { id: ActiveView; label: string }[] = [
     { id: "home", label: "Home" },
+    { id: "how-it-works", label: "How It Works" },
     { id: "features", label: "Features" },
+    { id: "benefits", label: "Benefits" },
+    { id: "results", label: "Results" },
+    { id: "sample-dashboard", label: "Sample Dashboard" },
+    { id: "client-proofs", label: "Client Proofs" },
     { id: "pricing", label: "Pricing" },
-    { id: "portal", label: "Client Portal" },
-    { id: "admin", label: "Admin Console" },
+    { id: "faq", label: "FAQ" },
   ];
 
   const handleNavClick = (view: ActiveView) => {
@@ -44,38 +61,125 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleSignOut = async () => {
+    setDropdownOpen(false);
+    setMobileMenuOpen(false);
+    await signOut();
+    onNavigate("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // -------------------------------------------------------------
+  // 1. DASHBOARD / ADMIN DEDICATED HEADER
+  // -------------------------------------------------------------
+  if (isDashboardView) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-[#E2DFD8]">
+        <div className="max-w-7xl mx-auto h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          
+          {/* Left: Brand + Return to Main Site Action */}
+          <div className="flex items-center gap-4">
+            <div 
+              onClick={() => handleNavClick("home")}
+              className="flex items-center gap-2.5 cursor-pointer select-none group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-[#1C1B1A] text-white flex items-center justify-center font-headline font-bold text-sm shadow-sm">
+                Z
+              </div>
+              <span className="font-headline font-bold text-base text-[#1C1B1A] tracking-tight">
+                Zen<span className="text-[#D94826]">Tap</span>.ai
+              </span>
+            </div>
+
+            <div className="h-5 w-px bg-[#E2DFD8] hidden sm:block" />
+
+            {/* Return to Main Site Button */}
+            <button
+              onClick={() => handleNavClick("home")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] text-xs font-semibold transition-colors cursor-pointer"
+              title="Browse ZenTap.ai public marketing website"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Main Site</span>
+            </button>
+          </div>
+
+          {/* Center: Workspace Identity Badge */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-[#FAF9F6] border border-[#E2DFD8] text-xs font-mono">
+            {currentView === "admin" ? (
+              <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Superadmin Root Console</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[#1C1B1A] font-semibold">
+                <Store className="w-4 h-4 text-[#D94826]" />
+                <span>Client Merchant Dashboard</span>
+              </span>
+            )}
+          </div>
+
+          {/* Right: User identity & Sign Out */}
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] font-mono text-[#615E5B] block leading-tight">
+                {currentView === "admin" ? "Root Superadmin" : "Merchant Account"}
+              </span>
+              <span className="text-xs font-semibold text-[#1C1B1A] truncate max-w-[160px] block">
+                {user?.email || (currentView === "admin" ? "admin@zentapdigitalsolutions.com" : "Merchant")}
+              </span>
+            </div>
+
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors cursor-pointer border border-rose-200"
+              title="Sign Out of Session"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
+
+        </div>
+      </header>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // 2. PUBLIC MARKETING HEADER (When browsing main site)
+  // -------------------------------------------------------------
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl border-b border-surface-variant/40 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-[#E2DFD8]">
       <div className="max-w-7xl mx-auto h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
         {/* Brand Logo */}
         <div 
           onClick={() => handleNavClick("home")}
-          className="flex items-center gap-2.5 cursor-pointer select-none group"
+          className="flex items-center gap-3 cursor-pointer select-none group flex-shrink-0"
         >
-          <div className="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline font-bold text-lg shadow-md group-hover:scale-105 transition-transform">
+          <div className="w-9 h-9 rounded-lg bg-[#1C1B1A] text-white flex items-center justify-center font-headline font-bold text-base shadow-sm">
             Z
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-headline font-bold text-lg text-on-surface tracking-tight leading-tight">
-              Zen<span className="text-secondary-container">Tap</span>.ai
+          <div className="flex flex-col">
+            <span className="font-headline font-bold text-lg text-[#1C1B1A] tracking-tight leading-none">
+              Zen<span className="text-[#D94826]">Tap</span>.ai
             </span>
-            <span className="text-[10px] tracking-wider font-semibold text-on-surface-variant uppercase">
-              Smart Review Ecosystem
+            <span className="text-[10px] tracking-wider font-mono font-medium text-[#615E5B] uppercase mt-0.5">
+              NFC · Dynamic QR
             </span>
           </div>
         </div>
 
-        {/* Desktop Nav Pills */}
-        <nav className="hidden md:flex items-center gap-1 bg-surface-container-low p-1 rounded-full border border-surface-variant/40 shadow-inner">
+        {/* Public Desktop Nav Items */}
+        <nav className="hidden lg:flex items-center gap-1 bg-[#F2F0EB] p-1 rounded-full border border-[#E2DFD8] overflow-x-auto max-w-[700px] xl:max-w-none">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                 currentView === item.id
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/60"
+                  ? "bg-[#1C1B1A] text-white shadow-sm font-semibold"
+                  : "text-[#615E5B] hover:text-[#1C1B1A] hover:bg-white/80"
               }`}
             >
               {item.label}
@@ -83,216 +187,193 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
           ))}
         </nav>
 
-        {/* Right Header Action Items */}
-        <div className="flex items-center gap-3">
-          {/* Live Supabase Project badge */}
-          <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Supabase: Zentaps Project</span>
-          </div>
-
-          {/* Live NFC Status indicator */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low border border-surface-variant/40 text-xs text-on-surface-variant font-medium">
-            <span className="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span>
-            <span>NFC Active</span>
-          </div>
-
-          {/* Auth Dropdown Button */}
-          <div className="relative">
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary text-on-primary hover:bg-primary/90 text-xs font-semibold transition-all shadow-sm cursor-pointer"
-            >
-              {user ? (
-                <>
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">
-                    {user.email ? user.email[0].toUpperCase() : "U"}
-                  </div>
-                  <span className="max-w-[100px] truncate">{user.email?.split("@")[0]}</span>
-                </>
-              ) : (
-                <>
-                  <User className="w-3.5 h-3.5" />
-                  <span>Portals</span>
-                </>
-              )}
-              <ChevronDown className="w-3 h-3 opacity-80" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {dropdownOpen && (
-              <div 
-                className="absolute right-0 mt-2 w-72 bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-variant/50 p-2 z-50 flex flex-col gap-1 animate-in fade-in slide-in-from-top-2 duration-150"
+        {/* Dynamic Actions Based on Auth State */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          
+          {/* CASE A: LOGGED IN AS ADMIN */}
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => handleNavClick("admin")}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1C1B1A] text-white text-xs font-semibold hover:bg-[#2C2B2A] transition-all cursor-pointer shadow-sm"
               >
-                {user ? (
-                  <>
-                    <div className="px-3 py-2 border-b border-surface-variant/30">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
-                          Authenticated Session
-                        </span>
-                      </div>
-                      <p className="text-xs text-on-surface font-semibold truncate mt-0.5">
-                        {user.email}
-                      </p>
-                      <p className="text-[10px] text-on-surface-variant font-mono">
-                        UID: {user.id.slice(0, 8)}...
-                      </p>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Console</span>
+                <ArrowRight className="w-3 h-3 text-zinc-400" />
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium transition-colors cursor-pointer border border-rose-200"
+                title="Sign out of Admin Session"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Sign Out</span>
+              </button>
+            </>
+          )}
+
+          {/* CASE B: LOGGED IN AS REGULAR MERCHANT */}
+          {!isAdmin && user && (
+            <>
+              <button
+                onClick={() => handleNavClick("portal")}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1C1B1A] text-white text-xs font-semibold hover:bg-[#2C2B2A] transition-all cursor-pointer shadow-sm"
+              >
+                <Store className="w-3.5 h-3.5 text-[#D94826]" />
+                <span>My Dashboard</span>
+                <ArrowRight className="w-3 h-3 text-zinc-400" />
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium transition-colors cursor-pointer border border-rose-200"
+                title="Sign out of Merchant Session"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Sign Out</span>
+              </button>
+            </>
+          )}
+
+          {/* CASE C: NOT LOGGED IN (GUEST) */}
+          {!isAdmin && !user && (
+            <>
+              <button
+                onClick={() => onOpenAuth("signin")}
+                className="px-3.5 py-1.5 rounded-full bg-white hover:bg-[#F2F0EB] text-[#1C1B1A] border border-[#E2DFD8] text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
+
+              <button
+                onClick={() => onOpenAuth("signup")}
+                className="hidden sm:flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-[#1C1B1A] hover:bg-[#2C2B2A] text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <span>Register Business</span>
+              </button>
+
+              {/* Discreet Superadmin Access Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="p-1.5 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#615E5B] transition-colors cursor-pointer"
+                  title="Administrative Access"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                </button>
+
+                {dropdownOpen && (
+                  <div 
+                    className="absolute right-0 mt-2 w-56 rounded-xl bg-white border border-[#E2DFD8] shadow-xl py-2 z-50 text-xs animate-in fade-in duration-150"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="px-3 py-1.5 border-b border-[#E2DFD8] text-[10px] font-mono text-[#615E5B]">
+                      Platform Operations
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        handleNavClick("portal");
-                      }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container-low text-left transition-colors cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center">
-                        <Store className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-on-surface">Merchant Portal</p>
-                        <p className="text-[11px] text-on-surface-variant">Live telemetry &amp; standees</p>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        handleNavClick("admin");
-                      }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container-low text-left transition-colors cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center">
-                        <ShieldCheck className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-on-surface">Superadmin Fleet</p>
-                        <p className="text-[11px] text-on-surface-variant">Global provisioning</p>
-                      </div>
-                    </button>
-
-                    <div className="pt-1 mt-1 border-t border-surface-variant/30">
-                      <button
-                        onClick={async () => {
-                          setDropdownOpen(false);
-                          await signOut();
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-red-600 hover:bg-red-50 font-semibold text-xs transition-colors cursor-pointer"
-                      >
-                        <span>Sign Out</span>
-                        <LogOut className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="px-3 py-2 border-b border-surface-variant/30">
-                      <p className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">
-                        Access Portals
-                      </p>
-                      <p className="text-xs text-on-surface font-semibold">
-                        ZenTap.ai Ecosystem
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        onOpenAuth("signin");
-                      }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container-low text-left transition-colors cursor-pointer group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Store className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-on-surface">Client Sign In</p>
-                        <p className="text-[11px] text-on-surface-variant">Merchant telemetry &amp; reviews</p>
-                      </div>
-                    </button>
-
                     <button
                       onClick={() => {
                         setDropdownOpen(false);
                         onOpenAuth("admin");
                       }}
-                      className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-container-low text-left transition-colors cursor-pointer group"
+                      className="w-full text-left px-3 py-2 hover:bg-[#F2F0EB] text-[#1C1B1A] flex items-center justify-between font-medium cursor-pointer"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <ShieldCheck className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-on-surface">Superadmin Login</p>
-                        <p className="text-[11px] text-on-surface-variant">Root fleet provisioning</p>
-                      </div>
+                      <span className="flex items-center gap-2">
+                        <ShieldAlert className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Superadmin Portal</span>
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-[#615E5B]" />
                     </button>
-
-                    <div className="pt-1 mt-1 border-t border-surface-variant/30">
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          onOpenAuth("signup");
-                        }}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-secondary-container/10 hover:bg-secondary-container/20 text-secondary-container font-semibold text-xs transition-colors cursor-pointer"
-                      >
-                        <span>Register 14-Day Free Trial</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            </>
+          )}
 
-          {/* Mobile hamburger menu toggle */}
+          {/* Mobile Hamburger Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer"
-            aria-label="Toggle Menu"
+            className="lg:hidden p-2 rounded-lg bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] transition-colors cursor-pointer"
+            aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Sheet */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-surface-variant/40 bg-surface/95 backdrop-blur-2xl p-4 flex flex-col gap-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                currentView === item.id
-                  ? "bg-primary text-on-primary"
-                  : "text-on-surface hover:bg-surface-container"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-          <div className="pt-2 border-t border-surface-variant/30 flex gap-2">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenAuth("signin");
-              }}
-              className="flex-1 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface"
-            >
-              Merchant Sign In
-            </button>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenAuth("signup");
-              }}
-              className="flex-1 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container text-xs font-semibold"
-            >
-              Start Free Trial
-            </button>
+        <div className="lg:hidden border-t border-[#E2DFD8] bg-[#FAF9F6] px-4 pt-3 pb-6 animate-in slide-in-from-top-2 duration-150">
+          <div className="flex flex-col gap-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`text-left px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                  currentView === item.id
+                    ? "bg-[#1C1B1A] text-white font-semibold"
+                    : "text-[#615E5B] hover:bg-[#F2F0EB] hover:text-[#1C1B1A]"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+
+            {/* Mobile Auth Actions */}
+            <div className="border-t border-[#E2DFD8] mt-3 pt-3 flex flex-col gap-2">
+              {isAdmin ? (
+                <>
+                  <button
+                    onClick={() => handleNavClick("admin")}
+                    className="w-full text-center py-2.5 rounded-lg bg-[#1C1B1A] text-white font-bold text-xs"
+                  >
+                    Open Admin Console
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-center py-2 rounded-lg bg-rose-50 text-rose-700 font-semibold text-xs border border-rose-200"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : user ? (
+                <>
+                  <button
+                    onClick={() => handleNavClick("portal")}
+                    className="w-full text-center py-2.5 rounded-lg bg-[#1C1B1A] text-white font-bold text-xs"
+                  >
+                    Open Merchant Dashboard
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full text-center py-2 rounded-lg bg-rose-50 text-rose-700 font-semibold text-xs border border-rose-200"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth("signin");
+                    }}
+                    className="py-2.5 rounded-lg bg-white border border-[#E2DFD8] font-semibold text-xs text-[#1C1B1A]"
+                  >
+                    Merchant Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenAuth("signup");
+                    }}
+                    className="py-2.5 rounded-lg bg-[#1C1B1A] text-white font-semibold text-xs"
+                  >
+                    Register Business
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

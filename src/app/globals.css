@@ -1,23 +1,63 @@
+/* Hallmark · macrostructure: Workbench + Bento Grid · genre: modern-minimal · theme: tactile-obsidian */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: #fbf9f8;
-    --foreground: #1b1c1c;
+    /* Locked OKLCH Design Tokens from design.md */
+    --color-paper: oklch(0.985 0.003 80);       /* Warm tactile ivory */
+    --color-paper-2: oklch(0.955 0.006 80);     /* Sandstone neutral surface */
+    --color-paper-dark: oklch(0.140 0.008 50);  /* Obsidian acrylic background */
+    --color-ink: oklch(0.145 0.008 50);         /* Deep warm charcoal ink */
+    --color-ink-2: oklch(0.420 0.015 50);       /* Muted technical graphite */
+    --color-rule: oklch(0.890 0.008 80);        /* Hairline architectural border */
+    --color-rule-dark: oklch(0.240 0.010 50);   /* Dark acrylic hairline border */
+    --color-accent: oklch(0.620 0.185 42);      /* Precision vermilion/amber */
+    --color-accent-hover: oklch(0.560 0.190 42);
+    --color-focus: oklch(0.550 0.190 48);       /* Accessible focus ring */
+    --color-success: oklch(0.680 0.160 145);    /* Emerald verified badge */
+    --color-star: oklch(0.820 0.160 85);       /* Gold review star */
+
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-24: 96px;
+
+    /* Motion */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-short: 150ms;
+    --dur-base: 250ms;
   }
 
   html, body {
     width: 100%;
     margin: 0;
     padding: 0;
-    background-color: var(--background);
-    color: var(--foreground);
+    overflow-x: clip;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Custom scrollbar */
+  /* Focus ring discipline */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    transition: none !important;
+  }
+
+  /* Custom subtle scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -26,31 +66,32 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--color-rule);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--color-ink-2);
   }
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(228, 226, 226, 0.7);
+/* Tactile hardware styling */
+.hardware-acrylic {
+  background-color: var(--color-paper-dark);
+  border: 1px solid var(--color-rule-dark);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
 
-.glass-dark {
-  background: rgba(28, 27, 27, 0.95);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.acrylic-plate {
+  background: linear-gradient(180deg, rgba(38, 38, 38, 0.9) 0%, rgba(20, 20, 20, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .tap-ripple {
   position: absolute;
   border-radius: 50%;
-  animation: ripple 1.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-  border: 2px solid rgba(219, 51, 39, 0.6);
+  animation: ripple 1.2s var(--ease-out) infinite;
+  border: 1.5px solid var(--color-accent);
 }
 
 @keyframes ripple {
@@ -60,8 +101,8 @@
     opacity: 1;
   }
   100% {
-    width: 180px;
-    height: 180px;
+    width: 160px;
+    height: 160px;
     opacity: 0;
   }
 }

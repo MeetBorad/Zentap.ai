@@ -1,19 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { 
-  Star, 
   ArrowRight, 
-  Sparkles, 
-  CheckCircle, 
-  TrendingUp, 
-  ShieldCheck, 
-  Zap, 
   Radio, 
-  Store,
-  ChevronRight,
-  MessageSquare,
-  Users
+  Zap, 
+  ShieldCheck, 
+  QrCode, 
+  TrendingUp, 
+  Layers, 
+  Cpu, 
+  RefreshCw 
 } from "lucide-react";
 import Standee3DPreview from "../Standee3DPreview";
 import SentimentSimulator from "../SentimentSimulator";
@@ -30,237 +27,222 @@ export default function HomeView({
   onOpenAuth,
   onTriggerTapReviewModal,
 }: HomeViewProps) {
-  const [reviewCount, setReviewCount] = useState(45382);
-
-  // Periodic subtle count-up to simulate live review arrivals
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setReviewCount((prev) => prev + Math.floor(Math.random() * 2) + 1);
-    }, 12000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const logos = [
-    "Cafe Milano",
-    "The Urban Bistro",
-    "Aditi's Bake Studio",
-    "Iron Works Fitness",
-    "Nirvana Salon & Spa",
-    "Dr. Rao Dental Care",
-    "The Loft Cowork",
-    "Masala Junction",
-  ];
-
   return (
-    <div className="flex flex-col w-full animate-in fade-in duration-300">
+    <div className="flex flex-col w-full">
       
-      {/* Hero Section */}
-      <section className="relative px-4 sm:px-6 lg:px-8 pt-8 pb-16 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+      {/* 1. Asymmetric Workbench Hero */}
+      <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 max-w-7xl mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
-          {/* Left Column: Value Prop */}
+          {/* Left Specimen & Positioning */}
           <div className="lg:col-span-7 flex flex-col">
             
-            {/* Live Review Counter Pill */}
-            <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-surface-container-high mb-6 shadow-sm border border-surface-variant/40">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <ShieldCheck className="w-4 h-4 text-secondary-container" />
-              <span className="text-xs text-on-surface font-semibold tracking-tight">
-                Over <span className="font-mono text-secondary-container font-bold">{reviewCount.toLocaleString()}</span>+ Verified Reviews Generated
+            {/* Architectural Hardware Badge */}
+            <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-[#F2F0EB] mb-6 border border-[#E2DFD8]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span className="text-[11px] font-mono font-medium text-[#1C1B1A]">
+                NFC NTAG216 · Laser-Etched Acrylic Standees
               </span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="font-headline font-extrabold text-3xl sm:text-4xl lg:text-5xl text-on-surface tracking-tight leading-[1.15] mb-5">
-              Turn Every Customer Tap into{" "}
-              <span className="text-secondary-container underline decoration-secondary/30 decoration-wavy">
-                5-Star Google Reviews
+            {/* Main Title */}
+            <h1 className="font-headline font-bold text-3xl sm:text-4xl lg:text-5xl text-[#1C1B1A] tracking-tight leading-[1.12] mb-5">
+              Turn physical guest footfall into{" "}
+              <span className="text-[#D94826] underline decoration-[#D94826]/30 decoration-wavy">
+                5-star Google Reviews
               </span>{" "}
-              instantly
+              in 0.6 seconds.
             </h1>
 
-            {/* Subtext */}
-            <p className="text-base sm:text-lg text-on-surface-variant mb-8 leading-relaxed max-w-2xl">
-              Smart NFC &amp; Dynamic QR standees engineered for restaurants, salons, and retail stores. Boost your local Google ranking by 300% without awkward asking or paper feedback cards.
+            {/* Honest Technical Value Proposition */}
+            <p className="text-base sm:text-lg text-[#615E5B] mb-6 leading-relaxed max-w-2xl font-sans">
+              Precision-machined NFC &amp; Dynamic QR standees built for dining counters, salon desks, and clinic reception. Zero apps to download, zero Bluetooth pairing, and fully compliant with Google anti-gating policies.
             </p>
 
-            {/* CTA Buttons */}
+            {/* Core Feature Callout Bar */}
+            <div className="mb-8 p-3.5 rounded-xl bg-[#F2F0EB] border border-[#E2DFD8] flex items-center gap-3 text-xs text-[#1C1B1A]">
+              <TrendingUp className="w-4 h-4 text-[#D94826] flex-shrink-0" />
+              <span>
+                <strong>Verified Google Maps SEO Lift:</strong> Consistent high-velocity reviews directly enhance your Google Business Profile local 3-pack ranking.
+              </span>
+            </div>
+
+            {/* CTA Pairing */}
             <div className="flex flex-col sm:flex-row gap-3.5 mb-10">
               <button
-                onClick={() => onOpenAuth("signup")}
-                className="py-3.5 px-6 rounded-2xl bg-secondary-container text-on-secondary-container font-semibold text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                onClick={() => onNavigate("sample-dashboard")}
+                className="py-3 px-6 rounded-xl bg-[#1C1B1A] text-white hover:bg-[#2C2B2A] font-semibold text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>Get Started • 14-Day Free Pilot</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Launch Interactive Demo</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
 
               <button
-                onClick={() => onNavigate("portal")}
-                className="py-3.5 px-6 rounded-2xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-sm flex items-center justify-center gap-2 border border-surface-variant/50 transition-colors cursor-pointer"
+                onClick={() => onNavigate("how-it-works")}
+                className="py-3 px-6 rounded-xl bg-white hover:bg-[#F2F0EB] text-[#1C1B1A] font-semibold text-xs border border-[#E2DFD8] transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Store className="w-4 h-4 text-secondary-container" />
-                <span>Explore Client Portal</span>
+                <Radio className="w-3.5 h-3.5 text-[#D94826]" />
+                <span>How Hardware Works</span>
               </button>
             </div>
 
-            {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-surface-variant/30 text-xs text-on-surface-variant">
+            {/* Technical Verification Metrics */}
+            <div className="grid grid-cols-3 gap-6 pt-6 border-t border-[#E2DFD8] text-xs">
               <div>
-                <p className="font-headline font-bold text-lg text-on-surface">3.8x</p>
-                <p className="text-[11px]">More Google Reviews</p>
+                <p className="font-headline font-bold text-xl text-[#1C1B1A]">0.6s</p>
+                <p className="text-[11px] font-mono text-[#615E5B] mt-0.5">Average Tap Velocity</p>
               </div>
               <div>
-                <p className="font-headline font-bold text-lg text-on-surface">0.6s</p>
-                <p className="text-[11px]">Tap to Review Speed</p>
+                <p className="font-headline font-bold text-xl text-[#1C1B1A]">100%</p>
+                <p className="text-[11px] font-mono text-[#615E5B] mt-0.5">Zero App Install Required</p>
               </div>
               <div>
-                <p className="font-headline font-bold text-lg text-on-surface">100%</p>
-                <p className="text-[11px]">Zero App Download</p>
+                <p className="font-headline font-bold text-xl text-[#1C1B1A]">NTAG216</p>
+                <p className="text-[11px] font-mono text-[#615E5B] mt-0.5">888 Byte EEPROM Chip</p>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Interactive 3D Standee Preview */}
+          {/* Right Column: Physical Standee Specimen */}
           <div className="lg:col-span-5 flex flex-col justify-center">
             <Standee3DPreview onTapSuccess={onTriggerTapReviewModal} />
           </div>
         </div>
       </section>
 
-      {/* Verified Clients Logo Banner */}
-      <section className="w-full bg-surface-container-low py-6 border-y border-surface-variant/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-4">
-            Trusted by 620+ local venues across the country
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 opacity-75">
-            {logos.map((logo) => (
-              <span
-                key={logo}
-                className="font-headline font-semibold text-xs sm:text-sm text-on-surface tracking-tight"
-              >
-                {logo}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Key Feature Trio */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
-          <div>
-            <span className="text-xs font-bold tracking-wider uppercase text-secondary">
-              Engineered for Rapid Growth
-            </span>
-            <h2 className="font-headline font-bold text-2xl sm:text-3xl text-on-surface mt-1">
-              Zero Friction. Pure 5-Star Velocity.
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigate("features")}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary-container hover:underline self-start sm:self-auto cursor-pointer"
-          >
-            <span>View all ecosystem features</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl bg-surface-container-lowest shadow-sm border border-surface-variant/40 flex flex-col justify-between hover:shadow-md transition-shadow">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6" />
-              </div>
-              <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
-                Instant Tap-to-Review
-              </h3>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Works seamlessly with iOS and Android. No Bluetooth pairing, no WiFi passwords, and zero app installs required.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-surface-variant/20 flex items-center justify-between text-xs font-semibold text-secondary">
-              <span>99.8% Read Reliability</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-surface-container-lowest shadow-sm border border-surface-variant/40 flex flex-col justify-between hover:shadow-md transition-shadow">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-primary text-on-primary flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 text-emerald-400" />
-              </div>
-              <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
-                AI Sentiment Guard
-              </h3>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Automatically routes happy diners (4-5 stars) to Google Maps, while capturing frustrated guests (1-3 stars) privately for management resolution.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-surface-variant/20 flex items-center justify-between text-xs font-semibold text-secondary">
-              <span>Shields Public Rating</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-surface-container-lowest shadow-sm border border-surface-variant/40 flex flex-col justify-between hover:shadow-md transition-shadow">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-surface-container-high text-secondary flex items-center justify-center mb-4">
-                <Radio className="w-6 h-6" />
-              </div>
-              <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
-                Dynamic Link Updates
-              </h3>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Repoint your physical standee's destination URL anytime from your phone: switch between Google Reviews, Yelp, TripAdvisor, or your Guest WiFi page in 1 click.
-              </p>
-            </div>
-            <div className="mt-6 pt-4 border-t border-surface-variant/20 flex items-center justify-between text-xs font-semibold text-secondary">
-              <span>Cloud Telemetry Sync</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Sentiment Simulator Teaser */}
+      {/* 2. Interactive Sentiment Interceptor Workbench */}
       <section className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto w-full">
         <SentimentSimulator />
       </section>
 
-      {/* Bottom Start Banner */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <div className="rounded-3xl bg-primary text-on-primary p-8 sm:p-12 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl">
-          <div className="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-secondary-container/20 blur-3xl pointer-events-none" />
+      {/* 3. Asymmetric Bento Grid: Hardware & Cloud Ecosystem */}
+      <section className="px-4 sm:px-6 lg:px-8 py-14 max-w-7xl mx-auto w-full">
+        <div className="mb-8">
+          <span className="text-[11px] font-mono font-semibold tracking-wider uppercase text-[#D94826]">
+            Engineering &amp; Materials
+          </span>
+          <h2 className="font-headline font-bold text-2xl sm:text-3xl text-[#1C1B1A] mt-1">
+            Built for High-Footfall Commercial Desks
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           
-          <div className="relative z-10 max-w-xl">
-            <span className="text-xs font-mono font-bold tracking-wider text-secondary-fixed uppercase">
-              Limited Hardware Production Batch
+          {/* Bento Item 1: Hardware Build (Spans 7 cols) */}
+          <div className="md:col-span-7 p-7 rounded-3xl bg-[#FAF9F6] border border-[#E2DFD8] flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-[#1C1B1A] text-white flex items-center justify-center mb-4">
+                <Layers className="w-5 h-5 text-[#D94826]" />
+              </div>
+              <h3 className="font-headline font-bold text-lg text-[#1C1B1A] mb-2">
+                4mm Laser-Cut Acrylic &amp; Embedded NFC Antenna
+              </h3>
+              <p className="text-xs text-[#615E5B] leading-relaxed">
+                Machined from UV-stable, scratch-resistant acrylic with high-permeability copper antenna coils tuned to 13.56 MHz. Withstands daily spillages, sanitizer wipe-downs, and intensive restaurant use.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E2DFD8] flex items-center justify-between text-xs font-mono text-[#615E5B]">
+              <span>Durability: 100,000+ Write Cycles</span>
+              <span className="text-[#1C1B1A] font-semibold">Matte Obsidian Finish</span>
+            </div>
+          </div>
+
+          {/* Bento Item 2: Dynamic URL Repointing (Spans 5 cols) */}
+          <div className="md:col-span-5 p-7 rounded-3xl bg-[#FAF9F6] border border-[#E2DFD8] flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-[#F2F0EB] text-[#1C1B1A] flex items-center justify-center mb-4 border border-[#E2DFD8]">
+                <RefreshCw className="w-5 h-5 text-[#D94826]" />
+              </div>
+              <h3 className="font-headline font-bold text-lg text-[#1C1B1A] mb-2">
+                Instant Cloud Destination Updates
+              </h3>
+              <p className="text-xs text-[#615E5B] leading-relaxed">
+                Repoint your standee destination instantly from your merchant dashboard. Switch between Google Reviews, TripAdvisor, Instagram, or promotional landing pages without replacing physical hardware.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E2DFD8] flex items-center justify-between text-xs font-mono text-[#615E5B]">
+              <span>Real-time OTA Repointing</span>
+              <span className="text-[#D94826] font-semibold">Zero Hardware Waste</span>
+            </div>
+          </div>
+
+          {/* Bento Item 3: Dual-Mode Dynamic QR (Spans 5 cols) */}
+          <div className="md:col-span-5 p-7 rounded-3xl bg-[#FAF9F6] border border-[#E2DFD8] flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-[#F2F0EB] text-[#1C1B1A] flex items-center justify-center mb-4 border border-[#E2DFD8]">
+                <QrCode className="w-5 h-5 text-[#1C1B1A]" />
+              </div>
+              <h3 className="font-headline font-bold text-lg text-[#1C1B1A] mb-2">
+                Level-Q Dynamic QR Fallback
+              </h3>
+              <p className="text-xs text-[#615E5B] leading-relaxed">
+                Laser-etched QR code with 25% Reed-Solomon error correction ensures 100% scanning reliability even on older smartphones without NFC sensors.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E2DFD8] flex items-center justify-between text-xs font-mono text-[#615E5B]">
+              <span>Universal Camera Scan</span>
+              <span className="text-[#1C1B1A] font-semibold">Any iOS / Android</span>
+            </div>
+          </div>
+
+          {/* Bento Item 4: Google Compliance (Spans 7 cols) */}
+          <div className="md:col-span-7 p-7 rounded-3xl bg-[#FAF9F6] border border-[#E2DFD8] flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center mb-4">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="font-headline font-bold text-lg text-[#1C1B1A] mb-2">
+                100% Google Anti-Review-Gating Compliant
+              </h3>
+              <p className="text-xs text-[#615E5B] leading-relaxed">
+                Unlike illegal gating solutions that block customers from writing public reviews, ZenTap preserves direct Google Maps review access for all star ratings, while providing a fast-track private resolution channel that guests willingly prefer.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#E2DFD8] flex items-center justify-between text-xs font-mono text-emerald-800">
+              <span>Google Merchant Policies Compliant</span>
+              <span className="font-semibold">Safe for Profile Growth</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 4. Action Banner */}
+      <section className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto w-full">
+        <div className="rounded-3xl bg-[#1C1B1A] text-white p-8 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 border border-[#2C2B2A]">
+          <div className="max-w-xl">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[#D94826] font-semibold">
+              Commercial Hardware Dispatch
             </span>
             <h2 className="font-headline font-bold text-2xl sm:text-3xl text-white mt-1">
-              Ready to turn 200 daily visitors into 50 weekly Google reviews?
+              Equip your front desk with smart review standees.
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-300 mt-2">
-              Order your custom laser-engraved standee today. Free express shipping &amp; 14-day risk-free trial included.
+            <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed">
+              Laser-engraved with your custom business name and pre-programmed to your Google Maps review link. Includes courier delivery across India.
             </p>
           </div>
 
-          <div className="relative z-10 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => onOpenAuth("signup")}
-              className="py-3 px-6 rounded-2xl bg-secondary-container hover:bg-secondary-container/90 text-white font-bold text-xs shadow-lg transition-all cursor-pointer text-center"
-            >
-              Order Standee Now
-            </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-shrink-0">
             <button
               onClick={() => onNavigate("pricing")}
-              className="py-3 px-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all cursor-pointer text-center"
+              className="py-3 px-6 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white font-semibold text-xs transition-colors cursor-pointer text-center"
             >
-              Compare Packages
+              View Standee Packages (₹500 / ₹1,500)
+            </button>
+            <button
+              onClick={() => onOpenAuth("signup")}
+              className="py-3 px-6 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 transition-colors cursor-pointer text-center"
+            >
+              Register Business Profile
             </button>
           </div>
         </div>
       </section>
+
     </div>
   );
 }

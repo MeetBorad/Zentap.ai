@@ -12,7 +12,10 @@ import {
   Sparkles,
   QrCode,
   Layers,
-  Radio
+  Radio,
+  TrendingUp,
+  Globe,
+  MessageSquare
 } from "lucide-react";
 import SentimentSimulator from "../SentimentSimulator";
 import { ActiveView } from "../Header";
@@ -26,26 +29,53 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
   const [selectedColor, setSelectedColor] = useState<"obsidian" | "gold" | "white" | "crimson">("obsidian");
 
   const colorOptions = [
-    { id: "obsidian", name: "Matte Obsidian", bg: "bg-zinc-900", border: "border-zinc-700", text: "text-white" },
-    { id: "gold", name: "Brushed Brass / Gold", bg: "bg-[#b89547]", border: "border-[#d8b567]", text: "text-white" },
+    { id: "obsidian", name: "Matte Obsidian Acrylic", bg: "bg-zinc-900", border: "border-zinc-700", text: "text-white" },
+    { id: "gold", name: "Heavy Brushed Brass", bg: "bg-[#b89547]", border: "border-[#d8b567]", text: "text-white" },
     { id: "white", name: "Minimalist Ceramic", bg: "bg-white", border: "border-zinc-300", text: "text-zinc-900" },
-    { id: "crimson", name: "Signature Crimson", bg: "bg-[#db3327]", border: "border-[#b71511]", text: "text-white" },
+    { id: "crimson", name: "Signature Velvet Crimson", bg: "bg-[#db3327]", border: "border-[#b71511]", text: "text-white" },
   ];
 
   return (
-    <div className="flex flex-col w-full animate-in fade-in duration-300 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+    <div className="flex flex-col w-full animate-in fade-in duration-300 px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto">
       
       {/* Page Header */}
       <div className="mb-12 max-w-3xl">
         <span className="text-xs font-bold tracking-wider uppercase text-secondary">
           Complete Hardware &amp; Software Suite
         </span>
-        <h1 className="font-headline font-extrabold text-3xl sm:text-4xl text-on-surface mt-1 tracking-tight">
+        <h1 className="font-headline font-extrabold text-3xl sm:text-5xl text-on-surface mt-2 tracking-tight">
           Enterprise-Grade NFC Chips Meet Cloud AI Routing
         </h1>
         <p className="text-sm sm:text-base text-on-surface-variant mt-3 leading-relaxed">
-          Every ZenTap standee is custom manufactured using aerospace-grade acrylic, encrypted NTAG216 circuitry, and dynamic QR fallbacks connected to real-time cloud analytics.
+          Every ZenTap standee is precision-manufactured using scratch-resistant acrylic, encrypted NTAG216 circuitry, and dynamic QR fallbacks connected to real-time Google ranking telemetry.
         </p>
+      </div>
+
+      {/* SEO Boost Headline Banner */}
+      <div className="mb-14 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-secondary/15 via-primary/10 to-secondary/15 border border-secondary/30 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center text-secondary flex-shrink-0">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold tracking-widest text-secondary block">
+              Algorithmic Local Dominance
+            </span>
+            <h3 className="font-headline font-bold text-lg sm:text-xl text-on-surface">
+              Helps Boost Your Google Profile Reach, Views &amp; Optimizes Overall SEO
+            </h3>
+            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+              Real-time NFC customer taps signal high local footfall authority to Google algorithms, drastically expanding your visibility on Google Maps and Google Search.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onNavigate("sample-dashboard")}
+          className="px-6 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm"
+        >
+          View Sample Dashboard
+        </button>
       </div>
 
       {/* Feature Grid 1: Hardware Core */}
@@ -106,7 +136,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-600" />
-                <span>High-contrast UV-cured ink resistant to bleach, alcohol &amp; coffee spills</span>
+                <span>High-contrast UV-cured ink resistant to bleach, alcohol &amp; spills</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-600" />
@@ -122,12 +152,86 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
         </div>
       </div>
 
+      {/* Feature Grid 2: Multilingual AI + Auto Reply Engine */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-14">
+        
+        {/* Multilingual AI Review Assistant */}
+        <div className="p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center mb-6">
+              <Globe className="w-6 h-6" />
+            </div>
+            <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
+              Multilingual Contextual AI Assistant
+            </h3>
+            <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed mb-6">
+              Trained on thousands of high-converting local Google reviews. Customers pick what stood out and receive polished, articulate review suggestions in English, Gujarati, or Hindi.
+            </p>
+
+            <div className="space-y-2.5 text-xs text-on-surface font-medium">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Full support for regional languages (English, Gujarati, Hindi)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Style adjustments: Balanced, In-Depth Detailed, or Short &amp; Punchy</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>1-click draft regeneration if customer wants another variation</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+            <span>Engine: ZenTap Neural NLP</span>
+            <span className="text-secondary font-bold">Local SEO Optimized</span>
+          </div>
+        </div>
+
+        {/* Automated AI Review Reply Engine */}
+        <div className="p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mb-6">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+            <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
+              Auto Google Review Reply Engine
+            </h3>
+            <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed mb-6">
+              Google ranks businesses higher when owners actively reply to every review. Our automated reply engine generates warm, personalized thank-you responses synced to incoming reviews.
+            </p>
+
+            <div className="space-y-2.5 text-xs text-on-surface font-medium">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Automatically thanks reviewers by name in the merchant&apos;s brand voice</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Boosts local SEO engagement signals recognized by Google Search</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Saves store owners 5+ hours every month of manual review responses</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+            <span>Availability: Plan 3 (₹2,000)</span>
+            <span className="text-amber-600 font-bold">100% Automated Sync</span>
+          </div>
+        </div>
+      </div>
+
       {/* Interactive AI Sentiment Guard Section */}
       <div className="mb-14">
         <SentimentSimulator />
       </div>
 
-      {/* Feature Grid 2: Telemetry & Branding */}
+      {/* Feature Grid 3: Telemetry & Branding */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-14">
         
         {/* Real-Time Telemetry */}
@@ -150,17 +254,17 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-on-surface">Scan-to-Review Conversion:</span>
-                <span className="font-mono text-emerald-600 font-bold">90.1%</span>
+                <span className="font-mono text-emerald-600 font-bold">88.4%</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-on-surface">Monthly Average Rating Gain:</span>
-                <span className="font-mono text-on-surface font-bold">+1.1 Stars</span>
+                <span className="font-mono text-on-surface font-bold">+1.0 Stars</span>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => onNavigate("portal")}
+            onClick={() => onNavigate("sample-dashboard")}
             className="mt-8 py-2.5 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface flex items-center justify-between transition-colors cursor-pointer"
           >
             <span>Inspect Live Merchant Telemetry</span>

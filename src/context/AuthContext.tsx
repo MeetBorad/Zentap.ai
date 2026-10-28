@@ -4,10 +4,47 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session, AuthError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
+export function checkIsAdmin(user: User | null): boolean {
+  const adminList = [
+    "admin@zentapdigitalsolutions.com",
+    "admin@zentap.ai",
+    "meet@zentap.ai",
+    "meetborad@hotmail.com",
+    "thedayithappened736@gmail.com",
+  ];
+
+  // If a user is logged in, their email/metadata determines authority
+  if (user) {
+    const email = (user.email || "").toLowerCase().trim();
+    if (
+      adminList.includes(email) ||
+      email.endsWith("@zentapdigitalsolutions.com") ||
+      email.endsWith("@zentap.ai") ||
+      user.user_metadata?.role === "admin" ||
+      user.app_metadata?.role === "admin"
+    ) {
+      return true;
+    }
+    // Regular merchant user logged in - strip any stale admin supreme flag
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("zentap_admin_supreme");
+    }
+    return false;
+  }
+
+  // If no user is logged in, check standalone admin supreme session key
+  if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
+    return true;
+  }
+
+  return false;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAdmin: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUpWithEmail: (
     email: string,
@@ -98,10 +135,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sign Out
   const signOut = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("zentap_admin_supreme");
+    }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
   };
+
+  const isAdmin = checkIsAdmin(user);
 
   return (
     <AuthContext.Provider
@@ -109,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         loading,
+        isAdmin,
         signInWithEmail,
         signUpWithEmail,
         signInWithGoogle,
