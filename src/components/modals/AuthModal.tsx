@@ -31,7 +31,7 @@ export default function AuthModal({
   initialTab = "signin",
   onSuccessNavigate,
 }: AuthModalProps) {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, resetPasswordForEmail } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"signin" | "signup">(initialTab);
   const [email, setEmail] = useState("");
@@ -42,13 +42,46 @@ export default function AuthModal({
   const [errorMessage, setErrorMessage] = useState("");
   const [authSuccessMessage, setAuthSuccessMessage] = useState("");
 
+  // Password Reset & Failed Attempt Tracking
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
   useEffect(() => {
     setActiveTab(initialTab);
     setErrorMessage("");
     setAuthSuccessMessage("");
+    setIsResetMode(false);
+    setResetSent(false);
   }, [initialTab, isOpen]);
 
   if (!isOpen) return null;
+
+  // Password Reset Handler
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail) {
+      setErrorMessage("Please enter your account email address to receive reset instructions.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const { error } = await resetPasswordForEmail(cleanEmail);
+      if (error) {
+        setErrorMessage(error.message || "Failed to send reset email. Please try again.");
+      } else {
+        setResetSent(true);
+        setAuthSuccessMessage(`✓ Password reset email sent to ${cleanEmail}! Please check your inbox.`);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to initiate password reset.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Google SSO Handler
   const handleGoogleSignIn = async () => {
@@ -79,21 +112,31 @@ export default function AuthModal({
       if (activeTab === "signin") {
         const { error } = await signInWithEmail(cleanEmail, password);
         if (error) {
+          const newFailed = failedAttempts + 1;
+          setFailedAttempts(newFailed);
+
           const errLower = (error.message || "").toLowerCase();
-          if (
+          const isPasswordMismatch = 
             errLower.includes("invalid login credentials") ||
             errLower.includes("invalid credentials") ||
             errLower.includes("invalid password") ||
             errLower.includes("incorrect") ||
-            (error as any).status === 400
-          ) {
-            setErrorMessage("Incorrect password or email. Please verify your password and try again.");
+            (error as any).status === 400;
+
+          if (newFailed >= 3) {
+            setErrorMessage("Incorrect password entered 3 times. For your security, please reset your password below.");
+            setIsResetMode(true);
+          } else if (isPasswordMismatch) {
+            setErrorMessage(`Incorrect password. Please verify your password and try again (Attempt ${newFailed}/3).`);
           } else {
             setErrorMessage(error.message || "Failed to sign in. Please verify your credentials.");
           }
           setLoading(false);
           return;
         }
+
+        // Reset failed count on successful login
+        setFailedAttempts(0);
 
         // Clean user session -> Strictly directed to Client Merchant Portal
         if (typeof window !== "undefined") {
@@ -272,7 +315,8 @@ export default function AuthModal({
         </div>
 
         {/* Credentials Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        {!isResetMode ? (
+          <form onSubmit={handleSubmit} className="space-y-3.5">
           {activeTab === "signup" && (
             <>
               <div>
@@ -329,9 +373,23 @@ export default function AuthModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-              Account Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-[#1C1B1A]">
+                Account Password
+              </label>
+              {activeTab === "signin" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetMode(true);
+                    setErrorMessage("");
+                  }}
+                  className="text-[11px] text-[#D94826] font-semibold hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
               <input
@@ -367,6 +425,66 @@ export default function AuthModal({
             )}
           </button>
         </form>
+        ) : (
+          /* PASSWORD RESET FORM (Visible when isResetMode is active) */
+          <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-4 rounded-2xl bg-[#F2F0EB] border border-[#E2DFD8]">
+              <h4 className="font-bold text-xs text-[#1C1B1A] mb-1">
+                Password Recovery Assistant
+              </h4>
+              <p className="text-[11px] text-[#615E5B]">
+                Enter your account email address and we will immediately send you a secure password reset link.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
+                Your Registered Email
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="owner@yourbusiness.com"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 rounded-xl bg-[#1C1B1A] hover:bg-[#2C2B2A] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Sending Reset Email...</span>
+                </>
+              ) : (
+                <>
+                  <span>Send Password Reset Link</span>
+                  <ArrowRight className="w-4 h-4 text-[#D94826]" />
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetMode(false);
+                setErrorMessage("");
+                setAuthSuccessMessage("");
+              }}
+              className="w-full py-2 text-xs font-semibold text-[#615E5B] hover:text-[#1C1B1A] transition-colors cursor-pointer text-center"
+            >
+              ← Return to Merchant Sign In
+            </button>
+          </form>
+        )}
 
         <div className="mt-4 pt-3 border-t border-[#E2DFD8] text-center">
           <p className="text-[11px] text-[#615E5B]">

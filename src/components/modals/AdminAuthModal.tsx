@@ -24,14 +24,42 @@ export default function AdminAuthModal({
   onClose,
   onSuccessNavigate,
 }: AdminAuthModalProps) {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // 3-Attempt Lock & Password Reset
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isResetMode, setIsResetMode] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail) {
+      setErrorMessage("Please enter an administrator email address.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const { error } = await resetPasswordForEmail(cleanEmail);
+      if (error) {
+        setErrorMessage(error.message || "Failed to send admin recovery instructions.");
+      } else {
+        setSuccessMessage(`✓ Recovery instructions dispatched to ${cleanEmail}! Check inbox.`);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to initiate admin password reset.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +72,20 @@ export default function AdminAuthModal({
     // 1. Check Root Superadmin credentials
     if (cleanEmail === "admin@zentapdigitalsolutions.com") {
       if (password !== "Admin@2026") {
-        setErrorMessage("Incorrect password. Please verify your administrator password and try again.");
+        const newFailed = failedAttempts + 1;
+        setFailedAttempts(newFailed);
+        if (newFailed >= 3) {
+          setErrorMessage("Incorrect administrator password entered 3 times. Please use the Superadmin Password Reset assistant below.");
+          setIsResetMode(true);
+        } else {
+          setErrorMessage(`Incorrect password. Please verify your administrator password and try again (Attempt ${newFailed}/3).`);
+        }
         setLoading(false);
         return;
       }
 
       // Correct root credentials
+      setFailedAttempts(0);
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
       }
@@ -83,14 +119,20 @@ export default function AdminAuthModal({
       const { error } = await signInWithEmail(cleanEmail, password);
 
       if (error) {
+        const newFailed = failedAttempts + 1;
+        setFailedAttempts(newFailed);
+
         const errLower = (error.message || "").toLowerCase();
-        if (
+        if (newFailed >= 3) {
+          setErrorMessage("Incorrect administrator password entered 3 times. Please use the recovery option below.");
+          setIsResetMode(true);
+        } else if (
           errLower.includes("invalid login credentials") ||
           errLower.includes("invalid credentials") ||
           errLower.includes("invalid password") ||
           (error as any).status === 400
         ) {
-          setErrorMessage("Incorrect password. Please verify your administrator credentials and try again.");
+          setErrorMessage(`Incorrect password. Please verify your administrator credentials and try again (Attempt ${newFailed}/3).`);
         } else {
           setErrorMessage(error.message || "Invalid administrator credentials");
         }
@@ -99,6 +141,7 @@ export default function AdminAuthModal({
       }
 
       // Successful Supabase auth
+      setFailedAttempts(0);
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
       }
@@ -171,54 +214,124 @@ export default function AdminAuthModal({
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-mono font-medium text-zinc-300 mb-1.5 uppercase tracking-wider text-[10px]">
-              Root Admin Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@zentapdigitalsolutions.com"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono transition-colors"
-            />
-          </div>
+        {/* Form: Standard Sign In */}
+        {!isResetMode ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-mono font-medium text-zinc-300 mb-1.5 uppercase tracking-wider text-[10px]">
+                Root Admin Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@zentapdigitalsolutions.com"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono transition-colors"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-mono font-medium text-zinc-300 mb-1.5 uppercase tracking-wider text-[10px]">
-              Master Security Key
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono transition-colors"
-            />
-          </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-mono font-medium text-zinc-300 uppercase tracking-wider text-[10px]">
+                  Master Security Key
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetMode(true);
+                    setErrorMessage("");
+                  }}
+                  className="text-[10px] text-[#D94826] font-mono hover:underline cursor-pointer"
+                >
+                  Reset Security Key?
+                </button>
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono transition-colors"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Verifying Root Session...</span>
-              </>
-            ) : (
-              <>
-                <span>Authenticate Root Admin Session</span>
-                <KeyRound className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-2 py-3 px-4 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying Root Session...</span>
+                </>
+              ) : (
+                <>
+                  <span>Authenticate Root Admin Session</span>
+                  <KeyRound className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        ) : (
+          /* Form: Admin Password Recovery */
+          <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs text-zinc-300">
+              <span className="font-mono text-[10px] uppercase font-bold text-[#D94826] block mb-1">
+                Superadmin Security Reset
+              </span>
+              <p className="text-[11px] leading-relaxed text-zinc-400">
+                Enter your authorized admin email. A cryptographically signed token will be sent to recover or change your security credentials.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono font-medium text-zinc-300 mb-1.5 uppercase tracking-wider text-[10px]">
+                Administrator Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@zentapdigitalsolutions.com"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono transition-colors"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-4 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Dispatching Security Token...</span>
+                </>
+              ) : (
+                <>
+                  <span>Dispatch Admin Reset Instructions</span>
+                  <KeyRound className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetMode(false);
+                setErrorMessage("");
+                setSuccessMessage("");
+              }}
+              className="w-full py-2 text-xs font-mono text-zinc-400 hover:text-white transition-colors cursor-pointer text-center"
+            >
+              ← Back to Admin Login
+            </button>
+          </form>
+        )}
 
         <div className="mt-5 pt-4 border-t border-white/10 text-center">
           <p className="text-[10px] text-zinc-500 font-mono">

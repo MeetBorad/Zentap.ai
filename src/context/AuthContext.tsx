@@ -53,6 +53,8 @@ interface AuthContextType {
   ) => Promise<{ error: AuthError | null; requiresEmailConfirmation: boolean }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
+  updateUserPassword: (password: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -143,6 +145,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
+  // Password Reset Email
+  const resetPasswordForEmail = async (email: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?type=recovery`,
+    });
+    return { error };
+  };
+
+  // Update Password
+  const updateUserPassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    return { error };
+  };
+
   const isAdmin = checkIsAdmin(user);
 
   return (
@@ -156,6 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUpWithEmail,
         signInWithGoogle,
         signOut,
+        resetPasswordForEmail,
+        updateUserPassword,
       }}
     >
       {children}

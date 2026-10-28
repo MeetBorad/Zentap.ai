@@ -34,7 +34,10 @@ import {
   Trash2,
   CheckCircle,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Lock,
+  KeyRound,
+  AlertCircle
 } from "lucide-react";
 import { 
   BusinessRecord, 
@@ -52,7 +55,7 @@ interface AdminConsoleViewProps {
 }
 
 export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewProps) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail } = useAuth();
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "paid" | "pending">("all");
@@ -75,6 +78,60 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [qrModalBiz, setQrModalBiz] = useState<BusinessRecord | null>(null);
   const [qrPngUrl, setQrPngUrl] = useState<string>("");
   const [qrSvgString, setQrSvgString] = useState<string>("");
+
+  // Admin Password Management State
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [confirmAdminPassword, setConfirmAdminPassword] = useState("");
+  const [adminPasswordUpdating, setAdminPasswordUpdating] = useState(false);
+  const [adminPasswordMsg, setAdminPasswordMsg] = useState("");
+  const [adminPasswordError, setAdminPasswordError] = useState("");
+
+  const handleChangeAdminPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminPasswordError("");
+    setAdminPasswordMsg("");
+
+    if (newAdminPassword.length < 6) {
+      setAdminPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newAdminPassword !== confirmAdminPassword) {
+      setAdminPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setAdminPasswordUpdating(true);
+    try {
+      const { error } = await updateUserPassword(newAdminPassword);
+      if (error) {
+        setAdminPasswordError(error.message || "Failed to update admin password.");
+      } else {
+        setAdminPasswordMsg("✓ Admin password updated successfully!");
+        setNewAdminPassword("");
+        setConfirmAdminPassword("");
+        showToast("✓ Admin password updated!");
+      }
+    } catch (err: any) {
+      setAdminPasswordError(err.message || "Failed to update password.");
+    } finally {
+      setAdminPasswordUpdating(false);
+    }
+  };
+
+  const handleSendAdminResetEmail = async () => {
+    try {
+      const { error } = await resetPasswordForEmail("admin@zentapdigitalsolutions.com");
+      if (error) {
+        setAdminPasswordError(error.message);
+      } else {
+        setAdminPasswordMsg("✓ Recovery instructions dispatched to admin@zentapdigitalsolutions.com!");
+        showToast("✓ Admin recovery email sent!");
+      }
+    } catch (err: any) {
+      setAdminPasswordError(err.message);
+    }
+  };
 
   useEffect(() => {
     async function loadAdminData() {
@@ -380,6 +437,14 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative z-10 flex-shrink-0">
+          <button
+            onClick={() => setPasswordModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+          >
+            <Lock className="w-4 h-4 text-emerald-400" />
+            <span>Admin Password &amp; Security</span>
+          </button>
+
           <button
             onClick={() => setAddModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
@@ -870,6 +935,107 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                 NFC Target: {originUrl}/r/{qrModalBiz.slug}?s=nfc
               </span>
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Admin Password & Security Modal */}
+      {passwordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-[#1C1B1A] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#2C2B2A] animate-in zoom-in-95 duration-150">
+            
+            <button
+              onClick={() => {
+                setPasswordModalOpen(false);
+                setAdminPasswordError("");
+                setAdminPasswordMsg("");
+              }}
+              className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <Lock className="w-5 h-5 text-[#D94826]" />
+              <h3 className="font-headline font-bold text-lg text-white">
+                Admin Password &amp; Security Key
+              </h3>
+            </div>
+            <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
+              Update the master security key for administrator access, or dispatch a password recovery link to your inbox.
+            </p>
+
+            {adminPasswordError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{adminPasswordError}</span>
+              </div>
+            )}
+
+            {adminPasswordMsg && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>{adminPasswordMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleChangeAdminPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-medium text-zinc-300 mb-1 uppercase tracking-wider text-[10px]">
+                  New Administrator Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-medium text-zinc-300 mb-1 uppercase tracking-wider text-[10px]">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmAdminPassword}
+                  onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={adminPasswordUpdating}
+                className="w-full py-3 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+              >
+                {adminPasswordUpdating ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Updating Security Key...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Update Administrator Password</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendAdminResetEmail}
+                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-mono transition-colors flex items-center justify-center gap-2 cursor-pointer border border-white/10"
+              >
+                <Mail className="w-4 h-4 text-[#D94826]" />
+                <span>Dispatch Recovery Instructions to Email</span>
+              </button>
+            </form>
 
           </div>
         </div>

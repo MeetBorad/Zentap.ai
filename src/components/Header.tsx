@@ -44,11 +44,12 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
 
   const navItems: { id: ActiveView; label: string }[] = [
     { id: "home", label: "Home" },
+    { id: "portal", label: "Merchant Dashboard" },
     { id: "how-it-works", label: "How It Works" },
     { id: "features", label: "Features" },
     { id: "benefits", label: "Benefits" },
     { id: "results", label: "Results" },
-    { id: "sample-dashboard", label: "Sample Dashboard" },
+    { id: "sample-dashboard", label: "Sample Showcase" },
     { id: "client-proofs", label: "Client Proofs" },
     { id: "pricing", label: "Pricing" },
     { id: "faq", label: "FAQ" },
