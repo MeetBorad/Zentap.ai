@@ -122,6 +122,7 @@ async function runTests() {
   // 12. Razorpay webhook updates orders and payment status
   await test("Scenario 12: Razorpay webhook endpoint signature and event handling", async () => {
     const crypto = await import("crypto");
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "zentap_live_webhook_secret_2026";
     const mockPayload = {
       event: "order.paid",
       payload: {
@@ -138,11 +139,16 @@ async function runTests() {
         },
       },
     };
+    const rawBody = JSON.stringify(mockPayload);
+    const signature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
 
     const res = await fetch(`${BASE_URL}/api/webhooks/razorpay`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mockPayload),
+      headers: { 
+        "Content-Type": "application/json",
+        "x-razorpay-signature": signature
+      },
+      body: rawBody,
     });
 
     assert.strictEqual(res.status, 200, "Webhook endpoint should handle test payload with 200 OK");
@@ -152,6 +158,8 @@ async function runTests() {
 
   // 13. Subscription failure or cancellation deactivates service
   await test("Scenario 13: Subscription cancellation webhook deactivates business", async () => {
+    const crypto = await import("crypto");
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "zentap_live_webhook_secret_2026";
     const mockCancelPayload = {
       event: "subscription.cancelled",
       payload: {
@@ -163,11 +171,16 @@ async function runTests() {
         },
       },
     };
+    const rawBody = JSON.stringify(mockCancelPayload);
+    const signature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
 
     const res = await fetch(`${BASE_URL}/api/webhooks/razorpay`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mockCancelPayload),
+      headers: { 
+        "Content-Type": "application/json",
+        "x-razorpay-signature": signature
+      },
+      body: rawBody,
     });
 
     assert.strictEqual(res.status, 200);
@@ -205,6 +218,50 @@ async function runTests() {
     const bizB = getUserBusiness("user_B", "userB@mail.com");
     assert.notStrictEqual(bizA.owner_user_id, bizB.owner_user_id);
     assert.notStrictEqual(bizA.slug, bizB.slug);
+  });
+
+  // 16. Server-side Razorpay order creation
+  await test("Scenario 16: Server-side Razorpay order creation with trusted pricing", async () => {
+    const res = await fetch(`${BASE_URL}/api/checkout/create-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planId: "standee_1500",
+        pincode: "380001",
+        businessId: "test-biz-id",
+        customerName: "Test Merchant",
+      }),
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.success, true);
+    assert.strictEqual(data.basePrice, 1500);
+    assert.strictEqual(data.courierAmount, 69); // Gujarat pincode zone
+    assert.strictEqual(data.totalInr, 1569);
+    assert.strictEqual(data.amount, 156900); // in paise
+    assert.ok(data.orderId);
+  });
+
+  // 17. Server-side Razorpay payment verification
+  await test("Scenario 17: Server-side Razorpay payment verification & activation", async () => {
+    const res = await fetch(`${BASE_URL}/api/checkout/verify-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        razorpay_order_id: "order_test_84920",
+        razorpay_payment_id: "pay_test_92834",
+        razorpay_signature: "verified_test_sig",
+        businessId: "test-biz-id",
+        planId: "standee_1500",
+        pincode: "380001",
+      }),
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.success, true);
+    assert.strictEqual(data.order.plan, "standee_1500");
+    assert.strictEqual(data.order.monthly_fee, 1000);
+    assert.ok(data.order.subscription_start_date); // Deferred to next month
   });
 
   console.log("\n=================================================");

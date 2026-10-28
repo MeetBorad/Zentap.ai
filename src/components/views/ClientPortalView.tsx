@@ -68,6 +68,7 @@ import {
   fetchDbFeedbacks 
 } from "@/lib/supabase/service";
 import StandeeVisual from "@/components/StandeeVisuals";
+import RazorpayCheckoutModal from "@/components/modals/RazorpayCheckoutModal";
 
 interface ClientPortalViewProps {
   onTriggerTapSimulator?: () => void;
@@ -119,6 +120,7 @@ export default function ClientPortalView({
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<OrderRecord | null>(null);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
   // In-Dashboard Password Change State
   const [newPassword, setNewPassword] = useState("");
@@ -327,35 +329,33 @@ export default function ClientPortalView({
   };
 
   // Standee Purchase / Checkout Handler
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPaymentProcessing(true);
+  const handleCheckoutSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsCheckoutModalOpen(true);
+  };
 
-    setTimeout(() => {
-      const pin = formPincode.trim() || business.pincode || "380001";
-      const newOrder = createOrderRecord(business.id, selectedPlan, pin);
-      const userId = user?.id || business.id;
-      const updated = updateUserBusiness(userId, {
-        plan: selectedPlan,
-        payment_status: "paid",
-        name: formName || business.name,
-        phone: formPhone || business.phone,
-        address: formAddress || business.address,
-        city: formCity || business.city,
-        state: formState || business.state,
-        country: formCountry || "India",
-        pincode: pin,
-        gbp_link: formGbp || business.gbp_link,
-        review_url: formReviewUrl || business.review_url,
-      });
+  const handlePaymentSuccess = (orderData: any) => {
+    const pin = formPincode.trim() || business.pincode || "380001";
+    const userId = user?.id || business.id;
+    const updated = updateUserBusiness(userId, {
+      plan: selectedPlan,
+      payment_status: "paid",
+      name: formName || business.name,
+      phone: formPhone || business.phone,
+      address: formAddress || business.address,
+      city: formCity || business.city,
+      state: formState || business.state,
+      country: formCountry || "India",
+      pincode: pin,
+      gbp_link: formGbp || business.gbp_link,
+      review_url: formReviewUrl || business.review_url,
+    });
 
-      setBusiness(updated);
-      setOrders(getOrdersForBusiness(business.id));
-      setLastPlacedOrder(newOrder);
-      setOrderSuccess(true);
-      setPaymentProcessing(false);
-      showToast("✓ Payment Verified! Your Standee order is in process.");
-    }, 1200);
+    setBusiness(updated);
+    setOrders(getOrdersForBusiness(business.id));
+    setLastPlacedOrder(orderData);
+    setOrderSuccess(true);
+    showToast("✓ Payment Verified! Your Standee order is in process.");
   };
 
   const handleSimulateScan = (source: "qr" | "nfc") => {
@@ -919,13 +919,13 @@ export default function ClientPortalView({
           </div>
           <div>
             <h4 className="font-headline font-bold text-base text-on-surface flex items-center gap-2">
-              <span>Boost Your Google Profile Reach, Views &amp; Local SEO</span>
+              <span>Support Your Google Profile Reach &amp; Local SEO Visibility</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 text-[10px] font-bold">
-                10x Growth
+                Local SEO Support
               </span>
             </h4>
             <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-              Our hardware standees convert your everyday customer footfall into verified 5-star Google reviews. Higher review frequency and positive customer keywords trigger Google&apos;s local algorithm to place your business in the prestigious <strong>Google 3-Pack</strong>, driving dramatic increases in search views, store visits, and revenue.
+              ZenTap.ai helps businesses create a more convenient customer feedback experience through NFC and QR review cards, customized Google Review Assistants, and review-management tools. Our solutions help businesses improve their review workflow and support their Google Business Profile visibility and local SEO efforts.
             </p>
           </div>
         </div>
@@ -1546,6 +1546,20 @@ export default function ClientPortalView({
           </div>
         </form>
       </div>
+
+      {/* Razorpay Interactive Checkout Modal */}
+      <RazorpayCheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        planId={selectedPlan}
+        businessId={business.id}
+        businessName={formName || business.name || "My Business"}
+        customerEmail={formEmail || business.email || (user?.email || "")}
+        customerPhone={formPhone || business.phone || ""}
+        pincode={formPincode || business.pincode || "380001"}
+        shippingAddress={formAddress || business.address || ""}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
 
     </div>
   );
