@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {background: "#fbf9f8", "surface-variant": "#e4e2e2", "on-primary": "#ffffff", "tertiary-container": "#001551", "on-tertiary-fixed": "#001551", "tertiary-fixed": "#dce1ff", "surface-container-highest": "#e4e2e2", surface: "#fbf9f8", "on-secondary-container": "#fffbff", "surface-container-high": "#eae8e7", "surface-dim": "#dbd9d9", "on-secondary-fixed-variant": "#930004", "secondary-fixed-dim": "#ffb4a9", "primary-fixed": "#e5e2e1", "on-surface": "#1b1c1c", "error-container": "#ffdad6", "on-secondary": "#ffffff", "on-error": "#ffffff", "surface-container-lowest": "#ffffff", "inverse-primary": "#c8c6c5", "on-error-container": "#93000a", "on-secondary-fixed": "#410001", "secondary-container": "#db3327", "surface-bright": "#fbf9f8", "outline-variant": "#c4c7c7", "primary-fixed-dim": "#c8c6c5", "on-surface-variant": "#444748", "on-tertiary-fixed-variant": "#0039b3", "tertiary-fixed-dim": "#b6c4ff", "on-primary-fixed": "#1c1b1b", "inverse-surface": "#303030", "on-primary-fixed-variant": "#474746", primary: "#000000", "on-background": "#1b1c1c", "on-tertiary": "#ffffff", "on-tertiary-container": "#537aff", "secondary-fixed": "#ffdad5", "surface-tint": "#5f5e5e", "inverse-on-surface": "#f2f0f0", "surface-container-low": "#f5f3f3", secondary: "#b71511", "on-primary-container": "#858383", tertiary: "#000000", error: "#ba1a1a", "primary-container": "#1c1b1b", outline: "#747878", "surface-container": "#efeded"}, borderRadius: {DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem"}, spacing: {gutter: "1.5rem", "space-sm": "0.5rem", margin: "2rem", "space-lg": "1.5rem", "gutter-sm": "1rem", "space-md": "1rem", "margin-sm": "1rem", "space-xs": "0.25rem", "space-xl": "2.5rem", "margin-lg": "4rem"}, fontFamily: {"headline-lg": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], "body-lg": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], title: ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "label-md": ["Plus Jakarta Sans"], "body-md": ["Plus Jakarta Sans"], "display-mobile": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], caption: ["Plus Jakarta Sans"], display: ["Space Grotesk"], "headline-lg-mobile": ["Plus Jakarta Sans"], headline: ["Space Grotesk"], body: ["Inter"], label: ["Space Grotesk"]}, fontSize: {"headline-lg": ["32px", {lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700"}], "body-sm": ["13px", {lineHeight: "20px", fontWeight: "400"}], "body-lg": ["18px", {lineHeight: "28px", fontWeight: "400"}], "headline-md": ["24px", {lineHeight: "32px", letterSpacing: "-0.015em", fontWeight: "600"}], title: ["16px", {lineHeight: "24px", letterSpacing: "-0.005em", fontWeight: "600"}], "headline-xl": ["40px", {lineHeight: "48px", letterSpacing: "-0.025em", fontWeight: "700"}], "label-md": ["14px", {lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600"}], "body-md": ["15px", {lineHeight: "24px", fontWeight: "400"}], "display-mobile": ["38px", {lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "800"}], "headline-sm": ["20px", {lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600"}], "label-sm": ["12px", {lineHeight: "16px", letterSpacing: "0.02em", fontWeight: "600"}], "headline-xl-mobile": ["30px", {lineHeight: "36px", letterSpacing: "-0.02em", fontWeight: "700"}], caption: ["11px", {lineHeight: "14px", letterSpacing: "0.03em", fontWeight: "500"}], display: ["56px", {lineHeight: "64px", letterSpacing: "-0.03em", fontWeight: "800"}], "headline-lg-mobile": ["24px", {lineHeight: "32px", letterSpacing: "-0.015em", fontWeight: "700"}]}}}};</script><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/></head><body class="bg-surface font-body text-on-surface"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col pt-6 pb-8"><div class="px-8 mb-10 flex items-center gap-3"><img alt="Professional Logo Option 1: Modern Minimalist Tech Wave with dark navy rounded container, electric blue-cyan Z monogram, NFC contactless waves, and crisp ZenTap.ai typography." class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XNahoOiplJ9KbHLRLmaxLY7B9tcCPIp05HQKJCPhsNdcKbmbdB9u_VvNR9mDoMOJ8FB2COqYEodAMyFSBh3_WPiQNz9KsjxpUVrf_vjn9q5YsCG6t7gvOEz4a5SQ6SlI2lamHs04pOJj3PYdJA2AxaTNmDTsrQp3HghmIFiKzyLxUr2fCv4Sq7lmsr0d8D1L_lA8Czms7I2f-DNPC04SyRFrq9Pzeb3pZc661CJKAx"/><span class="text-xl font-headline font-bold tracking-tight text-on-surface">ZenTap.ai</span></div><nav class="flex-1 px-4 space-y-1" data-active-classes="bg-secondary text-on-secondary font-bold"><a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="dashboard" href="#"><span class="material-symbols-outlined mr-3">dashboard</span>Dashboard</a><a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="standees" href="#"><span class="material-symbols-outlined mr-3">nfc</span>Standees</a><a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="reviews" href="#"><span class="material-symbols-outlined mr-3">rate_review</span>Reviews</a><a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="routing" href="#"><span class="material-symbols-outlined mr-3">alt_route</span>Routing</a><a class="flex items-center px-4 py-3 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="settings" href="#"><span class="material-symbols-outlined mr-3">settings</span>Settings</a></nav></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-8"><div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span><span class="text-caption font-label-sm text-on-surface-variant uppercase tracking-wider">NFC Sensors Online</span></div><div class="flex items-center gap-4"><button class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors relative"><span class="material-symbols-outlined">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="relative pt-16 bg-surface min-h-screen p-margin"><div class="flex flex-col w-full pb-16">
+<!-- Superadmin Header Banner -->
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 bg-surface-container-low p-8 rounded-xl relative overflow-hidden">
+<div class="absolute right-0 top-0 w-96 h-full bg-gradient-to-l from-surface-container-high/60 to-transparent pointer-events-none"></div>
+<div class="flex flex-col gap-2 relative z-10">
+<div class="flex items-center gap-3">
+<span class="px-3 py-1 bg-primary text-on-primary rounded-full text-label-sm font-label-sm tracking-wider uppercase">Superadmin Console</span>
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container-highest rounded-full text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>256-Bit TLS Encryption</span>
+</div>
+</div>
+<h1 class="text-headline-lg font-headline-lg text-on-surface">Zentap.ai Global Infrastructure &amp; Fleet</h1>
+<p class="text-body-md text-on-surface-variant">Manage physical NFC hardware deployments, tenant routing pipelines, and real-time review ingestion feeds.</p>
+</div>
+<div class="flex items-center gap-4 relative z-10">
+<div class="flex items-center gap-3 bg-surface p-2 rounded-xl shadow-sm">
+<div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-bold">AR</div>
+<div class="flex flex-col">
+<span class="text-title text-on-surface">Alex Rivers</span>
+<span class="text-caption text-on-surface-variant">Site Owner / Root</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant ml-2">expand_more</span>
+</div>
+</div>
+</div>
+<!-- System Overview Metric Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+<!-- Active Clients -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-4">
+<span class="text-title text-on-surface-variant">Active Clients</span>
+<span class="p-2 bg-surface rounded-full text-secondary"><span class="material-symbols-outlined">group</span></span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-on-surface">842</span>
+<span class="text-label-sm font-label-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">trending_up</span>+14 this week
+        </span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 84%"></div>
+</div>
+</div>
+<!-- NFC Hardware -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-4">
+<span class="text-title text-on-surface-variant">NFC Hardware</span>
+<span class="p-2 bg-surface rounded-full text-secondary"><span class="material-symbols-outlined">nfc</span></span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-on-surface">1,260</span>
+<span class="text-label-sm font-label-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>99.8% Online
+        </span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 99%"></div>
+</div>
+</div>
+<!-- Sitewide Reviews -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-4">
+<span class="text-title text-on-surface-variant">Sitewide Reviews</span>
+<span class="p-2 bg-surface rounded-full text-secondary"><span class="material-symbols-outlined">rate_review</span></span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-on-surface">68,490</span>
+<span class="text-label-sm font-label-sm text-secondary bg-surface px-2 py-0.5 rounded-full">99.2% Sync</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 92%"></div>
+</div>
+</div>
+<!-- Hardware ARR -->
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between hover:shadow-md transition-shadow">
+<div class="flex items-center justify-between mb-4">
+<span class="text-title text-on-surface-variant">Hardware ARR</span>
+<span class="p-2 bg-surface rounded-full text-secondary"><span class="material-symbols-outlined">payments</span></span>
+</div>
+<div class="flex items-baseline gap-3 mb-2">
+<span class="text-headline-lg font-headline-lg text-on-surface">$42.8k</span>
+<span class="text-label-sm font-label-sm text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Recurring SaaS</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 78%"></div>
+</div>
+</div>
+</div>
+<!-- Quick Provisioning Actions & Control Panel Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+<!-- Quick Provisioning Actions -->
+<div class="bg-surface-container-low p-8 rounded-xl flex flex-col justify-between">
+<div>
+<h2 class="text-headline-sm font-headline-sm text-on-surface mb-2">Quick Provisioning</h2>
+<p class="text-body-sm text-on-surface-variant mb-6">Instantly deploy new standees, onboard enterprise clients, or export global telemetry data.</p>
+</div>
+<div class="flex flex-col gap-3">
+<button class="w-full py-3 px-4 bg-secondary text-on-secondary rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-secondary/90 transition-all shadow-sm" onclick="alert('Provision Standee modal triggered.')">
+<span class="material-symbols-outlined">add_card</span>Provision Standee
+        </button>
+<button class="w-full py-3 px-4 bg-surface text-on-surface rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-surface-container-high transition-all" onclick="alert('Invite Client modal triggered.')">
+<span class="material-symbols-outlined">person_add</span>Invite Client
+        </button>
+<button class="w-full py-3 px-4 bg-surface text-on-surface rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-surface-container-high transition-all" onclick="alert('Exporting analytics CSV...')">
+<span class="material-symbols-outlined">download</span>Export Analytics
+        </button>
+</div>
+</div>
+<!-- Sitewide Control Panel -->
+<div class="lg:col-span-2 bg-surface-container-low p-8 rounded-xl flex flex-col justify-between">
+<div>
+<h2 class="text-headline-sm font-headline-sm text-on-surface mb-2">Sitewide Control Panel</h2>
+<p class="text-body-sm text-on-surface-variant mb-6">Global configuration switches affecting real-time routing logic and gateway security.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Toggle 1 -->
+<div class="bg-surface p-5 rounded-xl flex flex-col justify-between gap-4">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-secondary text-[28px]">alt_route</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</label>
+</div>
+<div>
+<h3 class="text-title text-on-surface">Global NFC Redirection Gateway</h3>
+<p class="text-caption text-on-surface-variant mt-1">Active cloud routing for tap events.</p>
+</div>
+</div>
+<!-- Toggle 2 -->
+<div class="bg-surface p-5 rounded-xl flex flex-col justify-between gap-4">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-secondary text-[28px]">sync</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</label>
+</div>
+<div>
+<h3 class="text-title text-on-surface">Google Business API Sync</h3>
+<p class="text-caption text-on-surface-variant mt-1">Real-time review mirroring.</p>
+</div>
+</div>
+<!-- Toggle 3 -->
+<div class="bg-surface p-5 rounded-xl flex flex-col justify-between gap-4">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-secondary text-[28px]">domain_add</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+</label>
+</div>
+<div>
+<h3 class="text-title text-on-surface">New Client Registration</h3>
+<p class="text-caption text-on-surface-variant mt-1">Open public signup portal.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Client Hardware Fleet Management Table -->
+<div class="bg-surface-container-low p-8 rounded-xl mb-10">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div>
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Client Hardware Fleet</h2>
+<p class="text-body-sm text-on-surface-variant">Live telemetry and device status across active business tiers.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">search</span>
+<input class="bg-surface h-10 pl-10 pr-4 rounded-lg text-on-surface text-body-sm focus:outline-none focus:ring-2 focus:ring-secondary w-64" placeholder="Search devices or clients..." type="text"/>
+</div>
+<button class="px-4 py-2 bg-surface text-on-surface rounded-lg text-label-md hover:bg-surface-container-high flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>Filter
+        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-container-high text-caption uppercase text-on-surface-variant">
+<th class="py-3 px-4 font-label-sm">Client / Venue</th>
+<th class="py-3 px-4 font-label-sm">Device ID</th>
+<th class="py-3 px-4 font-label-sm">MAC Address</th>
+<th class="py-3 px-4 font-label-sm">Logged Taps</th>
+<th class="py-3 px-4 font-label-sm">Status</th>
+<th class="py-3 px-4 font-label-sm text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-body-md text-on-surface">
+<!-- Row 1 -->
+<tr class="hover:bg-surface/50 transition-colors border-b border-surface-container-high/50">
+<td class="py-4 px-4 flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-surface flex items-center justify-center font-bold text-secondary">UB</div>
+<div>
+<div class="font-title text-on-surface">The Urban Bistro</div>
+<div class="text-caption text-on-surface-variant">Downtown Seattle, WA</div>
+</div>
+</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">ZEN-9942-A</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">F4:60:E2:89:12:4F</td>
+<td class="py-4 px-4 font-bold text-on-surface">14,280</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-caption font-label-sm inline-flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
+              </span>
+</td>
+<td class="py-4 px-4 text-right">
+<button class="p-2 hover:bg-surface rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" onclick="alert('Managing device ZEN-9942-A')">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface/50 transition-colors border-b border-surface-container-high/50">
+<td class="py-4 px-4 flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-surface flex items-center justify-center font-bold text-secondary">AD</div>
+<div>
+<div class="font-title text-on-surface">Apex Dental Care</div>
+<div class="text-caption text-on-surface-variant">Austin, TX</div>
+</div>
+</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">ZEN-8821-B</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">A1:B2:C3:D4:E5:F6</td>
+<td class="py-4 px-4 font-bold text-on-surface">8,940</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-caption font-label-sm inline-flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
+              </span>
+</td>
+<td class="py-4 px-4 text-right">
+<button class="p-2 hover:bg-surface rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" onclick="alert('Managing device ZEN-8821-B')">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="py-4 px-4 flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-surface flex items-center justify-center font-bold text-secondary">VH</div>
+<div>
+<div class="font-title text-on-surface">Velvet Hair Studio</div>
+<div class="text-caption text-on-surface-variant">Miami, FL</div>
+</div>
+</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">ZEN-7719-C</td>
+<td class="py-4 px-4 font-mono text-body-sm text-on-surface-variant">B4:33:12:88:90:11</td>
+<td class="py-4 px-4 font-bold text-on-surface">6,210</td>
+<td class="py-4 px-4">
+<span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-caption font-label-sm inline-flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Re-syncing
+              </span>
+</td>
+<td class="py-4 px-4 text-right">
+<button class="p-2 hover:bg-surface rounded-lg text-on-surface-variant hover:text-on-surface transition-colors" onclick="alert('Managing device ZEN-7719-C')">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Real-time Live Ingestion Feed & Audit Logs -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Live Ingestion Feed -->
+<div class="bg-surface-container-low p-8 rounded-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Real-Time Ingestion Feed</h2>
+<span class="flex items-center gap-2 text-caption text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full font-label-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>Live Stream
+          </span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-6">Continuous NFC tap events streaming from global hardware endpoints.</p>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Feed Item 1 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-secondary/10 text-secondary rounded-lg">
+<span class="material-symbols-outlined">nfc</span>
+</div>
+<div>
+<div class="text-title text-on-surface">NFC Tap Registered</div>
+<div class="text-caption text-on-surface-variant">The Urban Bistro • Standee #4</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">Just now</span>
+</div>
+<!-- Feed Item 2 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
+<span class="material-symbols-outlined">rate_review</span>
+</div>
+<div>
+<div class="text-title text-on-surface">5-Star Review Synced</div>
+<div class="text-caption text-on-surface-variant">Apex Dental Care • Google Business API</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">12s ago</span>
+</div>
+<!-- Feed Item 3 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-secondary/10 text-secondary rounded-lg">
+<span class="material-symbols-outlined">alt_route</span>
+</div>
+<div>
+<div class="text-title text-on-surface">Dynamic Routing Updated</div>
+<div class="text-caption text-on-surface-variant">Velvet Hair Studio • VIP URL Target</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">45s ago</span>
+</div>
+</div>
+</div>
+<!-- Security Audit Logs -->
+<div class="bg-surface-container-low p-8 rounded-xl flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Audit &amp; Security Logs</h2>
+<span class="text-caption text-on-surface-variant font-mono">Encrypted Store</span>
+</div>
+<p class="text-body-sm text-on-surface-variant mb-6">Administrative changes and root system triggers.</p>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Log Item 1 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 text-primary rounded-lg">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div>
+<div class="text-title text-on-surface">API Token Rotated</div>
+<div class="text-caption text-on-surface-variant">Root Admin • IP 192.168.4.12</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">3m ago</span>
+</div>
+<!-- Log Item 2 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 text-primary rounded-lg">
+<span class="material-symbols-outlined">dns</span>
+</div>
+<div>
+<div class="text-title text-on-surface">Gateway Cluster Scaled</div>
+<div class="text-caption text-on-surface-variant">Auto-scaler • US-West Region</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">14m ago</span>
+</div>
+<!-- Log Item 3 -->
+<div class="bg-surface p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary/10 text-primary rounded-lg">
+<span class="material-symbols-outlined">security</span>
+</div>
+<div>
+<div class="text-title text-on-surface">TLS Cipher Suite Verified</div>
+<div class="text-caption text-on-surface-variant">System Cron • 256-Bit Active</div>
+</div>
+</div>
+<span class="text-caption font-mono text-on-surface-variant">1h ago</span>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

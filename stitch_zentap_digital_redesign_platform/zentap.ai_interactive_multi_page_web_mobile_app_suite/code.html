@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+
+<html lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<meta content="mobile_tab" name="shell-type"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-tertiary-container": "#537aff", primary: "#000000", "surface-container-high": "#eae8e7", tertiary: "#000000", "inverse-surface": "#303030", "inverse-primary": "#c8c6c5", "on-tertiary": "#ffffff", "primary-fixed-dim": "#c8c6c5", "surface-variant": "#e4e2e2", "tertiary-fixed-dim": "#b6c4ff", outline: "#747878", "primary-container": "#1c1b1b", "surface-container": "#efeded", "surface-container-lowest": "#ffffff", "tertiary-fixed": "#dce1ff", "secondary-fixed-dim": "#ffb4a9", "secondary-fixed": "#ffdad5", "error-container": "#ffdad6", "surface-container-highest": "#e4e2e2", "tertiary-container": "#001551", "on-primary-fixed": "#1c1b1b", "on-secondary-fixed-variant": "#930004", "on-error-container": "#93000a", "on-surface": "#1b1c1c", "surface-tint": "#5f5e5e", "on-surface-variant": "#444748", "on-tertiary-fixed": "#001551", "on-tertiary-fixed-variant": "#0039b3", surface: "#fbf9f8", "secondary-container": "#db3327", "inverse-on-surface": "#f2f0f0", "on-primary-container": "#858383", background: "#fbf9f8", "on-secondary-container": "#fffbff", "on-secondary": "#ffffff", "primary-fixed": "#e5e2e1", "surface-bright": "#fbf9f8", "on-error": "#ffffff", "surface-container-low": "#f5f3f3", "on-primary": "#ffffff", "on-primary-fixed-variant": "#474746", secondary: "#b71511", error: "#ba1a1a", "on-background": "#1b1c1c", "outline-variant": "#c4c7c7", "surface-dim": "#dbd9d9", "on-secondary-fixed": "#410001"}, borderRadius: {DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem"}, spacing: {"space-md": "1rem", margin: "2rem", "margin-lg": "4rem", gutter: "1.5rem", "margin-sm": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "space-xl": "2.5rem", "gutter-sm": "1rem"}, fontFamily: {"body-lg": ["Plus Jakarta Sans"], title: ["Plus Jakarta Sans"], "body-md": ["Inter"], "headline-lg-mobile": ["Plus Jakarta Sans"], "headline-xl-mobile": ["Plus Jakarta Sans"], "label-md": ["Space Grotesk"], "headline-sm": ["Plus Jakarta Sans"], "body-sm": ["Plus Jakarta Sans"], caption: ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "headline-lg": ["Space Grotesk"], "headline-md": ["Plus Jakarta Sans"], display: ["Space Grotesk"], "display-mobile": ["Plus Jakarta Sans"], "label-sm": ["Plus Jakarta Sans"], headline: ["Space Grotesk"], body: ["Inter"], label: ["Space Grotesk"]}, fontSize: {"label-md": ["14px", {lineHeight: "20px", fontWeight: "500"}], "headline-lg": ["32px", {lineHeight: "40px", fontWeight: "700"}], "body-md": ["16px", {lineHeight: "24px", fontWeight: "400"}]}}}};</script>
+<style>
+    @layer base {
+      html, body { width: 100vw; margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .view-container { transition: all 0.25s ease-in-out; }
+  </style>
+<title>ZenTap.ai | Smart NFC &amp; QR Google Review Standees</title>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen">
+<!-- Desktop Header & Viewport Switcher Bar -->
+<header class="fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b border-surface-variant/40 shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+<div class="max-w-7xl mx-auto h-16 px-gutter flex items-center justify-between">
+<!-- Logo Branding with Z Monogram -->
+<div class="flex items-center gap-space-sm cursor-pointer" onclick="switchView('home')">
+<div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline-md font-bold shadow-md">
+          Z
+        </div>
+<div class="flex flex-col min-w-0">
+<span class="font-title text-title text-on-surface tracking-tight truncate">ZenTap.ai</span>
+<span class="font-caption text-caption text-on-surface-variant truncate uppercase">Smart Review Ecosystem</span>
+</div>
+</div>
+<!-- Desktop Navigation Links -->
+<nav class="hidden md:flex items-center gap-1 bg-surface-container-low p-1 rounded-full border border-surface-variant/30">
+<button class="nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-target="home" onclick="switchView('home')">Home</button>
+<button class="nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-target="features" onclick="switchView('features')">Features</button>
+<button class="nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-target="pricing" onclick="switchView('pricing')">Pricing</button>
+<button class="nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface" data-target="auth" onclick="switchView('auth')">Sign In</button>
+</nav>
+<!-- Right Header Actions & Viewport Toggle -->
+<div class="relative flex items-center gap-space-sm"><div class="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-low border border-surface-variant/40"><span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface-variant">NFC Connected</span></div><div class="relative"><button class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md transition-all shadow-sm cursor-pointer" id="auth-menu-btn" onclick="const d = document.getElementById('auth-dropdown-menu'); if (d) { d.classList.toggle('hidden'); } else { openAuthModal('signin'); }"><span class="material-symbols-outlined text-[18px]">account_circle</span><span class="">Sign In</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span></button><div class="hidden absolute right-0 mt-2 w-64 bg-surface-container-lowest rounded-xl shadow-xl border border-surface-variant/40 p-2 z-50 flex flex-col gap-1" id="auth-dropdown-menu"><div class="px-3 py-2 border-b border-surface-variant/30"><p class="font-caption text-caption text-on-surface-variant uppercase tracking-wider font-bold">Access Portals</p><p class="font-body-sm text-body-sm text-on-surface font-semibold">ZenTap.ai Ecosystem</p></div><button class="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-surface-container-low text-left transition-colors cursor-pointer" onclick="document.getElementById('auth-dropdown-menu').classList.add('hidden'); openAuthModal('signin');"><div class="w-8 h-8 rounded-lg bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">storefront</span></div><div><p class="font-label-md text-label-md text-on-surface font-semibold">Client Sign In</p><p class="font-caption text-caption text-on-surface-variant">Merchant dashboard access</p></div></button><button class="w-full flex items-center gap-2.5 p-2 rounded-lg hover:bg-surface-container-low text-left transition-colors cursor-pointer" onclick="document.getElementById('auth-dropdown-menu').classList.add('hidden'); openAuthModal('admin');"><div class="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">shield_person</span></div><div><p class="font-label-md text-label-md text-on-surface font-semibold">Admin Login</p><p class="font-caption text-caption text-on-surface-variant">Root fleet &amp; provisioning</p></div></button><div class="pt-1 border-t border-surface-variant/30"><button class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors cursor-pointer" onclick="document.getElementById('auth-dropdown-menu').classList.add('hidden'); openAuthModal('signup');"><span class="">Register Standee / Sign Up</span><span class="material-symbols-outlined text-[16px] text-secondary">arrow_forward</span></button></div></div></div></div>
+</div>
+</header>
+<!-- Main Viewport Container wrapper for desktop/mobile frame simulation -->
+<div class="w-full flex-1 flex justify-center bg-surface transition-all duration-300 px-gutter" id="app-viewport-wrapper">
+<main class="flex flex-col relative w-full pt-16 pb-28 bg-surface min-h-screen max-w-7xl shadow-none transition-all" id="main-app-container">
+<!-- ==================== VIEW 1: HOME ==================== -->
+<div class="view-container flex flex-col w-full hidden" id="view-home">
+<!-- Value Proposition & Hero Section -->
+<section class="flex flex-col px-margin-sm pt-space-md pb-space-lg">
+<div class="inline-flex items-center gap-space-xs self-start px-3 py-1.5 rounded-full bg-surface-container-high mb-space-md shadow-sm">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container animate-pulse"></span>
+<span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold tracking-tight">Over <span class="" id="counter-reviews">45,382</span>+ Verified Reviews Generated</span>
+</div>
+<h1 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-surface mb-space-sm font-extrabold tracking-tight">
+            Turn Every Customer Tap into <span class="text-secondary-container">5-Star Google Reviews</span> instantly
+          </h1>
+<p class="font-body-md md:font-body-lg text-body-md md:text-body-lg text-on-surface-variant mb-space-lg leading-relaxed max-w-2xl">
+            Smart NFC &amp; Dynamic QR standees that boost your local business rating by 300% without awkward asking or paperwork.
+          </p>
+<!-- Interactive 3D Standee Preview Card -->
+<div class="relative overflow-hidden rounded-xl bg-primary-container p-space-md text-on-primary shadow-xl mb-space-lg transition-transform duration-300" id="standee-card">
+<div class="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-secondary-container opacity-25 blur-3xl pointer-events-none"></div>
+<div class="flex items-center justify-between mb-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-tertiary-fixed shadow-[0_0_8px_#6ffbbe]"></span>
+<span class="font-label-sm text-label-sm text-on-primary-container uppercase tracking-wider">Smart Hardware Preview</span>
+</div>
+<span class="font-caption text-caption px-2.5 py-1 rounded-full bg-surface-container-lowest/10 text-on-primary backdrop-blur-md">Matte Obsidian Glass</span>
+</div>
+<div class="relative w-full h-56 md:h-80 rounded-lg overflow-hidden bg-primary mb-space-md shadow-md flex items-center justify-center">
+<img alt="NFC standee preview" class="absolute inset-0 w-full h-full object-cover opacity-85" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnb5xE-6OWYS8opCxUCpNy-TJjcBzIn1XInq1fyuxkCKpk4_XsYLvm9mmtdkf3lLPDogcgpl57aQVEXvEFoeC72G4NsWymUsk_awsl7lBHtSk1GuX7JyCgtHxohPLmSQJz_XoOU5A9cQ346KKS7rWwL-nSS5hsCoziwU0Bp42z7O47WIUAXPTYnaOwALSf8tFlyTRAQ5qP2GJ9PR_xyFRYA-ImIQAXpfR1nqHS__Th"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container via-transparent to-transparent"></div>
+<button class="relative z-10 flex flex-col items-center gap-1.5 p-3 rounded-full bg-surface-container-lowest/20 backdrop-blur-md hover:scale-105 active:scale-95 transition-all text-on-primary cursor-pointer" id="tap-trigger-btn" type="button">
+<div class="relative flex items-center justify-center w-12 h-12 rounded-full bg-secondary-container text-on-secondary shadow-lg">
+<span class="material-symbols-outlined text-[26px] animate-pulse">contactless</span>
+</div>
+<span class="font-label-sm text-label-sm font-bold tracking-wide">NFC Active • Tap phone</span>
+</button>
+<div class="absolute inset-0 bg-secondary-container/90 backdrop-blur-sm flex flex-col items-center justify-center text-on-secondary-container p-4 text-center opacity-0 pointer-events-none transition-opacity duration-300" id="tap-feedback">
+<div class="w-12 h-12 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-tertiary-container mb-2 shadow-lg">
+<span class="material-symbols-outlined text-[30px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<span class="font-headline-sm text-headline-sm font-bold">5-Star Prompt Dispatched!</span>
+<span class="font-caption text-caption mt-1 text-on-secondary-container/80">Redirecting to Google Business Profile in 0.8s</span>
+</div>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-primary-container gap-2">
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-tertiary-fixed">bolt</span><span class="font-caption text-caption">No App Needed</span></div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-tertiary-fixed">qr_code_2</span><span class="font-caption text-caption">Laser-Engraved Dynamic QR</span></div>
+<div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-tertiary-fixed">format_image_left</span><span class="font-caption text-caption">Tamper-Proof</span></div>
+</div>
+</div>
+<!-- Hero CTA Buttons -->
+<div class="flex flex-col sm:flex-row gap-space-sm">
+<button class="w-full sm:w-auto flex-1 py-3.5 px-space-md rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.99] transition-all cursor-pointer" onclick="openAuthModal('signup')">
+<span class="">Get Started / Register</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<button class="w-full sm:w-auto flex-1 py-3 px-space-md rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors cursor-pointer" onclick="switchView('client-portal')">
+<span class="material-symbols-outlined text-[18px]">login</span>
+<span class="">Client Portal Access</span>
+</button>
+</div>
+</section>
+<!-- Key Features Preview Snippet -->
+<section class="flex flex-col px-margin-sm py-space-lg bg-surface-container-low">
+<div class="flex items-center justify-between mb-space-md">
+<div>
+<span class="font-caption text-caption text-secondary font-bold uppercase tracking-wider">Engineered for Rapid Growth</span>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight mt-0.5">Zero Friction. Pure 5-Star Velocity.</h2>
+</div>
+<button class="hidden sm:flex items-center gap-1 font-label-sm text-secondary hover:underline" onclick="switchView('features')">
+<span class="">View all features</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant mb-space-sm"><span class="material-symbols-outlined text-[22px]">tap_and_play</span></div>
+<h3 class="font-title text-title text-on-surface mb-1">Instant Tap-to-Review</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Works seamlessly with modern iOS and Android devices without installing apps.</p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm"><span class="material-symbols-outlined text-[22px]">smart_toy</span></div>
+<h3 class="font-title text-title text-on-surface mb-1">AI Sentiment Guard</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Routes happy customers to Google and negative feedback to private tickets.</p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm"><span class="material-symbols-outlined text-[22px]">sync_alt</span></div>
+<h3 class="font-title text-title text-on-surface mb-1">Dynamic Link Updates</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Repoint your standee destination instantly to Yelp, TripAdvisor or WiFi.</p>
+</div>
+</div>
+</section>
+</div>
+<!-- ==================== VIEW 2: FEATURES ==================== -->
+<div class="view-container flex flex-col w-full hidden" id="view-features">
+<section class="flex flex-col px-margin-sm pt-space-md pb-space-lg">
+<span class="font-caption text-caption text-secondary font-bold uppercase tracking-wider">Complete Ecosystem</span>
+<h1 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-surface mb-space-sm font-extrabold tracking-tight">
+            Advanced Hardware &amp; AI Routing Capabilities
+          </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-lg">
+            Every standee is packed with enterprise-grade NFC chips, weatherproof matte acrylic, and real-time cloud management.
+          </p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-md border border-surface-variant/40 flex flex-col">
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant mb-space-sm">
+<span class="material-symbols-outlined text-[26px]">contactless</span>
+</div>
+<h3 class="font-title text-title text-on-surface mb-2">NTAG216 High-Performance Chip</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Embedded with top-tier NFC technology allowing instantaneous reading speeds even through protective phone cases. Fully encrypted write-protection prevents tampering.
+              </p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-md border border-surface-variant/40 flex flex-col">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm">
+<span class="material-symbols-outlined text-[26px]">psychology</span>
+</div>
+<h3 class="font-title text-title text-on-surface mb-2">Automated Sentiment Interceptor</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Our smart landing page dynamically assesses customer mood. 4-5 star taps go straight to Google review popups, while 1-3 star reviews open a private resolution form for managers.
+              </p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-md border border-surface-variant/40 flex flex-col">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm">
+<span class="material-symbols-outlined text-[26px]">analytics</span>
+</div>
+<h3 class="font-title text-title text-on-surface mb-2">Live Tap Telemetry &amp; Analytics</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Monitor peak review hours, conversion rates per table or cashier station, and track employee performance bonuses linked directly to customer engagement.
+              </p>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-md border border-surface-variant/40 flex flex-col">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary mb-space-sm">
+<span class="material-symbols-outlined text-[26px]">palette</span>
+</div>
+<h3 class="font-title text-title text-on-surface mb-2">Custom Pantone Branding</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+                Match your exact interior aesthetic. Choose between obsidian matte black, brushed gold metallic, minimalist white, or custom corporate brand colors.
+              </p>
+</div>
+</div>
+</section>
+</div>
+<!-- ==================== VIEW 3: PRICING ==================== -->
+<div class="view-container flex flex-col w-full hidden" id="view-pricing">
+<section class="flex flex-col px-margin-sm py-space-lg">
+<div class="text-center flex flex-col items-center mb-space-lg">
+<span class="font-caption text-caption text-secondary font-bold uppercase tracking-wider">Transparent Investment</span>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight mt-0.5">
+              Choose Your Growth Pack
+            </h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 max-w-sm">
+              Zero monthly fees for basic routing. Own your hardware and dominate your neighborhood.
+            </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Tier 1 -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-space-sm">
+<div>
+<h3 class="font-title text-title text-on-surface">Starter Standee</h3>
+<span class="font-caption text-caption text-on-surface-variant">Ideal for solo stores</span>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm font-extrabold text-on-surface">$49</span>
+<span class="font-caption text-caption block text-on-surface-variant">One-time</span>
+</div>
+</div>
+<ul class="flex flex-col gap-2 mb-space-md">
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>1x Acrylic NFC Standee</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>Lifetime Cloud Dashboard</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>Smart Redirection Routing</li>
+</ul>
+</div>
+<button class="w-full py-2.5 px-space-md rounded-lg bg-surface-container-highest text-on-surface font-label-md text-label-md hover:bg-surface-dim transition-colors cursor-pointer" onclick="openAuthModal('signup')" type="button">
+                Select Starter Pack
+              </button>
+</div>
+<!-- Tier 2 -->
+<div class="relative p-space-md rounded-xl bg-primary text-on-primary shadow-xl flex flex-col justify-between">
+<div class="absolute -top-3 right-4 px-3 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-bold shadow-md">
+                Best Value
+              </div>
+<div>
+<div class="flex justify-between items-start mb-space-sm">
+<div>
+<h3 class="font-title text-title text-on-primary">Business Duo</h3>
+<span class="font-caption text-caption text-on-primary-container">Dual checkout desks</span>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm font-extrabold text-on-primary">$89</span>
+<span class="font-caption text-caption block text-on-primary-container">One-time</span>
+</div>
+</div>
+<ul class="flex flex-col gap-2 mb-space-md">
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-primary"><span class="material-symbols-outlined text-tertiary-fixed text-[18px]">check_circle</span>2x Smart Standees (Front &amp; Bar)</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-primary"><span class="material-symbols-outlined text-tertiary-fixed text-[18px]">check_circle</span>AI Sentiment Interceptor</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-primary"><span class="material-symbols-outlined text-tertiary-fixed text-[18px]">check_circle</span>Multi-Location Analytics</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-primary"><span class="material-symbols-outlined text-tertiary-fixed text-[18px]">check_circle</span>Priority Free Express Shipping</li>
+</ul>
+</div>
+<button class="w-full py-3 px-space-md rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-md hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer" onclick="openAuthModal('signup')" type="button">
+                Claim Business Duo
+              </button>
+</div>
+<!-- Tier 3 -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-space-sm">
+<div>
+<h3 class="font-title text-title text-on-surface">Enterprise Fleet</h3>
+<span class="font-caption text-caption text-on-surface-variant">Franchises &amp; multi-unit</span>
+</div>
+<div class="text-right">
+<span class="font-headline-sm text-headline-sm font-extrabold text-on-surface">Custom</span>
+<span class="font-caption text-caption block text-on-surface-variant">Volume pricing</span>
+</div>
+</div>
+<ul class="flex flex-col gap-2 mb-space-md">
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>5+ Custom Pantone Standees</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>Direct POS &amp; Webhook API</li>
+<li class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>Dedicated Account Specialist</li>
+</ul>
+</div>
+<button class="w-full py-2.5 px-space-md rounded-lg bg-surface-container-highest text-on-surface font-label-md text-label-md hover:bg-surface-dim transition-colors cursor-pointer" onclick="openAuthModal('signup')" type="button">
+                Contact Enterprise Sales
+              </button>
+</div>
+</div>
+</section>
+</div>
+<!-- ==================== VIEW 4: CLIENT PORTAL ==================== -->
+<div class="view-container flex flex-col w-full hidden" id="view-client-portal">
+<section class="flex flex-col px-margin-sm pt-space-md pb-space-lg">
+<div class="flex items-center justify-between mb-space-md">
+<div>
+<span class="font-caption text-caption text-secondary font-bold uppercase tracking-wider">Live Telemetry Dashboard</span>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight mt-0.5">Client Portal: Cafe Milano</h1>
+</div>
+<span class="px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm font-bold">Active Store</span>
+</div>
+<!-- Live Metrics Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm mb-space-md">
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant uppercase">Total Taps (Today)</span>
+<span class="font-headline-md md:font-headline-lg font-bold text-on-surface mt-1" id="portal-taps-count">142</span>
+<span class="font-caption text-caption text-on-tertiary-container mt-1">↑ 24% vs yesterday</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant uppercase">Google Redirects</span>
+<span class="font-headline-md md:font-headline-lg font-bold text-on-surface mt-1">128</span>
+<span class="font-caption text-caption text-on-surface-variant mt-1">90.1% Conversion</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant uppercase">Avg Google Rating</span>
+<span class="font-headline-md md:font-headline-lg font-bold text-on-surface mt-1">4.9 ⭐</span>
+<span class="font-caption text-caption text-on-tertiary-container mt-1">+1.1 stars gained</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant uppercase">AI Intercepted Tickets</span>
+<span class="font-headline-md md:font-headline-lg font-bold text-on-surface mt-1">3</span>
+<span class="font-caption text-caption text-secondary mt-1">Resolved privately</span>
+</div>
+</div>
+<!-- Interactive Target Destination Switcher -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-sm flex flex-col gap-space-sm">
+<h3 class="font-title text-title text-on-surface">Dynamic URL Destination Switcher</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Instantly update where customer NFC taps direct their phones without replacing hardware.</p>
+<div class="flex flex-col sm:flex-row gap-space-sm">
+<select class="flex-1 p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" id="redirect-target-select">
+<option value="google">Google Business Profile Reviews</option>
+<option value="yelp">Yelp Business Page</option>
+<option value="tripadvisor">TripAdvisor Listing</option>
+<option value="wifi">Guest WiFi Landing Page</option>
+</select>
+<button class="py-2.5 px-4 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-sm hover:brightness-110 cursor-pointer" onclick="alert('Destination URL updated successfully across all active standees!')">
+                Push Update to Standees
+              </button>
+</div>
+</div>
+</section>
+</div>
+<!-- ==================== VIEW 5: ADMIN CONSOLE ==================== -->
+<div class="view-container flex flex-col w-full" id="view-admin">
+<section class="flex flex-col px-margin-sm pt-space-md pb-space-lg">
+<div class="flex items-center justify-between mb-space-md">
+<div>
+<span class="font-caption text-caption text-secondary font-bold uppercase tracking-wider">Fleet &amp; Provisioning</span>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight mt-0.5">Admin Console</h1>
+</div>
+<span class="px-3 py-1 rounded-full bg-primary text-on-primary font-label-sm text-label-sm font-bold">Root Access</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-md">
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-caption text-caption text-on-surface-variant uppercase">Total Deployed Fleet</span>
+<span class="font-headline-md font-bold text-on-surface mt-1 block">1,842 Units</span>
+<span class="font-caption text-caption text-on-tertiary-container mt-1">99.8% Online Telemetry</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-caption text-caption text-on-surface-variant uppercase">Active Business Clients</span>
+<span class="font-headline-md font-bold text-on-surface mt-1 block">620 Venues</span>
+<span class="font-caption text-caption text-secondary mt-1">+34 joined this week</span>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-caption text-caption text-on-surface-variant uppercase">NFC Chip Batch Status</span>
+<span class="font-headline-md font-bold text-on-surface mt-1 block">Batch #48-A Ready</span>
+<span class="font-caption text-caption text-on-surface-variant mt-1">5,000 blank chips encoded</span>
+</div>
+</div>
+<!-- Provisioning Tool -->
+<div class="p-space-md rounded-xl bg-surface-container shadow-sm flex flex-col gap-space-sm">
+<h3 class="font-title text-title text-on-surface">Provision New Standee Unit</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+<input class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant text-on-surface font-body-sm" placeholder="Business Name (e.g. Joe's Diner)" type="text"/>
+<input class="p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant text-on-surface font-body-sm" placeholder="Assigned NTAG ID / Serial" type="text"/>
+</div>
+<button class="self-start py-2.5 px-6 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-sm hover:brightness-110 cursor-pointer" onclick="alert('New standee unit provisioned and linked successfully!')">
+              Encode &amp; Provision Unit
+            </button>
+</div>
+</section>
+</div>
+<!-- ==================== VIEW 6: AUTH (SIGN IN / SIGN UP) VIEW ==================== -->
+<div class="view-container flex flex-col w-full hidden" id="view-auth">
+<section class="flex flex-col items-center justify-center px-margin-sm py-space-lg">
+<div class="w-full max-w-lg bg-surface-container-lowest rounded-2xl shadow-xl border border-surface-variant/50 p-6 md:p-8"><div class="flex items-center justify-between pb-4 border-b border-surface-variant/30 mb-6"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline-md font-bold shadow-sm">Z</div><div><h2 class="font-title text-title text-on-surface font-bold">ZenTap Cloud Access</h2><p class="font-caption text-caption text-on-surface-variant">Merchant Portal &amp; Device Telemetry</p></div></div><button class="w-8 h-8 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" onclick="closeAuthModal()" title="Back to previous view"><span class="material-symbols-outlined text-[18px]">close</span></button></div><div class="grid grid-cols-3 p-1 bg-surface-container-low rounded-xl mb-6 border border-surface-variant/30"><button class="py-2 px-1 rounded-lg font-label-sm text-label-sm font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer" id="auth-tab-signin" onclick="switchAuthTab('signin')">Sign In</button><button class="py-2 px-1 rounded-lg font-label-sm text-label-sm font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer" id="auth-tab-signup" onclick="switchAuthTab('signup')">Create Account</button><button class="py-2 px-1 rounded-lg font-label-sm text-label-sm font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer flex items-center justify-center gap-1" id="auth-tab-admin" onclick="switchAuthTab('admin')"><span class="material-symbols-outlined text-[14px]">shield</span><span class="">Admin</span></button></div><form class="flex flex-col gap-4" id="auth-form-signin" onsubmit="event.preventDefault(); alert('Authentication successful! Welcome to ZenTap.ai'); switchView('client-portal');"><button class="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-low transition-colors font-label-md text-label-md text-on-surface cursor-pointer shadow-sm" onclick="alert('Google SSO Authenticated. Directing to Merchant Portal...'); switchView('client-portal');" type="button"><svg class="w-4 h-4" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path></svg><span class="">Continue with Google</span></button><div class="flex items-center my-1"><div class="flex-grow border-t border-surface-variant/40"></div><span class="px-3 font-caption text-caption text-on-surface-variant uppercase tracking-wider">or sign in with email</span><div class="flex-grow border-t border-surface-variant/40"></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Business Email</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">mail</span><input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary transition-all" placeholder="manager@cafemilano.com" required="" type="email"/></div></div><div><div class="flex items-center justify-between mb-1"><label class="font-label-sm text-label-sm font-semibold text-on-surface">Password</label><a class="font-caption text-caption text-secondary hover:underline" href="javascript:void(0)" onclick="alert('Password reset instructions dispatched to your email.');">Forgot password?</a></div><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">lock</span><input class="w-full pl-9 pr-10 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary transition-all" placeholder="••••••••••••" required="" type="password"/><button class="absolute right-3 top-2.5 text-on-surface-variant hover:text-on-surface cursor-pointer" onclick="const input = this.previousElementSibling; input.type = input.type === 'password' ? 'text' : 'password';" type="button"><span class="material-symbols-outlined text-[18px]">visibility</span></button></div></div><div class="flex items-center justify-between mt-1"><label class="flex items-center gap-2 cursor-pointer"><input checked="" class="w-4 h-4 rounded text-secondary border-outline focus:ring-secondary" type="checkbox"/><span class="font-body-sm text-body-sm text-on-surface-variant select-none">Remember this device</span></label><span class="font-caption text-caption text-on-tertiary-container flex items-center gap-1 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-container"></span>256-bit SSL</span></div><button class="w-full mt-2 py-3 px-4 rounded-xl bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-md hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer" type="submit"><span class="">Sign In to ZenTap</span><span class="material-symbols-outlined text-[18px]">arrow_forward</span></button></form><form class="hidden flex-col gap-4" id="auth-form-signup" onsubmit="event.preventDefault(); alert('Account registered! Your 14-day Pro trial is active.'); switchView('client-portal');"><button class="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-low transition-colors font-label-md text-label-md text-on-surface cursor-pointer shadow-sm" onclick="alert('Signed up with Google! Welcome to ZenTap.'); switchView('client-portal');" type="button"><svg class="w-4 h-4" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path></svg><span class="">Sign up with Google</span></button><div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Full Name</label><input class="w-full pl-3 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="Sarah Connor" required="" type="text"/></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Business Name</label><input class="w-full pl-3 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="Cafe Milano" required="" type="text"/></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Work Email</label><input class="w-full pl-3 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="owner@cafemilano.com" required="" type="email"/></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Create Password</label><input class="w-full pl-3 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="At least 8 characters" required="" type="password"/></div><button class="w-full mt-2 py-3 px-4 rounded-xl bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-md hover:brightness-110 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer" type="submit"><span class="material-symbols-outlined text-[18px]">bolt</span><span class="">Start 14-Day Free Trial</span></button></form><form class="hidden flex-col gap-4" id="auth-form-admin" onsubmit="event.preventDefault(); alert('Root session verified. Redirecting to Admin Console...'); switchView('admin');"><div class="p-3.5 rounded-xl bg-primary text-on-primary border border-surface-variant/40 flex items-center justify-between"><div class="flex items-center gap-2.5"><span class="material-symbols-outlined text-tertiary-fixed text-[22px]">shield_person</span><div><span class="font-label-md text-label-md font-bold block">Fleet Master Console</span><span class="font-caption text-caption text-on-primary-container">Enterprise Standee Provisioning</span></div></div><span class="px-2.5 py-0.5 rounded-full bg-surface-container-lowest/20 font-caption text-caption text-tertiary-fixed font-bold uppercase tracking-wider">Superadmin</span></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Root / Superadmin ID</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">badge</span><input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all" placeholder="root@zentap.ai" required="" type="email"/></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Master Key / Security Pass</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">vpn_key</span><input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all" placeholder="••••••••••••••••" required="" type="password"/></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">2FA Authenticator TOTP Code</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">verified</span><input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-primary transition-all" maxlength="6" placeholder="000 000" required="" type="text"/></div></div><button class="w-full mt-2 py-3 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer" type="submit"><span class="material-symbols-outlined text-[18px]">verified_user</span><span class="">Authenticate Root Session</span></button></form><div class="mt-6 pt-4 border-t border-surface-variant/30 flex items-center justify-center gap-4 text-on-surface-variant"><span class="font-caption text-caption flex items-center gap-1"><span class="material-symbols-outlined text-[15px] text-tertiary-fixed-dim">verified_user</span>SOC-2 Compliant</span><span class="font-caption text-caption flex items-center gap-1"><span class="material-symbols-outlined text-[15px] text-secondary">sync</span>Instant Sync</span><span class="font-caption text-caption flex items-center gap-1"><span class="material-symbols-outlined text-[15px] text-on-tertiary-container">support_agent</span>24/7 Live Support</span></div></div>
+</section>
+</div>
+</main>
+</div>
+<!-- Bottom Mobile Tab Bar (For mobile viewport view) -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl border-t border-surface-variant/40 shadow-[0_-2px_12px_rgba(0,0,0,0.05)] md:hidden">
+<div class="h-16 px-margin-sm flex items-center justify-around">
+<button class="mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" data-target="home" onclick="switchView('home')">
+<span class="material-symbols-outlined text-[22px]">storefront</span>
+<span class="font-label-sm text-label-sm mt-0.5">Home</span>
+</button>
+<button class="mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" data-target="features" onclick="switchView('features')">
+<span class="material-symbols-outlined text-[22px]">featured_seasonal_and_gifts</span>
+<span class="font-label-sm text-label-sm mt-0.5">Features</span>
+</button>
+<button class="mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" data-target="pricing" onclick="switchView('pricing')">
+<span class="material-symbols-outlined text-[22px]">payments</span>
+<span class="font-label-sm text-label-sm mt-0.5">Pricing</span>
+</button>
+<button class="mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" data-target="client-portal" onclick="switchView('client-portal')">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span class="font-label-sm text-label-sm mt-0.5">Portal</span>
+</button>
+<button class="mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" data-target="auth" onclick="switchView('auth')">
+<span class="material-symbols-outlined text-[22px]">account_circle</span>
+<span class="font-label-sm text-label-sm mt-0.5">Sign In</span>
+</button>
+</div>
+</nav>
+<!-- MODAL OVERLAY: Dedicated sleek Auth modal triggered from header CTA -->
+<div class="fixed inset-0 z-50 bg-primary/60 backdrop-blur-sm items-center justify-center p-4 hidden" id="auth-modal">
+<div class="relative w-full max-w-md bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-variant/40 p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200"><button class="absolute top-5 right-5 w-8 h-8 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" onclick="closeAuthModal()"><span class="material-symbols-outlined text-[18px]">close</span></button><div class="flex items-center gap-3 mb-5"><div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center font-headline-md font-bold shadow-md">Z</div><div><h2 class="font-title text-title text-on-surface font-bold">ZenTap.ai Access</h2><p class="font-caption text-caption text-on-surface-variant">Portal authentication &amp; fleet controls</p></div></div><div class="grid grid-cols-3 p-1 bg-surface-container-low rounded-xl mb-5 border border-surface-variant/30"><button class="py-2 px-1 text-center rounded-lg font-label-sm text-label-sm font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer" id="modal-tab-signin" onclick="switchModalAuthTab('signin')">Sign In</button><button class="py-2 px-1 text-center rounded-lg font-label-sm text-label-sm font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer" id="modal-tab-signup" onclick="switchModalAuthTab('signup')">Sign Up</button><button class="py-2 px-1 text-center rounded-lg font-label-sm text-label-sm font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer flex items-center justify-center gap-1" id="modal-tab-admin" onclick="switchModalAuthTab('admin')"><span class="material-symbols-outlined text-[14px]">lock</span><span class="">Admin</span></button></div><form class="flex flex-col gap-3.5" id="modal-form-signin" onsubmit="event.preventDefault(); closeAuthModal(); alert('Welcome back! Directing to Client Portal.'); switchView('client-portal');"><button class="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-low transition-colors font-label-md text-label-md text-on-surface cursor-pointer shadow-sm" onclick="closeAuthModal(); alert('Google SSO Login confirmed.'); switchView('client-portal');" type="button"><svg class="w-4 h-4" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path></svg><span class="">Continue with Google</span></button><div class="flex items-center my-0.5"><div class="flex-grow border-t border-surface-variant/40"></div><span class="px-2 font-caption text-caption text-on-surface-variant uppercase tracking-wider">or email</span><div class="flex-grow border-t border-surface-variant/40"></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Business Email</label><input class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="manager@cafemilano.com" required="" type="email"/></div><div><div class="flex items-center justify-between mb-1"><label class="font-label-sm text-label-sm font-semibold text-on-surface">Password</label><a class="font-caption text-caption text-secondary hover:underline" href="javascript:void(0)" onclick="alert('Password reset link sent to your email.');">Forgot?</a></div><input class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="••••••••••••" required="" type="password"/></div><div class="flex items-center justify-between text-caption font-caption text-on-surface-variant"><label class="flex items-center gap-1.5 cursor-pointer"><input checked="" class="rounded text-secondary" type="checkbox"/><span class="">Remember me</span></label><span class="text-on-tertiary-container font-semibold">SSL Secured</span></div><button class="w-full mt-1 py-2.5 px-4 rounded-xl bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-md hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer" type="submit">Sign In to ZenTap</button></form><form class="hidden flex-col gap-3.5" id="modal-form-signup" onsubmit="event.preventDefault(); closeAuthModal(); alert('Trial account registered!'); switchView('client-portal');"><button class="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-low transition-colors font-label-md text-label-md text-on-surface cursor-pointer shadow-sm" onclick="closeAuthModal(); alert('Signed up with Google.'); switchView('client-portal');" type="button"><svg class="w-4 h-4" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path></svg><span class="">Sign up with Google</span></button><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Store / Business Name</label><input class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="Cafe Milano" required="" type="text"/></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Work Email</label><input class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="sarah@cafemilano.com" required="" type="email"/></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Create Password</label><input class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary" placeholder="At least 8 characters" required="" type="password"/></div><button class="w-full mt-1 py-2.5 px-4 rounded-xl bg-secondary-container text-on-secondary-container font-label-md text-label-md font-bold shadow-md hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer" type="submit">Create Account (14-Day Free Trial)</button></form><form class="hidden flex-col gap-3.5" id="modal-form-admin" onsubmit="event.preventDefault(); closeAuthModal(); alert('Root identity verified. Opening Admin Console...'); switchView('admin');"><div class="p-3 rounded-xl bg-primary text-on-primary border border-surface-variant/30 flex items-center justify-between"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-tertiary-fixed text-[20px]">admin_panel_settings</span><div><span class="font-label-sm text-label-sm font-bold block">Fleet Superadmin</span><span class="font-caption text-caption text-on-primary-container">Restricted Root Environment</span></div></div><span class="px-2 py-0.5 rounded-full bg-surface-container-lowest/20 font-caption text-caption text-tertiary-fixed font-bold uppercase tracking-wider">Level 3</span></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Admin ID / Root Email</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]">badge</span><input class="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="root@zentap.ai" required="" type="email"/></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Master Key / Security Pass</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]">key</span><input class="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="••••••••••••••••" required="" type="password"/></div></div><div><label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">2FA Authenticator TOTP Code</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-2 text-on-surface-variant text-[18px]">security</span><input class="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant text-on-surface font-body-sm tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-primary" maxlength="6" placeholder="000 000" required="" type="text"/></div></div><button class="w-full mt-1 py-2.5 px-4 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold shadow-md hover:bg-primary-container active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer" type="submit"><span class="material-symbols-outlined text-[18px]">verified_user</span><span class="">Authenticate Root Session</span></button></form></div>
+</div>
+<script>
+    let previousView = 'client-portal';
+
+    // SPA View Switcher Logic
+    function switchView(viewId) {
+      // Record previous view before changing if not auth
+      const currentActive = ['home', 'features', 'pricing', 'client-portal', 'admin', 'auth'].find(v => {
+        const el = document.getElementById('view-' + v);
+        return el && !el.classList.contains('hidden');
+      });
+      if (currentActive && currentActive !== 'auth') {
+        previousView = currentActive;
+      }
+
+      // Hide all views
+      const views = ['home', 'features', 'pricing', 'client-portal', 'admin', 'auth'];
+      views.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if (el) {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Show target view
+      const targetEl = document.getElementById('view-' + viewId);
+      if (targetEl) {
+        targetEl.classList.remove('hidden');
+      }
+
+      // Update active states on desktop nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.getAttribute('data-target') === viewId) {
+          btn.className = "nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-secondary bg-surface shadow-sm";
+        } else {
+          btn.className = "nav-btn px-4 py-1.5 rounded-full font-label-md text-label-md transition-all text-on-surface-variant hover:text-on-surface";
+        }
+      });
+
+      // Update active states on mobile nav buttons
+      document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        if (btn.getAttribute('data-target') === viewId) {
+          btn.className = "mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] transition-colors text-secondary cursor-pointer";
+        } else {
+          btn.className = "mobile-nav-btn flex flex-col items-center justify-center min-w-[64px] min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer";
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Modal and Dedicated Auth Tab Controllers
+    function openAuthModal(initialTab = 'signin') {
+      const modal = document.getElementById('auth-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        switchModalAuthTab(initialTab);
+      }
+    }
+
+    function closeAuthModal() {
+      const modal = document.getElementById('auth-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      // If currently on dedicated auth view, revert to previous view
+      const authView = document.getElementById('view-auth');
+      if (authView && !authView.classList.contains('hidden')) {
+        switchView(previousView || 'home');
+      }
+    }
+
+    function switchAuthTab(tab) {
+      const signinForm = document.getElementById('auth-form-signin');
+      const signupForm = document.getElementById('auth-form-signup');
+      const signinTab = document.getElementById('auth-tab-signin');
+      const signupTab = document.getElementById('auth-tab-signup');
+
+      if (tab === 'signin') {
+        signinForm.classList.remove('hidden');
+        signinForm.classList.add('flex');
+        signupForm.classList.add('hidden');
+        signupForm.classList.remove('flex');
+        signinTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer";
+        signupTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer";
+      } else {
+        signupForm.classList.remove('hidden');
+        signupForm.classList.add('flex');
+        signinForm.classList.add('hidden');
+        signinForm.classList.remove('flex');
+        signupTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer";
+        signinTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer";
+      }
+    }
+
+    function switchModalAuthTab(tab) {
+      const signinForm = document.getElementById('modal-form-signin');
+      const signupForm = document.getElementById('modal-form-signup');
+      const signinTab = document.getElementById('modal-tab-signin');
+      const signupTab = document.getElementById('modal-tab-signup');
+
+      if (tab === 'signin') {
+        signinForm.classList.remove('hidden');
+        signinForm.classList.add('flex');
+        signupForm.classList.add('hidden');
+        signupForm.classList.remove('flex');
+        signinTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer";
+        signupTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer";
+      } else {
+        signupForm.classList.remove('hidden');
+        signupForm.classList.add('flex');
+        signinForm.classList.add('hidden');
+        signinForm.classList.remove('flex');
+        signupTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-secondary bg-surface-container-lowest shadow-sm cursor-pointer";
+        signinTab.className = "py-2 rounded-lg font-label-md text-label-md font-semibold transition-all text-on-surface-variant hover:text-on-surface cursor-pointer";
+      }
+    }
+
+    // Viewport Mode Toggle (Simulate mobile frame vs full width desktop)
+    let isMobileFrame = false;
+    function toggleViewportMode() {
+      isMobileFrame = !isMobileFrame;
+      const wrapper = document.getElementById('app-viewport-wrapper');
+      const mainContainer = document.getElementById('main-app-container');
+      const toggleLabel = document.getElementById('viewport-toggle-label');
+
+      if (isMobileFrame) {
+        wrapper.className = "w-full flex-1 flex justify-center bg-surface-container py-6 px-4 transition-all duration-300";
+        mainContainer.className = "flex flex-col relative w-full pt-16 pb-28 bg-surface min-h-[844px] max-w-[412px] rounded-[40px] shadow-2xl border-[8px] border-primary-container overflow-hidden transition-all";
+        if (toggleLabel) toggleLabel.textContent = "Desktop View";
+      } else {
+        wrapper.className = "w-full flex-1 flex justify-center bg-surface transition-all duration-300";
+        mainContainer.className = "flex flex-col relative w-full pt-16 pb-28 bg-surface min-h-screen max-w-xl md:max-w-4xl lg:max-w-6xl shadow-xl transition-all";
+        if (toggleLabel) toggleLabel.textContent = "Mobile Frame";
+      }
+    }
+
+    // Interactive Tap Demo Logic
+    (function initInteractiveTapDemo() {
+      const tapBtn = document.getElementById('tap-trigger-btn');
+      const tapFeedback = document.getElementById('tap-feedback');
+      const standeeCard = document.getElementById('standee-card');
+      const counterReviews = document.getElementById('counter-reviews');
+      const portalTaps = document.getElementById('portal-taps-count');
+
+      if (tapBtn && tapFeedback) {
+        tapBtn.addEventListener('click', () => {
+          if (standeeCard) {
+            standeeCard.classList.add('scale-[0.98]');
+            setTimeout(() => standeeCard.classList.remove('scale-[0.98]'), 150);
+          }
+
+          tapFeedback.classList.remove('opacity-0', 'pointer-events-none');
+          tapFeedback.classList.add('opacity-100');
+
+          // Increment counters for real-time interactivity
+          if (counterReviews) {
+            let current = parseInt(counterReviews.textContent.replace(',', '')) || 45382;
+            counterReviews.textContent = (current + 1).toLocaleString();
+          }
+          if (portalTaps) {
+            let currentTaps = parseInt(portalTaps.textContent) || 142;
+            portalTaps.textContent = currentTaps + 1;
+          }
+
+          setTimeout(() => {
+            tapFeedback.classList.remove('opacity-100');
+            tapFeedback.classList.add('opacity-0', 'pointer-events-none');
+          }, 2200);
+        });
+      }
+    })();
+  </script>
+</body></html>
