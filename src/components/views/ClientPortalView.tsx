@@ -41,7 +41,10 @@ import {
   PackageCheck,
   Cpu,
   Lock,
-  KeyRound
+  KeyRound,
+  Send,
+  Zap,
+  CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -79,24 +82,27 @@ export default function ClientPortalView({
 }: ClientPortalViewProps) {
   const { user, updateUserPassword, resetPasswordForEmail } = useAuth();
 
+  // Tab State: "live" (User's real isolated profile) vs "sample" (Sample preview with populated data)
+  const [dashboardTab, setDashboardTab] = useState<"live" | "sample">("live");
+
   const [business, setBusiness] = useState<BusinessRecord>(SAMPLE_DEMO_BUSINESS);
   const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [analytics, setAnalytics] = useState({
-    totalScans: 1428,
-    nfcScans: 1114,
-    qrScans: 314,
-    reviewClicks: 382,
-    privateFeedbackCount: 14,
-    starsCount: { 5: 320, 4: 62, 3: 18, 2: 9, 1: 5 },
-    scansPerDay: [48, 54, 38, 62, 70, 85, 92],
+    totalScans: 0,
+    nfcScans: 0,
+    qrScans: 0,
+    reviewClicks: 0,
+    privateFeedbackCount: 0,
+    starsCount: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    scansPerDay: [0, 0, 0, 0, 0, 0, 0],
   });
 
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [toastMsg, setToastMsg] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Profile Form State (Link Google Business Profile)
+  // Profile Form State (Business Profile Section with all 8 fields)
   const [formName, setFormName] = useState("");
   const [formGbp, setFormGbp] = useState("");
   const [formReviewUrl, setFormReviewUrl] = useState("");
@@ -111,6 +117,8 @@ export default function ClientPortalView({
   // Buy Standee State
   const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [lastPlacedOrder, setLastPlacedOrder] = useState<OrderRecord | null>(null);
 
   // In-Dashboard Password Change State
   const [newPassword, setNewPassword] = useState("");
@@ -119,10 +127,21 @@ export default function ClientPortalView({
   const [passwordMsg, setPasswordMsg] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  // Sample data constants for preview
+  const SAMPLE_ANALYTICS = {
+    totalScans: 1428,
+    nfcScans: 1114,
+    qrScans: 314,
+    reviewClicks: 382,
+    privateFeedbackCount: 14,
+    starsCount: { 5: 320, 4: 62, 3: 18, 2: 9, 1: 5 },
+    scansPerDay: [48, 54, 38, 62, 70, 85, 92],
+  };
+
   useEffect(() => {
     async function loadData() {
       if (user) {
-        // Fast local load
+        // Fast local load for this isolated user
         const b = getUserBusiness(user.id, user.email || "", user.user_metadata?.business_name);
         setBusiness(b);
         populateForm(b);
@@ -197,21 +216,29 @@ export default function ClientPortalView({
           console.warn("Supabase background sync notice:", err);
         }
       } else {
+        // Guest mode default to sample
         setBusiness(SAMPLE_DEMO_BUSINESS);
         populateForm(SAMPLE_DEMO_BUSINESS);
         setFeedbacks(getFeedbacksForBusiness(SAMPLE_DEMO_BUSINESS.id));
         setOrders(getOrdersForBusiness(SAMPLE_DEMO_BUSINESS.id));
-        setAnalytics(getBusinessAnalytics(SAMPLE_DEMO_BUSINESS.id));
+        setAnalytics(SAMPLE_ANALYTICS);
       }
     }
 
     loadData();
   }, [user]);
 
-  // Generate QR Code with Error Correction Level Q
+  // Active display business based on tab
+  const isSample = dashboardTab === "sample";
+  const displayBusiness = isSample ? SAMPLE_DEMO_BUSINESS : business;
+  const displayFeedbacks = isSample ? getFeedbacksForBusiness(SAMPLE_DEMO_BUSINESS.id) : feedbacks;
+  const displayOrders = isSample ? getOrdersForBusiness(SAMPLE_DEMO_BUSINESS.id) : orders;
+  const displayAnalytics = isSample ? SAMPLE_ANALYTICS : analytics;
+
+  // Generate QR Code with Error Correction Level Q for displayed business
   useEffect(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
-    const qrUrl = `${origin}/r/${business.slug}?s=qr`;
+    const qrUrl = `${origin}/r/${displayBusiness.slug}?s=qr`;
 
     QRCode.toDataURL(qrUrl, {
       width: 400,
@@ -226,7 +253,7 @@ export default function ClientPortalView({
     }).catch((err) => {
       console.warn("QR generation error:", err);
     });
-  }, [business.slug]);
+  }, [displayBusiness.slug]);
 
   const populateForm = (b: BusinessRecord) => {
     setFormName(b.name || "");
@@ -266,7 +293,7 @@ export default function ClientPortalView({
       phone: formPhone.trim(),
       city: formCity.trim(),
       state: formState.trim(),
-      country: formCountry.trim(),
+      country: formCountry.trim() || "India",
       pincode: formPincode.trim(),
       email: formEmail.trim(),
       address: formAddress.trim(),
@@ -296,15 +323,17 @@ export default function ClientPortalView({
       }).catch((err) => console.warn("Supabase profile save error:", err));
     }
 
-    showToast("✓ Google Review link & Profile saved and linked to your Standee!");
+    showToast("✓ Business Profile saved! Review assistant & Standee link updated.");
   };
 
+  // Standee Purchase / Checkout Handler
   const handleCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentProcessing(true);
 
     setTimeout(() => {
-      const newOrder = createOrderRecord(business.id, selectedPlan, formPincode || business.pincode || "380001");
+      const pin = formPincode.trim() || business.pincode || "380001";
+      const newOrder = createOrderRecord(business.id, selectedPlan, pin);
       const userId = user?.id || business.id;
       const updated = updateUserBusiness(userId, {
         plan: selectedPlan,
@@ -314,19 +343,23 @@ export default function ClientPortalView({
         address: formAddress || business.address,
         city: formCity || business.city,
         state: formState || business.state,
-        pincode: formPincode || business.pincode,
+        country: formCountry || "India",
+        pincode: pin,
+        gbp_link: formGbp || business.gbp_link,
         review_url: formReviewUrl || business.review_url,
       });
 
       setBusiness(updated);
       setOrders(getOrdersForBusiness(business.id));
+      setLastPlacedOrder(newOrder);
+      setOrderSuccess(true);
       setPaymentProcessing(false);
-      showToast("✓ Payment Verified! Standee order created and dispatched to laser production.");
+      showToast("✓ Payment Verified! Your Standee order is in process.");
     }, 1200);
   };
 
   const handleSimulateScan = (source: "qr" | "nfc") => {
-    logScan(business.slug, source, false);
+    logScan(displayBusiness.slug, source, false);
     setAnalytics((prev) => ({
       ...prev,
       totalScans: prev.totalScans + 1,
@@ -340,7 +373,7 @@ export default function ClientPortalView({
     if (!qrDataUrl) return;
     const a = document.createElement("a");
     a.href = qrDataUrl;
-    a.download = `${business.slug}-standee-qr-level-q.png`;
+    a.download = `${displayBusiness.slug}-standee-qr-level-q.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -402,13 +435,18 @@ export default function ClientPortalView({
   };
 
   const originUrl = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
-  const assistantUrl = `${originUrl}/r/${business.slug}`;
-  const linkReady = !!business.review_url;
+  const assistantUrl = `${originUrl}/r/${displayBusiness.slug}`;
+  const linkReady = !!displayBusiness.review_url;
+
+  // Courier and Plan Calculation
+  const courierData = calculateCourierCharge(formPincode || displayBusiness.pincode || "380001");
+  const basePlanPrice = selectedPlan === "card_500" ? 500 : selectedPlan === "standee_1500" ? 1500 : 2000;
+  const grandTotal = basePlanPrice + courierData.amount;
 
   const planTitles = {
-    card_500: "Smart NFC Review Card (₹500)",
-    standee_1500: "Custom Acrylic NFC Standee (₹1,500)",
-    standee_auto_2000: "Acrylic Standee + AI Automation Engine (₹2,000)",
+    card_500: "Normal Smart NFC Review Card (₹500)",
+    standee_1500: "Auto Google Review Standee with NFC & QR (₹1,500)",
+    standee_auto_2000: "Auto Google Review Standee + Auto Reply Engine (₹2,000)",
   };
 
   return (
@@ -432,7 +470,7 @@ export default function ClientPortalView({
                 Client Business Profile Dashboard (Interactive Showcase)
               </h4>
               <p className="text-[11px] text-on-surface-variant">
-                Previewing all merchant telemetry, live Google review assistant linking, and standee order tracking. Log in to sync your registered store.
+                Previewing merchant telemetry, live Google review assistant linking, and standee order tracking. Log in to manage your registered store.
               </p>
             </div>
           </div>
@@ -454,39 +492,105 @@ export default function ClientPortalView({
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* TAB SWITCHER: MY LIVE BUSINESS PROFILE vs SAMPLE DASHBOARD PREVIEW       */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-surface-variant/40">
+        <div className="inline-flex p-1.5 rounded-2xl bg-surface-container border border-surface-variant/50 shadow-sm">
+          <button
+            onClick={() => setDashboardTab("live")}
+            className={`px-4 py-2 rounded-xl font-headline font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              dashboardTab === "live"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>My Live Business Profile</span>
+          </button>
+
+          <button
+            onClick={() => setDashboardTab("sample")}
+            className={`px-4 py-2 rounded-xl font-headline font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              dashboardTab === "sample"
+                ? "bg-secondary text-on-secondary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Sample Dashboard Preview (See How It Looks)</span>
+          </button>
+        </div>
+
+        {dashboardTab === "sample" ? (
+          <span className="text-xs font-semibold text-secondary flex items-center gap-1.5 bg-secondary/10 px-3 py-1.5 rounded-xl border border-secondary/25">
+            <Sparkles className="w-3.5 h-3.5 text-secondary" />
+            <span>Sample Showcase Mode (Virat Gold Palace)</span>
+          </span>
+        ) : (
+          <span className="text-xs text-on-surface-variant font-mono">
+            Isolated Account • {user?.email || "Demo Session"}
+          </span>
+        )}
+      </div>
+
+      {/* SAMPLE DASHBOARD PREVIEW NOTICE BANNER */}
+      {dashboardTab === "sample" && (
+        <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/30 flex items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-secondary flex-shrink-0" />
+            <div>
+              <h4 className="text-xs font-bold text-on-surface">
+                Sample Dashboard Preview Mode
+              </h4>
+              <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                This is how your ZenTap dashboard will look once your business is registered with us—with active NFC customer taps, laser QR scans, Google review conversions, and live dispatch tracking!
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setDashboardTab("live")}
+            className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex-shrink-0 cursor-pointer shadow-sm"
+          >
+            Back to My Live Profile
+          </button>
+        </div>
+      )}
+
       {/* TOP HEADER: Profile Summary & Counter Touchpoint Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-surface-container-low p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-surface-variant/40 shadow-sm">
         <div className="absolute -right-16 -top-16 w-64 h-64 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex items-start gap-4 sm:gap-5 relative z-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-secondary to-primary text-on-primary flex items-center justify-center font-headline font-black text-2xl shadow-md border border-white/20">
-            {business.name ? business.name[0].toUpperCase() : "Z"}
+            {displayBusiness.name ? displayBusiness.name[0].toUpperCase() : "Z"}
           </div>
 
           <div className="flex flex-col">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-wider border border-emerald-500/30 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                {business.payment_status === "paid" ? "Subscribed & Active" : "Active Trial"}
+                {displayBusiness.payment_status === "paid" ? "Subscribed & Active" : "Active Trial / Standee Setup"}
               </span>
               <span className="text-xs text-on-surface-variant font-mono">
-                Slug: /r/{business.slug}
+                Slug: /r/{displayBusiness.slug}
               </span>
             </div>
 
             <h1 className="font-headline font-bold text-2xl sm:text-3xl text-on-surface mt-1">
-              {business.name || "My Business Profile"}
+              {displayBusiness.name || "My Business Profile"}
             </h1>
 
             <p className="text-xs text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{[business.city, business.state, business.country].filter(Boolean).join(", ") || "Ahmedabad, Gujarat, India"}</span>
+              <span>{[displayBusiness.city, displayBusiness.state, displayBusiness.country].filter(Boolean).join(", ") || "Ahmedabad, Gujarat, India"}</span>
               <span className="mx-1">•</span>
               <Phone className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{business.phone || "No phone added"}</span>
+              <span>{displayBusiness.phone || "No phone added"}</span>
               <span className="mx-1">•</span>
               <Mail className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{business.email}</span>
+              <span>{displayBusiness.email}</span>
             </p>
           </div>
         </div>
@@ -504,145 +608,563 @@ export default function ClientPortalView({
           </a>
 
           <a
-            href="#link-section"
+            href="#purchase-section"
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 shadow-sm transition-all cursor-pointer"
           >
-            <Building2 className="w-4 h-4" />
-            <span>Update Google Link</span>
+            <ShoppingBag className="w-4 h-4" />
+            <span>Buy / Upgrade Standee</span>
           </a>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. GOOGLE REVIEW ASSISTANT PAGE LINK & QR CODE HUB + CURRENT PLAN         */}
+      {/* 1. ORDER CONFIRMATION / ORDER IN PROCESS SCREEN (POST-PAYMENT)            */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* SECTION 1: GOOGLE REVIEW ASSISTANT PAGE LINKED HERE & TOUCHPOINT CARD */}
-        <div className="lg:col-span-2 p-6 sm:p-7 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs uppercase tracking-wider font-bold text-secondary">
-                  Live Customer Destination
-                </span>
+      {(orderSuccess || displayOrders.length > 0) && (
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-emerald-500/40 shadow-sm relative overflow-hidden animate-in fade-in duration-300">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 flex items-center justify-center">
+                <PackageCheck className="w-6 h-6" />
               </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                linkReady ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
-              }`}>
-                {linkReady ? "✓ Google Review Link Active" : "⚠ Setup Review Link"}
-              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-headline font-bold text-xl text-on-surface">
+                    Your Order is in Process!
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 text-[10px] font-bold border border-emerald-500/30">
+                    Payment Verified
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Your customized hardware touchpoint has been assigned to CNC laser engraving and courier dispatch.
+                </p>
+              </div>
             </div>
 
-            <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
-              Your Google Review Assistant Page
-            </h3>
-            <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              When a customer taps your NFC Standee or scans the laser QR code at your counter, they instantly land on this page. High ratings (4-5★) submit straight to Google Reviews; lower ratings provide private feedback.
-            </p>
-
-            {/* 1-Click Copy Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-2xl bg-surface-container-low border border-surface-variant/50 mb-4">
-              <div className="flex items-center gap-2 px-2 flex-1 min-w-0">
-                <Wifi className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span className="text-xs font-mono text-on-surface truncate select-all">
-                  {assistantUrl}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyToClipboard(assistantUrl)}
-                  className="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-container-high border border-surface-variant/50 text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  {copiedLink ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedLink ? "Copied" : "Copy Link"}</span>
-                </button>
-                <a
-                  href={`${assistantUrl}?preview=1`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Test Flow</span>
-                </a>
-              </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase font-semibold text-on-surface-variant block">Order Tracking ID</span>
+              <span className="font-mono font-bold text-sm text-secondary">
+                {lastPlacedOrder?.id || (displayOrders[0]?.id ? `#${displayOrders[0].id}` : `#ZT-ORD-${displayBusiness.id.slice(0, 8).toUpperCase()}`)}
+              </span>
             </div>
           </div>
 
-          {/* NFC & QR Encoding specs */}
-          <div className="pt-4 border-t border-surface-variant/30 flex flex-wrap items-center justify-between text-xs text-on-surface-variant gap-2">
-            <span className="flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-secondary" />
-              <span>NFC Direct Tap URL: <code className="font-mono text-on-surface font-semibold">{assistantUrl}?s=nfc</code></span>
+          {/* 4-Stage Production & Shipping Timeline */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/40">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-2">✓</div>
+              <h4 className="font-bold text-xs text-on-surface">1. Order Confirmed</h4>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">Payment received &amp; verified.</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/40">
+              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-2">✓</div>
+              <h4 className="font-bold text-xs text-on-surface">2. Laser Engraving</h4>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">Brand logo &amp; QR laser etched.</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-amber-500/40">
+              <div className="w-6 h-6 rounded-full bg-amber-500 text-black flex items-center justify-center text-xs font-bold mb-2 animate-pulse">⚡</div>
+              <h4 className="font-bold text-xs text-on-surface">3. Signal Inspection</h4>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">NTAG216 RF 13.56MHz tested.</p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-variant/40">
+              <div className="w-6 h-6 rounded-full bg-surface-variant text-on-surface flex items-center justify-center text-xs font-bold mb-2">4</div>
+              <h4 className="font-bold text-xs text-on-surface">4. Dispatched</h4>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">BlueDart Express Air Cargo</p>
+            </div>
+          </div>
+
+          {/* Instant Live Google Review Assistant Access */}
+          <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-secondary block tracking-wider">
+                Live While Hardware Is In Transit
+              </span>
+              <h4 className="font-headline font-bold text-sm text-on-surface">
+                Your Customized Google Review Assistant is Already Active!
+              </h4>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                URL: <code className="font-mono text-secondary">{assistantUrl}</code>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={`${assistantUrl}?preview=1`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Test Live Assistant</span>
+              </a>
+              <button
+                onClick={handleDownloadQR}
+                className="px-4 py-2 rounded-xl bg-surface hover:bg-surface-container-high border border-surface-variant/50 text-xs font-bold text-on-surface flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Print QR</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. DEDICATED BUSINESS PROFILE SECTION (SIGN & EDIT ANYTIME)               */}
+      {/* ========================================================================= */}
+      <div id="profile-section" className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm scroll-mt-24 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Building2 className="w-5 h-5 text-secondary" />
+              <h3 className="font-headline font-bold text-xl text-on-surface">
+                Business Profile Information
+              </h3>
+            </div>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Fill and update your business details anytime to customize your NFC standee, print Level Q QR codes, and connect your Google Business Profile.
+            </p>
+          </div>
+
+          <span className="px-3 py-1 rounded-full bg-secondary/15 text-secondary font-bold text-xs border border-secondary/30 self-start sm:self-auto">
+            Editable Anytime
+          </span>
+        </div>
+
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* 1. Business Name */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                Business Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="e.g. Royal Cafe & Bakers"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+            </div>
+
+            {/* 2. Contact Phone */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                Contact Number (For Private Alerts & WhatsApp) *
+              </label>
+              <input
+                type="tel"
+                required
+                value={formPhone}
+                onChange={(e) => setFormPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+            </div>
+
+            {/* 3. Google Review URL */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                Google Review URL (Direct Write-Review Link) *
+              </label>
+              <input
+                type="url"
+                value={formReviewUrl}
+                onChange={(e) => setFormReviewUrl(e.target.value)}
+                placeholder="https://g.page/r/your-code/review or https://search.google.com/..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+              <span className="text-[10px] text-on-surface-variant mt-1 block">
+                Destination where customers submit 4-5 star reviews on Google.
+              </span>
+            </div>
+
+            {/* 4. Google Business Profile Link */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                Google Business Profile Link (Listing / Maps Link)
+              </label>
+              <input
+                type="url"
+                value={formGbp}
+                onChange={(e) => setFormGbp(e.target.value)}
+                placeholder="https://maps.google.com/?cid=... or https://g.co/kgs/..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+              <span className="text-[10px] text-on-surface-variant mt-1 block">
+                Your main Google Maps profile page.
+              </span>
+            </div>
+
+            {/* 5. Email */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                Email Address (Prefilled from Account) *
+              </label>
+              <input
+                type="email"
+                required
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="owner@yourbusiness.com"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+            </div>
+
+            {/* 6. City */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                City *
+              </label>
+              <input
+                type="text"
+                required
+                value={formCity}
+                onChange={(e) => setFormCity(e.target.value)}
+                placeholder="e.g. Ahmedabad"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+            </div>
+
+            {/* 7. State */}
+            <div>
+              <label className="block text-xs font-bold text-on-surface mb-1">
+                State *
+              </label>
+              <input
+                type="text"
+                required
+                value={formState}
+                onChange={(e) => setFormState(e.target.value)}
+                placeholder="e.g. Gujarat"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              />
+            </div>
+
+            {/* 8. Country & Pincode */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={formCountry}
+                  onChange={(e) => setFormCountry(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Pincode *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formPincode}
+                  onChange={(e) => setFormPincode(e.target.value)}
+                  placeholder="380001"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                />
+              </div>
+            </div>
+
+          </div>
+
+          {/* Delivery / Store Address */}
+          <div>
+            <label className="block text-xs font-bold text-on-surface mb-1">
+              Store / Billing Counter Shipping Address (For Standee Courier) *
+            </label>
+            <textarea
+              rows={2}
+              value={formAddress}
+              onChange={(e) => setFormAddress(e.target.value)}
+              placeholder="Shop No. 12, Ground Floor, Commercial Complex, Main Road..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 resize-none"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <span className="text-[11px] text-on-surface-variant">
+              Changes take effect immediately on your physical standee and live QR destination.
             </span>
-            <a
-              href="#link-section"
-              className="text-secondary font-bold hover:underline flex items-center gap-1 cursor-pointer"
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
             >
-              <span>Edit Destination Link</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </a>
+              <Check className="w-4 h-4" />
+              <span>Save &amp; Update Business Profile</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. ORDER / BUY STANDEE & HARDWARE TOUCHPOINT (PURCHASE FLOW)               */}
+      {/* ========================================================================= */}
+      <div id="purchase-section" className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm scroll-mt-24 space-y-6">
+        
+        {/* SEO Value Proposition Banner */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-secondary/15 via-primary/10 to-transparent border border-secondary/30 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-secondary/20 border border-secondary/40 text-secondary flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="font-headline font-bold text-base text-on-surface flex items-center gap-2">
+              <span>Boost Your Google Profile Reach, Views &amp; Local SEO</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 text-[10px] font-bold">
+                10x Growth
+              </span>
+            </h4>
+            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+              Our hardware standees convert your everyday customer footfall into verified 5-star Google reviews. Higher review frequency and positive customer keywords trigger Google&apos;s local algorithm to place your business in the prestigious <strong>Google 3-Pack</strong>, driving dramatic increases in search views, store visits, and revenue.
+            </p>
           </div>
         </div>
 
-        {/* SECTION 2: CURRENT PLAN WITH US */}
-        <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+        {/* Section Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase tracking-wider font-bold text-on-surface-variant">
-                Current Plan With Us
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 text-[10px] font-bold">
-                Paid &amp; Active
-              </span>
-            </div>
+            <h3 className="font-headline font-bold text-xl text-on-surface">
+              Purchase Your Hardware Touchpoint
+            </h3>
+            <p className="text-xs text-on-surface-variant">
+              Select your preferred hardware model to receive custom branded laser-cut hardware for your billing counter.
+            </p>
+          </div>
+        </div>
 
-            <div className="my-2">
-              <h4 className="font-headline font-bold text-xl text-on-surface">
-                {business.plan && planTitles[business.plan] ? planTitles[business.plan] : "Acrylic NFC Standee (₹1,500)"}
-              </h4>
-              <span className="block text-xs text-emerald-600 font-semibold mt-1">
-                ✓ Lifetime Hardware &amp; Dynamic Routing License
-              </span>
-            </div>
-
-            <div className="space-y-2 mt-4 text-xs text-on-surface-variant">
-              <div className="flex justify-between py-1 border-b border-surface-variant/20">
-                <span>Hardware Chip:</span>
-                <span className="font-semibold text-on-surface">NTAG216 (888 Bytes)</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-surface-variant/20">
-                <span>Payment Status:</span>
-                <span className="font-semibold text-emerald-600">Paid &amp; Verified</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-surface-variant/20">
-                <span>Touchpoints Active:</span>
-                <span className="font-semibold text-on-surface">1 Counter Standee</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span>Google Anti-Gating:</span>
-                <span className="font-semibold text-emerald-600">100% Policy Compliant</span>
-              </div>
-            </div>
+        {/* Standee Visual Sample Preview & Plans Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          
+          {/* Visual Showcase (Dynamic based on selected plan & business name) */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center p-6 rounded-3xl bg-surface-container-low border border-surface-variant/40">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-3">
+              Hardware Visual Preview
+            </span>
+            <StandeeVisual 
+              type={selectedPlan} 
+              businessName={formName || displayBusiness.name || "YOUR BUSINESS"} 
+            />
+            <span className="text-[11px] text-on-surface-variant mt-4 text-center">
+              {selectedPlan === "card_500" 
+                ? "Compact NFC & Level Q Laser QR PVC Card (Wallet / Bill Folder)" 
+                : "Heavyweight Laser-Cut Acrylic Counter Standee with Embedded NTAG216 Chip"}
+            </span>
           </div>
 
-          <div className="mt-5 pt-4 border-t border-surface-variant/30">
-            <a
-              href="#order-section"
-              className="w-full py-2.5 rounded-xl bg-secondary/15 hover:bg-secondary/25 text-secondary font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          {/* 3 Pricing Plans Cards */}
+          <div className="lg:col-span-7 space-y-3">
+            
+            {/* PLAN 1: Normal Smart NFC Review Card */}
+            <div 
+              onClick={() => setSelectedPlan("card_500")}
+              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                selectedPlan === "card_500"
+                  ? "border-primary bg-primary/5 shadow-md"
+                  : "border-surface-variant/40 bg-surface-container-low hover:border-surface-variant"
+              }`}
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Order Additional Touchpoints</span>
-            </a>
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="standee_plan"
+                  checked={selectedPlan === "card_500"}
+                  onChange={() => setSelectedPlan("card_500")}
+                  className="mt-1 text-primary focus:ring-primary"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-headline font-bold text-sm text-on-surface">
+                      Normal Smart NFC Review Card
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold text-on-surface-variant">
+                      Card (Not Standee)
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Compact portable PVC card with NFC chip + laser QR code. Perfect for table servers or inside billing folders.
+                  </p>
+                  <span className="text-[11px] text-emerald-600 font-bold block mt-1">
+                    ✓ One-Time Payment (Zero monthly recurring fees)
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right flex-shrink-0 sm:pl-4">
+                <span className="font-headline font-black text-2xl text-on-surface">₹500</span>
+                <span className="text-[10px] text-on-surface-variant block">+ Extra Courier</span>
+              </div>
+            </div>
+
+            {/* PLAN 2: Auto Google Review Standee with NFC & QR */}
+            <div 
+              onClick={() => setSelectedPlan("standee_1500")}
+              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden ${
+                selectedPlan === "standee_1500"
+                  ? "border-secondary bg-secondary/10 shadow-md"
+                  : "border-surface-variant/40 bg-surface-container-low hover:border-surface-variant"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="standee_plan"
+                  checked={selectedPlan === "standee_1500"}
+                  onChange={() => setSelectedPlan("standee_1500")}
+                  className="mt-1 text-secondary focus:ring-secondary"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-headline font-bold text-sm text-on-surface">
+                      Auto Google Review Standee with NFC &amp; QR
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full bg-secondary/20 text-secondary text-[10px] font-bold">
+                      Most Popular
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Customized designed acrylic standee matched to your business branding. 1-tap review assistant with AI draft generator.
+                  </p>
+                  <span className="text-[11px] text-secondary font-bold block mt-1">
+                    ₹1,000 / month subscription starting next month of purchase
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right flex-shrink-0 sm:pl-4">
+                <span className="font-headline font-black text-2xl text-on-surface">₹1,500</span>
+                <span className="text-[10px] text-on-surface-variant block">+ Courier Charges</span>
+              </div>
+            </div>
+
+            {/* PLAN 3: Auto Google Review Standee + Auto Reply Engine */}
+            <div 
+              onClick={() => setSelectedPlan("standee_auto_2000")}
+              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                selectedPlan === "standee_auto_2000"
+                  ? "border-primary bg-primary/10 shadow-md"
+                  : "border-surface-variant/40 bg-surface-container-low hover:border-surface-variant"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="radio"
+                  name="standee_plan"
+                  checked={selectedPlan === "standee_auto_2000"}
+                  onChange={() => setSelectedPlan("standee_auto_2000")}
+                  className="mt-1 text-primary focus:ring-primary"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-headline font-bold text-sm text-on-surface">
+                      Auto Google Review Standee + Auto Reply Engine
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-400 text-[10px] font-bold">
+                      Complete Automation
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Custom acrylic standee PLUS AI automation engine that automatically generates polite, SEO-optimized replies to every incoming Google review 24/7.
+                  </p>
+                  <span className="text-[11px] text-primary font-bold block mt-1">
+                    ₹1,000 / month subscription starting next month of purchase
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-right flex-shrink-0 sm:pl-4">
+                <span className="font-headline font-black text-2xl text-on-surface">₹2,000</span>
+                <span className="text-[10px] text-on-surface-variant block">+ Courier Charges</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Dynamic Courier Charges Breakdown & Checkout Form */}
+        <div className="p-5 rounded-2xl bg-surface-container border border-surface-variant/50">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            
+            {/* Courier Details */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-on-surface block">
+                Express Courier Delivery Calculator
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={formPincode}
+                  onChange={(e) => setFormPincode(e.target.value)}
+                  placeholder="Enter 6-digit Pincode"
+                  className="px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 w-44"
+                />
+                <span className="text-xs text-on-surface-variant font-medium">
+                  Zone: <strong className="text-on-surface">{courierData.zone}</strong>
+                </span>
+              </div>
+              <p className="text-[11px] text-on-surface-variant">
+                Shipped via BlueDart Express Air Cargo / Delhivery with shock-absorbent acrylic foam packaging.
+              </p>
+            </div>
+
+            {/* Price Summary & Submit */}
+            <div className="p-4 rounded-xl bg-surface border border-surface-variant/40 space-y-2">
+              <div className="flex justify-between text-xs text-on-surface-variant">
+                <span>Hardware Base Price:</span>
+                <span className="font-bold text-on-surface">₹{basePlanPrice}</span>
+              </div>
+              <div className="flex justify-between text-xs text-on-surface-variant">
+                <span>Courier &amp; Transit Insurance:</span>
+                <span className="font-bold text-on-surface">₹{courierData.amount}</span>
+              </div>
+              <div className="flex justify-between text-xs text-on-surface-variant pt-1 border-t border-surface-variant/30">
+                <span>Next Month Subscription:</span>
+                <span className="font-semibold text-secondary">
+                  {selectedPlan === "card_500" ? "₹0 (No monthly fee)" : "₹1,000 / month (starts in 30 days)"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-bold text-on-surface pt-1 border-t border-surface-variant/30">
+                <span>Total Payable Now:</span>
+                <span className="font-headline font-black text-lg text-primary">₹{grandTotal}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCheckoutSubmit}
+                disabled={paymentProcessing}
+                className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 mt-2"
+              >
+                {paymentProcessing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Processing Secure Payment...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    <span>Pay ₹{grandTotal} &amp; Dispatch to Production</span>
+                  </>
+                )}
+              </button>
+            </div>
+
           </div>
         </div>
 
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. QR & NFC SCAN ANALYTICS                                                */}
+      {/* 4. QR & NFC SCAN ANALYTICS                                                */}
       {/* ========================================================================= */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -684,16 +1206,16 @@ export default function ClientPortalView({
             </span>
             <div className="my-2">
               <span className="font-headline font-black text-3xl sm:text-4xl text-on-surface">
-                {analytics.totalScans}
+                {displayAnalytics.totalScans}
               </span>
               <span className="block text-[11px] text-emerald-600 font-semibold mt-1">
-                NFC: {analytics.nfcScans} • QR: {analytics.qrScans}
+                NFC: {displayAnalytics.nfcScans} • QR: {displayAnalytics.qrScans}
               </span>
             </div>
             <div className="w-full bg-surface-variant/30 h-1.5 rounded-full overflow-hidden mt-1">
               <div 
                 className="bg-emerald-500 h-full rounded-full" 
-                style={{ width: `${Math.min(100, (analytics.nfcScans / (analytics.totalScans || 1)) * 100)}%` }} 
+                style={{ width: `${Math.min(100, (displayAnalytics.nfcScans / (displayAnalytics.totalScans || 1)) * 100)}%` }} 
               />
             </div>
           </div>
@@ -705,7 +1227,7 @@ export default function ClientPortalView({
             </span>
             <div className="my-2">
               <span className="font-headline font-black text-3xl sm:text-4xl text-secondary">
-                {analytics.reviewClicks}
+                {displayAnalytics.reviewClicks}
               </span>
               <span className="block text-[11px] text-secondary font-semibold mt-1">
                 ~88% Conversion to Google Maps
@@ -723,7 +1245,7 @@ export default function ClientPortalView({
             </span>
             <div className="my-2">
               <span className="font-headline font-black text-3xl sm:text-4xl text-red-500">
-                {analytics.privateFeedbackCount}
+                {displayAnalytics.privateFeedbackCount}
               </span>
               <span className="block text-[11px] text-red-500 font-semibold mt-1">
                 Resolved privately out of public view
@@ -742,15 +1264,15 @@ export default function ClientPortalView({
             <div className="space-y-1 my-1 text-[11px]">
               <div className="flex justify-between">
                 <span>5 Stars:</span>
-                <span className="font-bold text-amber-500">{analytics.starsCount[5] || 320}</span>
+                <span className="font-bold text-amber-500">{displayAnalytics.starsCount[5] || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span>4 Stars:</span>
-                <span className="font-bold text-amber-500">{analytics.starsCount[4] || 62}</span>
+                <span className="font-bold text-amber-500">{displayAnalytics.starsCount[4] || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span>1-3 Stars:</span>
-                <span className="font-bold text-zinc-400">{(analytics.starsCount[1] || 0) + (analytics.starsCount[2] || 0) + (analytics.starsCount[3] || 0) || 32}</span>
+                <span className="font-bold text-zinc-400">{(displayAnalytics.starsCount[1] || 0) + (displayAnalytics.starsCount[2] || 0) + (displayAnalytics.starsCount[3] || 0)}</span>
               </div>
             </div>
             <span className="text-[10px] text-emerald-600 font-semibold">91% Positive Ratio</span>
@@ -760,116 +1282,76 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. LINK GOOGLE BUSINESS PROFILE & LASER PRINTABLE QR CODE                 */}
+      {/* 5. GOOGLE REVIEW ASSISTANT PAGE & PRINTABLE LEVEL Q QR CODE               */}
       {/* ========================================================================= */}
-      <div id="link-section" className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start scroll-mt-24">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         
-        {/* FORM: LINK GOOGLE BUSINESS PROFILE */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-5 h-5 text-secondary" />
-            <h3 className="font-headline font-bold text-lg text-on-surface">
-              Link Google Business Profile Review URL
-            </h3>
-          </div>
-          <p className="text-xs text-on-surface-variant mb-6 leading-relaxed">
-            Connect your business&apos;s real Google Maps review dialog. You can change this link anytime—your physical standee will automatically redirect to the new link.
-          </p>
-
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-on-surface mb-1">
-                Google Review URL (Direct Write-Review Link) *
-              </label>
-              <div className="relative">
-                <input
-                  type="url"
-                  value={formReviewUrl}
-                  onChange={(e) => setFormReviewUrl(e.target.value)}
-                  placeholder="https://g.page/r/your-code/review or https://search.google.com/..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
-                />
-              </div>
-              <div className="flex items-center justify-between mt-1.5 text-[11px]">
-                <span className="text-on-surface-variant">
-                  Example: <code className="text-secondary font-mono">https://g.page/r/.../review</code>
+        {/* Assistant Destination Details */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs uppercase tracking-wider font-bold text-secondary">
+                  Customer Destination Hub
                 </span>
-                {formReviewUrl && (
-                  <a
-                    href={formReviewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-secondary font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Test Link</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
               </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                linkReady ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-700"
+              }`}>
+                {linkReady ? "✓ Google Review Link Active" : "⚠ Setup Review Link"}
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  Business Name
-                </label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Royal Cafe & Bakers"
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface"
-                />
+            <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
+              Your Customized Google Review Assistant
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
+              When a guest taps your NFC Standee or scans your laser QR code, they land on this assistant page. High ratings (3-5★) generate tailored AI review drafts and direct straight to your Google review link; low ratings (1-2★) submit directly to your private management inbox.
+            </p>
+
+            {/* 1-Click Copy Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded-2xl bg-surface-container-low border border-surface-variant/50 mb-4">
+              <div className="flex items-center gap-2 px-2 flex-1 min-w-0">
+                <Wifi className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span className="text-xs font-mono text-on-surface truncate select-all">
+                  {assistantUrl}
+                </span>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  Phone Number (For Private Alerts)
-                </label>
-                <input
-                  type="text"
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface"
-                />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => copyToClipboard(assistantUrl)}
+                  className="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-container-high border border-surface-variant/50 text-xs font-bold text-on-surface flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  {copiedLink ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedLink ? "Copied" : "Copy Link"}</span>
+                </button>
+                <a
+                  href={`${assistantUrl}?preview=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Test Flow</span>
+                </a>
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  City
-                </label>
-                <input
-                  type="text"
-                  value={formCity}
-                  onChange={(e) => setFormCity(e.target.value)}
-                  placeholder="e.g. Ahmedabad"
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  Pincode
-                </label>
-                <input
-                  type="text"
-                  value={formPincode}
-                  onChange={(e) => setFormPincode(e.target.value)}
-                  placeholder="e.g. 380001"
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+          <div className="pt-4 border-t border-surface-variant/30 flex flex-wrap items-center justify-between text-xs text-on-surface-variant gap-2">
+            <span className="flex items-center gap-1.5">
+              <Cpu className="w-4 h-4 text-secondary" />
+              <span>NFC Direct Tap URL: <code className="font-mono text-on-surface font-semibold">{assistantUrl}?s=nfc</code></span>
+            </span>
+            <a
+              href="#profile-section"
+              className="text-secondary font-bold hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <Check className="w-4 h-4" />
-              <span>Save &amp; Link to Standee</span>
-            </button>
-          </form>
+              <span>Edit Destination Link</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
 
         {/* LASER PRINTABLE QR CODE (LEVEL Q ERROR CORRECTION) */}
@@ -919,86 +1401,14 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. STANDEE ORDER HISTORY & LIVE DISPATCH STATUS                           */}
-      {/* ========================================================================= */}
-      <div id="order-section" className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm scroll-mt-24">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 flex items-center justify-center">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-headline font-bold text-lg text-on-surface">
-                Standee Order Tracking &amp; Delivery Status
-              </h3>
-              <p className="text-xs text-on-surface-variant">
-                Live production status from CNC laser cutting to store counter delivery.
-              </p>
-            </div>
-          </div>
-
-          <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 font-bold text-xs border border-emerald-500/30">
-            {orders.length > 0 ? "Production Active" : "Order Dispatched"}
-          </span>
-        </div>
-
-        {/* 4-Stage Production & Shipping Timeline */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/30">
-            <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-2">✓</div>
-            <h4 className="font-bold text-xs text-on-surface">1. Order Confirmed</h4>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">Payment received &amp; verified.</p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/30">
-            <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-2">✓</div>
-            <h4 className="font-bold text-xs text-on-surface">2. Laser Engraving</h4>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">NTAG216 chip encoded &amp; tested.</p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/30">
-            <div className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-2">✓</div>
-            <h4 className="font-bold text-xs text-on-surface">3. Signal Inspection</h4>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">RF 13.56MHz compliance verified.</p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-surface-container-low border border-emerald-500/50 shadow-sm relative overflow-hidden">
-            <div className="w-7 h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center text-xs font-bold mb-2 animate-pulse">4</div>
-            <h4 className="font-bold text-xs text-on-surface">4. Dispatched</h4>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">BlueDart Express AWB #BD-84920194</p>
-          </div>
-        </div>
-
-        {/* Order Details Summary */}
-        <div className="p-4 rounded-2xl bg-surface-container text-xs space-y-2">
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-on-surface-variant">Order Identifier:</span>
-            <span className="font-mono font-bold text-on-surface">#ZT-ORD-{business.id.slice(0, 8).toUpperCase()}</span>
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-on-surface-variant">Product Model:</span>
-            <span className="font-bold text-on-surface">{business.plan && planTitles[business.plan] ? planTitles[business.plan] : "Custom Acrylic NFC Standee"}</span>
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-on-surface-variant">Courier Partner:</span>
-            <span className="font-bold text-on-surface">BlueDart Express / Delhivery Air Cargo</span>
-          </div>
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="text-on-surface-variant">Delivery Address:</span>
-            <span className="font-bold text-on-surface">{[business.address, business.city, business.state, business.pincode].filter(Boolean).join(", ") || "Main Store Counter, Ahmedabad, Gujarat 380001"}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. PRIVATE NEGATIVE FEEDBACK INBOX                                        */}
+      {/* 6. PRIVATE NEGATIVE FEEDBACK INBOX                                        */}
       {/* ========================================================================= */}
       <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-red-500" />
             <h3 className="font-headline font-bold text-lg text-on-surface">
-              Private Customer Feedbacks ({feedbacks.length})
+              Private Customer Feedbacks ({displayFeedbacks.length})
             </h3>
           </div>
           <span className="text-[11px] text-on-surface-variant font-medium">
@@ -1006,13 +1416,13 @@ export default function ClientPortalView({
           </span>
         </div>
 
-        {feedbacks.length === 0 ? (
+        {displayFeedbacks.length === 0 ? (
           <div className="py-8 text-center text-on-surface-variant text-xs">
             No private negative feedback received. Your Google rating is healthy and protected!
           </div>
         ) : (
           <div className="space-y-3">
-            {feedbacks.map((fb) => (
+            {displayFeedbacks.map((fb) => (
               <div
                 key={fb.id}
                 className="p-3.5 rounded-2xl bg-surface-container-low border border-red-500/20"
@@ -1020,7 +1430,7 @@ export default function ClientPortalView({
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <span className="text-red-500 font-bold text-xs">{"★".repeat(fb.rating)}</span>
-                    <span className="font-bold text-xs text-on-surface">{fb.customer_name}</span>
+                    <span className="font-bold text-xs text-on-surface">{fb.customer_name || "Guest Customer"}</span>
                   </div>
                   <span className="text-[10px] text-on-surface-variant">{fb.at}</span>
                 </div>
@@ -1043,7 +1453,7 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 6. PASSWORD & ACCOUNT SECURITY MANAGEMENT (RESET / CHANGE ANYTIME)        */}
+      {/* 7. PASSWORD & ACCOUNT SECURITY MANAGEMENT (RESET / CHANGE ANYTIME)        */}
       {/* ========================================================================= */}
       <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm max-w-3xl">
         <div className="flex items-center justify-between mb-4">
