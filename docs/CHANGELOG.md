@@ -1,5 +1,18 @@
 # ZenTap.ai — Changelog
 
+## [1.3.6] — 2026-10-29
+### Added
+- **Left-Side Horizontal Navigation Tabs for Merchant Dashboard** (`ClientPortalView.tsx`):
+  - Redesigned the sub-tabs controller into a responsive 2-column sidebar architecture (`flex flex-col lg:flex-row gap-6 items-start`).
+  - Implemented left-side stacked horizontal tab cards one by one with sticky navigation (`lg:w-80 lg:sticky lg:top-20`):
+    1. **1. Edit Business Details**: Store identity, contact info & shipping address.
+    2. **2. Link Business Profile**: Dedicated Google Maps review destination connection with prominent `Optional` badge.
+    3. **3. Review Assistant & QR Hub**: Direct `/r/[slug]` cloud link & printable Level Q QR generator.
+    4. **4. Standee Order & Status**: 4-stage tracking timeline, checkout & quotations with `Active Order` badge.
+    5. **5. Current Plan & Controls**: Active subscription tier & 1-tap touchpoint kill switch.
+  - Added dedicated merchant WhatsApp support card (`+91 92745 60880`) docked beneath the left-side tab controller.
+  - Maintained full responsiveness across mobile, tablet, and widescreen desktop layouts.
+
 ## [1.3.5] — 2026-10-29
 ### Added
 - **Instant WhatsApp Chat for All 4 Plans** (`PricingView.tsx`):

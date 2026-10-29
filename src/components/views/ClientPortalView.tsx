@@ -958,82 +958,197 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. THE 5 DEDICATED SUB-TABS CONTROLLER (NEW REQUESTED SEQUENCE)             */}
+      {/* 4. THE 5 DEDICATED SUB-TABS (HORIZONTAL TABS ON THE LEFT SIDE ONE BY ONE)  */}
       {/* ========================================================================= */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-surface-container border border-surface-variant/40 shadow-sm">
-        {/* 1. Edit Business Details */}
-        <button
-          onClick={() => setPortalSubTab("edit_details")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "edit_details"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Building2 className="w-4 h-4 text-primary" />
-          <span>1. Edit Business Details</span>
-        </button>
+      <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+        
+        {/* Left Side: Horizontal Navigation Tabs Stacked One by One */}
+        <nav className="w-full lg:w-80 flex-shrink-0 space-y-3 lg:sticky lg:top-20 z-10" aria-label="Dashboard Navigation">
+          <div className="p-2.5 sm:p-3 rounded-3xl bg-surface-container border border-surface-variant/40 shadow-sm space-y-2">
+            <div className="px-3 pt-1 pb-1 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-bold flex items-center justify-between">
+              <span>Navigation Tabs</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant font-semibold">5 Sections</span>
+            </div>
 
-        {/* 2. Link Business Profile (Optional / Not Mandatory) */}
-        <button
-          onClick={() => setPortalSubTab("link_gbp")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "link_gbp"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Star className="w-4 h-4 text-secondary" />
-          <span>2. Link Business Profile</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-variant text-on-surface-variant font-medium">
-            Optional
-          </span>
-        </button>
+            {/* 1. Edit Business Details */}
+            <button
+              onClick={() => setPortalSubTab("edit_details")}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                portalSubTab === "edit_details"
+                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
+                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  portalSubTab === "edit_details" ? "bg-white/15 text-white" : "bg-primary/10 text-primary"
+                }`}>
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-xs font-bold truncate">1. Edit Business Details</span>
+                  <span className={`block text-[10px] truncate ${portalSubTab === "edit_details" ? "text-zinc-300" : "text-on-surface-variant"}`}>
+                    Store Name, Contact &amp; Address
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                portalSubTab === "edit_details" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
+              }`} />
+            </button>
 
-        {/* 3. Review Assistant & QR Hub */}
-        <button
-          onClick={() => setPortalSubTab("assistant_qr")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "assistant_qr"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <QrCode className="w-4 h-4 text-emerald-500" />
-          <span>3. Review Assistant &amp; QR Hub</span>
-        </button>
+            {/* 2. Link Business Profile (Optional) */}
+            <button
+              onClick={() => setPortalSubTab("link_gbp")}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                portalSubTab === "link_gbp"
+                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
+                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  portalSubTab === "link_gbp" ? "bg-white/15 text-white" : "bg-secondary/15 text-secondary"
+                }`}>
+                  <Star className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="block text-xs font-bold truncate">2. Link Business Profile</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
+                      portalSubTab === "link_gbp" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                    }`}>
+                      Optional
+                    </span>
+                  </div>
+                  <span className={`block text-[10px] truncate ${portalSubTab === "link_gbp" ? "text-zinc-300" : "text-on-surface-variant"}`}>
+                    Google Review Destination Link
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                portalSubTab === "link_gbp" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
+              }`} />
+            </button>
 
-        {/* 4. Standee Order & Status */}
-        <button
-          onClick={() => setPortalSubTab("orders")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "orders"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Truck className="w-4 h-4 text-blue-500" />
-          <span>4. Standee Order &amp; Status</span>
-          {(orderSuccess || displayOrders.length > 0) && (
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 text-[9px] font-bold">
-              Active Order
-            </span>
-          )}
-        </button>
+            {/* 3. Review Assistant & QR Hub */}
+            <button
+              onClick={() => setPortalSubTab("assistant_qr")}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                portalSubTab === "assistant_qr"
+                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
+                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  portalSubTab === "assistant_qr" ? "bg-white/15 text-white" : "bg-emerald-500/15 text-emerald-600"
+                }`}>
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-xs font-bold truncate">3. Review Assistant &amp; QR Hub</span>
+                  <span className={`block text-[10px] truncate ${portalSubTab === "assistant_qr" ? "text-zinc-300" : "text-on-surface-variant"}`}>
+                    Your /r/{displayBusiness.slug || "link"} &amp; Laser QR
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                portalSubTab === "assistant_qr" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
+              }`} />
+            </button>
 
-        {/* 5. Current Plan & Controls */}
-        <button
-          onClick={() => setPortalSubTab("plan")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "plan"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <CreditCard className="w-4 h-4 text-purple-500" />
-          <span>5. Current Plan &amp; Controls</span>
-        </button>
-      </div>
+            {/* 4. Standee Order & Status */}
+            <button
+              onClick={() => setPortalSubTab("orders")}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                portalSubTab === "orders"
+                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
+                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  portalSubTab === "orders" ? "bg-white/15 text-white" : "bg-blue-500/15 text-blue-600"
+                }`}>
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="block text-xs font-bold truncate">4. Standee Order &amp; Status</span>
+                    {(orderSuccess || displayOrders.length > 0) ? (
+                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 text-[9px] font-bold">
+                        Active Order
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-700 text-[9px] font-bold">
+                        Active Order
+                      </span>
+                    )}
+                  </div>
+                  <span className={`block text-[10px] truncate ${portalSubTab === "orders" ? "text-zinc-300" : "text-on-surface-variant"}`}>
+                    Dispatch Tracking &amp; Buy Standee
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                portalSubTab === "orders" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
+              }`} />
+            </button>
+
+            {/* 5. Current Plan & Controls */}
+            <button
+              onClick={() => setPortalSubTab("plan")}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                portalSubTab === "plan"
+                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
+                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  portalSubTab === "plan" ? "bg-white/15 text-white" : "bg-purple-500/15 text-purple-600"
+                }`}>
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-xs font-bold truncate">5. Current Plan &amp; Controls</span>
+                  <span className={`block text-[10px] truncate ${portalSubTab === "plan" ? "text-zinc-300" : "text-on-surface-variant"}`}>
+                    Hardware Tier &amp; Touchpoint State
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
+                portalSubTab === "plan" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
+              }`} />
+            </button>
+          </div>
+
+          {/* Direct WhatsApp Specialist Contact Card */}
+          <div className="p-4 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-on-surface">Merchant WhatsApp Support</span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant leading-relaxed">
+              Have questions regarding your standee engraving or Google Review destination?
+            </p>
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20need%20assistance%20with%20my%20merchant%20account."
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Chat +91 92745 60880</span>
+            </a>
+          </div>
+        </nav>
+
+        {/* Right Main Content Area */}
+        <div className="flex-1 min-w-0 w-full space-y-6">
 
       {/* ========================================================================= */}
       {/* SUB-TAB 1: EDIT BUSINESS DETAILS (NAME, PHONE, CITY, ADDRESS ETC.)        */}
@@ -2487,6 +2602,9 @@ export default function ClientPortalView({
 
         </div>
       )}
+
+        </div>
+      </div>
 
       {/* Razorpay Interactive Checkout Modal */}
       <RazorpayCheckoutModal
