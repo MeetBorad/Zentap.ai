@@ -58,7 +58,10 @@ import {
   getAllOrders,
   adminUpdateOrderStatus,
   adminCreateOrder,
-  OrderRecord
+  OrderRecord,
+  QuotationRecord,
+  getAllQuotations,
+  adminUpdateQuotationStatus
 } from "@/lib/businessStore";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -79,11 +82,14 @@ interface AdminConsoleViewProps {
 export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewProps) {
   const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail } = useAuth();
   
-  // Navigation Tabs: Analytics Dashboard vs Fleet Table vs Standee Orders vs Plans
-  const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans">("analytics");
+  // Navigation Tabs: Analytics Dashboard vs Fleet Table vs Standee Orders vs Plans vs Franchise Quotes
+  const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans" | "quotations">("analytics");
 
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [quotations, setQuotations] = useState<QuotationRecord[]>([]);
+  const [quoteSearchQuery, setQuoteSearchQuery] = useState("");
+  const [quoteStatusFilter, setQuoteStatusFilter] = useState<"all" | "pending_review" | "contacted" | "quote_sent" | "approved">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "name_pending" | "paid" | "pending">("all");
   const [toastMsg, setToastMsg] = useState("");
@@ -107,7 +113,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   // Standee Order Modal State
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [orderTargetBizId, setOrderTargetBizId] = useState("");
-  const [orderPlan, setOrderPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  const [orderPlan, setOrderPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [orderPincode, setOrderPincode] = useState("380001");
   const [orderAddress, setOrderAddress] = useState("");
   const [orderRecipient, setOrderRecipient] = useState("");
@@ -115,7 +121,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   // Plan Management Modal State
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [selectedBizForPlan, setSelectedBizForPlan] = useState<BusinessRecord | null>(null);
-  const [selectedPlanValue, setSelectedPlanValue] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  const [selectedPlanValue, setSelectedPlanValue] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [selectedBillingStatus, setSelectedBillingStatus] = useState<"paid" | "pending" | "failed">("paid");
 
   // New Business Onboarding Modal State
@@ -124,7 +130,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [newBizEmail, setNewBizEmail] = useState("");
   const [newBizPhone, setNewBizPhone] = useState("");
   const [newBizCity, setNewBizCity] = useState("");
-  const [newBizPlan, setNewBizPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  const [newBizPlan, setNewBizPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [newBizReviewUrl, setNewBizReviewUrl] = useState("");
 
   // High-Res QR Modal State
@@ -148,6 +154,8 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
       setBusinesses(local);
       const localOrders = getAllOrders();
       setOrders(localOrders);
+      const localQuotes = getAllQuotations();
+      setQuotations(localQuotes);
 
       // 2. Fetch all merchant records from Supabase
       try {
@@ -593,6 +601,33 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     return true;
   });
 
+  const handleUpdateQuoteStatus = (id: string, status: QuotationRecord["status"]) => {
+    const updated = adminUpdateQuotationStatus(id, status);
+    setQuotations(updated);
+    showToast(`✓ Quotation ${id} status updated to ${status.replace("_", " ").toUpperCase()}`);
+  };
+
+  // Filtered quotations
+  const filteredQuotations = quotations.filter((q) => {
+    const query = quoteSearchQuery.toLowerCase();
+    const matchesQuery =
+      q.id.toLowerCase().includes(query) ||
+      q.business_name.toLowerCase().includes(query) ||
+      q.contact_name.toLowerCase().includes(query) ||
+      (q.city && q.city.toLowerCase().includes(query)) ||
+      (q.phone && q.phone.includes(query)) ||
+      (q.email && q.email.toLowerCase().includes(query));
+
+    if (!matchesQuery) return false;
+
+    if (quoteStatusFilter === "pending_review") return q.status === "pending_review";
+    if (quoteStatusFilter === "contacted") return q.status === "contacted";
+    if (quoteStatusFilter === "quote_sent") return q.status === "quote_sent";
+    if (quoteStatusFilter === "approved") return q.status === "approved";
+
+    return true;
+  });
+
   // Comprehensive Fleet Analytics Calculations
   const totalFleet = businesses.length;
   const activeBusinesses = businesses.filter((b) => b.active).length;
@@ -775,6 +810,23 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
           <CreditCard className="w-4 h-4 text-purple-400" />
           <span>Plans &amp; Subscriptions</span>
         </button>
+
+        <button
+          onClick={() => setAdminTab("quotations")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminTab === "quotations"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>Franchise Quotes ({quotations.length})</span>
+          {quotations.filter((q) => q.status === "pending_review").length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
+              {quotations.filter((q) => q.status === "pending_review").length} New
+            </span>
+          )}
+        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -864,8 +916,8 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
 
           </div>
 
-          {/* Operational Status Row: Name Confirmation, Google Review Link & Orders */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Operational Status Row: Name Confirmation, Google Review Link, Orders & Franchise Quotes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* 1. Business Name Confirmation Pending Status */}
             <div className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
@@ -952,16 +1004,16 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                   {orders.length} Total Orders
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2 my-1 text-center">
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/25">
+              <div className="grid grid-cols-3 gap-1.5 my-1 text-center">
+                <div className="p-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25">
                   <span className="font-bold text-xs text-amber-700 block">{ordersProcessing}</span>
-                  <span className="text-[9px] text-on-surface-variant">In Production</span>
+                  <span className="text-[9px] text-on-surface-variant">Production</span>
                 </div>
-                <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/25">
+                <div className="p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/25">
                   <span className="font-bold text-xs text-blue-700 block">{ordersDispatched}</span>
                   <span className="text-[9px] text-on-surface-variant">In Transit</span>
                 </div>
-                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
                   <span className="font-bold text-xs text-emerald-700 block">{ordersDelivered}</span>
                   <span className="text-[9px] text-on-surface-variant">Delivered</span>
                 </div>
@@ -970,7 +1022,44 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                 onClick={() => setAdminTab("orders")}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer mt-2"
               >
-                <span>Manage Dispatch Timeline</span>
+                <span>Manage Dispatch</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 4. Franchise & Multi-Outlet Quotations Status */}
+            <div className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
+              quotations.filter((q) => q.status === "pending_review").length > 0
+                ? "bg-amber-500/10 border-amber-500/40 text-on-surface"
+                : "bg-surface-container-lowest border-surface-variant/40 text-on-surface"
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <h4 className="font-headline font-bold text-sm text-on-surface">
+                    Franchise Quotations
+                  </h4>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  quotations.filter((q) => q.status === "pending_review").length > 0
+                    ? "bg-amber-500/20 text-amber-800"
+                    : "bg-emerald-500/15 text-emerald-700"
+                }`}>
+                  {quotations.filter((q) => q.status === "pending_review").length > 0
+                    ? `${quotations.filter((q) => q.status === "pending_review").length} New`
+                    : `${quotations.length} Quotes`}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                {quotations.length > 0
+                  ? `${quotations.length} enterprise quotation request(s) for multi-location standees and branch QR code fleets.`
+                  : "No franchise quotation requests submitted yet."}
+              </p>
+              <button
+                onClick={() => setAdminTab("quotations")}
+                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
+              >
+                <span>Open Quotations Hub</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1509,7 +1598,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Plan Highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
               <div>
@@ -1565,6 +1654,36 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
               </div>
             </div>
 
+            {/* Tier 4: Franchise & Multi-Location Fleet */}
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-amber-500/40 shadow-sm flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-amber-500 text-black px-3 py-1 rounded-bl-xl text-[10px] font-bold uppercase">
+                Enterprise
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-600">Tier 4</span>
+                <h4 className="font-headline font-bold text-lg text-on-surface mt-1">Franchise Multi-Outlet Fleet</h4>
+                <div className="my-3">
+                  <span className="font-headline font-black text-2xl text-amber-600">Custom Quote</span>
+                  <span className="text-xs text-on-surface-variant block mt-0.5">Bulk Hardware + Multi-QR SaaS</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Dedicated standee hardware fleet with individual QR codes for each branch counter and centralized owner reporting.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-surface-variant/30 mt-4 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-amber-700">
+                  {quotations.length} Active Quote Requests
+                </span>
+                <button
+                  onClick={() => setAdminTab("quotations")}
+                  className="text-xs font-bold text-amber-600 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>View Quotes</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {/* Business Subscription Control Table */}
@@ -1597,11 +1716,23 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                       </td>
                       <td className="py-3 px-4">
                         <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-semibold text-[10px] text-on-surface border border-surface-variant/40">
-                          {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                          {b.plan === "card_500" 
+                            ? "Card ₹500" 
+                            : b.plan === "standee_1500" 
+                            ? "Standee ₹1,500" 
+                            : b.plan === "standee_auto_2000"
+                            ? "Auto Reply ₹2,000"
+                            : b.plan === "franchise_custom"
+                            ? "Franchise Fleet (Custom)"
+                            : "Not Selected"}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-mono font-semibold text-secondary">
-                        {b.plan === "card_500" ? "₹0 / mo" : "₹1,000 / mo"}
+                        {b.plan === "card_500" 
+                          ? "₹0 / mo" 
+                          : b.plan === "franchise_custom"
+                          ? "Custom SaaS"
+                          : "₹1,000 / mo"}
                       </td>
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
@@ -1629,6 +1760,211 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: FRANCHISE & MULTI-OUTLET CUSTOM QUOTATIONS HUB                     */}
+      {/* ========================================================================= */}
+      {adminTab === "quotations" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Top Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-headline font-bold text-xl text-on-surface">
+                    Franchise &amp; Multi-Outlet Custom Quotations Hub
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-800 text-[10px] font-bold">
+                    Enterprise Pipeline
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Review, contact, and manage multi-location standee orders, individual branch QR requests, and franchise quotations.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Stats Pill */}
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-bold text-amber-700">
+                {quotations.filter((q) => q.status === "pending_review").length} Pending Review
+              </span>
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-700">
+                {quotations.filter((q) => q.status === "approved").length} Approved
+              </span>
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-surface-container-low border border-surface-variant/40">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                type="text"
+                placeholder="Search by franchise name, city, contact person, or quote ID..."
+                value={quoteSearchQuery}
+                onChange={(e) => setQuoteSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-surface border border-surface-variant/40 text-xs text-on-surface focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-on-surface-variant font-medium">Filter:</span>
+              <select
+                value={quoteStatusFilter}
+                onChange={(e) => setQuoteStatusFilter(e.target.value as any)}
+                className="px-3 py-2 rounded-xl bg-surface border border-surface-variant/40 text-xs font-bold text-on-surface focus:outline-none"
+              >
+                <option value="all">All Quotations ({quotations.length})</option>
+                <option value="pending_review">Pending Review</option>
+                <option value="contacted">Contacted</option>
+                <option value="quote_sent">Quote Sent</option>
+                <option value="approved">Approved</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quotations Table */}
+          <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
+                    <th className="py-3 px-4">Quote ID &amp; Date</th>
+                    <th className="py-3 px-4">Franchise &amp; Location</th>
+                    <th className="py-3 px-4">Contact Info</th>
+                    <th className="py-3 px-4">Configuration</th>
+                    <th className="py-3 px-4">Estimated Value</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-variant/30">
+                  {filteredQuotations.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-on-surface-variant text-xs">
+                        No franchise quotations found matching the criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredQuotations.map((q) => {
+                      const cleanPhone = (q.phone || "").replace(/\D/g, "");
+                      return (
+                        <tr key={q.id} className="hover:bg-surface-container-low/50">
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-amber-600 block">{q.id}</span>
+                            <span className="text-[10px] text-on-surface-variant font-mono">
+                              {new Date(q.at).toLocaleDateString()}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-on-surface block">{q.business_name}</span>
+                            <span className="text-[11px] text-on-surface-variant flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-secondary" />
+                              <span>{q.city || "Pan-India"}</span>
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="font-semibold text-on-surface block">{q.contact_name}</span>
+                            <span className="text-[11px] text-on-surface-variant block font-mono">{q.phone}</span>
+                            <span className="text-[10px] text-zinc-400 block font-mono">{q.email}</span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                              <span className="px-2 py-0.5 rounded-md bg-surface-container font-bold text-[10px] text-on-surface border border-surface-variant/40">
+                                {q.branch_count} Branches
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-surface-container font-bold text-[10px] text-on-surface border border-surface-variant/40">
+                                {q.standee_count} Standees
+                              </span>
+                              {q.multiple_qr && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 font-bold text-[9px]">
+                                  Multi-QR
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-on-surface-variant block capitalize">
+                              Finish: {q.hardware_type.replace(/_/g, " ")}
+                            </span>
+                            {q.notes && (
+                              <p className="text-[10px] text-zinc-500 italic mt-1 max-w-xs line-clamp-2" title={q.notes}>
+                                &quot;{q.notes}&quot;
+                              </p>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-emerald-600 block">
+                              ₹{q.estimated_hardware_total?.toLocaleString("en-IN")} Hardware
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant block font-mono">
+                              + ₹{q.estimated_monthly_sub?.toLocaleString("en-IN")}/mo SaaS
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <select
+                              value={q.status}
+                              onChange={(e) => handleUpdateQuoteStatus(q.id, e.target.value as any)}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border cursor-pointer focus:outline-none ${
+                                q.status === "approved"
+                                  ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                                  : q.status === "quote_sent"
+                                  ? "bg-blue-500/15 text-blue-700 border-blue-500/30"
+                                  : q.status === "contacted"
+                                  ? "bg-purple-500/15 text-purple-700 border-purple-500/30"
+                                  : "bg-amber-500/15 text-amber-700 border-amber-500/30"
+                              }`}
+                            >
+                              <option value="pending_review">PENDING REVIEW</option>
+                              <option value="contacted">CONTACTED</option>
+                              <option value="quote_sent">QUOTE SENT</option>
+                              <option value="approved">APPROVED</option>
+                            </select>
+                          </td>
+
+                          <td className="py-3 px-4 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              {cleanPhone && (
+                                <a
+                                  href={`https://wa.me/91${cleanPhone}?text=Hello%20${encodeURIComponent(q.contact_name)},%20this%20is%20ZenTap%20regarding%20your%20franchise%20quotation%20${q.id}%20for%20${encodeURIComponent(q.business_name)}.`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors"
+                                  title="Chat with Franchise Client on WhatsApp"
+                                >
+                                  <Phone className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                              {q.email && (
+                                <a
+                                  href={`mailto:${q.email}?subject=ZenTap%20Franchise%20Standee%20Quotation%20${q.id}&body=Hello%20${encodeURIComponent(q.contact_name)},`}
+                                  className="p-1.5 rounded-lg bg-blue-500/10 text-blue-700 hover:bg-blue-500/20 border border-blue-500/30 transition-colors"
+                                  title="Send Email Quote"
+                                >
+                                  <Mail className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1944,6 +2280,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                   <option value="card_500">Normal Smart NFC Review Card (₹500)</option>
                   <option value="standee_1500">Auto Google Review Standee (₹1,500 + ₹1,000/mo)</option>
                   <option value="standee_auto_2000">Auto Standee + Reply Engine (₹2,000 + ₹1,000/mo)</option>
+                  <option value="franchise_custom">Franchise Multi-Outlet Fleet (Custom Quotation)</option>
                 </select>
               </div>
 

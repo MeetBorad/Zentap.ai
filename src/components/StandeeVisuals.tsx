@@ -4,7 +4,7 @@ import React from "react";
 import { Radio, QrCode, Sparkles, Check, ShieldCheck } from "lucide-react";
 
 interface StandeeVisualProps {
-  type: "card_500" | "standee_1500" | "standee_auto_2000";
+  type: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
   businessName?: string;
   className?: string;
 }
@@ -117,6 +117,88 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
 
         {/* Standee Acrylic Base */}
         <div className="w-full h-3 bg-gradient-to-r from-zinc-800 via-zinc-600 to-zinc-800 rounded-full mt-4 shadow-md border border-white/20" />
+      </div>
+    );
+  }
+
+  if (type === "franchise_custom") {
+    // Multi-Outlet Franchise Custom Standee Fleet Visual
+    return (
+      <div className={`relative w-full max-w-sm rounded-3xl bg-gradient-to-b from-[#1C1713] via-[#14100D] to-[#0A0807] p-6 shadow-2xl border-2 border-amber-500/60 overflow-hidden text-white flex flex-col items-center text-center ${className}`}>
+        {/* Amber Halo */}
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-bold text-amber-300 mb-2">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>FRANCHISE MULTI-OUTLET FLEET</span>
+        </div>
+
+        <h4 className="font-serif font-black text-lg sm:text-xl text-white tracking-wide truncate max-w-full mb-0.5">
+          {displayBiz}
+        </h4>
+
+        <p className="text-[11px] text-amber-200/80 font-medium mb-3">
+          Multi-Branch Standee Fleet &bull; Individual Dynamic QRs
+        </p>
+
+        {/* 3-Standee Overlapping Cascade Visual */}
+        <div className="relative w-full h-36 flex items-center justify-center my-1">
+          {/* Left Branch Standee */}
+          <div className="absolute left-4 top-4 w-24 h-28 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-950 border border-zinc-600/70 p-2 shadow-lg flex flex-col items-center justify-between transform -rotate-6">
+            <span className="text-[7px] font-mono font-bold text-amber-400">BRANCH 01</span>
+            <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+              <Radio className="w-3.5 h-3.5 text-amber-400" />
+            </div>
+            <div className="w-6 h-6 bg-white rounded p-0.5">
+              <QrCode className="w-full h-full text-black" />
+            </div>
+          </div>
+
+          {/* Right Branch Standee */}
+          <div className="absolute right-4 top-4 w-24 h-28 rounded-xl bg-gradient-to-b from-zinc-800 to-zinc-950 border border-zinc-600/70 p-2 shadow-lg flex flex-col items-center justify-between transform rotate-6">
+            <span className="text-[7px] font-mono font-bold text-amber-400">BRANCH 02</span>
+            <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+              <Radio className="w-3.5 h-3.5 text-amber-400" />
+            </div>
+            <div className="w-6 h-6 bg-white rounded p-0.5">
+              <QrCode className="w-full h-full text-black" />
+            </div>
+          </div>
+
+          {/* Center Flagship Standee */}
+          <div className="relative z-10 w-28 h-32 rounded-2xl bg-gradient-to-b from-[#2A1E14] via-[#1A120B] to-black border-2 border-amber-400 p-2.5 shadow-2xl flex flex-col items-center justify-between">
+            <span className="text-[8px] font-mono font-bold text-amber-300 uppercase">HEADQUARTERS</span>
+            <div className="w-7 h-7 rounded-full bg-amber-400/30 flex items-center justify-center text-amber-300 animate-pulse">
+              <Radio className="w-4 h-4 text-amber-300" />
+            </div>
+            <div className="w-8 h-8 bg-white rounded-md p-0.5 shadow">
+              <QrCode className="w-full h-full text-black" />
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Highlights Grid */}
+        <div className="w-full pt-3 border-t border-amber-500/30 grid grid-cols-2 gap-2 text-left text-[10px]">
+          <div className="flex items-center gap-1.5 text-amber-200">
+            <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span>Unique QR per Branch</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-amber-200">
+            <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span>Central Admin Hub</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-amber-200">
+            <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span>Separate Google Links</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-amber-200">
+            <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span>Bulk Volume Pricing</span>
+          </div>
+        </div>
+
+        {/* Heavy Base */}
+        <div className="w-full h-3 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 rounded-full mt-4 shadow-lg border border-amber-300/50" />
       </div>
     );
   }

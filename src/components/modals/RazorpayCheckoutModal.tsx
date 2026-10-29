@@ -18,7 +18,7 @@ import { PLAN_PRICES, PLAN_NAMES, getCourierCharge } from "@/lib/razorpay";
 interface RazorpayCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  planId: "card_500" | "standee_1500" | "standee_auto_2000";
+  planId: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
   businessId: string;
   businessName: string;
   customerEmail: string;

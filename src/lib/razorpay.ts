@@ -11,6 +11,7 @@ export const PLAN_NAMES: Record<string, string> = {
   card_500: "Normal Smart NFC Review Card (₹500)",
   standee_1500: "Auto Google Review Standee with NFC & QR (₹1,500)",
   standee_auto_2000: "Auto Google Review Standee + Auto Reply Engine (₹2,000)",
+  franchise_custom: "Franchise Multi-Outlet Custom Standee Fleet (Custom Quotation)",
 };
 
 export function getCourierCharge(pincode: string): { amount: number; zone: string } {

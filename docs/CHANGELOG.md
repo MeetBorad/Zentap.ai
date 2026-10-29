@@ -1,5 +1,31 @@
 # ZenTap.ai — Changelog
 
+## [1.3.3] — 2026-10-29
+### Added
+- **Sub-Tab Re-Sequencing under My Live Business Analytics** (`ClientPortalView.tsx`):
+  1. **Sub-Tab 1: Edit Business Details**: Default opening tab for editing business name, contact, city, state, country, pincode, and store address.
+  2. **Sub-Tab 2: Link Business Profile (Optional)**: Explicitly non-mandatory Google Business Profile listing and write-review destination URL linking, with informative callout explaining ZenTap operations will verify and connect review links prior to laser engraving if left blank.
+  3. **Sub-Tab 3: Review Assistant & QR Hub**: Your customized assistant link `/r/[slug]` with 1-click clipboard copy, live flow test, and printable Level Q Standee QR code (PNG).
+  4. **Sub-Tab 4: Standee Order & Status**: 4-stage dispatch tracking timeline, hardware preview visuals, and purchasing.
+  5. **Sub-Tab 5: Current Plan & Controls**: Hardware tier status, NTAG216 telemetry, live active/deactivate toggle, and private feedback inbox.
+- **Franchise & Multi-Location Custom Plan (Plan 4)**:
+  - Added 4th commercial tier: **Plan 4 — Franchise & Multi-Location Custom Plan** (`franchise_custom`).
+  - Added dedicated multi-standee visual preview in `StandeeVisuals.tsx` displaying branch standees and headquarters master QR touchpoint.
+  - Interactive **Franchise Custom Quotation Builder**:
+    - Branch counter & standee counter steppers with bulk discounts (₹1,200/standee, ₹800/branch SaaS).
+    - Hardware material finish selector (Matte Obsidian, Laser Wood, Hybrid Fleet).
+    - Multiple unique QR codes toggle (individual branch destinations & Google review links).
+    - Enterprise add-ons checklist (Auto Review Reply AI, Centralized Multi-Outlet Dashboard, Custom Laser Logo Engraving, Priority Multi-Location Drop-shipping).
+    - Real-time estimated quotation breakdown.
+    - Automatic quotation dispatch & storage (`ZT-QTN-XXXXX`) into the Admin Quotations Hub.
+    - 1-click WhatsApp quote support button (`https://wa.me/918140417772`).
+    - Merchant quotation history display with live status tracking.
+- **Franchise & Custom Quotations Hub in Superadmin Console** (`AdminConsoleView.tsx`):
+  - Added dedicated 5th tab: **Franchise Quotes Hub** with badge alert for new pending quotations.
+  - Added Franchise Quotations Pipeline operational card in Tab 1 Analytics.
+  - Quotations table with Quote ID, Franchise Name, City, Contact, Configuration, Estimated Value, Status selector dropdown (`pending_review`, `contacted`, `quote_sent`, `approved`), and 1-click WhatsApp/Email actions.
+  - Added Tier 4 card in Plans & Subscriptions tab with quick access to the quotation pipeline.
+
 ## [1.3.2] — 2026-10-29
 ### Added
 - Created live Supabase automated audit scripts: `tests/check_supabase.mjs` and `tests/test_supabase_live_ops.mjs`.

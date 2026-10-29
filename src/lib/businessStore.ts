@@ -13,7 +13,7 @@ export interface BusinessRecord {
   pincode: string;
   gbp_link: string;
   slug: string; // unique slug e.g. cafe-aroma-x7k2
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | null;
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
   active: boolean;
@@ -51,7 +51,7 @@ export interface FeedbackRecord {
 export interface OrderRecord {
   id: string;
   business_id: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000";
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
   amount: number;
   courier: number;
   status: "processing" | "in_production" | "shipped" | "delivered";
@@ -62,12 +62,33 @@ export interface OrderRecord {
   at: string;
 }
 
+export interface QuotationRecord {
+  id: string; // e.g. ZT-QTN-84920
+  business_id: string;
+  business_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  city: string;
+  branch_count: number;
+  standee_count: number;
+  hardware_type: "matte_obsidian" | "laser_wood" | "card_and_standee";
+  multiple_qr: boolean;
+  addons: string[];
+  estimated_hardware_total: number;
+  estimated_monthly_sub: number;
+  notes: string;
+  status: "pending_review" | "contacted" | "quote_sent" | "approved";
+  at: string;
+}
+
 const STORAGE_KEY_PREFIX = "zentap_v2_biz_";
 const ALL_BIZ_INDEX_KEY = "zentap_v2_all_businesses";
 const SCANS_KEY_PREFIX = "zentap_v2_scans_";
 const EVENTS_KEY_PREFIX = "zentap_v2_events_";
 const FEEDBACK_KEY_PREFIX = "zentap_v2_feedback_";
 const ORDERS_KEY_PREFIX = "zentap_v2_orders_";
+const QUOTATIONS_INDEX_KEY = "zentap_v2_quotations";
 
 // Google Review Link Validation Regex as specified
 export const GOOGLE_REVIEW_LINK_REGEX = /^https:\/\/(g\.page\/r\/|search\.google\.com\/local\/writereview\?placeid=|maps\.app\.goo\.gl\/)/i;
@@ -605,13 +626,14 @@ export function getFeedbacksForBusiness(bizId: string): FeedbackRecord[] {
 // Create an order (Razorpay checkout)
 export function createOrderRecord(
   businessId: string,
-  plan: "card_500" | "standee_1500" | "standee_auto_2000",
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom",
   pincode: string
 ): OrderRecord {
   const planPrices: Record<string, number> = {
     card_500: 500,
     standee_1500: 1500,
     standee_auto_2000: 2000,
+    franchise_custom: 0,
   };
 
   const courierInfo = calculateCourierCharge(pincode);
@@ -784,12 +806,110 @@ export function adminUpdateOrderStatus(
 // Admin create a standee order on behalf of a business
 export function adminCreateOrder(
   businessId: string,
-  plan: "card_500" | "standee_1500" | "standee_auto_2000",
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom",
   pincode: string = "380001",
   address?: string
 ): OrderRecord {
-  const order = createOrderRecord(businessId, plan, pincode);
+  const order = createOrderRecord(businessId, plan as any, pincode);
   // Auto-mark business payment status as paid
   adminUpdateBusinessRecord(businessId, { payment_status: "paid" });
   return order;
+}
+
+// =========================================================================
+// 8. FRANCHISE & MULTI-LOCATION CUSTOM QUOTATIONS HUB
+// =========================================================================
+
+const INITIAL_QUOTATIONS: QuotationRecord[] = [
+  {
+    id: "ZT-QTN-88210",
+    business_id: "biz-102",
+    business_name: "The Urban Bistro & Lounge (Franchise Group)",
+    contact_name: "Karan Mehta",
+    email: "hello@urbanbistro.in",
+    phone: "+91 98251 44210",
+    city: "Ahmedabad & Vadodara",
+    branch_count: 4,
+    standee_count: 8,
+    hardware_type: "matte_obsidian",
+    multiple_qr: true,
+    addons: [
+      "Unique QR per Branch Counter",
+      "Auto Google Review Reply AI",
+      "Centralized Multi-Outlet Dashboard",
+      "Custom Laser Logo Engraving",
+    ],
+    estimated_hardware_total: 9600,
+    estimated_monthly_sub: 3200,
+    notes: "Branch 1: Sindhu Bhavan (2 standees), Branch 2: Vastrapur (2 standees), Branch 3: Alkapuri Vadodara (2 standees), Branch 4: Manjalpur Vadodara (2 standees). Require separate review destination links for each branch Google listing.",
+    status: "pending_review",
+    at: "2026-10-28T14:30:00.000Z",
+  },
+];
+
+// Create and save custom franchise quotation request
+export function createQuotationRecord(
+  data: Omit<QuotationRecord, "id" | "at" | "status">
+): QuotationRecord {
+  const newQuote: QuotationRecord = {
+    ...data,
+    id: `ZT-QTN-${Math.floor(10000 + Math.random() * 90000)}`,
+    status: "pending_review",
+    at: new Date().toISOString(),
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      const all = getAllQuotations();
+      all.unshift(newQuote);
+      localStorage.setItem(QUOTATIONS_INDEX_KEY, JSON.stringify(all));
+    } catch (err) {
+      console.warn("createQuotationRecord error:", err);
+    }
+  }
+
+  return newQuote;
+}
+
+// Fetch all quotations (for Admin Console)
+export function getAllQuotations(): QuotationRecord[] {
+  if (typeof window === "undefined") return INITIAL_QUOTATIONS;
+  try {
+    const raw = localStorage.getItem(QUOTATIONS_INDEX_KEY);
+    let list: QuotationRecord[] = raw ? JSON.parse(raw) : [];
+    INITIAL_QUOTATIONS.forEach((seed) => {
+      if (!list.some((q) => q.id === seed.id)) {
+        list.push(seed);
+      }
+    });
+    return list.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  } catch {
+    return INITIAL_QUOTATIONS;
+  }
+}
+
+// Fetch quotations for a specific business
+export function getQuotationsForBusiness(businessId: string): QuotationRecord[] {
+  const all = getAllQuotations();
+  return all.filter((q) => q.business_id === businessId);
+}
+
+// Admin update quotation status
+export function adminUpdateQuotationStatus(
+  id: string,
+  status: QuotationRecord["status"]
+): QuotationRecord[] {
+  if (typeof window === "undefined") return getAllQuotations();
+  try {
+    const all = getAllQuotations();
+    const idx = all.findIndex((q) => q.id === id);
+    if (idx >= 0) {
+      all[idx].status = status;
+      localStorage.setItem(QUOTATIONS_INDEX_KEY, JSON.stringify(all));
+    }
+    return all;
+  } catch (err) {
+    console.warn("adminUpdateQuotationStatus error:", err);
+    return getAllQuotations();
+  }
 }

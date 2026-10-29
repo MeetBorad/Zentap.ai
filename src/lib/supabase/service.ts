@@ -15,7 +15,7 @@ export interface DbBusinessRecord {
   category: string | null;
   gbp_link: string | null;
   slug: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | null;
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
   active: boolean;
@@ -57,7 +57,7 @@ export interface DbFeedbackRecord {
 export interface DbOrderRecord {
   id: string;
   business_id: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000";
+  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
   amount: number;
   courier: number;
   status: "processing" | "in_production" | "shipped" | "delivered";

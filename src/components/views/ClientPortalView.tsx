@@ -45,7 +45,8 @@ import {
   Send,
   Zap,
   CheckCircle,
-  Power
+  Power,
+  FileCheck
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -60,6 +61,9 @@ import {
   SAMPLE_DEMO_BUSINESS, 
   FeedbackRecord, 
   OrderRecord,
+  QuotationRecord,
+  createQuotationRecord,
+  getQuotationsForBusiness,
   logScan,
   validateGoogleReviewUrl
 } from "@/lib/businessStore";
@@ -91,12 +95,13 @@ export default function ClientPortalView({
   const [dashboardTab, setDashboardTab] = useState<"live" | "sample">("live");
 
   // Sub-Tabs under My Live Business Analytics:
-  // 1: link_gbp, 2: edit_details, 3: assistant_qr, 4: orders, 5: plan
-  const [portalSubTab, setPortalSubTab] = useState<"link_gbp" | "edit_details" | "assistant_qr" | "orders" | "plan">("link_gbp");
+  // 1: edit_details, 2: link_gbp (optional), 3: assistant_qr, 4: orders, 5: plan
+  const [portalSubTab, setPortalSubTab] = useState<"edit_details" | "link_gbp" | "assistant_qr" | "orders" | "plan">("edit_details");
 
   const [business, setBusiness] = useState<BusinessRecord>(SAMPLE_DEMO_BUSINESS);
   const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [quotations, setQuotations] = useState<QuotationRecord[]>([]);
   const [analytics, setAnalytics] = useState({
     totalScans: 0,
     nfcScans: 0,
@@ -123,12 +128,29 @@ export default function ClientPortalView({
   const [formEmail, setFormEmail] = useState("");
   const [formAddress, setFormAddress] = useState("");
 
-  // Buy Standee State
-  const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  // Buy Standee & Custom Plan State
+  const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<OrderRecord | null>(null);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+
+  // Franchise Custom Quotation Builder State
+  const [quoteBranches, setQuoteBranches] = useState<number>(3);
+  const [quoteStandees, setQuoteStandees] = useState<number>(6);
+  const [quoteHardware, setQuoteHardware] = useState<"matte_obsidian" | "laser_wood" | "card_and_standee">("matte_obsidian");
+  const [quoteMultipleQr, setQuoteMultipleQr] = useState<boolean>(true);
+  const [quoteAddons, setQuoteAddons] = useState<string[]>([
+    "Unique QR per Branch Counter",
+    "Auto Google Review Reply AI",
+    "Centralized Multi-Outlet Dashboard",
+    "Custom Laser Logo Engraving",
+  ]);
+  const [quoteNotes, setQuoteNotes] = useState<string>("");
+  const [quoteContactName, setQuoteContactName] = useState<string>("");
+  const [quotePhone, setQuotePhone] = useState<string>("");
+  const [quoteSubmittedRecord, setQuoteSubmittedRecord] = useState<QuotationRecord | null>(null);
+  const [quoteSubmitting, setQuoteSubmitting] = useState<boolean>(false);
 
   // In-Dashboard Password Change State
   const [newPassword, setNewPassword] = useState("");
@@ -157,6 +179,9 @@ export default function ClientPortalView({
         populateForm(b);
         setFeedbacks(getFeedbacksForBusiness(b.id));
         setOrders(getOrdersForBusiness(b.id));
+        setQuotations(getQuotationsForBusiness(b.id));
+        setQuoteContactName(b.name || user.user_metadata?.full_name || "");
+        setQuotePhone(b.phone || "");
         setAnalytics(getBusinessAnalytics(b.id));
 
         // Supabase sync
@@ -260,6 +285,7 @@ export default function ClientPortalView({
         populateForm(SAMPLE_DEMO_BUSINESS);
         setFeedbacks(getFeedbacksForBusiness(SAMPLE_DEMO_BUSINESS.id));
         setOrders(getOrdersForBusiness(SAMPLE_DEMO_BUSINESS.id));
+        setQuotations(getQuotationsForBusiness(SAMPLE_DEMO_BUSINESS.id));
         setAnalytics(SAMPLE_ANALYTICS);
       }
     }
@@ -272,6 +298,7 @@ export default function ClientPortalView({
   const displayBusiness = isSample ? SAMPLE_DEMO_BUSINESS : business;
   const displayFeedbacks = isSample ? getFeedbacksForBusiness(SAMPLE_DEMO_BUSINESS.id) : feedbacks;
   const displayOrders = isSample ? getOrdersForBusiness(SAMPLE_DEMO_BUSINESS.id) : orders;
+  const displayQuotations = isSample ? getQuotationsForBusiness(SAMPLE_DEMO_BUSINESS.id) : quotations;
   const displayAnalytics = isSample ? SAMPLE_ANALYTICS : analytics;
 
   // Generate QR Code with Error Correction Level Q for displayed business
@@ -562,13 +589,68 @@ export default function ClientPortalView({
 
   // Courier and Plan Calculation
   const courierData = calculateCourierCharge(formPincode || displayBusiness.pincode || "380001");
-  const basePlanPrice = selectedPlan === "card_500" ? 500 : selectedPlan === "standee_1500" ? 1500 : 2000;
+  const basePlanPrice = selectedPlan === "card_500" ? 500 : selectedPlan === "standee_1500" ? 1500 : selectedPlan === "standee_auto_2000" ? 2000 : 0;
   const grandTotal = basePlanPrice + courierData.amount;
 
-  const planTitles = {
+  const planTitles: Record<string, string> = {
     card_500: "Normal Smart NFC Review Card (₹500)",
     standee_1500: "Auto Google Review Standee with NFC & QR (₹1,500)",
     standee_auto_2000: "Auto Google Review Standee + Auto Reply Engine (₹2,000)",
+    franchise_custom: "Franchise Multi-Outlet Custom Standee Fleet (Custom Quotation)",
+  };
+
+  // Franchise Quotation Submission Handler
+  const handleSubmitQuotation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quoteBranches < 2) {
+      showToast("Franchise custom plan requires at least 2 branches.");
+      return;
+    }
+    if (quoteStandees < 2) {
+      showToast("Please select at least 2 standees for your multi-location fleet.");
+      return;
+    }
+
+    setQuoteSubmitting(true);
+    try {
+      // Volume discounted pricing:
+      // Standees: ₹1,200/unit bulk pricing (regular ₹1,500)
+      // Platform / AI Reply: ₹800/branch/month (regular ₹1,000)
+      const estimatedHardware = quoteStandees * 1200;
+      const estimatedSub = quoteBranches * 800;
+
+      const newQuote = createQuotationRecord({
+        business_id: displayBusiness.id,
+        business_name: formName || displayBusiness.name || "Franchise Merchant",
+        contact_name: quoteContactName || formName || displayBusiness.name,
+        email: formEmail || displayBusiness.email || user?.email || "",
+        phone: quotePhone || formPhone || displayBusiness.phone || "",
+        city: formCity || displayBusiness.city || "Ahmedabad",
+        branch_count: Number(quoteBranches),
+        standee_count: Number(quoteStandees),
+        hardware_type: quoteHardware,
+        multiple_qr: quoteMultipleQr,
+        addons: quoteAddons,
+        estimated_hardware_total: estimatedHardware,
+        estimated_monthly_sub: estimatedSub,
+        notes: quoteNotes,
+      });
+
+      setQuoteSubmittedRecord(newQuote);
+      setQuotations(getQuotationsForBusiness(displayBusiness.id));
+      showToast(`✓ Quotation request ${newQuote.id} created & saved to Admin Hub!`);
+    } catch (err) {
+      console.error("Quotation creation error:", err);
+      showToast("Could not submit quotation. Please try again.");
+    } finally {
+      setQuoteSubmitting(false);
+    }
+  };
+
+  const handleToggleAddon = (addon: string) => {
+    setQuoteAddons((prev) =>
+      prev.includes(addon) ? prev.filter((a) => a !== addon) : [...prev, addon]
+    );
   };
 
   return (
@@ -865,24 +947,10 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. THE 5 DEDICATED SUB-TABS CONTROLLER                                    */}
+      {/* 4. THE 5 DEDICATED SUB-TABS CONTROLLER (NEW REQUESTED SEQUENCE)             */}
       {/* ========================================================================= */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-surface-container border border-surface-variant/40 shadow-sm">
-        <button
-          onClick={() => setPortalSubTab("link_gbp")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            portalSubTab === "link_gbp"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Star className="w-4 h-4 text-secondary" />
-          <span>1. Link Business Profile</span>
-          {!displayBusiness.review_url && (
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Review Link Setup Needed" />
-          )}
-        </button>
-
+        {/* 1. Edit Business Details */}
         <button
           onClick={() => setPortalSubTab("edit_details")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -892,9 +960,26 @@ export default function ClientPortalView({
           }`}
         >
           <Building2 className="w-4 h-4 text-primary" />
-          <span>2. Edit Business Details</span>
+          <span>1. Edit Business Details</span>
         </button>
 
+        {/* 2. Link Business Profile (Optional / Not Mandatory) */}
+        <button
+          onClick={() => setPortalSubTab("link_gbp")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            portalSubTab === "link_gbp"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <Star className="w-4 h-4 text-secondary" />
+          <span>2. Link Business Profile</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-surface-variant text-on-surface-variant font-medium">
+            Optional
+          </span>
+        </button>
+
+        {/* 3. Review Assistant & QR Hub */}
         <button
           onClick={() => setPortalSubTab("assistant_qr")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -907,6 +992,7 @@ export default function ClientPortalView({
           <span>3. Review Assistant &amp; QR Hub</span>
         </button>
 
+        {/* 4. Standee Order & Status */}
         <button
           onClick={() => setPortalSubTab("orders")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -924,6 +1010,7 @@ export default function ClientPortalView({
           )}
         </button>
 
+        {/* 5. Current Plan & Controls */}
         <button
           onClick={() => setPortalSubTab("plan")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -938,110 +1025,7 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* SUB-TAB 1: LINK BUSINESS PROFILE (SAVED TO ADMIN MASTER TABLE)            */}
-      {/* ========================================================================= */}
-      {portalSubTab === "link_gbp" && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Star className="w-5 h-5 text-secondary" />
-                <h3 className="font-headline font-bold text-xl text-on-surface">
-                  Link Google Business Profile &amp; Review Destination
-                </h3>
-              </div>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Provide your Google Business Profile listing link and direct write-review URL. These links are saved and connected directly to the <strong>Admin Master Table</strong> and will be loaded onto your physical NFC standee.
-              </p>
-            </div>
-
-            <span className={`px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto ${
-              linkReady ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" : "bg-amber-500/15 text-amber-800 border-amber-500/30"
-            }`}>
-              {linkReady ? "✓ Destination Connected" : "⚠ Setup Required"}
-            </span>
-          </div>
-
-          <form onSubmit={handleSaveGbpLink} className="space-y-4 max-w-3xl">
-            {/* Google Review Write Link */}
-            <div>
-              <label className="block text-xs font-bold text-on-surface mb-1">
-                Google Review URL (Direct Write-Review Link) *
-              </label>
-              <input
-                type="url"
-                required
-                value={formReviewUrl}
-                onChange={(e) => setFormReviewUrl(e.target.value)}
-                placeholder="https://g.page/r/your-business-code/review or https://search.google.com/local/writereview?..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-              />
-              <span className="text-[11px] text-on-surface-variant mt-1 block">
-                This is where customers who rate 4–5★ will be redirected to write their review on Google.
-              </span>
-            </div>
-
-            {/* Google Business Profile Listing Link */}
-            <div>
-              <label className="block text-xs font-bold text-on-surface mb-1">
-                Google Business Profile Link (Google Maps / Listing Link)
-              </label>
-              <input
-                type="url"
-                value={formGbp}
-                onChange={(e) => setFormGbp(e.target.value)}
-                placeholder="https://maps.google.com/?cid=... or https://g.co/kgs/..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-              />
-              <span className="text-[11px] text-on-surface-variant mt-1 block">
-                Your general Google Maps profile link for overall store visibility.
-              </span>
-            </div>
-
-            {/* Test Links Action */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              {formReviewUrl && (
-                <a
-                  href={formReviewUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-semibold text-secondary hover:border-secondary flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Test Review Link</span>
-                </a>
-              )}
-              {formGbp && (
-                <a
-                  href={formGbp}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-semibold text-on-surface hover:border-primary flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Open Maps Listing</span>
-                </a>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-surface-variant/30 flex justify-between items-center">
-              <span className="text-[11px] text-emerald-600 font-semibold">
-                ✓ Directly connects to Admin Master Table &amp; Standee NFC routing
-              </span>
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center gap-2 cursor-pointer shadow-sm transition-all"
-              >
-                <Check className="w-4 h-4" />
-                <span>Save &amp; Connect to Admin Master Table</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUB-TAB 2: EDIT BUSINESS DETAILS (NAME, PHONE, CITY, ADDRESS ETC.)        */}
+      {/* SUB-TAB 1: EDIT BUSINESS DETAILS (NAME, PHONE, CITY, ADDRESS ETC.)        */}
       {/* ========================================================================= */}
       {portalSubTab === "edit_details" && (
         <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200">
@@ -1050,7 +1034,7 @@ export default function ClientPortalView({
               <div className="flex items-center gap-2 mb-1">
                 <Building2 className="w-5 h-5 text-primary" />
                 <h3 className="font-headline font-bold text-xl text-on-surface">
-                  Edit Business Details &amp; Contact Info
+                  1. Edit Business Details &amp; Contact Information
                 </h3>
               </div>
               <p className="text-xs text-on-surface-variant leading-relaxed">
@@ -1192,6 +1176,125 @@ export default function ClientPortalView({
               >
                 <Check className="w-4 h-4" />
                 <span>Save Business Details</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-TAB 2: LINK BUSINESS PROFILE (OPTIONAL / NOT MANDATORY)               */}
+      {/* ========================================================================= */}
+      {portalSubTab === "link_gbp" && (
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Star className="w-5 h-5 text-secondary" />
+                <h3 className="font-headline font-bold text-xl text-on-surface">
+                  2. Link Google Business Profile &amp; Review Destination
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-surface-variant text-[10px] font-semibold text-on-surface-variant">
+                  Optional
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant leading-relaxed">
+                Provide your Google Business Profile listing link and write-review destination URL. This configuration is optional and can be updated anytime.
+              </p>
+            </div>
+
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto ${
+              linkReady ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" : "bg-zinc-100 text-zinc-600 border-zinc-200"
+            }`}>
+              {linkReady ? "✓ Destination Connected" : "○ Optional / Pending Link"}
+            </span>
+          </div>
+
+          {/* Explicit Optional Notice Callout */}
+          <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/60 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-blue-900 leading-relaxed">
+              <strong>It is NOT mandatory to provide this link right now.</strong> If you do not have your direct Google review link yet, or if your Google Business Profile is newly created, you can safely skip this step. Our ZenTap operations team will verify and connect your official Google Review destination before your hardware is laser-engraved and dispatched.
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveGbpLink} className="space-y-4 max-w-3xl">
+            {/* Google Review Write Link */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-on-surface">
+                  Google Review URL (Direct Write-Review Link)
+                </label>
+                <span className="text-[11px] text-zinc-400 font-medium">Optional</span>
+              </div>
+              <input
+                type="url"
+                value={formReviewUrl}
+                onChange={(e) => setFormReviewUrl(e.target.value)}
+                placeholder="https://g.page/r/your-business-code/review or https://search.google.com/local/writereview?..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+              />
+              <span className="text-[11px] text-on-surface-variant mt-1 block">
+                This is where customers who rate 4–5★ will be redirected to write their review on Google. Leave blank if not available yet.
+              </span>
+            </div>
+
+            {/* Google Business Profile Listing Link */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-on-surface">
+                  Google Business Profile Link (Google Maps / Listing Link)
+                </label>
+                <span className="text-[11px] text-zinc-400 font-medium">Optional</span>
+              </div>
+              <input
+                type="url"
+                value={formGbp}
+                onChange={(e) => setFormGbp(e.target.value)}
+                placeholder="https://maps.google.com/?cid=... or https://g.co/kgs/..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+              />
+              <span className="text-[11px] text-on-surface-variant mt-1 block">
+                Your general Google Maps profile link for overall store visibility.
+              </span>
+            </div>
+
+            {/* Test Links Action */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {formReviewUrl && (
+                <a
+                  href={formReviewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-semibold text-secondary hover:border-secondary flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Test Review Link</span>
+                </a>
+              )}
+              {formGbp && (
+                <a
+                  href={formGbp}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 text-xs font-semibold text-on-surface hover:border-primary flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Maps Listing</span>
+                </a>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-surface-variant/30 flex justify-between items-center">
+              <span className="text-[11px] text-on-surface-variant">
+                You can save this anytime — updates sync directly to the Admin Master Table.
+              </span>
+              <button
+                type="submit"
+                className="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>Save Profile Link Preferences</span>
               </button>
             </div>
           </form>
@@ -1612,59 +1715,496 @@ export default function ClientPortalView({
                   </div>
                 </div>
 
-              </div>
-            </div>
-
-            {/* Courier Breakdown & Checkout */}
-            <div className="p-5 rounded-2xl bg-surface-container border border-surface-variant/50">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-on-surface block">
-                    Express Courier Delivery Calculator
-                  </span>
-                  <div className="flex items-center gap-2">
+                {/* PLAN 4: Franchise & Multi-Location Custom Plan */}
+                <div 
+                  onClick={() => setSelectedPlan("franchise_custom")}
+                  className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden ${
+                    selectedPlan === "franchise_custom"
+                      ? "border-amber-500 bg-amber-500/10 shadow-md"
+                      : "border-surface-variant/40 bg-surface-container-low hover:border-surface-variant"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
                     <input
-                      type="text"
-                      value={formPincode}
-                      onChange={(e) => setFormPincode(e.target.value)}
-                      placeholder="Enter 6-digit Pincode"
-                      className="px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 w-44"
+                      type="radio"
+                      name="standee_plan"
+                      checked={selectedPlan === "franchise_custom"}
+                      onChange={() => setSelectedPlan("franchise_custom")}
+                      className="mt-1 text-amber-500 focus:ring-amber-500"
                     />
-                    <span className="text-xs text-on-surface-variant font-medium">
-                      Zone: <strong className="text-on-surface">{courierData.zone}</strong>
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-on-surface-variant">
-                    Shipped via BlueDart Express Air Cargo / Delhivery with shock-absorbent acrylic foam packaging.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-surface border border-surface-variant/40 space-y-2">
-                  <div className="flex justify-between text-xs text-on-surface-variant">
-                    <span>Hardware Base Price:</span>
-                    <span className="font-bold text-on-surface">₹{basePlanPrice}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-on-surface-variant">
-                    <span>Courier &amp; Transit Insurance:</span>
-                    <span className="font-bold text-on-surface">₹{courierData.amount}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-bold text-on-surface pt-1 border-t border-surface-variant/30">
-                    <span>Total Payable Now:</span>
-                    <span className="font-headline font-black text-lg text-primary">₹{grandTotal}</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-headline font-bold text-sm text-on-surface">
+                          Plan 4 — Franchise &amp; Multi-Location Custom Plan
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 text-[10px] font-bold">
+                          Multi-Branch Fleet
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                        Custom hardware fleet for franchise chains, multi-location restaurants, retail outlets &amp; clinics. Generate unique QR codes &amp; separate Google review links for each counter.
+                      </p>
+                      <span className="text-[11px] text-amber-600 font-bold block mt-1">
+                        ✓ Custom Standee Count + Multiple QR Engine + Centralized Master Dashboard
+                      </span>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleCheckoutSubmit}
-                    disabled={paymentProcessing}
-                    className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 mt-2"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Pay ₹{grandTotal} &amp; Dispatch to Production</span>
-                  </button>
+                  <div className="text-right flex-shrink-0 sm:pl-4">
+                    <span className="font-headline font-black text-xl text-on-surface">Custom Quotation</span>
+                    <span className="text-[10px] text-on-surface-variant block">Volume Discount Applied</span>
+                  </div>
                 </div>
+
               </div>
             </div>
+
+            {/* FRANCHISE CUSTOM QUOTATION BUILDER vs SINGLE CHECKOUT */}
+            {selectedPlan === "franchise_custom" ? (
+              <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-surface-container via-surface-container-low to-surface-container border-2 border-amber-500/40 shadow-lg space-y-6 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-600 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-headline font-bold text-lg text-on-surface">
+                          Franchise &amp; Multi-Outlet Custom Quotation Builder
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-800 text-[10px] font-bold">
+                          Bulk Fleet Plan
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        Configure your franchise network specifications. Generates a formal quotation request saved directly into the <strong>Admin Master Quotation Hub</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmitQuotation} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* Branches & Standees Counters */}
+                    <div className="p-4 rounded-2xl bg-surface border border-surface-variant/50 space-y-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-bold text-on-surface">Number of Branches / Outlets</label>
+                          <span className="text-xs font-mono font-bold text-amber-600">{quoteBranches} Branches</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setQuoteBranches(Math.max(2, quoteBranches - 1))}
+                            className="w-9 h-9 rounded-xl bg-surface-container border border-surface-variant/60 font-bold text-sm hover:bg-surface-container-high transition-colors cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={2}
+                            max={100}
+                            value={quoteBranches}
+                            onChange={(e) => setQuoteBranches(Math.max(2, parseInt(e.target.value) || 2))}
+                            className="flex-1 py-2 text-center rounded-xl bg-surface border border-surface-variant/50 font-headline font-bold text-base text-on-surface focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuoteBranches(quoteBranches + 1)}
+                            className="w-9 h-9 rounded-xl bg-surface-container border border-surface-variant/60 font-bold text-sm hover:bg-surface-container-high transition-colors cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="text-[11px] text-on-surface-variant mt-1 block">
+                          Each branch can have its own customized Google review assistant and separate Google listing link.
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-bold text-on-surface">Total Hardware Standees Required</label>
+                          <span className="text-xs font-mono font-bold text-amber-600">{quoteStandees} Standees</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setQuoteStandees(Math.max(2, quoteStandees - 1))}
+                            className="w-9 h-9 rounded-xl bg-surface-container border border-surface-variant/60 font-bold text-sm hover:bg-surface-container-high transition-colors cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={2}
+                            max={250}
+                            value={quoteStandees}
+                            onChange={(e) => setQuoteStandees(Math.max(2, parseInt(e.target.value) || 2))}
+                            className="flex-1 py-2 text-center rounded-xl bg-surface border border-surface-variant/50 font-headline font-bold text-base text-on-surface focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuoteStandees(quoteStandees + 1)}
+                            className="w-9 h-9 rounded-xl bg-surface-container border border-surface-variant/60 font-bold text-sm hover:bg-surface-container-high transition-colors cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="text-[11px] text-on-surface-variant mt-1 block">
+                          Recommendation: 2 standees per branch (e.g. billing counter + waiting lounge).
+                        </span>
+                      </div>
+
+                      {/* Hardware Material Choice */}
+                      <div>
+                        <label className="text-xs font-bold text-on-surface block mb-1">Hardware Material Finish</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuoteHardware("matte_obsidian")}
+                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                              quoteHardware === "matte_obsidian"
+                                ? "border-amber-500 bg-amber-500/10 font-bold text-on-surface"
+                                : "border-surface-variant/40 bg-surface text-on-surface-variant hover:border-surface-variant"
+                            }`}
+                          >
+                            <span className="text-xs block">Matte Acrylic</span>
+                            <span className="text-[10px] text-zinc-500">Black Obsidian</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setQuoteHardware("laser_wood")}
+                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                              quoteHardware === "laser_wood"
+                                ? "border-amber-500 bg-amber-500/10 font-bold text-on-surface"
+                                : "border-surface-variant/40 bg-surface text-on-surface-variant hover:border-surface-variant"
+                            }`}
+                          >
+                            <span className="text-xs block">Laser Wood</span>
+                            <span className="text-[10px] text-zinc-500">Rich Walnut</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setQuoteHardware("card_and_standee")}
+                            className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                              quoteHardware === "card_and_standee"
+                                ? "border-amber-500 bg-amber-500/10 font-bold text-on-surface"
+                                : "border-surface-variant/40 bg-surface text-on-surface-variant hover:border-surface-variant"
+                            }`}
+                          >
+                            <span className="text-xs block">Hybrid Fleet</span>
+                            <span className="text-[10px] text-zinc-500">Standee + Cards</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Multi-QR & Addons Checklist */}
+                    <div className="p-4 rounded-2xl bg-surface border border-surface-variant/50 space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-on-surface block mb-1">Multi-QR Architecture</label>
+                        <div 
+                          onClick={() => setQuoteMultipleQr(!quoteMultipleQr)}
+                          className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={quoteMultipleQr}
+                            onChange={(e) => setQuoteMultipleQr(e.target.checked)}
+                            className="mt-0.5 text-amber-500 rounded focus:ring-amber-500"
+                          />
+                          <div className="text-xs">
+                            <span className="font-bold text-on-surface block">
+                              Generate Unique QR &amp; Assistant Page for Each Branch Counter
+                            </span>
+                            <span className="text-[11px] text-on-surface-variant mt-0.5 block leading-relaxed">
+                              Each physical standee routes customers to the respective branch&apos;s specific Google Maps listing and staff reporting channel.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-on-surface block mb-2">Franchise Enterprise Add-ons</label>
+                        <div className="space-y-2">
+                          {[
+                            { name: "Unique QR per Branch Counter", desc: "Separate QR slugs & destinations for each store" },
+                            { name: "Auto Google Review Reply AI", desc: "24/7 intelligent automatic responses to every Google review" },
+                            { name: "Centralized Multi-Outlet Dashboard", desc: "Unified analytics table comparing branch conversion rates" },
+                            { name: "Custom Laser Logo Engraving", desc: "High-precision CNC laser etching of franchise brand emblem" },
+                            { name: "Priority Multi-Location Logistics", desc: "Split-shipment courier delivery across multiple city addresses" }
+                          ].map((addon) => {
+                            const checked = quoteAddons.includes(addon.name);
+                            return (
+                              <div
+                                key={addon.name}
+                                onClick={() => handleToggleAddon(addon.name)}
+                                className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                                  checked
+                                    ? "bg-surface-container-high border-amber-500/60"
+                                    : "bg-surface border-surface-variant/40 hover:border-surface-variant"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => handleToggleAddon(addon.name)}
+                                  className="mt-0.5 text-amber-500 rounded"
+                                />
+                                <div className="text-xs">
+                                  <span className="font-semibold text-on-surface block">{addon.name}</span>
+                                  <span className="text-[10px] text-on-surface-variant">{addon.desc}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Contact & Branch Notes Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">Contact Person Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={quoteContactName}
+                        onChange={(e) => setQuoteContactName(e.target.value)}
+                        placeholder="e.g. Ramesh Patel (Franchise Owner)"
+                        className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">Direct Phone / WhatsApp *</label>
+                      <input
+                        type="tel"
+                        required
+                        value={quotePhone}
+                        onChange={(e) => setQuotePhone(e.target.value)}
+                        placeholder="+91 98765 43210"
+                        className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">Headquarters City / Cities</label>
+                      <input
+                        type="text"
+                        value={formCity || displayBusiness.city || ""}
+                        onChange={(e) => setFormCity(e.target.value)}
+                        placeholder="e.g. Ahmedabad & Surat"
+                        className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Branch Addresses & Notes */}
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Branch Names, Locations &amp; Specific QR Instructions
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={quoteNotes}
+                      onChange={(e) => setQuoteNotes(e.target.value)}
+                      placeholder="e.g. Branch 1: Sindhu Bhavan Road (2 Standees), Branch 2: Vastrapur (2 Standees), Branch 3: Maninagar (2 Standees). We have 3 different Google Business listings to link."
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Real-time Estimated Quotation Summary */}
+                  <div className="p-5 rounded-2xl bg-surface border border-amber-500/40">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-amber-600 block">
+                          Estimated Volume Pricing Summary
+                        </span>
+                        <div className="flex flex-wrap items-center gap-4 mt-1 text-xs">
+                          <span>
+                            Hardware ({quoteStandees} Standees): <strong className="text-on-surface">₹{(quoteStandees * 1200).toLocaleString("en-IN")}</strong> <span className="text-[10px] text-zinc-400">(₹1,200/unit bulk discount)</span>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            Monthly Cloud &amp; AI: <strong className="text-on-surface">₹{(quoteBranches * 800).toLocaleString("en-IN")}/mo</strong> <span className="text-[10px] text-zinc-400">(₹800/branch)</span>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            Courier Handling: <strong className="text-on-surface">₹{(quoteBranches * 69).toLocaleString("en-IN")}</strong>
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-on-surface-variant mt-1">
+                          Final quotation will be formally reviewed and confirmed by the ZenTap Admin Team with sample proofs before dispatch.
+                        </p>
+                      </div>
+
+                      <div className="flex-shrink-0">
+                        <button
+                          type="submit"
+                          disabled={quoteSubmitting}
+                          className="w-full md:w-auto px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                        >
+                          <Send className="w-4 h-4" />
+                          <span>{quoteSubmitting ? "Generating Quotation..." : "Submit Franchise Quotation Request"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+
+                {/* Submitted Quotation Card Notification */}
+                {quoteSubmittedRecord && (
+                  <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-bold text-xs text-on-surface">
+                            Quotation Request {quoteSubmittedRecord.id} Dispatched to Admin!
+                          </h5>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 text-[10px] font-bold">
+                            Pending Review
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-on-surface-variant mt-0.5">
+                          Saved to ZenTap Admin Master Quotations Hub for {quoteSubmittedRecord.branch_count} branches &amp; {quoteSubmittedRecord.standee_count} standees. An enterprise specialist will contact you with custom QR mockups.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <a
+                        href={`https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20I%20have%20submitted%20Franchise%20Quotation%20${quoteSubmittedRecord.id}%20for%20${encodeURIComponent(quoteSubmittedRecord.business_name)}.%20Please%20review.`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Chat on WhatsApp</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            ) : (
+              /* Courier Breakdown & Checkout for Single Plans (1, 2, 3) */
+              <div className="p-5 rounded-2xl bg-surface-container border border-surface-variant/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-on-surface block">
+                      Express Courier Delivery Calculator
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={formPincode}
+                        onChange={(e) => setFormPincode(e.target.value)}
+                        placeholder="Enter 6-digit Pincode"
+                        className="px-3.5 py-2 rounded-xl bg-surface border border-surface-variant/50 text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 w-44"
+                      />
+                      <span className="text-xs text-on-surface-variant font-medium">
+                        Zone: <strong className="text-on-surface">{courierData.zone}</strong>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-on-surface-variant">
+                      Shipped via BlueDart Express Air Cargo / Delhivery with shock-absorbent acrylic foam packaging.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-surface border border-surface-variant/40 space-y-2">
+                    <div className="flex justify-between text-xs text-on-surface-variant">
+                      <span>Hardware Base Price:</span>
+                      <span className="font-bold text-on-surface">₹{basePlanPrice}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-on-surface-variant">
+                      <span>Courier &amp; Transit Insurance:</span>
+                      <span className="font-bold text-on-surface">₹{courierData.amount}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-on-surface pt-1 border-t border-surface-variant/30">
+                      <span>Total Payable Now:</span>
+                      <span className="font-headline font-black text-lg text-primary">₹{grandTotal}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCheckoutSubmit}
+                      disabled={paymentProcessing}
+                      className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 mt-2"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span>Pay ₹{grandTotal} &amp; Dispatch to Production</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Display Previous Submitted Franchise Quotations If Any */}
+            {displayQuotations.length > 0 && (
+              <div className="p-5 rounded-2xl bg-surface-container-lowest border border-surface-variant/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-amber-500" />
+                    <h4 className="font-headline font-bold text-xs text-on-surface">
+                      Your Submitted Franchise Quotation Requests ({displayQuotations.length})
+                    </h4>
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant font-medium">
+                    Stored in Admin Master Hub
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {displayQuotations.map((q) => (
+                    <div
+                      key={q.id}
+                      className="p-3 rounded-xl bg-surface border border-surface-variant/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-amber-600">{q.id}</span>
+                          <span className="text-on-surface font-semibold">{q.business_name}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            q.status === "approved"
+                              ? "bg-emerald-500/20 text-emerald-700"
+                              : q.status === "quote_sent"
+                              ? "bg-blue-500/20 text-blue-700"
+                              : q.status === "contacted"
+                              ? "bg-purple-500/20 text-purple-700"
+                              : "bg-amber-500/20 text-amber-700"
+                          }`}>
+                            {q.status.replace("_", " ").toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-on-surface-variant mt-0.5">
+                          {q.branch_count} Branches • {q.standee_count} Standees • {q.multiple_qr ? "Individual Multi-QRs" : "Single QR"} • Hardware Est: ₹{q.estimated_hardware_total?.toLocaleString("en-IN")} • Submitted: {new Date(q.at).toLocaleDateString()}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20inquiry%20regarding%20franchise%20quotation%20${q.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high border border-surface-variant/50 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <MessageSquare className="w-3 h-3 text-emerald-500" />
+                          <span>WhatsApp Admin</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           </div>
 
@@ -1746,20 +2286,46 @@ export default function ClientPortalView({
               </div>
             </div>
 
-            {/* Quick Upgrade Callout */}
-            <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h4 className="font-bold text-xs text-on-surface">Want to Upgrade or Add More Standees?</h4>
-                <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  Order additional counter standees or upgrade to the 24/7 AI review auto-reply engine anytime.
-                </p>
+            {/* Quick Upgrade & Franchise Custom Callouts */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/30 flex flex-col justify-between gap-3">
+                <div>
+                  <h4 className="font-bold text-xs text-on-surface">Standard Hardware &amp; Replacements</h4>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    Order additional single counter standees or upgrade to the 24/7 AI review auto-reply engine.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedPlan("standee_1500");
+                    setPortalSubTab("orders");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 self-start cursor-pointer shadow-sm"
+                >
+                  View Hardware Plans
+                </button>
               </div>
-              <button
-                onClick={() => setPortalSubTab("orders")}
-                className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex-shrink-0 cursor-pointer shadow-sm"
-              >
-                View Hardware Plans
-              </button>
+
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <h4 className="font-bold text-xs text-on-surface">Franchise &amp; Multi-Outlet Custom Plan</h4>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">
+                    Need multiple unique QR codes for separate branches/counters? Get volume pricing &amp; enterprise dashboard.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedPlan("franchise_custom");
+                    setPortalSubTab("orders");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold self-start cursor-pointer shadow-sm"
+                >
+                  Configure Franchise Quotation
+                </button>
+              </div>
             </div>
           </div>
 
