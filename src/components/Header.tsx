@@ -115,7 +115,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             ) : (
               <span className="flex items-center gap-1.5 text-[#1C1B1A] font-semibold">
                 <Store className="w-4 h-4 text-[#D94826]" />
-                <span>Client Merchant Dashboard</span>
+                <span>My Live Business Analytics</span>
               </span>
             )}
           </div>

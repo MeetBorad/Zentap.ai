@@ -190,7 +190,7 @@ const INITIAL_FLEET: BusinessRecord[] = [
   },
 ];
 
-// Get or initialize user business record
+// Get or initialize user business record (Synced with Admin Master Table)
 export function getUserBusiness(userId: string, email: string, initialName?: string): BusinessRecord {
   if (typeof window === "undefined") {
     return {
@@ -206,8 +206,40 @@ export function getUserBusiness(userId: string, email: string, initialName?: str
   try {
     const key = `${STORAGE_KEY_PREFIX}${userId}`;
     const raw = localStorage.getItem(key);
+
+    // Look for matching business in Admin Master Table
+    const all = getAllBusinesses();
+    const fromMaster = all.find(
+      (b) =>
+        b.owner_user_id === userId ||
+        (email && b.email && b.email.toLowerCase() === email.toLowerCase()) ||
+        b.id === `biz_${userId}`
+    );
+
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: BusinessRecord = JSON.parse(raw);
+      if (fromMaster) {
+        const merged: BusinessRecord = {
+          ...parsed,
+          name: fromMaster.name || parsed.name,
+          slug: fromMaster.slug || parsed.slug,
+          review_url: fromMaster.review_url !== undefined ? fromMaster.review_url : parsed.review_url,
+          gbp_link: fromMaster.gbp_link !== undefined ? fromMaster.gbp_link : parsed.gbp_link,
+          plan: fromMaster.plan !== undefined ? fromMaster.plan : parsed.plan,
+          payment_status: fromMaster.payment_status || parsed.payment_status,
+          active: fromMaster.active !== undefined ? fromMaster.active : parsed.active,
+          phone: fromMaster.phone || parsed.phone,
+          city: fromMaster.city || parsed.city,
+        };
+        localStorage.setItem(key, JSON.stringify(merged));
+        return merged;
+      }
+      return parsed;
+    }
+
+    if (fromMaster) {
+      localStorage.setItem(key, JSON.stringify(fromMaster));
+      return fromMaster;
     }
 
     const defaultBizName = initialName || (email ? email.split("@")[0].toUpperCase() + " ENTERPRISES" : "My Business");
@@ -283,7 +315,12 @@ function saveToGlobalIndex(record: BusinessRecord) {
   try {
     const raw = localStorage.getItem(ALL_BIZ_INDEX_KEY);
     let list: BusinessRecord[] = raw ? JSON.parse(raw) : [...INITIAL_FLEET];
-    const idx = list.findIndex((b) => b.id === record.id || b.owner_user_id === record.owner_user_id);
+    const idx = list.findIndex(
+      (b) =>
+        b.id === record.id ||
+        (record.owner_user_id && b.owner_user_id === record.owner_user_id) ||
+        (record.email && b.email && b.email.toLowerCase() === record.email.toLowerCase())
+    );
     if (idx >= 0) {
       list[idx] = { ...list[idx], ...record };
     } else {

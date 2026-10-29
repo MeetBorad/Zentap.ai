@@ -1,5 +1,17 @@
 # ZenTap.ai — Changelog
 
+## [1.3.1] — 2026-10-29
+### Added
+- Renamed Merchant Header badge and portal view to **"My Live Business Analytics"**.
+- Added dynamic branding background and typography matching the client's business from the Admin Master Table.
+- Implemented 5 dedicated sub-tabs under *My Live Business Analytics*:
+  1. **Link Business Profile**: Link and provide Google Business Profile listing and Google Review destination, directly connected and saved to the Admin Master Table.
+  2. **Edit Business Details**: Comprehensive profile editor for business name, contact, city, state, country, pincode, and shipping address.
+  3. **Review Assistant & QR Hub**: Your Customized Google Review Assistant destination `/r/[slug]` with 1-click copy, live preview test, and printable Level Q Standee QR code (PNG).
+  4. **Standee Order & Status**: Active 4-stage dispatch tracking timeline with BlueDart tracking ID, plus hardware touchpoint purchasing and "Open for Test" capability.
+  5. **Current Plan & Controls**: Hardware tier status, NTAG216 telemetry, live active/deactivate toggle, and private feedback inbox.
+- Top 2-mode switcher for first-time login: *My Live Business Analytics* vs. *Sample Dashboard Preview* (showing newly registered merchants what they get once active with us).
+
 ## [1.3.0] — 2026-10-29
 ### Added
 - Upgraded Admin Workspace to **"ZenTap.in Admin Dashboard"** with 4 organized tabs:
