@@ -21,6 +21,11 @@
     --color-success: oklch(0.680 0.160 145);    /* Emerald verified badge */
     --color-star: oklch(0.820 0.160 85);       /* Gold review star */
 
+    /* Typography tokens */
+    --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+
     /* Spacing scale */
     --space-1: 4px;
     --space-2: 8px;

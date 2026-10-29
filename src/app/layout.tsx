@@ -3,10 +3,17 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "ZenTap.ai | Smart NFC & QR Google Review Standees",
-  description: "Turn every customer tap into 5-star Google Reviews instantly. Smart NFC & Dynamic QR standees that boost your local business rating by 300%.",
+  title: "ZenTap.ai | Tactile NFC & Dynamic QR Google Review Standees",
+  description: "Turn in-store customer satisfaction into verified Google Reviews. Precision-machined acrylic standees with embedded NTAG216 NFC, Level Q Laser QR, and private feedback routing.",
   icons: {
     icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "ZenTap.ai | Tactile NFC & Dynamic QR Google Review Standees",
+    description: "Precision-machined counter standees with embedded NTAG216 NFC and Level Q Laser QR. Zero apps needed.",
+    url: "https://www.zentapdigitalsolutions.com",
+    siteName: "ZenTap.ai",
+    type: "website",
   },
 };
 

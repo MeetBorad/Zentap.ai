@@ -1,3 +1,6 @@
+/* Hallmark · macrostructure: Workbench + Bento Grid · genre: modern-minimal · theme: tactile-obsidian */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";

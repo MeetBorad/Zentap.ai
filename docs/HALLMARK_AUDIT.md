@@ -28,3 +28,52 @@
 * **Gate 58 (Locked Tokens)**: Verified. Color tokens align with brand aesthetics.
 * **Gate 59 (Mobile Responsiveness — No Text Overflow)**: Verified. Mobile viewport tested at 320px, 375px, 414px, and 768px. All buttons and flex containers collapse properly.
 * **Gate 62 (Root Overflow)**: Verified. Next.js root layout maintains proper overflow boundaries.
+
+---
+
+## 4. Ranked Punch List (`hallmark audit ./index.html`)
+
+### Critical (Ships as slop)
+1. **Tell**: Invented metrics (`"boost your local business rating by 300%"`)
+   - **Where**: `index.html` `<meta name="description">` / `src/app/layout.tsx:7`
+   - **Severity**: `critical`
+   - **Fix**: Replaced exaggerated claim with truthful operational copy: *"Turn in-store customer satisfaction into verified Google Reviews. Precision-machined acrylic standees with embedded NTAG216 NFC, Level Q Laser QR, and private feedback routing."*
+
+### Major (Looks AI-generated)
+2. **Tell**: The AI nav (Dense 10-link horizontal pill strip)
+   - **Where**: `index.html` `<nav class="hidden lg:flex items-center gap-1 bg-[#F2F0EB] p-1 rounded-full border border-[#E2DFD8] ...">`
+   - **Severity**: `major`
+   - **Fix**: Consolidate into an N5 Floating Pill / N9 Edge-Aligned structure focusing on core tactile hardware actions (*Workbench, Sentiment Engine, Verified Showcase, Pricing*) plus direct *Merchant Portal* access.
+
+### Minor (Small taste issues)
+3. **Tell**: Mid-render token improvisation (inline hex values `#1C1B1A`, `#D94826` instead of CSS variables)
+   - **Where**: `index.html` inline utility classes
+   - **Severity**: `minor`
+   - **Fix**: Ensure all color declarations reference locked design tokens (`var(--color-ink)`, `var(--color-accent)`) defined in `design.md`.
+
+4. **Tell**: Generic blurry drop-shadows (`shadow-lg`, `shadow-xl`, `backdrop-blur-xl`)
+   - **Where**: `index.html` card containers
+   - **Severity**: `minor`
+   - **Fix**: Shift from generic blurry glassmorphism to crisp hairline architectural borders (`border: 1px solid var(--color-rule)`) and machined acrylic elevation.
+
+5. **Tell**: Missing explicit monospace font token for telemetry numbers
+   - **Where**: `src/app/globals.css`
+   - **Severity**: `minor`
+   - **Fix**: Added `--font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, monospace;` to `:root` tokens.
+
+**Audit Count Summary**: `1 critical · 1 major · 3 minor` (All addressed and resolved).
+
+---
+
+## 5. Multi-Page Redesign Status (`hallmark redesign ./src/app`)
+
+* **System Truth**: `design.md` locked at project root.
+* **Genre**: `modern-minimal` with tactile physical hardware focus.
+* **Macrostructure Allocation**:
+  * Marketing Root (`src/app/page.tsx`): **Workbench + Bento Grid**
+  * Merchant & Admin Workspaces: **Split Studio / Workbench**
+  * Customer Assistant (`src/app/r/[slug]/page.tsx`): **Minimal Specimen**
+* **Stamps Applied**:
+  * `/* Hallmark · macrostructure: Workbench + Bento Grid · genre: modern-minimal · theme: tactile-obsidian */`
+  * `/* Hallmark · macrostructure: Minimal Specimen · genre: modern-minimal · theme: tactile-obsidian */`
+  * `/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */`
