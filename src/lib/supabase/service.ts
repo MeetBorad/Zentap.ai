@@ -19,6 +19,7 @@ export interface DbBusinessRecord {
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
   active: boolean;
+  custom_chips?: string[] | null;
   created_at: string;
   updated_at?: string;
 }
@@ -32,6 +33,7 @@ export interface DbPublicBusiness {
   category: string | null;
   city: string | null;
   address: string | null;
+  custom_chips?: string[] | null;
 }
 
 export interface DbScanRecord {
@@ -145,6 +147,7 @@ export async function upsertUserBusinessInDb(
     if (!isIdUuid) {
       delete payload.id;
     }
+    delete payload.custom_chips;
 
     const { data, error } = await supabase
       .from("businesses")

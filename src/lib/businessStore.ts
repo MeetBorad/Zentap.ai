@@ -19,6 +19,7 @@ export interface BusinessRecord {
   active: boolean;
   address?: string;
   category?: string;
+  custom_chips?: string[];
   created_at: string;
 }
 
@@ -144,25 +145,33 @@ export function calculateCourierCharge(pincode: string): { amount: number; zone:
   return { amount: 149, zone: "Special Delivery Zone" };
 }
 
-// Sample Demonstration Business (Used for Sample Dashboard preview)
+// Sample Demonstration Business (ZenTap.in Official Google Review Assistant Showcase)
 export const SAMPLE_DEMO_BUSINESS: BusinessRecord = {
   id: "sample-demo-biz-01",
   owner_user_id: "demo-owner",
-  name: "Virat Gold Palace",
-  email: "contact@viratgoldpalace.com",
-  phone: "+91 87884 16911",
+  name: "ZenTap.in Digital Solutions",
+  email: "contact@zentap.in",
+  phone: "+91 92745 60880",
   city: "Ahmedabad",
   state: "Gujarat",
   country: "India",
-  pincode: "382350",
-  gbp_link: "https://maps.google.com/?q=virat+jewellers+nikol+ahmedabad",
-  slug: "virat-gold-palace",
+  pincode: "380001",
+  gbp_link: "https://share.google/9PoGc4WwJpFoTgAMh",
+  slug: "zentap",
   plan: "standee_auto_2000",
   payment_status: "paid",
-  review_url: "https://www.google.com/search?q=virat+jewellers+nikol#lrd=0x395e86e45b70bdb3:0x77d77b4d7586ba7b,3,,,,",
+  review_url: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z/data=!3m1!4b1!4m3!3m2!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!12e1?entry=ttu&g_ep=EgoyMDI2MTAyNy4wIKXMDSoASAFQAw%3D%3D",
   active: true,
-  address: "Shop 12-14, Shivalik Arcade, Nikol Gam Road",
-  category: "Certified 22K Hallmark Gold & Diamond Jewellery",
+  address: "Ahmedabad, Gujarat, India",
+  category: "NFC & Dynamic QR Smart Standee Solutions",
+  custom_chips: [
+    "Instant NFC Phone Tap",
+    "Dynamic QR Standee",
+    "Fast 5-Star Reviews",
+    "Laser-Engraved Standee Quality",
+    "Prompt Customer Support",
+    "Verified Google Maps Boost",
+  ],
   created_at: "2026-09-01T10:00:00.000Z",
 };
 
@@ -321,7 +330,13 @@ export function getBusinessBySlug(slug: string): BusinessRecord | null {
   if (!slug) return null;
   const clean = slug.toLowerCase().trim();
 
-  if (clean === "virat-gold-palace" || clean === "sample" || clean === "demo") {
+  if (
+    clean === "zentap" ||
+    clean === "zentap-in" ||
+    clean === "sample" ||
+    clean === "demo" ||
+    clean === "virat-gold-palace"
+  ) {
     return SAMPLE_DEMO_BUSINESS;
   }
 

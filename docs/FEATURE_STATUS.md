@@ -3,9 +3,14 @@
 | Feature | Status | Notes |
 |---|---|---|
 | **User Registration & Supabase Auth** | Done | Implemented via `AuthContext.tsx` with email/password authentication. |
-| **Merchant Isolated Dashboard** | Done | `ClientPortalView.tsx` displays only logged-in user's business profile and metrics. |
-| **Sample Dashboard Preview** | Done | Instant toggle between Live Profile and Sample Preview (Virat Gold Palace metrics). |
-| **Business Profile Editor (8 Fields)** | Done | Name, GBP Link, Review URL, Contact Phone, City, State, Country, Pincode, Email, Address. |
+| **Merchant Isolated Dashboard** | Done | `ClientPortalView.tsx` displays only logged-in user's business profile and metrics with 7 horizontal sub-tabs. |
+| **Sample Dashboard Preview** | Done | Instant toggle between Live Profile and official ZenTap.in Digital Solutions Showcase (`/r/zentap`). |
+| **Business Profile Editor (8 Fields)** | Done | Name, Category, GBP Link, Review URL, Contact Phone, City, State, Country, Pincode, Email, Address. |
+| **Customized Review Categories ("What did you like most?")** | Done | Unlocked after standee payment. Allows merchants to add/remove/reset review tags. Admin console provides full CRUD modal for any merchant. |
+| **Multi-Draft AI Review Generator & Speech-to-Text 🎙️** | Done | Generates 3 distinct AI review drafts (Humanized, Detailed, Punchy). Web Speech API voice recording in English, Hindi, and Gujarati. |
+| **Locked & Blurry Analytics Dashboard** | Done | Unpaid merchants see real-time NFC/QR telemetry blurred with a padlock overlay and "Buy Standee to Unlock" CTA. |
+| **4-Stage Standee Order Timeline** | Done | Order Confirmed → Creating Standee (QR/NFC) → ZenTap.in Integration → Dispatched. |
+| **Current Plan Status & Controls** | Done | Displays prominent "No Active Plan" card for unpaid accounts; active controls and touchpoint pause switch for subscribed accounts. |
 | **4-Tier Hardware Pricing Plans** | Done | ₹500 Card (no sub), ₹1,500 Standee (+₹1k/mo), ₹2,000 Standee + Auto Reply (+₹1k/mo), and Plan 4 Franchise Custom Multi-QR Fleet. |
 | **Franchise & Multi-Outlet Custom Plan (Plan 4)** | Done | Custom quotation builder for franchises: multi-branch counter, multi-QR generation, custom finishes, volume discounts, auto quotation generation (`ZT-QTN-XXXXX`). Full landing page pricing tab integration with seamless direct builder navigation. |
 | **Admin Franchise Quotations Hub** | Done | 5th tab in ZenTap.in Admin Dashboard for tracking, managing, and contacting franchise quotation leads with WhatsApp 1-click chat. |

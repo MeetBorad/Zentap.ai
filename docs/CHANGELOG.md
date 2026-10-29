@@ -1,5 +1,31 @@
 # ZenTap.ai — Changelog
 
+## [1.3.7] — 2026-10-29
+### Added
+- **Multi-Draft AI Review Generator & Speech-to-Text 🎙️** (`/api/ai/generate-review`, `/r/[slug]`):
+  - Created `/api/ai/generate-review` route generating 3 distinct review drafts:
+    - *Draft 1: Humanized Authentic* (conversational, natural human patron phrasing).
+    - *Draft 2: Detailed Story* (highlights specific selected tags, service, and location).
+    - *Draft 3: Short & Punchy* (1-2 sentence high-impact recommendation).
+  - Integrated browser Web Speech API for voice recording / speech-to-text in English (`en-IN`), Hindi (`hi-IN`), and Gujarati (`gu-IN`).
+  - Added *✨ Humanized* as the primary review style selector.
+  - Added interactive draft tabs enabling customers to preview and select between Draft 1, Draft 2, and Draft 3 before 1-tap clipboard copying and redirecting to Google Reviews.
+- **Customized Review Categories ("What did you like most?")**:
+  - Gated in Merchant Portal (`ClientPortalView.tsx`) under Sub-Tab 4 (*Review Categories*), unlocked upon standee payment.
+  - Allows merchants to add, remove, and reset category tags that feed into the AI review generator.
+  - Added full administrative control in `AdminConsoleView.tsx` with dedicated modal to customize categories for any merchant in the Master Table.
+- **My Business Analytics Access Flow & Sub-Tab Architecture** (`ClientPortalView.tsx`):
+  - Sub-Tab 1: **Dashboard** (Analytics) — displays NFC/QR telemetry; rendered locked and blurry with a padlock overlay and "Buy Standee to Unlock" CTA if unpaid.
+  - Sub-Tab 2: **Edit Business Profile** — store name, category, contact, address.
+  - Sub-Tab 3: **Link Business Profile (Optional)** — Google Business Profile and Google Review destination link.
+  - Sub-Tab 4: **Review Categories** — customize "What did you like most?" tags.
+  - Sub-Tab 5: **Review Assistant & QR Hub** — live `/r/[slug]` URL and Level Q Laser QR download.
+  - Sub-Tab 6: **Standee Order & Status** — 4-stage tracking timeline (*Order Confirmed -> Creating Standee (QR/NFC) -> ZenTap.in Integration -> Dispatched*).
+  - Sub-Tab 7: **Current Plan & Controls** — displays prominent *"No Active Plan"* card if unpaid.
+- **Header Action Box & Official ZenTap.in Showcase**:
+  - Added dedicated action box beside business name in header with "Buy / Order Standee", "Sample ZenTap.in Review Page", and "Test Customer Flow".
+  - Replaced legacy showcase references with the official **ZenTap.in Digital Solutions** profile (`/r/zentap`, GBP link `https://share.google/9PoGc4WwJpFoTgAMh`, Google Review link `https://www.google.com/maps/place/...`).
+
 ## [1.3.6] — 2026-10-29
 ### Added
 - **Left-Side Horizontal Navigation Tabs for Merchant Dashboard** (`ClientPortalView.tsx`):

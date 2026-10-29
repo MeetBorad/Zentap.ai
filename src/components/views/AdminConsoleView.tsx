@@ -138,6 +138,12 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [qrPngUrl, setQrPngUrl] = useState<string>("");
   const [qrSvgString, setQrSvgString] = useState<string>("");
 
+  // Custom Review Categories ("What did you like most?") Modal State
+  const [chipsModalOpen, setChipsModalOpen] = useState(false);
+  const [selectedBizForChips, setSelectedBizForChips] = useState<BusinessRecord | null>(null);
+  const [adminChipsList, setAdminChipsList] = useState<string[]>([]);
+  const [adminNewChip, setAdminNewChip] = useState("");
+
   // Admin Security Password State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState("");
@@ -529,6 +535,68 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast("✓ Vector SVG downloaded for standee laser engraving!");
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Customize Review Categories ("What did you like most?")
+  // -------------------------------------------------------------
+  const handleOpenChipsModal = (b: BusinessRecord) => {
+    setSelectedBizForChips(b);
+    setAdminChipsList(
+      b.custom_chips && b.custom_chips.length > 0
+        ? b.custom_chips
+        : [
+            "Top Quality & Authenticity",
+            "Polite & Courteous Staff",
+            "Fair & Transparent Pricing",
+            "Fast & Attentive Service",
+            "Superb Ambience & Cleanliness",
+            "Highly Recommended Experience",
+          ]
+    );
+    setAdminNewChip("");
+    setChipsModalOpen(true);
+  };
+
+  const handleAddAdminChip = () => {
+    if (!adminNewChip.trim()) return;
+    if (adminChipsList.includes(adminNewChip.trim())) {
+      showToast("Category tag already exists.");
+      return;
+    }
+    setAdminChipsList((prev) => [...prev, adminNewChip.trim()]);
+    setAdminNewChip("");
+  };
+
+  const handleRemoveAdminChip = (chip: string) => {
+    setAdminChipsList((prev) => prev.filter((c) => c !== chip));
+  };
+
+  const handleResetAdminChips = () => {
+    const defaults = [
+      "Top Quality & Authenticity",
+      "Polite & Courteous Staff",
+      "Fair & Transparent Pricing",
+      "Fast & Attentive Service",
+      "Superb Ambience & Cleanliness",
+      "Highly Recommended Experience",
+    ];
+    setAdminChipsList(defaults);
+    showToast("Reset to standard categories.");
+  };
+
+  const handleSaveAdminChips = () => {
+    if (!selectedBizForChips) return;
+    if (adminChipsList.length === 0) {
+      showToast("Please keep at least 1 category.");
+      return;
+    }
+    const updated = adminUpdateBusinessRecord(selectedBizForChips.id, {
+      custom_chips: adminChipsList,
+    });
+    setBusinesses(updated);
+    setChipsModalOpen(false);
+    showToast(`✓ Updated Review Categories for "${selectedBizForChips.name}"!`);
   };
 
   // Password Management Handlers
@@ -1448,6 +1516,14 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                                 title="Download 1200px PNG / SVG Laser QR"
                               >
                                 <QrCode className="w-3.5 h-3.5 text-secondary" />
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenChipsModal(b)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-amber-600 cursor-pointer"
+                                title="Customize Review Categories ('What did you like most?')"
+                              >
+                                <Sliders className="w-3.5 h-3.5 text-amber-600" />
                               </button>
 
                               <button
@@ -2579,6 +2655,116 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Customize Review Categories Modal ("What did you like most?") */}
+      {chipsModalOpen && selectedBizForChips && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-amber-500" />
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Customize Review Categories
+                  </h3>
+                  <span className="text-xs text-on-surface-variant block">
+                    {selectedBizForChips.name} (/r/{selectedBizForChips.slug})
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setChipsModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              These are the positive category chips displayed under <strong>&quot;What did you like most?&quot;</strong> on this merchant&apos;s live Google review assistant page. Patrons can tap them to feed the AI review writer.
+            </p>
+
+            {/* Add New Tag */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-on-surface">Add Category Tag</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={adminNewChip}
+                  onChange={(e) => setAdminNewChip(e.target.value)}
+                  placeholder="e.g. 24K Hallmark Certified, Delicious Dessert..."
+                  className="flex-1 px-3 py-2 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddAdminChip();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddAdminChip}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs cursor-pointer shadow-sm"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Current Tags */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-on-surface">
+                  Active Categories ({adminChipsList.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetAdminChips}
+                  className="text-[11px] text-amber-700 hover:underline cursor-pointer"
+                >
+                  Reset Defaults
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
+                {adminChipsList.map((chip) => (
+                  <div
+                    key={chip}
+                    className="px-3 py-1.5 rounded-xl bg-surface-container-high border border-surface-variant/60 text-xs font-semibold text-on-surface flex items-center gap-2"
+                  >
+                    <span>{chip}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAdminChip(chip)}
+                      className="text-on-surface-variant hover:text-red-500 cursor-pointer p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-variant/30">
+              <button
+                type="button"
+                onClick={() => setChipsModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAdminChips}
+                className="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 cursor-pointer shadow-sm"
+              >
+                Save Categories
+              </button>
+            </div>
           </div>
         </div>
       )}

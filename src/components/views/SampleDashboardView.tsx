@@ -46,9 +46,9 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Sample Profile form state
-  const [sampleReviewUrl, setSampleReviewUrl] = useState("https://g.page/r/CViratGoldPalace/review");
-  const [sampleBizName, setSampleBizName] = useState("Virat Gold Palace");
-  const [samplePhone, setSamplePhone] = useState("+91 87884 16911");
+  const [sampleReviewUrl, setSampleReviewUrl] = useState("https://www.google.com/maps/place//@23.0393793,72.6446507,17z/data=!3m1!4b1!4m3!3m2!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!12e1?entry=ttu&g_ep=EgoyMDI2MTAyNy4wIKXMDSoASAFQAw%3D%3D");
+  const [sampleBizName, setSampleBizName] = useState("ZenTap.in Digital Solutions");
+  const [samplePhone, setSamplePhone] = useState("+91 92745 60880");
   const [sampleCity, setSampleCity] = useState("Ahmedabad");
 
   const handleSimulate = (type: "nfc" | "qr") => {
@@ -79,7 +79,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
   };
 
   const originUrl = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
-  const assistantUrl = `${originUrl}/r/virat-gold-palace`;
+  const assistantUrl = `${originUrl}/r/zentap`;
 
   return (
     <div className="flex flex-col w-full animate-in fade-in duration-300 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-8">
@@ -99,7 +99,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
             Interactive Showcase
           </span>
           <p className="text-xs text-on-surface-variant">
-            Full demonstration of the <strong className="text-on-surface">Client Merchant Dashboard</strong> for Virat Gold Palace (Nikol, Ahmedabad).
+            Full demonstration of the <strong className="text-on-surface">Client Merchant Dashboard</strong> for ZenTap.in Digital Solutions (Ahmedabad).
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
         
         <div className="flex items-start gap-4 sm:gap-5 relative z-10">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-secondary to-primary text-on-primary flex items-center justify-center font-headline font-black text-2xl shadow-md border border-white/20">
-            V
+            Z
           </div>
 
           <div className="flex flex-col">
@@ -127,27 +127,27 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
                 Subscribed Client · Paid
               </span>
               <span className="text-xs text-on-surface-variant font-mono">
-                Slug: /r/virat-gold-palace
+                Slug: /r/zentap
               </span>
             </div>
 
             <h1 className="font-headline font-bold text-2xl sm:text-3xl text-on-surface mt-1">
-              Virat Gold Palace
+              ZenTap.in Digital Solutions
             </h1>
 
             <p className="text-xs text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>Shop 12-14, Shivalik Arcade, Nikol Gam Road, Ahmedabad, Gujarat 382350</span>
+              <span>Ahmedabad, Gujarat, India</span>
               <span className="mx-1">•</span>
               <Phone className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>+91 87884 16911</span>
+              <span>+91 92745 60880</span>
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">
           <a
-            href={`${originUrl}/r/virat-gold-palace?preview=1`}
+            href={`${originUrl}/r/zentap?preview=1`}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-surface border border-secondary/40 text-xs font-bold text-on-surface hover:border-secondary shadow-sm transition-all cursor-pointer"
@@ -487,7 +487,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
           </h3>
 
           <div className="mb-4">
-            <StandeeVisual type="standee_auto_2000" businessName="VIRAT GOLD PALACE" />
+            <StandeeVisual type="standee_auto_2000" businessName="ZENTAP.IN" />
           </div>
 
           <div className="w-full p-2.5 rounded-xl bg-surface border border-surface-variant/40 text-xs font-mono text-on-surface truncate mb-4">

@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { 
   getBusinessBySlug, 
@@ -31,7 +31,10 @@ import {
   ShieldCheck, 
   Send,
   ExternalLink,
-  Info
+  Info,
+  Mic,
+  MicOff,
+  Volume2
 } from "lucide-react";
 
 export default function CustomizedReviewAssistantPage() {
@@ -40,23 +43,107 @@ export default function CustomizedReviewAssistantPage() {
   const slug = (params?.slug as string) || "sample";
   const source = (searchParams?.get("s") as "qr" | "nfc") || "nfc";
   const isPreview = searchParams?.get("preview") === "1";
-  const isPendingAlert = searchParams?.get("pending") === "1";
 
   const [business, setBusiness] = useState<BusinessRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentRating, setCurrentRating] = useState<number>(5);
   const [currentLang, setCurrentLang] = useState<"en" | "gu" | "hi">("en");
-  const [currentStyle, setCurrentStyle] = useState<"balanced" | "detailed" | "concise">("balanced");
+  const [currentStyle, setCurrentStyle] = useState<"humanized" | "balanced" | "detailed" | "concise">("humanized");
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
+  const [activeDraftTab, setActiveDraftTab] = useState<"humanized" | "detailed" | "concise">("humanized");
   const [reviewDraft, setReviewDraft] = useState<string>("");
+  const [draftVariations, setDraftVariations] = useState<{
+    humanized: string;
+    detailed: string;
+    concise: string;
+  }>({
+    humanized: "",
+    detailed: "",
+    concise: "",
+  });
   const [toastMessage, setToastMessage] = useState<string>("");
 
-  // Private feedback states (Available as additional option for 1-2 stars)
-  const [showPrivateModal, setShowPrivateModal] = useState(false);
+  // Speech-to-Text (Voice Recording) states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceNotes, setVoiceNotes] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Private feedback states (For 1-2 stars)
   const [fbName, setFbName] = useState("");
   const [fbPhone, setFbPhone] = useState("");
   const [fbText, setFbText] = useState("");
   const [fbSubmitted, setFbSubmitted] = useState(false);
+
+  // Initialize Speech Recognition if supported in browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          if (transcript) {
+            setVoiceNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
+            showToast(`🎙️ Voice captured: "${transcript}"`);
+          }
+          setIsListening(false);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn("Speech recognition error:", event.error);
+          setIsListening(false);
+          showToast("Microphone notice: please speak closer to device or type directly.");
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+  }, []);
+
+  // Update speech language when currentLang changes
+  useEffect(() => {
+    if (recognitionRef.current) {
+      if (currentLang === "gu") recognitionRef.current.lang = "gu-IN";
+      else if (currentLang === "hi") recognitionRef.current.lang = "hi-IN";
+      else recognitionRef.current.lang = "en-IN";
+    }
+  }, [currentLang]);
+
+  const toggleSpeechRecognition = () => {
+    if (!speechSupported || !recognitionRef.current) {
+      showToast("Speech recognition is not supported on this browser. Please type directly.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        showToast(
+          currentLang === "gu"
+            ? "🎙️ સાંભળી રહ્યું છે... તમારો પ્રતિસાદ બોલો"
+            : currentLang === "hi"
+            ? "🎙️ सुन रहा है... अपना अनुभव बोलें"
+            : "🎙️ Listening... speak your experience"
+        );
+      } catch (err) {
+        console.warn("Recognition start error:", err);
+      }
+    }
+  };
 
   useEffect(() => {
     async function loadBusiness() {
@@ -64,7 +151,7 @@ export default function CustomizedReviewAssistantPage() {
       let biz = getBusinessBySlug(slug) || (slug === "sample" ? SAMPLE_DEMO_BUSINESS : null);
 
       // 2. Query Supabase public view if not in demo mode
-      if (!biz || slug !== "sample") {
+      if (!biz || (slug !== "sample" && slug !== "zentap" && slug !== "virat-gold-palace")) {
         const dbBiz = await fetchPublicBusinessBySlug(slug);
         if (dbBiz) {
           biz = {
@@ -85,6 +172,7 @@ export default function CustomizedReviewAssistantPage() {
             active: dbBiz.active,
             address: dbBiz.address || "",
             category: dbBiz.category || "",
+            custom_chips: dbBiz.custom_chips || undefined,
             created_at: new Date().toISOString(),
           };
         }
@@ -102,13 +190,15 @@ export default function CustomizedReviewAssistantPage() {
       }
 
       if (biz) {
-        // Default chips
-        if (biz.category?.toLowerCase().includes("jewel") || biz.category?.toLowerCase().includes("gold")) {
+        // Preselect chips from custom_chips if present, or industry defaults
+        if (biz.custom_chips && biz.custom_chips.length > 0) {
+          setSelectedChips(biz.custom_chips.slice(0, 3));
+        } else if (biz.category?.toLowerCase().includes("jewel") || biz.category?.toLowerCase().includes("gold")) {
           setSelectedChips(["22K Hallmark Gold", "Bridal Collection", "Fair Making Charges"]);
         } else if (biz.category?.toLowerCase().includes("cafe") || biz.category?.toLowerCase().includes("restaurant")) {
           setSelectedChips(["Delicious Food", "Great Ambience", "Friendly Staff"]);
         } else {
-          setSelectedChips(["Top Quality Service", "Polite & Helpful Staff", "Fair & Transparent Pricing"]);
+          setSelectedChips(["Instant NFC Phone Tap", "Fast 5-Star Reviews", "Prompt Customer Support"]);
         }
       }
     }
@@ -116,21 +206,28 @@ export default function CustomizedReviewAssistantPage() {
     loadBusiness();
   }, [slug, source, isPreview]);
 
-  // Update draft when rating or language or chips change
+  // Update drafts when rating, language, style, voice notes, or chips change
   useEffect(() => {
     if (business && currentRating >= 3) {
-      generateDraftText();
+      generateMultiDrafts();
     }
-  }, [currentRating, currentLang, currentStyle, selectedChips, business]);
+  }, [currentRating, currentLang, currentStyle, selectedChips, voiceNotes, business]);
 
-  const positiveChips = [
-    { id: "quality", label: "Top Quality & Authenticity", icon: "💎" },
-    { id: "staff", label: "Polite & Courteous Staff", icon: "🤝" },
-    { id: "pricing", label: "Fair & Transparent Pricing", icon: "⚖️" },
-    { id: "ambience", label: "Superb Ambience & Cleanliness", icon: "✨" },
-    { id: "service", label: "Fast & Attentive Service", icon: "⚡" },
-    { id: "recommend", label: "Highly Recommended Experience", icon: "🏆" },
-  ];
+  // Generate Positive Chips from business.custom_chips or high-quality defaults
+  const positiveChips = (business?.custom_chips && business.custom_chips.length > 0)
+    ? business.custom_chips.map((label, idx) => ({
+        id: `custom_${idx}`,
+        label,
+        icon: ["💎", "✨", "⭐", "🚀", "🤝", "🏆", "⚡", "🎯"][idx % 8] || "⭐",
+      }))
+    : [
+        { id: "quality", label: "Top Quality & Authenticity", icon: "💎" },
+        { id: "staff", label: "Polite & Courteous Staff", icon: "🤝" },
+        { id: "pricing", label: "Fair & Transparent Pricing", icon: "⚖️" },
+        { id: "ambience", label: "Superb Ambience & Cleanliness", icon: "✨" },
+        { id: "service", label: "Fast & Attentive Service", icon: "⚡" },
+        { id: "recommend", label: "Highly Recommended Experience", icon: "🏆" },
+      ];
 
   const improvementChips = [
     { id: "speed", label: "Wait Time & Speed", icon: "⏱️" },
@@ -174,36 +271,92 @@ export default function CustomizedReviewAssistantPage() {
   const handleRatingSelect = (rating: number) => {
     setCurrentRating(rating);
     logEvent(slug, "rating", rating);
-    // If switching between low and high rating, reset appropriate chips
     if (rating <= 2) {
       setSelectedChips(["Wait Time & Speed"]);
     } else {
-      setSelectedChips(["Top Quality & Authenticity", "Polite & Courteous Staff"]);
+      if (business?.custom_chips && business.custom_chips.length > 0) {
+        setSelectedChips(business.custom_chips.slice(0, 2));
+      } else {
+        setSelectedChips(["Top Quality & Authenticity", "Polite & Courteous Staff"]);
+      }
     }
   };
 
-  const generateDraftText = () => {
-    const bizName = business?.name || "this business";
+  // Generate 3 distinct review drafts (Humanized, Detailed, Short & Punchy)
+  const generateMultiDrafts = async () => {
+    const bizName = business?.name || "ZenTap.in Digital Solutions";
     const loc = business?.city ? ` in ${business.city}` : "";
-    const highlights = selectedChips.length > 0 ? selectedChips.join(", ") : "their exceptional hospitality";
+    const highlights = selectedChips.length > 0 ? selectedChips.join(", ") : "their wonderful customer service";
+    const voiceNoteAdd = voiceNotes.trim() ? ` ${voiceNotes.trim()}` : "";
 
-    let text = "";
+    let draftH = "";
+    let draftD = "";
+    let draftC = "";
 
+    // 1. Procedural generator (Instant local guarantee <5ms)
     if (currentLang === "gu") {
-      text = `${bizName}${loc} ખાતે ખરીદી/મુલાકાતનો અનુભવ ઘણો સુંદર રહ્યો. ${highlights} ની ગુણવત્તા અને ડિઝાઇન્સ અદ્ભુત છે. સ્ટાફનો વ્યવહાર ખૂબ જ નમ્ર અને પારદર્શક છે. ભલામણ કરું છું! ⭐⭐⭐⭐⭐`;
+      draftH = `ખરેખર ખૂબ જ સુંદર અનુભવ રહ્યો ${bizName}${loc} ખાતે! ${highlights} ની બાબતમાં એમનું કામ વખાણવા લાયક છે. સ્ટાફ એટલો મદદરૂપ અને નમ્ર છે કે ફરી આવવાનું મન થાય.${voiceNoteAdd} ચોક્કસ બધાને ભલામણ કરું છું! ⭐⭐⭐⭐⭐`;
+      draftD = `${bizName}${loc} ની મુલાકાત દરમિયાન બધી જ સુવિધાઓ અદ્ભુત જોવા મળી. ખાસ કરીને ${highlights} અને પારદર્શક વહીવટ ખૂબ જ પ્રભાવશાળી હતો. ગ્રાહકો પ્રત્યેની એમની કાળજી શ્રેષ્ઠ છે.${voiceNoteAdd} પૂરા 5 સ્ટાર મળવા જોઈએ!`;
+      draftC = `${bizName} ખાતે સુપર સર્વિસ! ${highlights} શ્રેષ્ઠ છે. દરેક બાબતમાં ઉત્તમ! ⭐⭐⭐⭐⭐`;
     } else if (currentLang === "hi") {
-      text = `${bizName}${loc} में हमारा अनुभव बेहद शानदार रहा। विशेष रूप से ${highlights} ने दिल जीत लिया। यहां की सेवा और कर्मचारियों का विनम्र व्यवहार सराहनीय है।`;
+      draftH = `${bizName}${loc} में हमारा अनुभव सच में बेहद दिल छू लेने वाला रहा! खासकर ${highlights} ने हमें बहुत प्रभावित किया। यहां का स्टाफ बहुत विनम्र और ईमानदार है।${voiceNoteAdd} मेरी तरफ से पूरे 5 स्टार, सभी को जरूर आना चाहिए! ⭐⭐⭐⭐⭐`;
+      draftD = `${bizName}${loc} की सेवाएं वाकई बहुत ही उच्च कोटि की हैं। ${highlights} से लेकर कस्टमर केयर तक सब कुछ बहुत पेशेवर था। शुद्धता, पारदर्शिता और समयबद्धता के लिए यह जगह सबसे भरोसेमंद है।${voiceNoteAdd} अत्यंत अनुशंसित!`;
+      draftC = `${bizName} की उत्कृष्ट सेवा और ${highlights}! बहुत ही संतुष्ट। 5 स्टार! ⭐⭐⭐⭐⭐`;
     } else {
-      if (currentStyle === "concise") {
-        text = `Outstanding experience at ${bizName}! Exceptional ${highlights}. Fair pricing and very polite staff. Highly recommended! ⭐⭐⭐⭐⭐`;
-      } else if (currentStyle === "detailed") {
-        text = `Visited ${bizName}${loc}. Truly impressed with their ${highlights}. The craftsmanship, transparency, and courteous staff made our visit very pleasant. Best in the area!`;
-      } else {
-        text = `Wonderful shopping and customer service experience at ${bizName}. Their quality in ${highlights} is outstanding. Highly trusted brand!`;
-      }
+      draftH = `Had such a genuine, wonderful visit to ${bizName}${loc}! What really stood out was their ${highlights} — you can immediately tell they care about their customers. The team was warm, welcoming, and super attentive.${voiceNoteAdd} Highly recommended to anyone looking for top quality! ⭐⭐⭐⭐⭐`;
+      draftD = `I recently visited ${bizName}${loc} and was thoroughly impressed across the board. In particular, ${highlights} exceeded all expectations. Everything was handled with complete transparency, promptness, and professional courtesy.${voiceNoteAdd} An undisputed 5-star experience!`;
+      draftC = `Superb experience at ${bizName}! Outstanding ${highlights} and courteous service. Highly recommended! ⭐⭐⭐⭐⭐`;
     }
 
-    setReviewDraft(text);
+    const variations = {
+      humanized: draftH,
+      detailed: draftD,
+      concise: draftC,
+    };
+
+    setDraftVariations(variations);
+
+    // Set currently active draft based on active tab
+    if (activeDraftTab === "detailed") setReviewDraft(draftD);
+    else if (activeDraftTab === "concise") setReviewDraft(draftC);
+    else setReviewDraft(draftH);
+
+    // Also call background AI route if online
+    try {
+      fetch("/api/ai/generate-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: bizName,
+          category: business?.category,
+          city: business?.city,
+          rating: currentRating,
+          chips: selectedChips,
+          language: currentLang,
+          style: currentStyle,
+          voiceNotes: voiceNotes.trim(),
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.success && data?.drafts) {
+            setDraftVariations(data.drafts);
+            if (activeDraftTab === "detailed") setReviewDraft(data.drafts.detailed);
+            else if (activeDraftTab === "concise") setReviewDraft(data.drafts.concise);
+            else setReviewDraft(data.drafts.humanized);
+          }
+        })
+        .catch(() => {});
+    } catch {
+      // Offline fallback already active
+    }
+  };
+
+  const handleSelectDraftTab = (tab: "humanized" | "detailed" | "concise") => {
+    setActiveDraftTab(tab);
+    if (tab === "humanized") setReviewDraft(draftVariations.humanized);
+    else if (tab === "detailed") setReviewDraft(draftVariations.detailed);
+    else if (tab === "concise") setReviewDraft(draftVariations.concise);
   };
 
   const showToast = (msg: string) => {
@@ -218,7 +371,7 @@ export default function CustomizedReviewAssistantPage() {
     try {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(reviewDraft);
-        showToast("✓ Review copied! Redirecting to Google...");
+        showToast("✓ Review copied! Redirecting to Google Maps...");
       }
     } catch (e) {
       console.warn("Clipboard copy error:", e);
@@ -285,8 +438,8 @@ export default function CustomizedReviewAssistantPage() {
         
         {/* Preview badge if in preview mode */}
         {isPreview && (
-          <div className="mb-3 px-3 py-1 rounded-full bg-secondary text-on-secondary font-bold text-[10px] uppercase text-center">
-            Admin Preview Mode • Scan Telemetry Not Recorded
+          <div className="mb-3 px-3 py-1 rounded-full bg-secondary text-on-secondary font-bold text-[10px] uppercase text-center shadow-md">
+            Admin Preview Mode • Live Assistant Simulation
           </div>
         )}
 
@@ -512,18 +665,27 @@ export default function CustomizedReviewAssistantPage() {
             </div>
           ) : (
             /* ========================================================= */
-            /* FLOW B: FOR 3-5 STARS (AI Draft + Post Google Review)      */
+            /* FLOW B: FOR 3-5 STARS (Multi-Draft AI + Speech-to-Text)    */
             /* ========================================================= */
             <div className="pt-2 border-t border-white/10 animate-in fade-in duration-200 space-y-4">
-              {/* Step 2: What stood out */}
+              
+              {/* Step 2: What did you like most? (Custom Categories Enabled) */}
               <div>
-                <div className="flex items-center gap-2 mb-2.5">
-                  <span className="w-6 h-6 rounded-full bg-[#D4AF37] text-black font-extrabold text-xs flex items-center justify-center">
-                    2
-                  </span>
-                  <span className="text-sm font-bold text-white tracking-wide">
-                    What did you like most?
-                  </span>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[#D4AF37] text-black font-extrabold text-xs flex items-center justify-center">
+                      2
+                    </span>
+                    <span className="text-sm font-bold text-white tracking-wide">
+                      What did you like most?
+                    </span>
+                  </div>
+
+                  {business?.custom_chips && business.custom_chips.length > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#F7E7A9] font-bold border border-[#D4AF37]/30">
+                      Store Tailored
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mb-2">
@@ -548,19 +710,101 @@ export default function CustomizedReviewAssistantPage() {
                 </div>
               </div>
 
-              {/* Step 3: AI-Crafted Review Draft */}
-              <div className="p-3.5 rounded-2xl bg-black/40 border border-[#D4AF37]/35 relative">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gradient-to-r from-[#F7E7A9] to-[#D4AF37] text-black font-bold text-[10px] tracking-wider uppercase">
-                    <Sparkles className="w-3 h-3 text-black" />
-                    <span>AI-Crafted Review Draft</span>
+              {/* Step 3: Voice Input / Speech-to-Text 🎙️ */}
+              <div className="p-3 rounded-2xl bg-black/40 border border-[#D4AF37]/25 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#F7E7A9]">
+                    <Volume2 className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>Voice Input (Speech-to-Text in Any Language)</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isListening
+                        ? "bg-red-600 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                        : "bg-white/10 hover:bg-white/20 text-[#F7E7A9] border border-[#D4AF37]/40"
+                    }`}
+                  >
+                    {isListening ? (
+                      <>
+                        <MicOff className="w-3.5 h-3.5" />
+                        <span>Listening...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-3.5 h-3.5 text-[#D4AF37]" />
+                        <span>Speak Experience</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  placeholder={
+                    currentLang === "gu"
+                      ? "તમારો અવાજ અથવા વધારાના વિચારો અહીં ઉમેરો..."
+                      : currentLang === "hi"
+                      ? "अपनी आवाज या अतिरिक्त विचार यहां दर्ज करें..."
+                      : "Speak or type extra details (e.g. delicious dessert, warm greeting)..."
+                  }
+                  value={voiceNotes}
+                  onChange={(e) => setVoiceNotes(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+
+              {/* Step 4: Multi-Draft AI Review Generator (3 Options) */}
+              <div className="p-3.5 rounded-2xl bg-black/40 border border-[#D4AF37]/35 relative space-y-2.5">
+                
+                {/* Draft Selector Tabs */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDraftTab("humanized")}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        activeDraftTab === "humanized"
+                          ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-sm"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>Draft 1: Humanized</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDraftTab("detailed")}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        activeDraftTab === "detailed"
+                          ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-sm"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Draft 2: Detailed
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDraftTab("concise")}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        activeDraftTab === "concise"
+                          ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-sm"
+                          : "text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Draft 3: Quick
+                    </button>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => {
-                      generateDraftText();
-                      showToast("✨ Fresh review draft generated!");
+                      generateMultiDrafts();
+                      showToast("✨ Generated fresh 3 AI review drafts!");
                     }}
                     className="text-[11px] text-[#F7E7A9] hover:underline flex items-center gap-1 cursor-pointer font-medium"
                   >
@@ -569,22 +813,40 @@ export default function CustomizedReviewAssistantPage() {
                   </button>
                 </div>
 
+                {/* Review Textarea */}
                 <textarea
                   value={reviewDraft}
                   onChange={(e) => setReviewDraft(e.target.value)}
                   rows={4}
-                  className="w-full bg-transparent text-white text-xs sm:text-sm leading-relaxed border-none focus:outline-none resize-none font-sans"
+                  className="w-full bg-black/30 p-2.5 rounded-xl text-white text-xs sm:text-sm leading-relaxed border border-white/10 focus:border-[#D4AF37] focus:outline-none resize-none font-sans"
                 />
 
-                {/* Style Pills */}
-                <div className="flex items-center gap-1.5 pt-2 border-t border-white/10 mt-2">
+                {/* Style Options (Humanized First) */}
+                <div className="flex items-center gap-1.5 pt-2 border-t border-white/10">
                   <span className="text-[10px] text-gray-400 font-semibold mr-1">Style:</span>
                   <button
                     type="button"
-                    onClick={() => setCurrentStyle("balanced")}
+                    onClick={() => {
+                      setCurrentStyle("humanized");
+                      handleSelectDraftTab("humanized");
+                    }}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
+                      currentStyle === "humanized"
+                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9] font-bold"
+                        : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    ✨ Humanized
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStyle("balanced");
+                      handleSelectDraftTab("humanized");
+                    }}
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
                       currentStyle === "balanced"
-                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9]"
+                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9] font-bold"
                         : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
                     }`}
                   >
@@ -592,10 +854,13 @@ export default function CustomizedReviewAssistantPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentStyle("detailed")}
+                    onClick={() => {
+                      setCurrentStyle("detailed");
+                      handleSelectDraftTab("detailed");
+                    }}
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
                       currentStyle === "detailed"
-                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9]"
+                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9] font-bold"
                         : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
                     }`}
                   >
@@ -603,10 +868,13 @@ export default function CustomizedReviewAssistantPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setCurrentStyle("concise")}
+                    onClick={() => {
+                      setCurrentStyle("concise");
+                      handleSelectDraftTab("concise");
+                    }}
                     className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${
                       currentStyle === "concise"
-                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9]"
+                        ? "bg-[#D4AF37]/25 border-[#D4AF37] text-[#F7E7A9] font-bold"
                         : "bg-white/5 border-white/10 text-gray-400 hover:text-white"
                     }`}
                   >
@@ -615,7 +883,7 @@ export default function CustomizedReviewAssistantPage() {
                 </div>
               </div>
 
-              {/* POST GOOGLE REVIEW BUTTON (Copies to clipboard and opens Google Review link) */}
+              {/* POST GOOGLE REVIEW BUTTON */}
               {linkReady ? (
                 <button
                   type="button"
@@ -645,7 +913,7 @@ export default function CustomizedReviewAssistantPage() {
 
               <p className="text-[11px] text-center text-gray-400 flex items-center justify-center gap-1">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>AI review draft copies automatically. Post directly on Google Reviews.</span>
+                <span>Selected AI draft copies automatically to clipboard upon click.</span>
               </p>
             </div>
           )}
