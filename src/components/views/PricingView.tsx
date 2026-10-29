@@ -159,15 +159,27 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             </ul>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onNavigate("portal", "card_500");
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
-          >
-            Order Smart Card (₹500)
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("portal", "card_500");
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
+            >
+              Order Smart Card (₹500)
+            </button>
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%201%20(Normal%20Smart%20NFC%20Card%20-%20₹500).%20Please%20share%20more%20details."
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Instant WhatsApp Chat</span>
+            </a>
+          </div>
         </div>
 
         {/* Plan 2: Auto Google Review Standee with NFC and QR (Most Popular) */}
@@ -224,15 +236,27 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             </ul>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onNavigate("portal", "standee_1500");
-            }}
-            className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
-          >
-            Order Customized Standee (₹1,500)
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("portal", "standee_1500");
+              }}
+              className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
+            >
+              Order Customized Standee (₹1,500)
+            </button>
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%202%20(Auto%20Google%20Review%20Standee%20-%20₹1,500).%20Please%20share%20more%20details."
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Instant WhatsApp Chat</span>
+            </a>
+          </div>
         </div>
 
         {/* Plan 3: Auto Google Review Standee + Auto Reply */}
@@ -285,15 +309,27 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             </ul>
           </div>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onNavigate("portal", "standee_auto_2000");
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
-          >
-            Order Standee + Auto Reply (₹2,000)
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("portal", "standee_auto_2000");
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
+            >
+              Order Standee + Auto Reply (₹2,000)
+            </button>
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%203%20(Standee%20+%20Auto%20Reply%20Engine%20-%20₹2,000).%20Please%20share%20more%20details."
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Instant WhatsApp Chat</span>
+            </a>
+          </div>
         </div>
 
         {/* Plan 4: Franchise & Multi-Location Custom Plan */}
@@ -361,13 +397,13 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               Build Franchise Quotation
             </button>
             <a
-              href="https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%204%20(Franchise%20Multi-Location%20Fleet).%20Please%20provide%20a%20custom%20quotation."
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%204%20(Franchise%20Multi-Location%20Fleet).%20Please%20provide%20a%20custom%20quotation."
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Instant WhatsApp Quote Chat</span>
             </a>
           </div>

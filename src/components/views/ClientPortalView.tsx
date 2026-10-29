@@ -2056,15 +2056,24 @@ export default function ClientPortalView({
                         </p>
                       </div>
 
-                      <div className="flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
                         <button
                           type="submit"
                           disabled={quoteSubmitting}
-                          className="w-full md:w-auto px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                          className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
                         >
                           <Send className="w-4 h-4" />
                           <span>{quoteSubmitting ? "Generating Quotation..." : "Submit Franchise Quotation Request"}</span>
                         </button>
+                        <a
+                          href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20want%20to%20discuss%20a%20custom%20franchise%20fleet%20quotation."
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full sm:w-auto px-4 py-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-1.5 border border-emerald-500/30 transition-all cursor-pointer"
+                        >
+                          <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>Instant WhatsApp Chat</span>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -2092,7 +2101,7 @@ export default function ClientPortalView({
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <a
-                        href={`https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20I%20have%20submitted%20Franchise%20Quotation%20${quoteSubmittedRecord.id}%20for%20${encodeURIComponent(quoteSubmittedRecord.business_name)}.%20Please%20review.`}
+                        href={`https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20have%20submitted%20Franchise%20Quotation%20${quoteSubmittedRecord.id}%20for%20${encodeURIComponent(quoteSubmittedRecord.business_name)}.%20Please%20review.`}
                         target="_blank"
                         rel="noreferrer"
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
@@ -2153,6 +2162,16 @@ export default function ClientPortalView({
                       <CreditCard className="w-4 h-4" />
                       <span>Pay ₹{grandTotal} &amp; Dispatch to Production</span>
                     </button>
+
+                    <a
+                      href={`https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20have%20a%20question%20before%20ordering%20${encodeURIComponent(planTitles[selectedPlan])}%20for%20${encodeURIComponent(formName || displayBusiness.name)}.`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Questions? Chat with Us on WhatsApp</span>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -2202,7 +2221,7 @@ export default function ClientPortalView({
 
                       <div className="flex items-center gap-2">
                         <a
-                          href={`https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20inquiry%20regarding%20franchise%20quotation%20${q.id}`}
+                          href={`https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20inquiry%20regarding%20franchise%20quotation%20${q.id}`}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high border border-surface-variant/50 text-[11px] font-bold flex items-center gap-1 cursor-pointer"

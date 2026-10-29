@@ -1,5 +1,20 @@
 # ZenTap.ai — Changelog
 
+## [1.3.5] — 2026-10-29
+### Added
+- **Instant WhatsApp Chat for All 4 Plans** (`PricingView.tsx`):
+  - Added dedicated WhatsApp inquiry action buttons to **Plan 1** (Normal Smart Card - ₹500), **Plan 2** (Auto Google Review Standee - ₹1,500), **Plan 3** (Standee + Auto Reply Engine - ₹2,000), and **Plan 4** (Franchise Custom Fleet).
+  - Linked all instant WhatsApp buttons to the official business number: **`+919274560880`** (`https://wa.me/919274560880`).
+  - Tailored pre-filled greeting messages per plan:
+    - Plan 1: *"Hello ZenTap Team, I am interested in Plan 1 (Normal Smart NFC Card - ₹500). Please share more details."*
+    - Plan 2: *"Hello ZenTap Team, I am interested in Plan 2 (Auto Google Review Standee - ₹1,500). Please share more details."*
+    - Plan 3: *"Hello ZenTap Team, I am interested in Plan 3 (Standee + Auto Reply Engine - ₹2,000). Please share more details."*
+    - Plan 4: *"Hello ZenTap Team, I am interested in Plan 4 (Franchise Multi-Location Fleet). Please provide a custom quotation."*
+- **Merchant Portal WhatsApp Support Integration** (`ClientPortalView.tsx`):
+  - Updated all WhatsApp touchpoints and quotation links to `+919274560880`.
+  - Added pre-checkout *"Questions? Chat with Us on WhatsApp"* button directly above the payment button in Sub-Tab 4 (*Standee Order & Status*).
+  - Added direct *"Instant WhatsApp Chat"* button alongside the Franchise Quotation request submission form.
+
 ## [1.3.4] — 2026-10-29
 ### Added
 - **Landing Page Pricing Tab 4th Plan Integration** (`PricingView.tsx`):
