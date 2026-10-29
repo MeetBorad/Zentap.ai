@@ -618,9 +618,9 @@ export default function ClientPortalView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. ORDER CONFIRMATION / ORDER IN PROCESS SCREEN (POST-PAYMENT)            */}
+      {/* 1. STANDEE ORDER STATUS & DISPATCH TIMELINE                               */}
       {/* ========================================================================= */}
-      {(orderSuccess || displayOrders.length > 0) && (
+      {(orderSuccess || displayOrders.length > 0) ? (
         <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-emerald-500/40 shadow-sm relative overflow-hidden animate-in fade-in duration-300">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
@@ -630,7 +630,7 @@ export default function ClientPortalView({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-headline font-bold text-xl text-on-surface">
-                    Your Order is in Process!
+                    Your Standee Order is in Process!
                   </h3>
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 text-[10px] font-bold border border-emerald-500/30">
                     Payment Verified
@@ -709,6 +709,37 @@ export default function ClientPortalView({
                 <span>Download Print QR</span>
               </button>
             </div>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm relative overflow-hidden animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Standee Order Status: Pending Selection
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 text-[10px] font-bold border border-amber-500/30">
+                    No Order Placed Yet
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  You haven&apos;t ordered a physical NFC standee or review card yet. Choose a plan below to get custom laser-engraved hardware dispatched to your counter.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="#purchase-section"
+              className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex items-center gap-2 cursor-pointer shadow-sm flex-shrink-0"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Order Standee Now</span>
+            </a>
           </div>
         </div>
       )}

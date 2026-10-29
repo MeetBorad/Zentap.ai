@@ -8,8 +8,8 @@
 | **Business Profile Editor (8 Fields)** | Done | Name, GBP Link, Review URL, Contact Phone, City, State, Country, Pincode, Email, Address. |
 | **3-Tier Hardware Pricing Plans** | Done | ₹500 Card (no sub), ₹1,500 Standee (+₹1k/mo), ₹2,000 Standee + Auto Reply (+₹1k/mo). |
 | **Dynamic Courier Calculation** | Done | Pincode zone detection (Gujarat ₹69, Metro ₹99, Pan-India). |
-| **Razorpay Server-Side Order Creation** | In Progress | Adding `/api/checkout/create-order` with trusted server pricing. |
-| **Razorpay Checkout Modal & Verification** | In Progress | Adding interactive payment modal (UPI / QR / Cards) and `/api/checkout/verify-payment`. |
+| **Razorpay Server-Side Order Creation** | Done | Server-side `/api/checkout/create-order` with trusted prices & dynamic courier fees. |
+| **Razorpay Checkout Modal & Verification** | Done | Interactive payment modal (UPI / QR / Cards) and `/api/checkout/verify-payment` HMAC-SHA256 verification. |
 | **Post-Payment Order Tracking Screen** | Done | 4-stage fulfillment timeline (*Payment Confirmed → Laser Engraving → RF Inspection → Dispatched*). |
 | **Customized Google Review Assistant (`/r/[slug]`)** | Done | Dual-branch star routing: 1-2 stars = Private note + Post button; 3-5 stars = AI Draft + Post Google Review. |
 | **Level Q Laser QR Code Download** | Done | Printable PNG download with 25% error correction redundancy. |

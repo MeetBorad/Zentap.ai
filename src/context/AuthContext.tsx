@@ -5,12 +5,10 @@ import { User, Session, AuthError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 export function checkIsAdmin(user: User | null): boolean {
+  // Strict Superadmin Whitelist: Only verified root administrators have supreme console authority
   const adminList = [
     "admin@zentapdigitalsolutions.com",
     "admin@zentap.ai",
-    "meet@zentap.ai",
-    "meetborad@hotmail.com",
-    "thedayithappened736@gmail.com",
   ];
 
   // If a user is logged in, their email/metadata determines authority
@@ -18,14 +16,13 @@ export function checkIsAdmin(user: User | null): boolean {
     const email = (user.email || "").toLowerCase().trim();
     if (
       adminList.includes(email) ||
-      email.endsWith("@zentapdigitalsolutions.com") ||
-      email.endsWith("@zentap.ai") ||
+      email === "admin@zentapdigitalsolutions.com" ||
       user.user_metadata?.role === "admin" ||
       user.app_metadata?.role === "admin"
     ) {
       return true;
     }
-    // Regular merchant user logged in - strip any stale admin supreme flag
+    // Regular merchant user logged in (e.g. thedayithappened736@gmail.com) - strip any stale admin supreme flag
     if (typeof window !== "undefined") {
       localStorage.removeItem("zentap_admin_supreme");
     }

@@ -1,5 +1,15 @@
 # ZenTap.ai — Changelog
 
+## [1.2.1] — 2026-10-29
+### Added
+- Explicit "Standee Order Status: Pending Selection" banner in `ClientPortalView` when no order has been placed, guiding merchant to select and purchase hardware.
+- Full 4-stage tracking timeline (Order Confirmed, Laser Engraving, Signal Inspection, BlueDart Dispatched) immediately upon standee order creation.
+
+### Fixed
+- Fixed Merchant vs Superadmin routing: removed `thedayithappened736@gmail.com` and non-superadmin accounts from `adminList` in `AuthContext.tsx`. Merchants always route to `ClientPortalView` and never see the Superadmin Fleet Directory table.
+- Cleared stale `zentap_admin_supreme` localStorage key on regular merchant login.
+- Preserved strict multi-tenant isolation, Google anti-gating compliance, and 17/17 passing test suite.
+
 ## [1.2.0] — 2026-10-29
 ### Added
 - Created comprehensive documentation suite in `/docs`:
