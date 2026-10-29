@@ -1,5 +1,23 @@
 # ZenTap.ai — Changelog
 
+## [1.3.4] — 2026-10-29
+### Added
+- **Landing Page Pricing Tab 4th Plan Integration** (`PricingView.tsx`):
+  - Added Plan 4 card to the responsive 4-column pricing grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`).
+  - Added "Franchise Fleet • Multi-QR" badge, custom bulk volume pricing (₹1,200/standee, from ₹800/branch/mo), multi-QR specifications, central owner dashboard, and 1-click WhatsApp quote button.
+  - "Build Franchise Quotation" CTA button seamlessly routes to the merchant portal with Plan 4 preselected and the Orders/Quotation tab open.
+- **Deep-Linked Routing to Merchant Portal Orders & Quotations** (`page.tsx` & `ClientPortalView.tsx`):
+  - Added `portalInitialPlan` state in `page.tsx` passing `initialPlan` directly into `ClientPortalView`.
+  - Added `useEffect` in `ClientPortalView` to automatically pre-select any chosen plan and activate Sub-Tab 4 (*Standee Order & Status*).
+- **Comprehensive Project-Wide Pricing Reference Updates**:
+  - `HomeView.tsx`: Updated action banner CTA text to "View All 4 Standee & Franchise Plans (From ₹500)".
+  - `Footer.tsx`: Updated footer pricing link to "Pricing & Franchise Plans (From ₹500)".
+  - `FaqView.tsx`: Added dedicated FAQ entry explaining franchise and multi-location business support and multi-QR architecture.
+  - `AdminConsoleView.tsx`:
+    - Added Tier 4 (*Franchise Multi-Outlet Fleet*) to the Overview hardware distribution widget.
+    - Updated plan label display logic across the Master Table and Orders Table.
+    - Added Plan 4 option to the admin order creation modal and the manual onboarding modal.
+
 ## [1.3.3] — 2026-10-29
 ### Added
 - **Sub-Tab Re-Sequencing under My Live Business Analytics** (`ClientPortalView.tsx`):

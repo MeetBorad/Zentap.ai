@@ -656,7 +656,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const totalOrderRevenue = orders.reduce((sum, o) => sum + (o.amount || 0) + (o.courier || 0), 0);
   const totalPlanBase = businesses.reduce((sum, b) => {
     if (b.payment_status === "paid") {
-      const p = b.plan === "card_500" ? 500 : b.plan === "standee_1500" ? 1500 : 2000;
+      const p = b.plan === "card_500" ? 500 : b.plan === "standee_1500" ? 1500 : b.plan === "standee_auto_2000" ? 2000 : 2500;
       return sum + p;
     }
     return sum;
@@ -669,7 +669,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const ordersDelivered = orders.filter((o) => o.status === "delivered").length;
 
   const courierCalculation = calculateCourierCharge(orderPincode);
-  const baseOrderPrice = orderPlan === "card_500" ? 500 : orderPlan === "standee_1500" ? 1500 : 2000;
+  const baseOrderPrice = orderPlan === "card_500" ? 500 : orderPlan === "standee_1500" ? 1500 : orderPlan === "standee_auto_2000" ? 2000 : 2500;
 
   // Strict Security Gate
   if (!isAdmin) {
@@ -1154,6 +1154,16 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                     {businesses.filter((b) => b.plan === "card_500").length} Units
                   </span>
                 </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-amber-500" />
+                    <span className="text-xs font-bold text-on-surface">Franchise Multi-Outlet Fleet (Custom Quote)</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-amber-600">
+                    {businesses.filter((b) => b.plan === "franchise_custom").length} Units
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1322,7 +1332,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                               title="Click to change plan"
                             >
                               <span>
-                                {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                                {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : b.plan === "standee_auto_2000" ? "Auto Reply ₹2,000" : "Franchise Custom"}
                               </span>
                               <ChevronDown className="w-2.5 h-2.5 text-on-surface-variant" />
                             </button>
@@ -1531,7 +1541,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                           </td>
                           <td className="py-4 px-4">
                             <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-semibold text-[10px] text-on-surface border border-surface-variant/40">
-                              {o.plan === "card_500" ? "Card ₹500" : o.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                              {o.plan === "card_500" ? "Card ₹500" : o.plan === "standee_1500" ? "Standee ₹1,500" : o.plan === "standee_auto_2000" ? "Auto Reply ₹2,000" : "Franchise Custom"}
                             </span>
                           </td>
                           <td className="py-4 px-4 font-mono font-bold text-on-surface">
@@ -2148,7 +2158,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                 <label className="block text-xs font-bold text-on-surface mb-1">
                   Hardware Model / Plan *
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => setOrderPlan("card_500")}
@@ -2178,6 +2188,16 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                   >
                     <span className="block text-xs text-on-surface">Standee+Reply</span>
                     <span className="font-bold text-sm text-purple-600">₹2,000</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderPlan("franchise_custom")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      orderPlan === "franchise_custom" ? "border-amber-500 bg-amber-500/15 font-bold" : "border-surface-variant/40 bg-surface-container"
+                    }`}
+                  >
+                    <span className="block text-xs text-on-surface">Franchise Fleet</span>
+                    <span className="font-bold text-sm text-amber-600">Custom</span>
                   </button>
                 </div>
               </div>
@@ -2399,6 +2419,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                     <option value="card_500">NFC Card (₹500)</option>
                     <option value="standee_1500">Auto Standee (₹1,500)</option>
                     <option value="standee_auto_2000">Auto Reply Standee (₹2,000)</option>
+                    <option value="franchise_custom">Franchise Multi-Outlet Fleet (Custom Quote)</option>
                   </select>
                 </div>
               </div>

@@ -34,6 +34,7 @@ import {
 export default function Page() {
   const { user, isAdmin, loading } = useAuth();
   const [currentView, setCurrentView] = useState<ActiveView>("home");
+  const [portalInitialPlan, setPortalInitialPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signin");
@@ -71,10 +72,13 @@ export default function Page() {
     }
   };
 
-  const handleNavigate = (view: ActiveView) => {
+  const handleNavigate = (view: ActiveView, plan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom") => {
     if (view === "admin" && !isAdmin) {
       handleOpenAuth("admin");
       return;
+    }
+    if (plan) {
+      setPortalInitialPlan(plan);
     }
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -164,6 +168,7 @@ export default function Page() {
         {/* Private Merchant Portal (Client Business Profile Dashboard) */}
         {currentView === "portal" && (
           <ClientPortalView
+            initialPlan={portalInitialPlan}
             onTriggerTapSimulator={() => setTapReviewModalOpen(true)}
             onOpenAuthModal={(tab) => handleOpenAuth(tab)}
           />

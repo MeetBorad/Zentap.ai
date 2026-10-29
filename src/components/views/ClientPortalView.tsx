@@ -79,12 +79,14 @@ import StandeeVisual from "@/components/StandeeVisuals";
 import RazorpayCheckoutModal from "@/components/modals/RazorpayCheckoutModal";
 
 interface ClientPortalViewProps {
+  initialPlan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
   onTriggerTapSimulator?: () => void;
   onOpenAuthModal?: (tab: "signin" | "signup") => void;
   onOpenUpcomingDrawer?: () => void;
 }
 
 export default function ClientPortalView({ 
+  initialPlan,
   onTriggerTapSimulator, 
   onOpenAuthModal, 
   onOpenUpcomingDrawer 
@@ -169,6 +171,15 @@ export default function ClientPortalView({
     starsCount: { 5: 320, 4: 62, 3: 18, 2: 9, 1: 5 },
     scansPerDay: [48, 54, 38, 62, 70, 85, 92],
   };
+
+  // Preselect plan and navigate to order tab when routed from landing page / pricing CTA
+  useEffect(() => {
+    if (initialPlan) {
+      setSelectedPlan(initialPlan);
+      setDashboardTab("live");
+      setPortalSubTab("orders");
+    }
+  }, [initialPlan]);
 
   useEffect(() => {
     async function loadData() {

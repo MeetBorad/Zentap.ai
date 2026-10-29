@@ -147,7 +147,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
                   onClick={() => onNavigate("pricing")}
                   className="hover:text-[#1C1B1A] transition-colors cursor-pointer"
                 >
-                  Standee Tiers (₹500 / ₹1,500 / ₹2,000)
+                  Pricing &amp; Franchise Plans (From ₹500)
                 </button>
               </li>
               <li>

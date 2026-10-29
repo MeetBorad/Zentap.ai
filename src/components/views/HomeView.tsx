@@ -231,7 +231,7 @@ export default function HomeView({
               onClick={() => onNavigate("pricing")}
               className="py-3 px-6 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white font-semibold text-xs transition-colors cursor-pointer text-center"
             >
-              View Standee Packages (₹500 / ₹1,500)
+              View All 4 Standee &amp; Franchise Plans (From ₹500)
             </button>
             <button
               onClick={() => onOpenAuth("signup")}

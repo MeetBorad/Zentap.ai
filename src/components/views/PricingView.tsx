@@ -13,20 +13,22 @@ import {
   TrendingUp, 
   Truck, 
   Layers, 
-  ExternalLink 
+  ExternalLink,
+  MessageSquare,
+  Building2
 } from "lucide-react";
 import { ActiveView } from "../Header";
 import StandeeVisual from "@/components/StandeeVisuals";
 
 interface PricingViewProps {
-  onNavigate: (view: ActiveView) => void;
+  onNavigate: (view: ActiveView, plan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom") => void;
   onOpenAuth: (initialTab: "signin" | "signup" | "admin") => void;
   onOpenUpcomingDrawer?: () => void;
 }
 
 export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDrawer }: PricingViewProps) {
   const [dailyCustomers, setDailyCustomers] = useState(150);
-  const [selectedPlan, setSelectedPlan] = useState<string>("standee_1500");
+  const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // ROI estimation calculations
@@ -53,7 +55,11 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
     },
     {
       q: "What are the courier and subscription charges?",
-      a: "Hardware is shipped pan-India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free AI routing and auto-sync, followed by an affordable ₹1,000/month subscription starting the next month of purchase.",
+      a: "Hardware is shipped pan-India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free AI routing and auto-sync, followed by an affordable ₹1,000/month subscription starting the next month of purchase. For multi-branch franchises, bulk volume standee discounts (₹1,200/standee) and custom SaaS rates (from ₹800/branch/mo) apply.",
+    },
+    {
+      q: "How does Plan 4 (Franchise & Multi-Location Custom Plan) work?",
+      a: "Plan 4 is engineered for franchise chains, multi-counter restaurants, salons, and clinic networks. You can configure multiple standees, generate unique QR codes and separate Google review links for each branch counter, and monitor all branch locations from a centralized master reporting dashboard.",
     },
   ];
 
@@ -100,27 +106,27 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         </button>
       </div>
 
-      {/* Pricing Cards Grid (The 3 Exact Plans) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16 items-stretch">
+      {/* Pricing Cards Grid (The 4 Plans) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
         {/* Plan 1: Normal Smart Card with NFC and QR (Card, not standee) */}
         <div 
           onClick={() => setSelectedPlan("card_500")}
-          className={`p-8 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
+          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
             selectedPlan === "card_500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
           }`}
         >
           <div>
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-5">
               <div>
                 <span className="px-2.5 py-0.5 rounded-full bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 font-bold text-[10px] uppercase">
                   Card Format
                 </span>
-                <h3 className="font-headline font-bold text-xl text-on-surface mt-2">Normal Smart Card</h3>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Normal Smart Card</h3>
                 <span className="text-xs text-on-surface-variant">Pocket NFC tap card with QR code (Single Card, not standee)</span>
               </div>
-              <div className="text-right">
-                <span className="font-headline font-extrabold text-3xl text-on-surface">₹500</span>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-headline font-extrabold text-2xl text-on-surface">₹500</span>
                 <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">+ Extra Courier</span>
               </div>
             </div>
@@ -154,8 +160,11 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <button
-            onClick={() => onNavigate("portal")}
-            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate("portal", "card_500");
+            }}
+            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
           >
             Order Smart Card (₹500)
           </button>
@@ -164,8 +173,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* Plan 2: Auto Google Review Standee with NFC and QR (Most Popular) */}
         <div 
           onClick={() => setSelectedPlan("standee_1500")}
-          className={`relative p-8 rounded-3xl bg-primary text-on-primary shadow-2xl border transition-all flex flex-col justify-between cursor-pointer md:scale-105 z-10 ${
-            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container" : "border-white/10"
+          className={`relative p-6 sm:p-7 rounded-3xl bg-primary text-on-primary shadow-xl border-2 transition-all flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container border-secondary-container" : "border-white/20"
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-secondary-container text-white text-[11px] font-bold shadow-md">
@@ -173,16 +182,16 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <div>
-            <div className="flex justify-between items-start mb-6 pt-2">
+            <div className="flex justify-between items-start mb-5 pt-2">
               <div>
                 <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white font-bold text-[10px] uppercase">
                   Branded Acrylic
                 </span>
-                <h3 className="font-headline font-bold text-xl text-white mt-2">Auto Review Standee</h3>
+                <h3 className="font-headline font-bold text-lg text-white mt-2">Auto Review Standee</h3>
                 <span className="text-xs text-zinc-300">Customized designed standee as per business to match</span>
               </div>
-              <div className="text-right">
-                <span className="font-headline font-extrabold text-3xl text-white">₹1,500</span>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-headline font-extrabold text-2xl text-white">₹1,500</span>
                 <span className="text-[10px] block text-zinc-300 font-semibold mt-0.5">+ Extra Courier</span>
               </div>
             </div>
@@ -194,15 +203,15 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             <ul className="space-y-3 mb-8 text-xs text-white font-medium">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Heavyweight Acrylic Standee (Customized to Match Business)</span>
+                <span>Heavyweight Acrylic Standee (Customized Design)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Customized Google Review Assistant (EN, GU, HI)</span>
+                <span>Customized Review Assistant (EN, GU, HI)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Negative Review Shield (1-2★ kept private, 3-5★ to Google)</span>
+                <span>Negative Review Shield (1-2★ private, 3-5★ to Google)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
@@ -216,8 +225,11 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <button
-            onClick={() => onNavigate("portal")}
-            className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate("portal", "standee_1500");
+            }}
+            className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
           >
             Order Customized Standee (₹1,500)
           </button>
@@ -226,26 +238,26 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* Plan 3: Auto Google Review Standee + Auto Reply */}
         <div 
           onClick={() => setSelectedPlan("standee_auto_2000")}
-          className={`p-8 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
+          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
             selectedPlan === "standee_auto_2000" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
           }`}
         >
           <div>
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-5">
               <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 font-bold text-[10px] uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 font-bold text-[10px] uppercase">
                   All-In-One Enterprise
                 </span>
-                <h3 className="font-headline font-bold text-xl text-on-surface mt-2">Standee + Auto Reply</h3>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Standee + Auto Reply</h3>
                 <span className="text-xs text-on-surface-variant">Customized Standee + Automated AI Google Review Reply</span>
               </div>
-              <div className="text-right">
-                <span className="font-headline font-extrabold text-3xl text-on-surface">₹2,000</span>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-headline font-extrabold text-2xl text-on-surface">₹2,000</span>
                 <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">+ Extra Courier</span>
               </div>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-bold mb-6">
+            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-400 text-[11px] font-bold mb-6">
               ⚡ ₹1,000/month subscription starting next month
             </div>
 
@@ -256,11 +268,11 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Auto Google Review Reply Engine (AI Powered)</span>
+                <span>Auto Google Review Reply Engine (AI Powered 24/7)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Instant Smart Reply to Every Customer Review</span>
+                <span>Instant Smart Reply to Every Incoming Review</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
@@ -274,11 +286,91 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <button
-            onClick={() => onNavigate("portal")}
-            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate("portal", "standee_auto_2000");
+            }}
+            className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
           >
             Order Standee + Auto Reply (₹2,000)
           </button>
+        </div>
+
+        {/* Plan 4: Franchise & Multi-Location Custom Plan */}
+        <div 
+          onClick={() => setSelectedPlan("franchise_custom")}
+          className={`relative p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "franchise_custom" ? "ring-2 ring-amber-500 bg-amber-500/5 shadow-md" : "border-surface-variant/40"
+          }`}
+        >
+          <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-amber-600 text-white text-[11px] font-bold shadow-md">
+            Franchise Fleet • Multi-QR
+          </div>
+
+          <div>
+            <div className="flex justify-between items-start mb-5 pt-2">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold text-[10px] uppercase">
+                  Multi-Branch Chains
+                </span>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Franchise Custom Plan</h3>
+                <span className="text-xs text-on-surface-variant">Multi-branch standee fleet with unique QR per counter</span>
+              </div>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-headline font-extrabold text-xl text-amber-600">Custom Quote</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">Bulk Discounts</span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] font-bold mb-6">
+              🏢 ₹1,200/standee &bull; From ₹800/mo SaaS
+            </div>
+
+            <ul className="space-y-3 mb-8 text-xs text-on-surface font-medium">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>Custom Standee Fleet (Matte Acrylic, Laser Wood, Hybrid)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>Unique QR Codes &amp; Separate Google Review Links per Branch</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>Centralized Multi-Outlet Owner Reporting Dashboard</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>Auto Google Review Reply AI across All Outlets</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>Split-Shipment Priority Logistics to Multiple Cities</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("portal", "franchise_custom");
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md text-center block"
+            >
+              Build Franchise Quotation
+            </button>
+            <a
+              href="https://wa.me/918140417772?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%204%20(Franchise%20Multi-Location%20Fleet).%20Please%20provide%20a%20custom%20quotation."
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Instant WhatsApp Quote Chat</span>
+            </a>
+          </div>
         </div>
 
       </div>

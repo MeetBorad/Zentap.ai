@@ -29,6 +29,10 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
       a: "The ₹500 Smart Card is a credit-card-sized NFC card with a laser-printed dynamic QR code. It has zero monthly subscription and is ideal for mobile staff, delivery, or solo desks. The ₹1,500 and ₹2,000 Standees are heavy-duty, luxury acrylic or brushed brass counter displays custom-branded with your logo and colors, and include the full AI review assistant suite (+ ₹1,000/month subscription starting next month).",
     },
     {
+      q: "Do you support franchises and multi-location businesses?",
+      a: "Yes! Our Plan 4 Franchise Custom Plan is designed specifically for multi-branch chains, retail franchises, and hospitality groups. We generate unique QR codes and separate Google review destinations per counter or branch, while providing the owner with a centralized multi-outlet analytics dashboard. You can configure standee quantities and build a customized quotation directly from the pricing tab or your merchant portal.",
+    },
+    {
       q: "Can I update my Google review link after receiving the physical standee?",
       a: "Yes! Your physical hardware encodes a dynamic cloud URL (e.g. https://zentap.ai/r/your-business). You can update your Google Review Link, business address, phone number, or target destination anytime in 1 click from your merchant dashboard without ever replacing the physical hardware.",
     },

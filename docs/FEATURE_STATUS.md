@@ -6,8 +6,8 @@
 | **Merchant Isolated Dashboard** | Done | `ClientPortalView.tsx` displays only logged-in user's business profile and metrics. |
 | **Sample Dashboard Preview** | Done | Instant toggle between Live Profile and Sample Preview (Virat Gold Palace metrics). |
 | **Business Profile Editor (8 Fields)** | Done | Name, GBP Link, Review URL, Contact Phone, City, State, Country, Pincode, Email, Address. |
-| **3-Tier Hardware Pricing Plans** | Done | ₹500 Card (no sub), ₹1,500 Standee (+₹1k/mo), ₹2,000 Standee + Auto Reply (+₹1k/mo). |
-| **Franchise & Multi-Outlet Custom Plan (Plan 4)** | Done | Custom quotation builder for franchises: multi-branch counter, multi-QR generation, custom finishes, volume discounts, auto quotation generation (`ZT-QTN-XXXXX`). |
+| **4-Tier Hardware Pricing Plans** | Done | ₹500 Card (no sub), ₹1,500 Standee (+₹1k/mo), ₹2,000 Standee + Auto Reply (+₹1k/mo), and Plan 4 Franchise Custom Multi-QR Fleet. |
+| **Franchise & Multi-Outlet Custom Plan (Plan 4)** | Done | Custom quotation builder for franchises: multi-branch counter, multi-QR generation, custom finishes, volume discounts, auto quotation generation (`ZT-QTN-XXXXX`). Full landing page pricing tab integration with seamless direct builder navigation. |
 | **Admin Franchise Quotations Hub** | Done | 5th tab in ZenTap.in Admin Dashboard for tracking, managing, and contacting franchise quotation leads with WhatsApp 1-click chat. |
 | **Dynamic Courier Calculation** | Done | Pincode zone detection (Gujarat ₹69, Metro ₹99, Pan-India). |
 | **Razorpay Server-Side Order Creation** | Done | Server-side `/api/checkout/create-order` with trusted prices & dynamic courier fees. |
