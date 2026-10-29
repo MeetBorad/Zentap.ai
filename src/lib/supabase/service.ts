@@ -348,3 +348,45 @@ export async function adminUpdateDbBusiness(businessId: string, updates: Partial
     return false;
   }
 }
+
+/**
+ * 12. Fetch all orders across the fleet for Admin Console
+ */
+export async function fetchDbAdminOrders(): Promise<DbOrderRecord[]> {
+  try {
+    const supabase = getSupabase(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("at", { ascending: false });
+
+    if (error) {
+      console.warn("fetchDbAdminOrders notice:", error.message);
+      return [];
+    }
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 13. Admin update order status in Supabase
+ */
+export async function adminUpdateDbOrder(orderId: string, updates: Partial<DbOrderRecord>) {
+  try {
+    const supabase = getSupabase(true);
+    const { error } = await supabase
+      .from("orders")
+      .update(updates)
+      .eq("id", orderId);
+
+    if (error) {
+      console.warn("adminUpdateDbOrder notice:", error.message);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -656,3 +656,103 @@ export function getOrdersForBusiness(businessId: string): OrderRecord[] {
     return [];
   }
 }
+
+// Get all orders across the fleet for Superadmin
+export function getAllOrders(): OrderRecord[] {
+  if (typeof window === "undefined") {
+    return [
+      {
+        id: "ZT-ORD-94102",
+        business_id: SAMPLE_DEMO_BUSINESS.id,
+        plan: "standee_auto_2000",
+        amount: 2000,
+        courier: 99,
+        status: "delivered",
+        razorpay_id: "rzp_live_84920194",
+        courier_name: "BlueDart Express",
+        tracking_number: "BD-84920194",
+        estimated_delivery: "Delivered",
+        at: "2026-10-15T10:00:00.000Z",
+      },
+    ];
+  }
+
+  const all: OrderRecord[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(ORDERS_KEY_PREFIX)) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const list: OrderRecord[] = JSON.parse(raw);
+            if (Array.isArray(list)) all.push(...list);
+          } catch {}
+        }
+      }
+    }
+    if (all.length === 0) {
+      all.push({
+        id: "ZT-ORD-94102",
+        business_id: SAMPLE_DEMO_BUSINESS.id,
+        plan: "standee_auto_2000",
+        amount: 2000,
+        courier: 99,
+        status: "delivered",
+        razorpay_id: "rzp_live_84920194",
+        courier_name: "BlueDart Express",
+        tracking_number: "BD-84920194",
+        estimated_delivery: "Delivered",
+        at: "2026-10-15T10:00:00.000Z",
+      });
+    }
+  } catch {}
+
+  // Deduplicate by ID
+  const map = new Map<string, OrderRecord>();
+  all.forEach((o) => map.set(o.id, o));
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+  );
+}
+
+// Admin update an order's fulfillment status & tracking
+export function adminUpdateOrderStatus(
+  businessId: string,
+  orderId: string,
+  status: OrderRecord["status"],
+  trackingNumber?: string,
+  courierName?: string
+): OrderRecord[] {
+  if (typeof window === "undefined") return getAllOrders();
+  try {
+    const key = `${ORDERS_KEY_PREFIX}${businessId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const list: OrderRecord[] = JSON.parse(raw);
+      const idx = list.findIndex((o) => o.id === orderId);
+      if (idx >= 0) {
+        list[idx].status = status;
+        if (trackingNumber !== undefined) list[idx].tracking_number = trackingNumber;
+        if (courierName !== undefined) list[idx].courier_name = courierName;
+        localStorage.setItem(key, JSON.stringify(list));
+      }
+    }
+  } catch (err) {
+    console.warn("adminUpdateOrderStatus notice:", err);
+  }
+  return getAllOrders();
+}
+
+// Admin create a standee order on behalf of a business
+export function adminCreateOrder(
+  businessId: string,
+  plan: "card_500" | "standee_1500" | "standee_auto_2000",
+  pincode: string = "380001",
+  address?: string
+): OrderRecord {
+  const order = createOrderRecord(businessId, plan, pincode);
+  // Auto-mark business payment status as paid
+  adminUpdateBusinessRecord(businessId, { payment_status: "paid" });
+  return order;
+}

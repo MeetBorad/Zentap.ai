@@ -37,7 +37,15 @@ import {
   ChevronDown,
   Lock,
   KeyRound,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  ShoppingBag,
+  TrendingUp,
+  Sliders,
+  PackageCheck,
+  CreditCard,
+  Building2,
+  FileCheck
 } from "lucide-react";
 import { 
   BusinessRecord, 
@@ -45,10 +53,24 @@ import {
   adminUpdateBusinessRecord, 
   validateGoogleReviewUrl,
   getBusinessAnalytics,
-  generateRandomSlug
+  generateRandomSlug,
+  calculateCourierCharge,
+  getAllOrders,
+  adminUpdateOrderStatus,
+  adminCreateOrder,
+  OrderRecord
 } from "@/lib/businessStore";
 import { useAuth } from "@/context/AuthContext";
-import { fetchDbAdminBusinesses, updateDbReviewUrl, upsertUserBusinessInDb, adminUpdateDbBusiness } from "@/lib/supabase/service";
+import { 
+  fetchDbAdminBusinesses, 
+  updateDbReviewUrl, 
+  upsertUserBusinessInDb, 
+  adminUpdateDbBusiness,
+  fetchDbAdminOrders,
+  adminUpdateDbOrder,
+  DbBusinessRecord,
+  DbOrderRecord
+} from "@/lib/supabase/service";
 
 interface AdminConsoleViewProps {
   onOpenAuthModal?: (tab: "signin" | "signup" | "admin") => void;
@@ -56,16 +78,47 @@ interface AdminConsoleViewProps {
 
 export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewProps) {
   const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail } = useAuth();
+  
+  // Navigation Tabs: Analytics Dashboard vs Fleet Table vs Standee Orders vs Plans
+  const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans">("analytics");
+
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "paid" | "pending">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "name_pending" | "paid" | "pending">("all");
+  const [toastMsg, setToastMsg] = useState("");
+
+  // Direct Review Link Edit State
   const [editingBizId, setEditingBizId] = useState<string | null>(null);
   const [editReviewUrl, setEditReviewUrl] = useState("");
   const [validationWarning, setValidationWarning] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
-  const [toastMsg, setToastMsg] = useState("");
 
-  // New Business Modal State
+  // Comprehensive Business Name & Slug Editor Modal
+  const [nameModalOpen, setNameModalOpen] = useState(false);
+  const [selectedBizForEdit, setSelectedBizForEdit] = useState<BusinessRecord | null>(null);
+  const [customBizName, setCustomBizName] = useState("");
+  const [customBizSlug, setCustomBizSlug] = useState("");
+  const [customGbpLink, setCustomGbpLink] = useState("");
+  const [customReviewUrl, setCustomReviewUrl] = useState("");
+  const [customPhone, setCustomPhone] = useState("");
+  const [customCity, setCustomCity] = useState("");
+
+  // Standee Order Modal State
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [orderTargetBizId, setOrderTargetBizId] = useState("");
+  const [orderPlan, setOrderPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  const [orderPincode, setOrderPincode] = useState("380001");
+  const [orderAddress, setOrderAddress] = useState("");
+  const [orderRecipient, setOrderRecipient] = useState("");
+
+  // Plan Management Modal State
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [selectedBizForPlan, setSelectedBizForPlan] = useState<BusinessRecord | null>(null);
+  const [selectedPlanValue, setSelectedPlanValue] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
+  const [selectedBillingStatus, setSelectedBillingStatus] = useState<"paid" | "pending" | "failed">("paid");
+
+  // New Business Onboarding Modal State
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newBizName, setNewBizName] = useState("");
   const [newBizEmail, setNewBizEmail] = useState("");
@@ -74,12 +127,12 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [newBizPlan, setNewBizPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000">("standee_1500");
   const [newBizReviewUrl, setNewBizReviewUrl] = useState("");
 
-  // QR Modal State
+  // High-Res QR Modal State
   const [qrModalBiz, setQrModalBiz] = useState<BusinessRecord | null>(null);
   const [qrPngUrl, setQrPngUrl] = useState<string>("");
   const [qrSvgString, setQrSvgString] = useState<string>("");
 
-  // Admin Password Management State
+  // Admin Security Password State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [confirmAdminPassword, setConfirmAdminPassword] = useState("");
@@ -87,57 +140,14 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [adminPasswordMsg, setAdminPasswordMsg] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
 
-  const handleChangeAdminPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminPasswordError("");
-    setAdminPasswordMsg("");
-
-    if (newAdminPassword.length < 6) {
-      setAdminPasswordError("Password must be at least 6 characters.");
-      return;
-    }
-    if (newAdminPassword !== confirmAdminPassword) {
-      setAdminPasswordError("Passwords do not match.");
-      return;
-    }
-
-    setAdminPasswordUpdating(true);
-    try {
-      const { error } = await updateUserPassword(newAdminPassword);
-      if (error) {
-        setAdminPasswordError(error.message || "Failed to update admin password.");
-      } else {
-        setAdminPasswordMsg("✓ Admin password updated successfully!");
-        setNewAdminPassword("");
-        setConfirmAdminPassword("");
-        showToast("✓ Admin password updated!");
-      }
-    } catch (err: any) {
-      setAdminPasswordError(err.message || "Failed to update password.");
-    } finally {
-      setAdminPasswordUpdating(false);
-    }
-  };
-
-  const handleSendAdminResetEmail = async () => {
-    try {
-      const { error } = await resetPasswordForEmail("admin@zentapdigitalsolutions.com");
-      if (error) {
-        setAdminPasswordError(error.message);
-      } else {
-        setAdminPasswordMsg("✓ Recovery instructions dispatched to admin@zentapdigitalsolutions.com!");
-        showToast("✓ Admin recovery email sent!");
-      }
-    } catch (err: any) {
-      setAdminPasswordError(err.message);
-    }
-  };
-
+  // Load All Businesses & Orders
   useEffect(() => {
     async function loadAdminData() {
       // 1. Initial local load
       const local = getAllBusinesses();
       setBusinesses(local);
+      const localOrders = getAllOrders();
+      setOrders(localOrders);
 
       // 2. Fetch all merchant records from Supabase
       try {
@@ -164,7 +174,6 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
             created_at: b.created_at,
           }));
 
-          // Merge without losing local entries
           const merged = [...formatted];
           local.forEach((loc) => {
             if (!merged.some((m) => m.id === loc.id || m.slug === loc.slug)) {
@@ -172,6 +181,30 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
             }
           });
           setBusinesses(merged);
+        }
+
+        const remoteOrders = await fetchDbAdminOrders();
+        if (remoteOrders && remoteOrders.length > 0) {
+          const formattedOrders: OrderRecord[] = remoteOrders.map((o) => ({
+            id: o.id,
+            business_id: o.business_id,
+            plan: o.plan,
+            amount: Number(o.amount),
+            courier: Number(o.courier),
+            status: o.status,
+            razorpay_id: o.razorpay_id,
+            tracking_number: o.tracking_number || undefined,
+            courier_name: o.courier_name || undefined,
+            estimated_delivery: o.estimated_delivery || undefined,
+            at: o.at,
+          }));
+          const mergedOrders = [...formattedOrders];
+          localOrders.forEach((lo) => {
+            if (!mergedOrders.some((mo) => mo.id === lo.id)) {
+              mergedOrders.push(lo);
+            }
+          });
+          setOrders(mergedOrders);
         }
       } catch (e) {
         console.warn("fetchDbAdminBusinesses notice:", e);
@@ -186,7 +219,70 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     setTimeout(() => setToastMsg(""), 3500);
   };
 
-  const handleStartEdit = (b: BusinessRecord) => {
+  // Helper to check if a business name is pending confirmation
+  const isNamePending = (b: BusinessRecord) => {
+    if (!b.name || b.name.trim() === "") return true;
+    const nameLower = b.name.toLowerCase().trim();
+    if (nameLower === "my business" || nameLower === "business") return true;
+    if (b.email) {
+      const emailPrefix = b.email.split("@")[0].toLowerCase().trim();
+      if (nameLower === emailPrefix || nameLower.includes("thedayithappened")) return true;
+    }
+    return false;
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Open Name & Slug Customizer Modal
+  // -------------------------------------------------------------
+  const handleOpenNameModal = (b: BusinessRecord) => {
+    setSelectedBizForEdit(b);
+    setCustomBizName(b.name);
+    setCustomBizSlug(b.slug);
+    setCustomGbpLink(b.gbp_link || "");
+    setCustomReviewUrl(b.review_url || "");
+    setCustomPhone(b.phone || "");
+    setCustomCity(b.city || "");
+    setNameModalOpen(true);
+  };
+
+  const handleGenerateSlug = () => {
+    if (!customBizName.trim()) return;
+    const clean = customBizName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/[\s_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    setCustomBizSlug(clean || "business");
+  };
+
+  const handleSaveCustomizedProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBizForEdit || !customBizName.trim()) return;
+
+    const finalSlug = (customBizSlug.trim() || generateRandomSlug(customBizName)).toLowerCase();
+
+    const updates = {
+      name: customBizName.trim(),
+      slug: finalSlug,
+      gbp_link: customGbpLink.trim() || "",
+      review_url: customReviewUrl.trim() || null,
+      phone: customPhone.trim() || selectedBizForEdit.phone,
+      city: customCity.trim() || selectedBizForEdit.city,
+    };
+
+    const updated = adminUpdateBusinessRecord(selectedBizForEdit.id, updates);
+    adminUpdateDbBusiness(selectedBizForEdit.id, updates).catch((err) => console.warn(err));
+
+    setBusinesses(updated);
+    setNameModalOpen(false);
+    showToast(`✓ Updated Business Name to "${updates.name}" & Slug to "/r/${updates.slug}"! Reflects in merchant login.`);
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Save Google Review Link Inline
+  // -------------------------------------------------------------
+  const handleStartEditReview = (b: BusinessRecord) => {
     setEditingBizId(b.id);
     setEditReviewUrl(b.review_url || "");
     setValidationError("");
@@ -221,31 +317,103 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     showToast("✓ Google Review Link updated with Supreme Authority!");
   };
 
-  const handleTogglePaymentStatus = (b: BusinessRecord) => {
-    const nextStatus = b.payment_status === "paid" ? "pending" : "paid";
-    const updated = adminUpdateBusinessRecord(b.id, { payment_status: nextStatus });
-    setBusinesses(updated);
-    adminUpdateDbBusiness(b.id, {
-      payment_status: nextStatus,
-    }).catch((e) => console.warn(e));
-    showToast(`✓ Payment status updated to: ${nextStatus.toUpperCase()}`);
+  // -------------------------------------------------------------
+  // ACTION: Change / Delete Plan Modal
+  // -------------------------------------------------------------
+  const handleOpenPlanModal = (b: BusinessRecord) => {
+    setSelectedBizForPlan(b);
+    setSelectedPlanValue(b.plan || "standee_1500");
+    setSelectedBillingStatus(b.payment_status);
+    setPlanModalOpen(true);
   };
 
-  const handleToggleActiveStatus = (b: BusinessRecord) => {
-    const nextActive = !b.active;
-    const updated = adminUpdateBusinessRecord(b.id, { active: nextActive });
+  const handleSavePlanChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBizForPlan) return;
+
+    const updates = {
+      plan: selectedPlanValue,
+      payment_status: selectedBillingStatus,
+    };
+
+    const updated = adminUpdateBusinessRecord(selectedBizForPlan.id, updates);
+    adminUpdateDbBusiness(selectedBizForPlan.id, updates).catch((err) => console.warn(err));
+
     setBusinesses(updated);
-    adminUpdateDbBusiness(b.id, {
-      active: nextActive,
-    }).catch((e) => console.warn(e));
-    showToast(`✓ Business status: ${nextActive ? "ACTIVE" : "INACTIVE"}`);
+    setPlanModalOpen(false);
+    showToast(`✓ Plan updated to ${selectedPlanValue.toUpperCase()} (${selectedBillingStatus.toUpperCase()})`);
   };
 
+  const handleDeletePlan = (bizId: string) => {
+    if (confirm("Supreme Authority Confirmation: Reset plan to trial and mark pending?")) {
+      const updates = {
+        plan: "card_500" as const,
+        payment_status: "pending" as const,
+      };
+      const updated = adminUpdateBusinessRecord(bizId, updates);
+      adminUpdateDbBusiness(bizId, updates).catch((err) => console.warn(err));
+      setBusinesses(updated);
+      setPlanModalOpen(false);
+      showToast("✓ Plan subscription reset to pending trial.");
+    }
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Order Standee for Business
+  // -------------------------------------------------------------
+  const handleOpenOrderModal = (bizId?: string) => {
+    setOrderTargetBizId(bizId || (businesses[0]?.id || ""));
+    setOrderPlan("standee_1500");
+    setOrderPincode("380001");
+    setOrderAddress("");
+    setOrderModalOpen(true);
+  };
+
+  const handleCreateStandeeOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderTargetBizId) return;
+
+    const targetBiz = businesses.find((b) => b.id === orderTargetBizId);
+    if (!targetBiz) return;
+
+    const newOrder = adminCreateOrder(orderTargetBizId, orderPlan, orderPincode, orderAddress);
+    
+    // Sync to Supabase
+    adminUpdateDbOrder(newOrder.id, {
+      id: newOrder.id,
+      business_id: newOrder.business_id,
+      plan: newOrder.plan,
+      amount: newOrder.amount,
+      courier: newOrder.courier,
+      status: "processing",
+      tracking_number: newOrder.tracking_number,
+      courier_name: newOrder.courier_name,
+      estimated_delivery: newOrder.estimated_delivery,
+      at: newOrder.at,
+    }).catch((err) => console.warn(err));
+
+    setOrders(getAllOrders());
+    // Refresh business payment status
+    setBusinesses(getAllBusinesses());
+    setOrderModalOpen(false);
+    showToast(`✓ Standee Order ${newOrder.id} placed! Assigned to BlueDart Express.`);
+  };
+
+  const handleUpdateOrderStatus = (order: OrderRecord, nextStatus: OrderRecord["status"]) => {
+    adminUpdateOrderStatus(order.business_id, order.id, nextStatus);
+    adminUpdateDbOrder(order.id, { status: nextStatus }).catch((e) => console.warn(e));
+    setOrders(getAllOrders());
+    showToast(`✓ Order ${order.id} updated to: ${nextStatus.toUpperCase()}`);
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Onboard New Business
+  // -------------------------------------------------------------
   const handleAddNewBusiness = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBizName.trim()) return;
 
-    const slug = generateRandomSlug(newBizName.trim());
+    const cleanSlug = generateRandomSlug(newBizName.trim());
     const newRecord: BusinessRecord = {
       id: `biz_${Date.now()}`,
       owner_user_id: newBizEmail || "admin-managed",
@@ -257,7 +425,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
       country: "India",
       pincode: "380001",
       gbp_link: "",
-      slug,
+      slug: cleanSlug,
       plan: newBizPlan,
       payment_status: "paid",
       review_url: newBizReviewUrl.trim() || null,
@@ -269,7 +437,6 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     const updated = [newRecord, ...businesses];
     setBusinesses(updated);
 
-    // Save to local index and Supabase
     adminUpdateBusinessRecord(newRecord.id, newRecord);
     upsertUserBusinessInDb({
       id: newRecord.id,
@@ -302,6 +469,9 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     }
   };
 
+  // -------------------------------------------------------------
+  // ACTION: High-Resolution Standee QR Generator
+  // -------------------------------------------------------------
   const handleOpenQRModal = async (b: BusinessRecord) => {
     setQrModalBiz(b);
     const origin = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
@@ -353,6 +523,53 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
     showToast("✓ Vector SVG downloaded for standee laser engraving!");
   };
 
+  // Password Management Handlers
+  const handleChangeAdminPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminPasswordError("");
+    setAdminPasswordMsg("");
+
+    if (newAdminPassword.length < 6) {
+      setAdminPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newAdminPassword !== confirmAdminPassword) {
+      setAdminPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setAdminPasswordUpdating(true);
+    try {
+      const { error } = await updateUserPassword(newAdminPassword);
+      if (error) {
+        setAdminPasswordError(error.message || "Failed to update admin password.");
+      } else {
+        setAdminPasswordMsg("✓ Admin password updated successfully!");
+        setNewAdminPassword("");
+        setConfirmAdminPassword("");
+        showToast("✓ Admin password updated!");
+      }
+    } catch (err: any) {
+      setAdminPasswordError(err.message || "Failed to update password.");
+    } finally {
+      setAdminPasswordUpdating(false);
+    }
+  };
+
+  const handleSendAdminResetEmail = async () => {
+    try {
+      const { error } = await resetPasswordForEmail("admin@zentapdigitalsolutions.com");
+      if (error) {
+        setAdminPasswordError(error.message);
+      } else {
+        setAdminPasswordMsg("✓ Recovery instructions dispatched to admin@zentapdigitalsolutions.com!");
+        showToast("✓ Admin recovery email sent!");
+      }
+    } catch (err: any) {
+      setAdminPasswordError(err.message);
+    }
+  };
+
   const originUrl = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
 
   // Filtered list
@@ -369,19 +586,57 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
 
     if (statusFilter === "active") return b.active;
     if (statusFilter === "awaiting_link") return !b.review_url;
+    if (statusFilter === "name_pending") return isNamePending(b);
     if (statusFilter === "paid") return b.payment_status === "paid";
     if (statusFilter === "pending") return b.payment_status === "pending";
 
     return true;
   });
 
-  // Metrics
+  // Comprehensive Fleet Analytics Calculations
   const totalFleet = businesses.length;
+  const activeBusinesses = businesses.filter((b) => b.active).length;
   const verifiedLinks = businesses.filter((b) => !!b.review_url).length;
   const awaitingLinks = businesses.filter((b) => !b.review_url).length;
+  const pendingNamesCount = businesses.filter(isNamePending).length;
   const paidDeployments = businesses.filter((b) => b.payment_status === "paid").length;
 
-  // Strict Security Gate: Block unauthorized users from seeing the Admin Table
+  // Aggregate taps and scans across all businesses
+  let totalTaps = 0;
+  let totalNfcTaps = 0;
+  let totalQrScans = 0;
+  let totalReviewClicks = 0;
+  let totalDefusedFeedback = 0;
+
+  businesses.forEach((b) => {
+    const a = getBusinessAnalytics(b.id);
+    totalTaps += a.totalScans;
+    totalNfcTaps += a.nfcScans;
+    totalQrScans += a.qrScans;
+    totalReviewClicks += a.reviewClicks;
+    totalDefusedFeedback += a.privateFeedbackCount;
+  });
+
+  // Calculate Total Earnings
+  const totalOrderRevenue = orders.reduce((sum, o) => sum + (o.amount || 0) + (o.courier || 0), 0);
+  const totalPlanBase = businesses.reduce((sum, b) => {
+    if (b.payment_status === "paid") {
+      const p = b.plan === "card_500" ? 500 : b.plan === "standee_1500" ? 1500 : 2000;
+      return sum + p;
+    }
+    return sum;
+  }, 0);
+  const totalFleetEarnings = Math.max(totalOrderRevenue, totalPlanBase);
+
+  // Order Pipeline Counts
+  const ordersProcessing = orders.filter((o) => o.status === "processing" || o.status === "in_production").length;
+  const ordersDispatched = orders.filter((o) => o.status === "shipped").length;
+  const ordersDelivered = orders.filter((o) => o.status === "delivered").length;
+
+  const courierCalculation = calculateCourierCharge(orderPincode);
+  const baseOrderPrice = orderPlan === "card_500" ? 500 : orderPlan === "standee_1500" ? 1500 : 2000;
+
+  // Strict Security Gate
   if (!isAdmin) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-16 text-center max-w-md mx-auto">
@@ -405,7 +660,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full animate-in fade-in duration-200">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full animate-in fade-in duration-200 space-y-6">
       
       {/* Toast Alert */}
       {toastMsg && (
@@ -415,8 +670,10 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
         </div>
       )}
 
-      {/* Admin Header Banner - Unlocked Supreme Authority */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8 bg-[#1C1B1A] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2C2B2A] shadow-xl">
+      {/* ========================================================================= */}
+      {/* 1. TOP HEADER BANNER: ZenTap.in Admin Dashboard                           */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-[#1C1B1A] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2C2B2A] shadow-xl">
         <div className="flex flex-col gap-2 relative z-10 max-w-2xl">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="px-3 py-1 bg-white/10 text-white rounded-full text-[11px] font-mono tracking-wider uppercase font-bold border border-white/10">
@@ -424,448 +681,1087 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
             </span>
             <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-[11px] font-mono font-bold border border-emerald-500/30">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Fleet Master Directory · Supreme Authority Active</span>
+              <span>Supreme Authority Active</span>
             </div>
           </div>
           
           <h1 className="font-headline font-bold text-2xl sm:text-3xl text-white">
-            Fleet Master Directory &amp; Link Validation
+            ZenTap.in Admin Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
-            Full root authority unlocked: Manage registered client businesses, update Google Review links in real-time, toggle billing &amp; deployment states, generate laser-printable Standee QR codes, and preview live customer review routing.
+            Full root authority unlocked: Monitor live fleet telemetry, edit customized merchant business names &amp; slugs, manage Google review destinations, dispatch hardware standees, and control commercial plans.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative z-10 flex-shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 relative z-10 flex-shrink-0">
           <button
-            onClick={() => setPasswordModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+            onClick={() => handleOpenOrderModal()}
+            className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer hover:bg-primary/90"
           >
-            <Lock className="w-4 h-4 text-emerald-400" />
-            <span>Admin Password &amp; Security</span>
+            <ShoppingBag className="w-4 h-4" />
+            <span>Order Standee</span>
           </button>
 
           <button
             onClick={() => setAddModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-secondary text-on-secondary text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer hover:opacity-95"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Onboard New Business</span>
+            <span>Onboard Business</span>
+          </button>
+
+          <button
+            onClick={() => setPasswordModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
+            title="Update Admin Security & Password"
+          >
+            <Lock className="w-4 h-4 text-emerald-400" />
+            <span>Security</span>
           </button>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E2DFD8]">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[#615E5B]">Total Fleet</p>
-          <p className="font-headline font-bold text-2xl text-[#1C1B1A] mt-1">{totalFleet}</p>
-          <p className="text-[10px] text-emerald-700 font-medium mt-0.5">Commercial Standees</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E2DFD8]">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[#615E5B]">Verified Google Links</p>
-          <p className="font-headline font-bold text-2xl text-emerald-700 mt-1">{verifiedLinks}</p>
-          <p className="text-[10px] text-[#615E5B] mt-0.5">Instant Redirect Ready</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E2DFD8]">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[#615E5B]">Awaiting Link</p>
-          <p className="font-headline font-bold text-2xl text-amber-700 mt-1">{awaitingLinks}</p>
-          <p className="text-[10px] text-amber-800 font-medium mt-0.5">Needs Link Insertion</p>
-        </div>
-        <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-[#E2DFD8]">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-[#615E5B]">Paid Deployments</p>
-          <p className="font-headline font-bold text-2xl text-[#1C1B1A] mt-1">{paidDeployments}</p>
-          <p className="text-[10px] text-emerald-700 font-medium mt-0.5">Dispatched Orders</p>
-        </div>
+      {/* ========================================================================= */}
+      {/* 2. ADMIN TABS CONTROLLER                                                  */}
+      {/* ========================================================================= */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-surface-container border border-surface-variant/40 shadow-sm">
+        <button
+          onClick={() => setAdminTab("analytics")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminTab === "analytics"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-emerald-400" />
+          <span>Analytics &amp; Performance</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab("fleet")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminTab === "fleet"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <Building2 className="w-4 h-4 text-[#D94826]" />
+          <span>Admin Master Table ({businesses.length})</span>
+          {pendingNamesCount > 0 && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Name Confirmation Pending" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setAdminTab("orders")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminTab === "orders"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <Truck className="w-4 h-4 text-blue-400" />
+          <span>Standee Orders ({orders.length})</span>
+        </button>
+
+        <button
+          onClick={() => setAdminTab("plans")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            adminTab === "plans"
+              ? "bg-[#1C1B1A] text-white shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-purple-400" />
+          <span>Plans &amp; Subscriptions</span>
+        </button>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#615E5B]" />
-          <input
-            type="text"
-            placeholder="Search business name, city, email, slug..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#FAF9F6] border border-[#E2DFD8] text-xs text-[#1C1B1A] placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#1C1B1A] shadow-sm font-sans"
-          />
+      {/* ========================================================================= */}
+      {/* TAB 1: ANALYTICS & PERFORMANCE DASHBOARD                                  */}
+      {/* ========================================================================= */}
+      {adminTab === "analytics" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Top Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            
+            {/* Total Fleet Earnings */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant">
+                Total Fleet Earnings
+              </span>
+              <div className="my-2">
+                <span className="font-headline font-black text-2xl sm:text-3xl text-emerald-600">
+                  ₹{totalFleetEarnings.toLocaleString("en-IN")}
+                </span>
+                <span className="block text-[10px] text-on-surface-variant mt-0.5">
+                  Paid hardware + recurring subscriptions
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-semibold">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>{paidDeployments} Paid Deployments</span>
+              </div>
+            </div>
+
+            {/* Total Customer Taps & Scans */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant">
+                Total Taps / Scans
+              </span>
+              <div className="my-2">
+                <span className="font-headline font-black text-2xl sm:text-3xl text-on-surface">
+                  {totalTaps}
+                </span>
+                <span className="block text-[10px] text-emerald-600 font-semibold mt-0.5">
+                  NFC: {totalNfcTaps} • QR: {totalQrScans}
+                </span>
+              </div>
+              <div className="w-full bg-surface-variant/30 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-full rounded-full" 
+                  style={{ width: `${Math.min(100, (totalNfcTaps / (totalTaps || 1)) * 100)}%` }} 
+                />
+              </div>
+            </div>
+
+            {/* Google Review Clicks & Conversion */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant">
+                Google Review Clicks
+              </span>
+              <div className="my-2">
+                <span className="font-headline font-black text-2xl sm:text-3xl text-secondary">
+                  {totalReviewClicks}
+                </span>
+                <span className="block text-[10px] text-secondary font-semibold mt-0.5">
+                  ~88% Conversion to Google Maps
+                </span>
+              </div>
+              <span className="text-[11px] text-on-surface-variant">
+                {totalDefusedFeedback} Private Feedbacks Defused
+              </span>
+            </div>
+
+            {/* Total Active Businesses */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant">
+                Active Client Stores
+              </span>
+              <div className="my-2">
+                <span className="font-headline font-black text-2xl sm:text-3xl text-on-surface">
+                  {activeBusinesses} <span className="text-sm font-normal text-on-surface-variant">/ {totalFleet}</span>
+                </span>
+                <span className="block text-[10px] text-emerald-600 font-semibold mt-0.5">
+                  Active in Live Review Routing
+                </span>
+              </div>
+              <span className="text-[11px] text-on-surface-variant">
+                {totalFleet - activeBusinesses} Paused / Inactive
+              </span>
+            </div>
+
+          </div>
+
+          {/* Operational Status Row: Name Confirmation, Google Review Link & Orders */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* 1. Business Name Confirmation Pending Status */}
+            <div className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
+              pendingNamesCount > 0 
+                ? "bg-amber-500/10 border-amber-500/40 text-on-surface" 
+                : "bg-surface-container-lowest border-surface-variant/40 text-on-surface"
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-amber-500" />
+                  <h4 className="font-headline font-bold text-sm text-on-surface">
+                    Name Confirmation Status
+                  </h4>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  pendingNamesCount > 0 ? "bg-amber-500/20 text-amber-800" : "bg-emerald-500/15 text-emerald-700"
+                }`}>
+                  {pendingNamesCount > 0 ? `${pendingNamesCount} Pending` : "✓ All Confirmed"}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                {pendingNamesCount > 0
+                  ? `${pendingNamesCount} registered merchant(s) have placeholder or auto-generated names. Open the Admin Table to customize their formal business name & generate clean slugs.`
+                  : "All registered client businesses have verified, customized formal names assigned."}
+              </p>
+              <button
+                onClick={() => {
+                  setStatusFilter("name_pending");
+                  setAdminTab("fleet");
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
+              >
+                <span>Review Pending Names</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 2. Google Review Destination Confirmation Status */}
+            <div className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
+              awaitingLinks > 0 
+                ? "bg-red-500/10 border-red-500/30 text-on-surface" 
+                : "bg-surface-container-lowest border-surface-variant/40 text-on-surface"
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-secondary" />
+                  <h4 className="font-headline font-bold text-sm text-on-surface">
+                    Google Review Link Status
+                  </h4>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  awaitingLinks > 0 ? "bg-red-500/20 text-red-700" : "bg-emerald-500/15 text-emerald-700"
+                }`}>
+                  {awaitingLinks > 0 ? `${awaitingLinks} Awaiting` : "✓ 100% Connected"}
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
+                {awaitingLinks > 0 
+                  ? `${awaitingLinks} business(es) do not have their Google write-review link connected yet. Standee taps will show pending notice.`
+                  : "Every active business in the fleet has an authenticated Google Review destination URL."}
+              </p>
+              <button
+                onClick={() => {
+                  setStatusFilter("awaiting_link");
+                  setAdminTab("fleet");
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
+              >
+                <span>Connect Review Links</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 3. Hardware Standee Order Status */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <PackageCheck className="w-5 h-5 text-primary" />
+                  <h4 className="font-headline font-bold text-sm text-on-surface">
+                    Standee Order Status
+                  </h4>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                  {orders.length} Total Orders
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 my-1 text-center">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                  <span className="font-bold text-xs text-amber-700 block">{ordersProcessing}</span>
+                  <span className="text-[9px] text-on-surface-variant">In Production</span>
+                </div>
+                <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/25">
+                  <span className="font-bold text-xs text-blue-700 block">{ordersDispatched}</span>
+                  <span className="text-[9px] text-on-surface-variant">In Transit</span>
+                </div>
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                  <span className="font-bold text-xs text-emerald-700 block">{ordersDelivered}</span>
+                  <span className="text-[9px] text-on-surface-variant">Delivered</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setAdminTab("orders")}
+                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer mt-2"
+              >
+                <span>Manage Dispatch Timeline</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+          </div>
+
+          {/* Detailed Visual Analytics breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* NFC Tap vs QR Scan Telemetry Visualizer */}
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
+              <h4 className="font-headline font-bold text-base text-on-surface mb-1 flex items-center gap-2">
+                <Radio className="w-4 h-4 text-secondary" />
+                <span>Customer Touchpoint Channel Telemetry</span>
+              </h4>
+              <p className="text-xs text-on-surface-variant mb-4">
+                Comparison of contact-free 13.56 MHz NFC phone taps vs. Level Q printed QR code scans.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span>NFC 13.56MHz Taps: {totalNfcTaps}</span>
+                    </span>
+                    <span className="text-emerald-600">{Math.round((totalNfcTaps / (totalTaps || 1)) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-surface-variant/30 h-3 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full transition-all"
+                      style={{ width: `${Math.round((totalNfcTaps / (totalTaps || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                      <span>Level Q Laser QR Scans: {totalQrScans}</span>
+                    </span>
+                    <span className="text-blue-600">{Math.round((totalQrScans / (totalTaps || 1)) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-surface-variant/30 h-3 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-blue-500 h-full rounded-full transition-all"
+                      style={{ width: `${Math.round((totalQrScans / (totalTaps || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Commercial Plan Distribution */}
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
+              <h4 className="font-headline font-bold text-base text-on-surface mb-1 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-primary" />
+                <span>Commercial Hardware Plan Distribution</span>
+              </h4>
+              <p className="text-xs text-on-surface-variant mb-4">
+                Distribution of deployed NFC review cards, counter standees, and auto reply engines.
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-purple-500" />
+                    <span className="text-xs font-bold text-on-surface">Auto Standee + Reply Engine (₹2,000)</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-on-surface">
+                    {businesses.filter((b) => b.plan === "standee_auto_2000").length} Units
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-secondary" />
+                    <span className="text-xs font-bold text-on-surface">Auto Google Review Standee (₹1,500)</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-on-surface">
+                    {businesses.filter((b) => b.plan === "standee_1500").length} Units
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-zinc-400" />
+                    <span className="text-xs font-bold text-on-surface">Normal Smart NFC Review Card (₹500)</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-on-surface">
+                    {businesses.filter((b) => b.plan === "card_500").length} Units
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
+      )}
 
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#F2F0EB] p-1 rounded-xl border border-[#E2DFD8] text-xs">
-          <button
-            onClick={() => setStatusFilter("all")}
-            className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-              statusFilter === "all" ? "bg-[#1C1B1A] text-white font-semibold" : "text-[#615E5B] hover:text-[#1C1B1A]"
-            }`}
-          >
-            All ({businesses.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter("awaiting_link")}
-            className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-              statusFilter === "awaiting_link" ? "bg-amber-700 text-white font-semibold" : "text-[#615E5B] hover:text-[#1C1B1A]"
-            }`}
-          >
-            Awaiting Link ({awaitingLinks})
-          </button>
-          <button
-            onClick={() => setStatusFilter("paid")}
-            className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-              statusFilter === "paid" ? "bg-emerald-700 text-white font-semibold" : "text-[#615E5B] hover:text-[#1C1B1A]"
-            }`}
-          >
-            Paid ({paidDeployments})
-          </button>
-          <button
-            onClick={() => setStatusFilter("active")}
-            className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-              statusFilter === "active" ? "bg-[#1C1B1A] text-white font-semibold" : "text-[#615E5B] hover:text-[#1C1B1A]"
-            }`}
-          >
-            Active
-          </button>
-        </div>
-      </div>
+      {/* ========================================================================= */}
+      {/* TAB 2: FLEET MASTER DIRECTORY / ADMIN TABLE                               */}
+      {/* ========================================================================= */}
+      {adminTab === "fleet" && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                type="text"
+                placeholder="Search business name, city, email, slug..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+              />
+            </div>
 
-      {/* Table View of Fleet */}
-      <div className="rounded-2xl bg-[#FAF9F6] border border-[#E2DFD8] shadow-sm overflow-hidden mb-8">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#F2F0EB] border-b border-[#E2DFD8] text-[#615E5B] uppercase text-[10px] font-mono tracking-wider font-semibold">
-                <th className="py-3.5 px-4 sm:px-6">Business &amp; Slug</th>
-                <th className="py-3.5 px-4">Contact</th>
-                <th className="py-3.5 px-4">City</th>
-                <th className="py-3.5 px-4">Customer Page</th>
-                <th className="py-3.5 px-4">Plan</th>
-                <th className="py-3.5 px-4">Billing</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Scans</th>
-                <th className="py-3.5 px-4">Google Review Destination</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Supreme Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E2DFD8]">
-              {filtered.map((b) => {
-                const isEditing = editingBizId === b.id;
-                const clientPageUrl = `${originUrl}/r/${b.slug}?s=nfc`;
-                const analytics = getBusinessAnalytics(b.id);
-                const hasLink = !!b.review_url;
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-surface-container p-1 rounded-xl border border-surface-variant/40 text-xs">
+              <button
+                onClick={() => setStatusFilter("all")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "all" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                All ({businesses.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("name_pending")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "name_pending" ? "bg-amber-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Name Pending ({pendingNamesCount})
+              </button>
+              <button
+                onClick={() => setStatusFilter("awaiting_link")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "awaiting_link" ? "bg-red-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Awaiting Link ({awaitingLinks})
+              </button>
+              <button
+                onClick={() => setStatusFilter("paid")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "paid" ? "bg-emerald-700 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Paid ({paidDeployments})
+              </button>
+              <button
+                onClick={() => setStatusFilter("active")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "active" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Active ({activeBusinesses})
+              </button>
+            </div>
+          </div>
 
-                return (
-                  <tr key={b.id} className={`hover:bg-[#F2F0EB]/60 transition-colors ${!hasLink ? "bg-amber-50/40" : ""}`}>
-                    
-                    {/* Business Name */}
-                    <td className="py-3.5 px-4 sm:px-6 align-top">
-                      <span className="font-bold text-xs text-[#1C1B1A] block font-headline">
-                        {b.name}
-                      </span>
-                      <span className="text-[10px] text-[#615E5B] font-mono">
-                        slug: {b.slug}
-                      </span>
-                    </td>
+          {/* The 10-Column Admin Master Table */}
+          <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
+                    <th className="py-3.5 px-4 sm:px-6">Business &amp; Slug</th>
+                    <th className="py-3.5 px-4">Contact</th>
+                    <th className="py-3.5 px-4">City</th>
+                    <th className="py-3.5 px-4">Customer Page</th>
+                    <th className="py-3.5 px-4">Plan</th>
+                    <th className="py-3.5 px-4">Billing</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Scans</th>
+                    <th className="py-3.5 px-4">Google Review Destination</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Supreme Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-variant/30">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-on-surface-variant">
+                        No businesses matched your search filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((b) => {
+                      const a = getBusinessAnalytics(b.id);
+                      const isPendingName = isNamePending(b);
+                      const isEditingThisReview = editingBizId === b.id;
 
-                    {/* Owner Email & Phone */}
-                    <td className="py-3.5 px-4 align-top text-xs text-[#1C1B1A]">
-                      <p className="font-medium truncate max-w-[150px]">{b.email}</p>
-                      <p className="text-[10px] text-[#615E5B] font-mono">{b.phone || "—"}</p>
-                    </td>
-
-                    {/* City */}
-                    <td className="py-3.5 px-4 align-top text-xs text-[#615E5B]">
-                      {b.city || "India"}
-                    </td>
-
-                    {/* Customer Page URL */}
-                    <td className="py-3.5 px-4 align-top max-w-[160px]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] truncate block text-[#615E5B]">
-                          /r/{b.slug}
-                        </span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(clientPageUrl);
-                            showToast("✓ Client review URL copied!");
-                          }}
-                          className="p-1 rounded bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] cursor-pointer"
-                          title="Copy Tap URL"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </td>
-
-                    {/* Plan */}
-                    <td className="py-3.5 px-4 align-top">
-                      <span className="font-mono text-[11px] text-[#1C1B1A] block">
-                        {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_auto_2000" ? "Standee+Auto ₹2k" : "Standee ₹1.5k"}
-                      </span>
-                    </td>
-
-                    {/* Payment Status (Supreme 1-click toggle) */}
-                    <td className="py-3.5 px-4 align-top">
-                      <button
-                        onClick={() => handleTogglePaymentStatus(b)}
-                        className={`px-2 py-0.5 rounded font-mono font-bold text-[9px] uppercase cursor-pointer transition-all ${
-                          b.payment_status === "paid" 
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" 
-                            : "bg-amber-100 text-amber-900 hover:bg-amber-200"
-                        }`}
-                        title="Click to toggle payment status"
-                      >
-                        {b.payment_status}
-                      </button>
-                    </td>
-
-                    {/* Active State (Supreme 1-click toggle) */}
-                    <td className="py-3.5 px-4 align-top">
-                      <button
-                        onClick={() => handleToggleActiveStatus(b)}
-                        className={`px-2 py-0.5 rounded font-mono font-bold text-[9px] uppercase cursor-pointer transition-all ${
-                          b.active 
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" 
-                            : "bg-zinc-200 text-zinc-600 hover:bg-zinc-300"
-                        }`}
-                        title="Click to toggle active status"
-                      >
-                        {b.active ? "ONLINE" : "OFFLINE"}
-                      </button>
-                    </td>
-
-                    {/* Scan Count */}
-                    <td className="py-3.5 px-4 align-top font-mono font-bold text-xs text-[#1C1B1A]">
-                      {analytics.totalScans}
-                    </td>
-
-                    {/* Google Review Link (Editable Inline) */}
-                    <td className="py-3.5 px-4 align-top max-w-[220px]">
-                      {isEditing ? (
-                        <div className="space-y-1">
-                          <input
-                            type="url"
-                            placeholder="https://g.page/r/..."
-                            value={editReviewUrl}
-                            onChange={(e) => setEditReviewUrl(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-white border border-[#D94826] text-xs text-[#1C1B1A] focus:outline-none font-mono"
-                          />
-                          {validationError && (
-                            <span className="text-[10px] text-red-600 block leading-tight">{validationError}</span>
-                          )}
-                          {validationWarning && (
-                            <span className="text-[10px] text-amber-700 block leading-tight">{validationWarning}</span>
-                          )}
-                          <div className="flex gap-1 pt-1">
-                            <button
-                              onClick={() => handleSaveReviewUrl(b.id)}
-                              className="px-2 py-0.5 rounded bg-emerald-700 text-white font-bold text-[10px] cursor-pointer"
-                            >
-                              Save Link
-                            </button>
-                            <button
-                              onClick={() => setEditingBizId(null)}
-                              className="px-2 py-0.5 rounded bg-[#F2F0EB] text-[#615E5B] text-[10px] cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          {b.review_url ? (
-                            <div className="flex items-center gap-1.5">
-                              <a
-                                href={b.review_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-mono text-[#D94826] hover:underline truncate block max-w-[150px]"
-                                title={b.review_url}
-                              >
-                                {b.review_url}
-                              </a>
-                              <button
-                                onClick={() => handleStartEdit(b)}
-                                className="p-1 rounded text-[#615E5B] hover:text-[#1C1B1A] cursor-pointer"
-                                title="Edit Link"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-mono font-bold text-[9px] uppercase">
-                                Awaiting link
+                      return (
+                        <tr key={b.id} className="hover:bg-surface-container-low/50 transition-colors">
+                          
+                          {/* 1. Business & Slug (with customized name editor) */}
+                          <td className="py-4 px-4 sm:px-6">
+                            <div className="flex flex-col gap-1 max-w-[200px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-on-surface truncate block" title={b.name}>
+                                  {b.name}
+                                </span>
+                                {isPendingName && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 text-[9px] font-bold whitespace-nowrap">
+                                    Name Pending
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-mono text-[11px] text-secondary truncate">
+                                /r/{b.slug}
                               </span>
                               <button
-                                onClick={() => handleStartEdit(b)}
-                                className="px-2 py-0.5 rounded bg-[#D94826] text-white text-[10px] font-bold cursor-pointer"
-                                title="Add Google Review Link"
+                                onClick={() => handleOpenNameModal(b)}
+                                className="text-[10px] font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
                               >
-                                + Set Link
+                                <Edit2 className="w-2.5 h-2.5" />
+                                <span>Edit Name &amp; Slug</span>
                               </button>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </td>
+                          </td>
 
-                    {/* Supreme Actions */}
-                    <td className="py-3.5 px-4 sm:px-6 align-top text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        
-                        {/* QR Code Button */}
-                        <button
-                          onClick={() => handleOpenQRModal(b)}
-                          className="px-2.5 py-1 rounded bg-[#1C1B1A] text-white font-semibold text-[10px] hover:bg-[#2C2B2A] flex items-center gap-1 cursor-pointer shadow-sm"
-                          title="Generate Laser QR (SVG / PNG)"
-                        >
-                          <QrCode className="w-3 h-3" />
-                          <span>QR</span>
-                        </button>
+                          {/* 2. Contact */}
+                          <td className="py-4 px-4">
+                            <div className="flex flex-col text-[11px] text-on-surface-variant max-w-[150px]">
+                              <span className="text-on-surface font-semibold truncate">{b.phone || "No phone"}</span>
+                              <span className="truncate" title={b.email}>{b.email}</span>
+                            </div>
+                          </td>
 
-                        {/* Test tap preview without scan telemetry skew */}
-                        <a
-                          href={`${originUrl}/r/${b.slug}?preview=1`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 rounded bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] transition-colors cursor-pointer"
-                          title="Preview Review Assistant (No scan skew)"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                          {/* 3. City */}
+                          <td className="py-4 px-4">
+                            <span className="text-on-surface font-medium whitespace-nowrap">
+                              {b.city || "Gujarat"}
+                            </span>
+                          </td>
 
-                        {/* Delete Business Button */}
-                        <button
-                          onClick={() => handleDeleteBusiness(b.id, b.name)}
-                          className="p-1.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-                          title="Supreme Delete"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                          {/* 4. Customer Page */}
+                          <td className="py-4 px-4">
+                            <a
+                              href={`${originUrl}/r/${b.slug}?preview=1`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-secondary/30 text-[11px] font-semibold text-secondary hover:border-secondary cursor-pointer"
+                            >
+                              <span>/r/{b.slug.slice(0, 8)}...</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </td>
 
-                      </div>
-                    </td>
+                          {/* 5. Plan */}
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => handleOpenPlanModal(b)}
+                              className="px-2.5 py-1 rounded-full bg-surface-container font-bold text-[10px] text-on-surface border border-surface-variant/40 hover:border-primary cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                              title="Click to change plan"
+                            >
+                              <span>
+                                {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                              </span>
+                              <ChevronDown className="w-2.5 h-2.5 text-on-surface-variant" />
+                            </button>
+                          </td>
 
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                          {/* 6. Billing */}
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => {
+                                const next = b.payment_status === "paid" ? "pending" : "paid";
+                                const updated = adminUpdateBusinessRecord(b.id, { payment_status: next });
+                                adminUpdateDbBusiness(b.id, { payment_status: next }).catch((e) => console.warn(e));
+                                setBusinesses(updated);
+                                showToast(`✓ Billing set to ${next.toUpperCase()}`);
+                              }}
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors border ${
+                                b.payment_status === "paid"
+                                  ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25"
+                                  : "bg-amber-500/15 text-amber-700 border-amber-500/30 hover:bg-amber-500/25"
+                              }`}
+                            >
+                              {b.payment_status.toUpperCase()}
+                            </button>
+                          </td>
 
-      {/* Onboard New Business Modal */}
-      {addModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-[#FAF9F6] rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E2DFD8] animate-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setAddModalOpen(false)}
-              className="absolute right-4 top-4 w-8 h-8 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] flex items-center justify-center text-[#615E5B] cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+                          {/* 7. Status */}
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => {
+                                const next = !b.active;
+                                const updated = adminUpdateBusinessRecord(b.id, { active: next });
+                                adminUpdateDbBusiness(b.id, { active: next }).catch((e) => console.warn(e));
+                                setBusinesses(updated);
+                                showToast(`✓ Business status: ${next ? "ACTIVE" : "INACTIVE"}`);
+                              }}
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors border ${
+                                b.active
+                                  ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25"
+                                  : "bg-zinc-500/15 text-zinc-600 border-zinc-500/30 hover:bg-zinc-500/25"
+                              }`}
+                            >
+                              {b.active ? "ACTIVE" : "INACTIVE"}
+                            </button>
+                          </td>
 
-            <div className="flex items-center gap-2 mb-4">
-              <PlusCircle className="w-5 h-5 text-[#D94826]" />
-              <h3 className="font-headline font-bold text-lg text-[#1C1B1A]">
-                Onboard New Client Business
-              </h3>
+                          {/* 8. Scans */}
+                          <td className="py-4 px-4 font-mono font-bold text-on-surface">
+                            <span title={`NFC: ${a.nfcScans} • QR: ${a.qrScans} • Clicks: ${a.reviewClicks}`}>
+                              {a.totalScans}
+                            </span>
+                          </td>
+
+                          {/* 9. Google Review Destination */}
+                          <td className="py-4 px-4">
+                            {isEditingThisReview ? (
+                              <div className="flex flex-col gap-1 min-w-[220px]">
+                                <input
+                                  type="url"
+                                  value={editReviewUrl}
+                                  onChange={(e) => setEditReviewUrl(e.target.value)}
+                                  placeholder="https://g.page/r/.../review"
+                                  className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-surface-variant text-[11px] font-mono text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                {validationError && (
+                                  <span className="text-[10px] text-red-600">{validationError}</span>
+                                )}
+                                <div className="flex items-center gap-1.5 pt-0.5">
+                                  <button
+                                    onClick={() => handleSaveReviewUrl(b.id)}
+                                    className="px-2.5 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
+                                  >
+                                    Save Link
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingBizId(null)}
+                                    className="px-2 py-1 rounded bg-surface-container text-on-surface-variant font-bold text-[10px] cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 max-w-[220px]">
+                                {b.review_url ? (
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                    <span className="text-[11px] font-mono text-on-surface-variant truncate" title={b.review_url}>
+                                      {b.review_url.replace(/^https?:\/\//, "")}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 font-bold text-[10px]">
+                                    Awaiting Link
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => handleStartEditReview(b)}
+                                  className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface cursor-pointer flex-shrink-0"
+                                  title="Edit Google Review Link"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 10. Supreme Actions */}
+                          <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenQRModal(b)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-on-surface cursor-pointer"
+                                title="Download 1200px PNG / SVG Laser QR"
+                              >
+                                <QrCode className="w-3.5 h-3.5 text-secondary" />
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenOrderModal(b.id)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-on-surface cursor-pointer"
+                                title="Order Hardware Standee for this Business"
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteBusiness(b.id, b.name)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-rose-50 text-rose-600 cursor-pointer"
+                                title="Delete from Fleet"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-            <p className="text-xs text-[#615E5B] mb-5">
-              Supreme Authority: Deploy a new client business immediately to the Standee fleet.
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: STANDEE ORDERS & DISPATCH HUB                                      */}
+      {/* ========================================================================= */}
+      {adminTab === "orders" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
+            <div>
+              <h3 className="font-headline font-bold text-xl text-on-surface">
+                Hardware Standee Fulfillment &amp; Dispatch
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Manage acrylic counter standee manufacturing, laser etching, RF inspection, and BlueDart tracking numbers.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleOpenOrderModal()}
+              className="px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center gap-2 cursor-pointer shadow-sm self-start sm:self-auto"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>+ Place Standee Order</span>
+            </button>
+          </div>
+
+          {/* Orders Table */}
+          <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
+                    <th className="py-3.5 px-4 sm:px-6">Order ID</th>
+                    <th className="py-3.5 px-4">Business</th>
+                    <th className="py-3.5 px-4">Hardware Tier</th>
+                    <th className="py-3.5 px-4">Amount</th>
+                    <th className="py-3.5 px-4">Courier &amp; Tracking ID</th>
+                    <th className="py-3.5 px-4">Fulfillment Status</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Advance Stage</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-variant/30">
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-on-surface-variant">
+                        No standee hardware orders recorded yet. Click &quot;Place Standee Order&quot; to create one.
+                      </td>
+                    </tr>
+                  ) : (
+                    orders.map((o) => {
+                      const biz = businesses.find((b) => b.id === o.business_id);
+                      return (
+                        <tr key={o.id} className="hover:bg-surface-container-low/50 transition-colors">
+                          <td className="py-4 px-4 sm:px-6 font-mono font-bold text-secondary">
+                            #{o.id}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-bold text-on-surface block">{biz?.name || o.business_id}</span>
+                            <span className="text-[11px] text-on-surface-variant font-mono">/r/{biz?.slug || "unknown"}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-semibold text-[10px] text-on-surface border border-surface-variant/40">
+                              {o.plan === "card_500" ? "Card ₹500" : o.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 font-mono font-bold text-on-surface">
+                            ₹{(o.amount || 0) + (o.courier || 0)}
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex flex-col text-[11px]">
+                              <span className="font-semibold text-on-surface">{o.courier_name || "BlueDart Express"}</span>
+                              <span className="font-mono text-secondary">{o.tracking_number || "Pending dispatch"}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              o.status === "delivered"
+                                ? "bg-emerald-500/15 text-emerald-700"
+                                : o.status === "shipped"
+                                ? "bg-blue-500/15 text-blue-700"
+                                : "bg-amber-500/15 text-amber-700"
+                            }`}>
+                              {o.status === "shipped" ? "DISPATCHED" : o.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 sm:px-6 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              {o.status === "processing" && (
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(o, "shipped")}
+                                  className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold text-[10px] hover:bg-blue-700 cursor-pointer"
+                                >
+                                  Mark Dispatched
+                                </button>
+                              )}
+                              {o.status === "shipped" && (
+                                <button
+                                  onClick={() => handleUpdateOrderStatus(o, "delivered")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
+                                >
+                                  Mark Delivered
+                                </button>
+                              )}
+                              {o.status === "delivered" && (
+                                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Delivered
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: PLANS & SUBSCRIPTIONS MANAGEMENT                                   */}
+      {/* ========================================================================= */}
+      {adminTab === "plans" && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Plan Highlights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant">Tier 1</span>
+                <h4 className="font-headline font-bold text-lg text-on-surface mt-1">Normal Smart NFC Review Card</h4>
+                <div className="my-3">
+                  <span className="font-headline font-black text-3xl text-on-surface">₹500</span>
+                  <span className="text-xs text-on-surface-variant block mt-0.5">+ Extra Courier (One-Time)</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  PVC card format with embedded NFC chip and printed QR. Zero recurring monthly subscription fees.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-surface-variant/30 mt-4 text-[11px] font-semibold text-emerald-600">
+                {businesses.filter((b) => b.plan === "card_500").length} Active Subscriptions
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-secondary/40 shadow-sm flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-secondary text-on-secondary px-3 py-1 rounded-bl-xl text-[10px] font-bold uppercase">
+                Most Popular
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-secondary">Tier 2</span>
+                <h4 className="font-headline font-bold text-lg text-on-surface mt-1">Auto Google Review Standee</h4>
+                <div className="my-3">
+                  <span className="font-headline font-black text-3xl text-secondary">₹1,500</span>
+                  <span className="text-xs text-on-surface-variant block mt-0.5">+ ₹1,000 / month from Month 2</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Heavyweight laser-cut acrylic standee matched to client branding. Includes AI review draft assistant.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-surface-variant/30 mt-4 text-[11px] font-semibold text-secondary">
+                {businesses.filter((b) => b.plan === "standee_1500").length} Active Subscriptions
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-surface-container-lowest border border-primary/40 shadow-sm flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary">Tier 3</span>
+                <h4 className="font-headline font-bold text-lg text-on-surface mt-1">Standee + Auto Reply Engine</h4>
+                <div className="my-3">
+                  <span className="font-headline font-black text-3xl text-primary">₹2,000</span>
+                  <span className="text-xs text-on-surface-variant block mt-0.5">+ ₹1,000 / month from Month 2</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Full counter standee touchpoint plus 24/7 AI automation engine responding politely to incoming Google reviews.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-surface-variant/30 mt-4 text-[11px] font-semibold text-primary">
+                {businesses.filter((b) => b.plan === "standee_auto_2000").length} Active Subscriptions
+              </div>
+            </div>
+
+          </div>
+
+          {/* Business Subscription Control Table */}
+          <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-surface-variant/30 bg-surface-container-low flex justify-between items-center">
+              <h4 className="font-headline font-bold text-sm text-on-surface">
+                Client Subscription &amp; Hardware Tier Manager
+              </h4>
+              <span className="text-xs text-on-surface-variant">
+                Change or delete subscription plans per client store
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
+                    <th className="py-3 px-4">Business</th>
+                    <th className="py-3 px-4">Current Plan</th>
+                    <th className="py-3 px-4">Monthly Fee</th>
+                    <th className="py-3 px-4">Billing Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-variant/30">
+                  {businesses.map((b) => (
+                    <tr key={b.id} className="hover:bg-surface-container-low/50">
+                      <td className="py-3 px-4">
+                        <span className="font-bold text-on-surface block">{b.name}</span>
+                        <span className="text-[11px] text-on-surface-variant font-mono">{b.email}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-semibold text-[10px] text-on-surface border border-surface-variant/40">
+                          {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : "Auto Reply ₹2,000"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono font-semibold text-secondary">
+                        {b.plan === "card_500" ? "₹0 / mo" : "₹1,000 / mo"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          b.payment_status === "paid" ? "bg-emerald-500/15 text-emerald-700" : "bg-amber-500/15 text-amber-700"
+                        }`}>
+                          {b.payment_status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => handleOpenPlanModal(b)}
+                            className="px-3 py-1 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container font-bold text-[11px] text-on-surface cursor-pointer"
+                          >
+                            Change Plan
+                          </button>
+                          <button
+                            onClick={() => handleDeletePlan(b.id)}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 hover:bg-rose-100 font-bold text-[11px] text-rose-700 cursor-pointer"
+                            title="Cancel subscription / reset"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: CUSTOMIZE BUSINESS NAME, SLUG & GOOGLE REVIEW DESTINATION        */}
+      {/* ========================================================================= */}
+      {nameModalOpen && selectedBizForEdit && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-primary" />
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Customize Business Name &amp; URL Slug
+                </h3>
+              </div>
+              <button
+                onClick={() => setNameModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              If the client registered with an auto-generated email handle or incomplete name, enter their formal business name below. This name will automatically appear on their merchant portal login and physical standee touchpoints.
             </p>
 
-            <form onSubmit={handleAddNewBusiness} className="space-y-3.5">
+            <form onSubmit={handleSaveCustomizedProfile} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                  Business Name *
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Customized Business Name *
                 </label>
                 <input
                   type="text"
                   required
-                  value={newBizName}
-                  onChange={(e) => setNewBizName(e.target.value)}
-                  placeholder="e.g. Copper Kettle Roasters"
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                  value={customBizName}
+                  onChange={(e) => setCustomBizName(e.target.value)}
+                  placeholder="e.g. Royal Cafe & Bakers"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                    Contact Email
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-on-surface">
+                    Standee Customer URL Slug *
                   </label>
-                  <input
-                    type="email"
-                    value={newBizEmail}
-                    onChange={(e) => setNewBizEmail(e.target.value)}
-                    placeholder="owner@business.com"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    value={newBizPhone}
-                    onChange={(e) => setNewBizPhone(e.target.value)}
-                    placeholder="+91 98980 00000"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    value={newBizCity}
-                    onChange={(e) => setNewBizCity(e.target.value)}
-                    placeholder="Ahmedabad, Mumbai..."
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                    Hardware Package
-                  </label>
-                  <select
-                    value={newBizPlan}
-                    onChange={(e: any) => setNewBizPlan(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                  <button
+                    type="button"
+                    onClick={handleGenerateSlug}
+                    className="text-[10px] font-bold text-secondary hover:underline cursor-pointer"
                   >
-                    <option value="standee_1500">Auto Standee (₹1,500)</option>
-                    <option value="standee_auto_2000">Standee + AI (₹2,000)</option>
-                    <option value="card_500">Normal Card (₹500)</option>
-                  </select>
+                    Auto-Generate from Name
+                  </button>
+                </div>
+                <div className="flex items-center rounded-xl bg-surface-container border border-surface-variant px-3 py-2">
+                  <span className="text-xs text-on-surface-variant font-mono mr-1">/r/</span>
+                  <input
+                    type="text"
+                    required
+                    value={customBizSlug}
+                    onChange={(e) => setCustomBizSlug(e.target.value.toLowerCase().replace(/[\s_]+/g, "-"))}
+                    className="w-full bg-transparent text-xs font-mono text-on-surface focus:outline-none"
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
-                  Google Review Link (Optional)
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Connect Google Review Link (Direct Write-Review)
                 </label>
                 <input
                   type="url"
-                  value={newBizReviewUrl}
-                  onChange={(e) => setNewBizReviewUrl(e.target.value)}
-                  placeholder="https://g.page/r/... or https://maps.app.goo.gl/..."
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs font-mono text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                  value={customReviewUrl}
+                  onChange={(e) => setCustomReviewUrl(e.target.value)}
+                  placeholder="https://g.page/r/your-code/review"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
 
-              <div className="pt-2">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Google Business Profile (Maps Listing) Link
+                </label>
+                <input
+                  type="url"
+                  value={customGbpLink}
+                  onChange={(e) => setCustomGbpLink(e.target.value)}
+                  placeholder="https://maps.google.com/?cid=..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">City</label>
+                  <input
+                    type="text"
+                    value={customCity}
+                    onChange={(e) => setCustomCity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={customPhone}
+                    onChange={(e) => setCustomPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setNameModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-[#1C1B1A] hover:bg-[#2C2B2A] text-white font-bold text-xs transition-colors cursor-pointer shadow-md"
+                  className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 cursor-pointer shadow-sm"
                 >
-                  Confirm Fleet Deployment
+                  Save &amp; Apply Supreme Authority
                 </button>
               </div>
             </form>
@@ -873,170 +1769,458 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
         </div>
       )}
 
-      {/* QR Code Standee Modal (SVG and PNG Downloads) */}
-      {qrModalBiz && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#FAF9F6] rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#E2DFD8] animate-in zoom-in-95 duration-150 flex flex-col items-center text-center">
-            
-            <button
-              onClick={() => setQrModalBiz(null)}
-              className="absolute right-4 top-4 w-8 h-8 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] flex items-center justify-center text-[#615E5B] cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-[#1C1B1A] text-white flex items-center justify-center mb-3 shadow-md">
-              <QrCode className="w-6 h-6 text-[#D94826]" />
-            </div>
-
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-[#D94826] mb-1">
-              Laser Engraving Production
-            </span>
-            <h3 className="font-headline font-bold text-xl text-[#1C1B1A] mb-1">
-              {qrModalBiz.name}
-            </h3>
-            <p className="text-xs text-[#615E5B] mb-5 font-sans">
-              Dynamic QR Code · Error Correction Level Q (25% Reed-Solomon)
-            </p>
-
-            <div className="p-4 bg-white rounded-2xl shadow-md border border-[#E2DFD8] mb-4">
-              {qrPngUrl ? (
-                <img src={qrPngUrl} alt="Standee QR" className="w-56 h-56 rounded-lg" />
-              ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-xs text-gray-500">Generating QR...</div>
-              )}
-            </div>
-
-            <div className="w-full p-2.5 rounded-xl bg-[#F2F0EB] border border-[#E2DFD8] text-xs font-mono text-[#1C1B1A] truncate mb-5">
-              {originUrl}/r/{qrModalBiz.slug}?s=qr
-            </div>
-
-            {/* SVG & PNG Download Buttons */}
-            <div className="grid grid-cols-2 gap-3 w-full">
+      {/* ========================================================================= */}
+      {/* MODAL 2: PLACE HARDWARE STANDEE ORDER                                     */}
+      {/* ========================================================================= */}
+      {orderModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-primary" />
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Dispatch Hardware Standee Order
+                </h3>
+              </div>
               <button
-                onClick={handleDownloadSvg}
-                className="py-2.5 rounded-xl bg-[#D94826] text-white font-bold text-xs hover:bg-[#C23C1D] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                onClick={() => setOrderModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
               >
-                <Download className="w-4 h-4" />
-                <span>Vector SVG</span>
-              </button>
-
-              <button
-                onClick={handleDownloadPng}
-                className="py-2.5 rounded-xl bg-[#1C1B1A] text-white font-bold text-xs hover:bg-[#2C2B2A] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>1200px PNG</span>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#E2DFD8] w-full text-center">
-              <span className="text-[10px] text-[#615E5B] font-mono">
-                NFC Target: {originUrl}/r/{qrModalBiz.slug}?s=nfc
-              </span>
-            </div>
+            <form onSubmit={handleCreateStandeeOrder} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Select Target Business *
+                </label>
+                <select
+                  value={orderTargetBizId}
+                  onChange={(e) => setOrderTargetBizId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                >
+                  {businesses.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.city || "India"}) — /r/{b.slug}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Hardware Model / Plan *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOrderPlan("card_500")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      orderPlan === "card_500" ? "border-primary bg-primary/10 font-bold" : "border-surface-variant/40 bg-surface-container"
+                    }`}
+                  >
+                    <span className="block text-xs text-on-surface">NFC Card</span>
+                    <span className="font-bold text-sm text-primary">₹500</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderPlan("standee_1500")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      orderPlan === "standee_1500" ? "border-secondary bg-secondary/15 font-bold" : "border-surface-variant/40 bg-surface-container"
+                    }`}
+                  >
+                    <span className="block text-xs text-on-surface">Auto Standee</span>
+                    <span className="font-bold text-sm text-secondary">₹1,500</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderPlan("standee_auto_2000")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      orderPlan === "standee_auto_2000" ? "border-purple-500 bg-purple-500/15 font-bold" : "border-surface-variant/40 bg-surface-container"
+                    }`}
+                  >
+                    <span className="block text-xs text-on-surface">Standee+Reply</span>
+                    <span className="font-bold text-sm text-purple-600">₹2,000</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 items-center">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Shipping Pincode *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={orderPincode}
+                    onChange={(e) => setOrderPincode(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none"
+                  />
+                </div>
+                <div className="p-2.5 rounded-xl bg-surface-container-low border border-surface-variant/30 text-xs text-on-surface-variant">
+                  <span>Courier: </span>
+                  <strong className="text-on-surface">₹{courierCalculation.amount}</strong>
+                  <span className="block text-[10px] text-emerald-600 font-semibold">{courierCalculation.zone}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Counter / Billing Shipping Address
+                </label>
+                <textarea
+                  rows={2}
+                  value={orderAddress}
+                  onChange={(e) => setOrderAddress(e.target.value)}
+                  placeholder="Shop No., Landmark, City, State..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-surface-container flex justify-between items-center text-xs">
+                <span>Total Order Cost:</span>
+                <span className="font-headline font-black text-base text-primary">
+                  ₹{baseOrderPrice + courierCalculation.amount}
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setOrderModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 cursor-pointer shadow-sm"
+                >
+                  Dispatch Hardware Order
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* Admin Password & Security Modal */}
-      {passwordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-[#1C1B1A] text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-[#2C2B2A] animate-in zoom-in-95 duration-150">
-            
-            <button
-              onClick={() => {
-                setPasswordModalOpen(false);
-                setAdminPasswordError("");
-                setAdminPasswordMsg("");
-              }}
-              className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-2 mb-2">
-              <Lock className="w-5 h-5 text-[#D94826]" />
-              <h3 className="font-headline font-bold text-lg text-white">
-                Admin Password &amp; Security Key
-              </h3>
+      {/* ========================================================================= */}
+      {/* MODAL 3: CHANGE OR DELETE PLAN                                            */}
+      {/* ========================================================================= */}
+      {planModalOpen && selectedBizForPlan && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-secondary" />
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Manage Plan &amp; Billing
+                </h3>
+              </div>
+              <button
+                onClick={() => setPlanModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
-              Update the master security key for administrator access, or dispatch a password recovery link to your inbox.
+
+            <p className="text-xs text-on-surface-variant">
+              Changing plan for <strong>{selectedBizForPlan.name}</strong>.
             </p>
 
+            <form onSubmit={handleSavePlanChange} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Select Active Tier
+                </label>
+                <select
+                  value={selectedPlanValue}
+                  onChange={(e: any) => setSelectedPlanValue(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                >
+                  <option value="card_500">Normal Smart NFC Review Card (₹500)</option>
+                  <option value="standee_1500">Auto Google Review Standee (₹1,500 + ₹1,000/mo)</option>
+                  <option value="standee_auto_2000">Auto Standee + Reply Engine (₹2,000 + ₹1,000/mo)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Billing State
+                </label>
+                <select
+                  value={selectedBillingStatus}
+                  onChange={(e: any) => setSelectedBillingStatus(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                >
+                  <option value="paid">PAID (Subscribed &amp; Verified)</option>
+                  <option value="pending">PENDING (Awaiting Checkout / Trial)</option>
+                  <option value="failed">FAILED (Payment Failed / Grace Period)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => handleDeletePlan(selectedBizForPlan.id)}
+                  className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
+                >
+                  Delete / Reset Plan
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 cursor-pointer shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: ONBOARD NEW CLIENT BUSINESS                                      */}
+      {/* ========================================================================= */}
+      {addModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-[#D94826]" />
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Onboard Client Business to Fleet
+                </h3>
+              </div>
+              <button
+                onClick={() => setAddModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNewBusiness} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Business Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newBizName}
+                  onChange={(e) => setNewBizName(e.target.value)}
+                  placeholder="e.g. Royal Bakers & Sweets"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newBizEmail}
+                    onChange={(e) => setNewBizEmail(e.target.value)}
+                    placeholder="merchant@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={newBizPhone}
+                    onChange={(e) => setNewBizPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">City</label>
+                  <input
+                    type="text"
+                    value={newBizCity}
+                    onChange={(e) => setNewBizCity(e.target.value)}
+                    placeholder="e.g. Ahmedabad"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Plan</label>
+                  <select
+                    value={newBizPlan}
+                    onChange={(e: any) => setNewBizPlan(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  >
+                    <option value="card_500">NFC Card (₹500)</option>
+                    <option value="standee_1500">Auto Standee (₹1,500)</option>
+                    <option value="standee_auto_2000">Auto Reply Standee (₹2,000)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Google Review URL (Optional - can be linked later)
+                </label>
+                <input
+                  type="url"
+                  value={newBizReviewUrl}
+                  onChange={(e) => setNewBizReviewUrl(e.target.value)}
+                  placeholder="https://g.page/r/.../review"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setAddModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#D94826] text-white text-xs font-bold hover:bg-[#C23C1D] cursor-pointer shadow-sm"
+                >
+                  Onboard Business
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: LASER PRINTABLE QR CODE (LEVEL Q PNG & SVG)                      */}
+      {/* ========================================================================= */}
+      {qrModalBiz && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-surface-variant/30">
+              <h3 className="font-headline font-bold text-base text-on-surface">
+                Standee Laser QR (Level Q)
+              </h3>
+              <button
+                onClick={() => setQrModalBiz(null)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-on-surface-variant">
+              High-resolution vector assets for <strong>{qrModalBiz.name}</strong>.
+            </p>
+
+            <div className="p-3 bg-white rounded-2xl shadow-inner border border-surface-variant/30 inline-block">
+              {qrPngUrl && <img src={qrPngUrl} alt="QR" className="w-44 h-44 rounded" />}
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={handleDownloadPng}
+                className="w-full py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download High-Res 1200px PNG</span>
+              </button>
+
+              <button
+                onClick={handleDownloadSvg}
+                className="w-full py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center gap-2 cursor-pointer border border-surface-variant/40"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Vector SVG for CNC Laser</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 6: ADMIN SECURITY & PASSWORD SETTINGS                               */}
+      {/* ========================================================================= */}
+      {passwordModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-headline font-bold text-lg text-on-surface">
+                  Admin Password &amp; Security
+                </h3>
+              </div>
+              <button
+                onClick={() => setPasswordModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
             {adminPasswordError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <span>{adminPasswordError}</span>
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-600">
+                {adminPasswordError}
               </div>
             )}
 
             {adminPasswordMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>{adminPasswordMsg}</span>
+              <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-700">
+                {adminPasswordMsg}
               </div>
             )}
 
-            <form onSubmit={handleChangeAdminPassword} className="space-y-4">
+            <form onSubmit={handleChangeAdminPassword} className="space-y-3">
               <div>
-                <label className="block text-xs font-mono font-medium text-zinc-300 mb-1 uppercase tracking-wider text-[10px]">
-                  New Administrator Password
-                </label>
+                <label className="block text-xs font-bold text-on-surface mb-1">New Admin Password</label>
                 <input
                   type="password"
                   required
                   value={newAdminPassword}
                   onChange={(e) => setNewAdminPassword(e.target.value)}
                   placeholder="At least 6 characters"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono font-medium text-zinc-300 mb-1 uppercase tracking-wider text-[10px]">
-                  Confirm New Password
-                </label>
+                <label className="block text-xs font-bold text-on-surface mb-1">Confirm New Admin Password</label>
                 <input
                   type="password"
                   required
                   value={confirmAdminPassword}
                   onChange={(e) => setConfirmAdminPassword(e.target.value)}
                   placeholder="Repeat new password"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#141414] border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#D94826] font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={adminPasswordUpdating}
-                className="w-full py-3 rounded-xl bg-[#D94826] hover:bg-[#C23C1D] text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-              >
-                {adminPasswordUpdating ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Updating Security Key...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Update Administrator Password</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSendAdminResetEmail}
-                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-mono transition-colors flex items-center justify-center gap-2 cursor-pointer border border-white/10"
-              >
-                <Mail className="w-4 h-4 text-[#D94826]" />
-                <span>Dispatch Recovery Instructions to Email</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={adminPasswordUpdating}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {adminPasswordUpdating ? "Updating..." : "Update Password"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendAdminResetEmail}
+                  className="px-3 py-2.5 rounded-xl bg-surface-container text-on-surface font-bold text-xs hover:bg-surface-container-high cursor-pointer border border-surface-variant/40"
+                >
+                  Send Recovery Email
+                </button>
+              </div>
             </form>
-
           </div>
         </div>
       )}

@@ -1,5 +1,15 @@
 # ZenTap.ai — Changelog
 
+## [1.3.0] — 2026-10-29
+### Added
+- Upgraded Admin Workspace to **"ZenTap.in Admin Dashboard"** with 4 organized tabs:
+  1. **Analytics & Performance Dashboard**: Total fleet earnings (₹), NFC taps vs. QR scans breakdown, Google review conversions (~88%), active store count, Name Confirmation Pending alerts, Google Review Link Status, and Standee fulfillment status.
+  2. **Admin Master Table (10 Columns)**: Business & Slug, Contact, City, Customer Page, Plan, Billing, Status, Scans, Google Review Destination, Supreme Actions.
+  3. **Customized Business Name & Slug Editor Modal**: Allows Admin to manually edit and fix merchant business names, automatically generate/customize slugs, and connect Google Review URLs directly. Reflects instantly in merchant's user login.
+  4. **Standee Orders & Dispatch Hub**: Track all standee manufacturing and courier timelines (BlueDart), plus a direct **"Order Standee"** form with pincode courier calculator.
+  5. **Plans & Subscription Management**: View commercial tiers (₹500 / ₹1,500 / ₹2,000), change client plans, toggle billing states, or reset/delete subscriptions.
+- Updated Header badge to **"ZenTap.in Admin Dashboard"** when viewing the admin console.
+
 ## [1.2.1] — 2026-10-29
 ### Added
 - Explicit "Standee Order Status: Pending Selection" banner in `ClientPortalView` when no order has been placed, guiding merchant to select and purchase hardware.

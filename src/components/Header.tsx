@@ -110,7 +110,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             {currentView === "admin" ? (
               <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Superadmin Root Console</span>
+                <span>ZenTap.in Admin Dashboard</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-[#1C1B1A] font-semibold">
