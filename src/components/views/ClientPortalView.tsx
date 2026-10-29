@@ -221,6 +221,35 @@ export default function ClientPortalView({
                 }))
               );
             }
+          } else {
+            // First time login for merchant: persist initial merchant profile to Supabase
+            const newDbBiz = await upsertUserBusinessInDb({
+              owner_user_id: user.id,
+              name: b.name,
+              email: b.email,
+              phone: b.phone || null,
+              city: b.city || null,
+              state: b.state || null,
+              country: b.country || "India",
+              pincode: b.pincode || null,
+              address: b.address || null,
+              category: b.category || "Retail / Hospitality Business",
+              gbp_link: b.gbp_link || null,
+              slug: b.slug,
+              plan: b.plan,
+              payment_status: b.payment_status || "pending",
+              review_url: b.review_url || null,
+              active: true,
+            });
+            if (newDbBiz) {
+              const registered: BusinessRecord = {
+                ...b,
+                id: newDbBiz.id,
+                created_at: newDbBiz.created_at,
+              };
+              setBusiness(registered);
+              populateForm(registered);
+            }
           }
         } catch (err) {
           console.warn("Supabase background sync notice:", err);

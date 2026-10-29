@@ -18,3 +18,4 @@
 | **Upcoming Projects & Services Drawer** | Done | 5 services configured in persistent side drawer (after FAQ), excluded from homepage. |
 | **Founder Admin Console** | Done | Supreme authority fleet directory, manual Google Review URL insertion, live preview. |
 | **Self-Service Password Security** | Done | 3-failed-attempts lock, reset email trigger, in-dashboard password updates. |
+| **Supabase PostgreSQL & RLS Fleet Sync** | Done | Verified live connection to Supabase; conflict-safe UUID mapping, anti-leak RLS safe views, 9 seeded courier rules, 5 registered admin users, and automated test diagnostics. |

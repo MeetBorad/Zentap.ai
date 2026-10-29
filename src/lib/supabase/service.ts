@@ -78,22 +78,46 @@ function getSupabase(useAdmin = false) {
 }
 
 /**
+ * Helper to check if string is a valid UUID
+ */
+export function isValidUuid(str?: string | null): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+/**
  * 1. Fetch user business by owner user ID from Supabase
  */
 export async function fetchUserBusinessFromDb(userId: string): Promise<DbBusinessRecord | null> {
   try {
     const supabase = getSupabase();
+    const cleanUserId = userId.replace(/^biz_/, "");
+    
+    // First query by owner_user_id
     const { data, error } = await supabase
       .from("businesses")
       .select("*")
-      .eq("owner_user_id", userId)
+      .eq("owner_user_id", cleanUserId)
       .maybeSingle();
+
+    if (!error && data) {
+      return data;
+    }
+
+    // Fallback: If userId is itself a UUID, also check id column
+    if (isValidUuid(cleanUserId)) {
+      const { data: byId } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("id", cleanUserId)
+        .maybeSingle();
+      if (byId) return byId;
+    }
 
     if (error) {
       console.warn("Supabase fetchUserBusinessFromDb notice:", error.message);
-      return null;
     }
-    return data;
+    return null;
   } catch (err) {
     console.warn("Supabase fetchUserBusinessFromDb exception:", err);
     return null;
@@ -108,15 +132,23 @@ export async function upsertUserBusinessInDb(
 ): Promise<DbBusinessRecord | null> {
   try {
     const supabase = getSupabase();
+    const cleanOwnerId = biz.owner_user_id.replace(/^biz_/, "");
+    const isIdUuid = isValidUuid(biz.id);
+
+    const payload: any = {
+      ...biz,
+      owner_user_id: cleanOwnerId,
+      updated_at: new Date().toISOString(),
+    };
+
+    // If biz.id is not a valid 36-char UUID (e.g. "biz_..."), omit it so Postgres gen_random_uuid() generates a real UUID
+    if (!isIdUuid) {
+      delete payload.id;
+    }
+
     const { data, error } = await supabase
       .from("businesses")
-      .upsert(
-        {
-          ...biz,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "slug" }
-      )
+      .upsert(payload, { onConflict: "slug" })
       .select()
       .maybeSingle();
 
@@ -176,6 +208,7 @@ export async function recordDbScan(
   isPreview = false
 ) {
   try {
+    if (!isValidUuid(businessId)) return;
     const supabase = getSupabase();
     const { error } = await supabase.from("scans").insert([
       {
@@ -203,6 +236,7 @@ export async function recordDbEvent(
   rating?: number
 ) {
   try {
+    if (!isValidUuid(businessId)) return;
     const supabase = getSupabase();
     const { error } = await supabase.from("events").insert([
       {
@@ -230,6 +264,7 @@ export async function recordDbFeedback(
   customerPhone?: string
 ) {
   try {
+    if (!isValidUuid(businessId)) return null;
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("feedback")
@@ -261,6 +296,7 @@ export async function recordDbFeedback(
  */
 export async function fetchDbOrders(businessId: string): Promise<DbOrderRecord[]> {
   try {
+    if (!isValidUuid(businessId)) return [];
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("orders")
@@ -283,6 +319,7 @@ export async function fetchDbOrders(businessId: string): Promise<DbOrderRecord[]
  */
 export async function fetchDbFeedbacks(businessId: string): Promise<DbFeedbackRecord[]> {
   try {
+    if (!isValidUuid(businessId)) return [];
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from("feedback")
@@ -334,6 +371,9 @@ export async function updateDbReviewUrl(businessId: string, reviewUrl: string | 
 export async function adminUpdateDbBusiness(businessId: string, updates: Partial<DbBusinessRecord>) {
   try {
     const supabase = getSupabase(true);
+    const isIdUuid = isValidUuid(businessId);
+    if (!isIdUuid) return false;
+
     const { error } = await supabase
       .from("businesses")
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -376,16 +416,32 @@ export async function fetchDbAdminOrders(): Promise<DbOrderRecord[]> {
 export async function adminUpdateDbOrder(orderId: string, updates: Partial<DbOrderRecord>) {
   try {
     const supabase = getSupabase(true);
-    const { error } = await supabase
-      .from("orders")
-      .update(updates)
-      .eq("id", orderId);
+    const isIdUuid = isValidUuid(orderId);
 
-    if (error) {
-      console.warn("adminUpdateDbOrder notice:", error.message);
-      return false;
+    if (isIdUuid) {
+      const { error } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId);
+
+      if (error) {
+        console.warn("adminUpdateDbOrder notice:", error.message);
+        return false;
+      }
+      return true;
+    } else {
+      // Lookup or match by tracking_number or razorpay_id
+      const { error } = await supabase
+        .from("orders")
+        .update(updates)
+        .or(`tracking_number.eq.${orderId},razorpay_id.eq.${orderId},razorpay_order_id.eq.${orderId}`);
+
+      if (error) {
+        console.warn("adminUpdateDbOrder by tracking notice:", error.message);
+        return false;
+      }
+      return true;
     }
-    return true;
   } catch {
     return false;
   }

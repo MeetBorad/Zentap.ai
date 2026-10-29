@@ -53,50 +53,71 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     if (supabase && businessId) {
       try {
-        // 1. Update business payment status and plan
-        await supabase
-          .from("businesses")
-          .update({
-            plan: planId,
-            payment_status: "paid",
-            active: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", businessId);
+        const isBizUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(businessId);
+        let targetBizId = businessId;
 
-        // 2. Insert order record
-        await supabase.from("orders").insert([
-          {
-            id: generatedOrderId,
-            business_id: businessId,
-            plan: planId,
-            amount: basePrice,
-            courier: courierInfo.amount,
-            status: "processing",
-            razorpay_id: razorpay_payment_id,
-            razorpay_order_id,
-            razorpay_payment_id,
-            courier_name: "BlueDart Express / Delhivery",
-            tracking_number: `BD-${Date.now().toString().slice(-8)}`,
-            estimated_delivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            at: new Date().toISOString(),
-          },
-        ]);
+        // If not UUID, look up business record by slug or owner_user_id
+        if (!isBizUuid) {
+          const cleanOwner = businessId.replace(/^biz_/, "");
+          const { data: matchedBiz } = await supabase
+            .from("businesses")
+            .select("id")
+            .or(`slug.eq.${businessId},owner_user_id.eq.${cleanOwner}`)
+            .maybeSingle();
+          if (matchedBiz) {
+            targetBizId = matchedBiz.id;
+          }
+        }
 
-        // 3. For Plans B and C, record deferred subscription (₹1,000/mo starting next month)
-        if (planId === "standee_1500" || planId === "standee_auto_2000") {
-          await supabase.from("subscriptions").insert([
-            {
-              business_id: businessId,
+        const isTargetUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetBizId);
+
+        if (isTargetUuid) {
+          // 1. Update business payment status and plan
+          await supabase
+            .from("businesses")
+            .update({
               plan: planId,
-              amount: 1000.0,
-              status: "active",
-              billing_start_date: subscriptionStartDate,
-              next_billing_date: subscriptionStartDate,
-              razorpay_subscription_id: `sub_${razorpay_payment_id.slice(-8)}`,
-              created_at: new Date().toISOString(),
+              payment_status: "paid",
+              active: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", targetBizId);
+
+          // 2. Insert order record (let Postgres gen_random_uuid handle primary key, save tracking reference)
+          const isOrderUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(generatedOrderId);
+          await supabase.from("orders").insert([
+            {
+              ...(isOrderUuid ? { id: generatedOrderId } : {}),
+              business_id: targetBizId,
+              plan: planId,
+              amount: basePrice,
+              courier: courierInfo.amount,
+              status: "processing",
+              razorpay_id: razorpay_payment_id,
+              razorpay_order_id,
+              razorpay_payment_id,
+              courier_name: "BlueDart Express / Delhivery",
+              tracking_number: generatedOrderId,
+              estimated_delivery: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+              at: new Date().toISOString(),
             },
           ]);
+
+          // 3. For Plans B and C, record deferred subscription with exact schema column names
+          if (planId === "standee_1500" || planId === "standee_auto_2000") {
+            await supabase.from("subscriptions").insert([
+              {
+                business_id: targetBizId,
+                plan: planId,
+                monthly_amount: 1000.0,
+                status: "active",
+                start_at: new Date(subscriptionStartDate).toISOString(),
+                current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                razorpay_subscription_id: `sub_${razorpay_payment_id.slice(-8)}`,
+                created_at: new Date().toISOString(),
+              },
+            ]);
+          }
         }
       } catch (dbErr) {
         console.warn("Supabase database order logging notice:", dbErr);

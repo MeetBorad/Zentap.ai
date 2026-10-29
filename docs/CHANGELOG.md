@@ -1,6 +1,20 @@
 # ZenTap.ai — Changelog
 
-## [1.3.1] — 2026-10-29
+## [1.3.2] — 2026-10-29
+### Added
+- Created live Supabase automated audit scripts: `tests/check_supabase.mjs` and `tests/test_supabase_live_ops.mjs`.
+- Verified live PostgreSQL connection, table integrity, and RLS policies across all tables (`businesses`, `public_businesses`, `scans`, `events`, `feedback`, `orders`, `courier_rules`, `subscriptions`, `admin_users`).
+- Verified anonymous and authenticated RLS privacy: customer feedback and merchant emails/phones remain 100% confidential and leak-proof.
+- Added automatic Supabase merchant profile creation in `ClientPortalView.tsx` upon first-time user login/signup, ensuring PostgreSQL persistence immediately.
+
+### Fixed
+- Fixed PostgreSQL UUID parsing error in `service.ts` when prefixes like `biz_` were passed: implemented `isValidUuid()` helper, stripping prefixes and allowing PostgreSQL `DEFAULT gen_random_uuid()` to assign standard UUIDs.
+- Fixed `subscriptions` schema column mismatch in `verify-payment/route.ts`: mapped `monthly_amount`, `start_at`, `current_period_end` to match the exact Supabase v2 schema.
+- Fixed `orders.id` UUID constraint in `verify-payment/route.ts` and `service.ts`: custom tracking numbers (e.g. `ZT-ORD-...`) are preserved in `tracking_number` and `razorpay_order_id` while letting PostgreSQL assign standard UUID primary keys.
+
+### Audited
+- Conducted full Site Hallmark Audit (architecture, multi-tenancy, Google Anti-Gating compliance, and Virat Gold Palace Certified 22K Hallmark Gold & Diamond Jewellery assistant flow).
+
 ### Added
 - Renamed Merchant Header badge and portal view to **"My Live Business Analytics"**.
 - Added dynamic branding background and typography matching the client's business from the Admin Master Table.
