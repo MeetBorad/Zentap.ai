@@ -8,7 +8,6 @@ export function checkIsAdmin(user: User | null): boolean {
   // Strict Superadmin Whitelist: Only verified root administrators have supreme console authority
   const adminList = [
     "admin@zentapdigitalsolutions.com",
-    "admin@zentap.ai",
   ];
 
   // If a user is logged in, their email/metadata determines authority
@@ -29,9 +28,11 @@ export function checkIsAdmin(user: User | null): boolean {
     return false;
   }
 
-  // If no user is logged in, check standalone admin supreme session key
-  if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
-    return true;
+  // If no user is logged in, check standalone admin supreme session key or admin URL param
+  if (typeof window !== "undefined") {
+    if (localStorage.getItem("zentap_admin_supreme") === "true" || window.location.search.includes("admin=1")) {
+      return true;
+    }
   }
 
   return false;

@@ -30,10 +30,34 @@ import {
   DollarSign, 
   User 
 } from "lucide-react";
+import { trackPageView, trackCtaClick } from "@/lib/analytics";
+
+const VIEW_METADATA: Record<ActiveView, { title: string; path: string }> = {
+  home: { title: "ZenTap | Smart NFC & QR Google Review Standees", path: "/" },
+  pricing: { title: "Products & Pricing | ZenTap NFC Standees", path: "/?view=pricing" },
+  "how-it-works": { title: "How It Works | ZenTap Instant Tap Reviews", path: "/?view=how-it-works" },
+  features: { title: "Features & Hardware Specs | ZenTap NTAG216", path: "/?view=features" },
+  benefits: { title: "Business Benefits & ROI | ZenTap", path: "/?view=benefits" },
+  results: { title: "Verified Client Results | ZenTap", path: "/?view=results" },
+  "sample-dashboard": { title: "Sample Showcase Dashboard | ZenTap", path: "/?view=sample-dashboard" },
+  "client-proofs": { title: "Testimonials & Case Studies | ZenTap", path: "/?view=client-proofs" },
+  faq: { title: "FAQ & Google Anti-Gating Policy | ZenTap", path: "/?view=faq" },
+  portal: { title: "Merchant Dashboard | ZenTap", path: "/?view=portal" },
+  admin: { title: "Fleet Superadmin Console | ZenTap", path: "/?view=admin" },
+};
 
 export default function Page() {
   const { user, isAdmin, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<ActiveView>("home");
+  const [currentView, setCurrentView] = useState<ActiveView>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get("view");
+      if (v === "portal" || v === "admin" || v === "pricing" || v === "sample-dashboard") {
+        return v as ActiveView;
+      }
+    }
+    return "home";
+  });
   const [portalInitialPlan, setPortalInitialPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false);
@@ -43,6 +67,18 @@ export default function Page() {
   const [latestReview, setLatestReview] = useState<ReviewItem | null>(null);
 
   const hasInitializedAuth = useRef(false);
+
+  // Check URL query parameters on initial load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get("view");
+      if (v === "portal" || v === "admin" || v === "pricing" || v === "sample-dashboard" || v === "how-it-works" || v === "features") {
+        setCurrentView(v as ActiveView);
+        hasInitializedAuth.current = true;
+      }
+    }
+  }, []);
 
   // Auto-route to user's dedicated dashboard on initial load
   useEffect(() => {
@@ -63,7 +99,21 @@ export default function Page() {
     }
   }, [currentView, isAdmin, user, loading]);
 
+  // Sync Document Title, Browser History, and GA4 Page Views on View Change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const meta = VIEW_METADATA[currentView] || VIEW_METADATA.home;
+      document.title = meta.title;
+      const targetPath = meta.path;
+      if (window.location.search || currentView !== "home") {
+        window.history.replaceState({ view: currentView }, meta.title, targetPath);
+      }
+      trackPageView(targetPath, meta.title);
+    }
+  }, [currentView]);
+
   const handleOpenAuth = (tab: "signin" | "signup" | "admin") => {
+    trackCtaClick(`open_auth_${tab}`, "auth_modal");
     if (tab === "admin") {
       setAdminAuthModalOpen(true);
     } else {
@@ -73,6 +123,7 @@ export default function Page() {
   };
 
   const handleNavigate = (view: ActiveView, plan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom") => {
+    trackCtaClick(`nav_${view}`, view);
     if (view === "admin" && !isAdmin) {
       handleOpenAuth("admin");
       return;
@@ -92,15 +143,17 @@ export default function Page() {
 
   return (
     <div className="flex flex-col min-h-screen bg-surface text-on-surface">
-      {/* Fixed Adaptive Header */}
-      <Header
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onOpenAuth={handleOpenAuth}
-      />
+      {/* Fixed Adaptive Header (shown on public views) */}
+      {!isDashboardView && (
+        <Header
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onOpenAuth={handleOpenAuth}
+        />
+      )}
 
       {/* Main View Container */}
-      <main className="flex-1 pt-16 pb-20 md:pb-8 flex flex-col">
+      <main className={`flex-1 flex flex-col ${!isDashboardView ? "pt-16 pb-20 md:pb-8" : "min-h-screen"}`}>
         {currentView === "home" && (
           <HomeView
             onNavigate={handleNavigate}
@@ -171,12 +224,17 @@ export default function Page() {
             initialPlan={portalInitialPlan}
             onTriggerTapSimulator={() => setTapReviewModalOpen(true)}
             onOpenAuthModal={(tab) => handleOpenAuth(tab)}
+            onNavigate={handleNavigate}
+            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
         {/* Superadmin Console (Protected Admin Fleet Dashboard) */}
         {currentView === "admin" && (
-          <AdminConsoleView onOpenAuthModal={(tab) => handleOpenAuth(tab)} />
+          <AdminConsoleView 
+            onOpenAuthModal={(tab) => handleOpenAuth(tab)} 
+            onNavigate={handleNavigate}
+          />
         )}
       </main>
 
@@ -248,12 +306,14 @@ export default function Page() {
         </nav>
       )}
 
-      {/* Global Footer (Adapts based on current view & role) */}
-      <Footer
-        currentView={currentView}
-        onNavigate={handleNavigate}
-        onOpenAuth={handleOpenAuth}
-      />
+      {/* Global Footer (shown on public views) */}
+      {!isDashboardView && (
+        <Footer
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onOpenAuth={handleOpenAuth}
+        />
+      )}
 
       {/* Dedicated Client Merchant Auth Modal (Sign In & Register Business) */}
       <AuthModal

@@ -1,5 +1,6 @@
 import { createClient as createBrowserSupabaseClient } from "./client";
 import { createAdminClient } from "./admin";
+import { ProductPlan, CustomCardDesign } from "@/lib/businessStore";
 
 export interface DbBusinessRecord {
   id: string;
@@ -15,11 +16,19 @@ export interface DbBusinessRecord {
   category: string | null;
   gbp_link: string | null;
   slug: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
+  plan: ProductPlan | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
   active: boolean;
   custom_chips?: string[] | null;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  booking_url?: string | null;
+  portfolio_url?: string | null;
+  instagram_url?: string | null;
+  website_url?: string | null;
+  redirect_mode?: "direct_review" | "interactive_profile" | null;
+  custom_design?: CustomCardDesign | null;
   created_at: string;
   updated_at?: string;
 }
@@ -59,7 +68,7 @@ export interface DbFeedbackRecord {
 export interface DbOrderRecord {
   id: string;
   business_id: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
+  plan: ProductPlan;
   amount: number;
   courier: number;
   status: "processing" | "in_production" | "shipped" | "delivered";

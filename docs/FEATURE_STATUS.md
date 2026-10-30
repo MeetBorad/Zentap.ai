@@ -1,11 +1,20 @@
-# ZenTap.ai — Feature Status Matrix
+# ZenTap — Feature Status Matrix
 
 | Feature | Status | Notes |
 |---|---|---|
+| **GSAP & ScrollTrigger Animation Engine** | Done | Official GreenSock suite (`gsap`, `@gsap/react`, `ScrollTrigger`) with 3D standee 360° flip inspection and scroll-linked entrance staggers. |
+| **React Bits UI Animations & Micro-Interactions** | Done | Modular suite (`SpotlightCard`, `ShinyText`, `BlurText`, `CountUp`, `AuroraBackground`, `TiltedCard`) built with Framer Motion & Tailwind. |
+| **Brand Uniformity & Identity** | Done | Strictly **ZenTap** (Brand) and **ZenTap Digital Solutions** (Company). Primary domain: `zentapdigitalsolutions.com`. Zero mentions of `.ai`. |
+| **Review Copy De-AI Sanitization** | Done | Eliminated all mentions of synthetic AI reviews. Replaced with authentic Smart Review Assistant, Review Suggestions, and Automated Replies. |
 | **User Registration & Supabase Auth** | Done | Implemented via `AuthContext.tsx` with email/password authentication. |
-| **Merchant Isolated Dashboard** | Done | `ClientPortalView.tsx` displays only logged-in user's business profile and metrics with 7 horizontal sub-tabs. |
+| **Merchant Isolated Dashboard** | Done | `ClientPortalView.tsx` displays logged-in user's business profile, metrics, dynamic profile controls, lead inbox, and design studio. |
 | **Sample Dashboard Preview** | Done | Instant toggle between Live Profile and official ZenTap.in Digital Solutions Showcase (`/r/zentap`). |
 | **Business Profile Editor (8 Fields)** | Done | Name, Category, GBP Link, Review URL, Contact Phone, City, State, Country, Pincode, Email, Address. |
+| **Dynamic Profile & Interaction Hub** | Done | WhatsApp direct chat, booking integration (Calendly/reservations), digital portfolio/menu showcase, call store, and website links on `/r/[slug]`. Configurable in Merchant Dashboard. |
+| **Built-in Lead Capture Pipeline** | Done | Enquiry form on `/r/[slug]` with direct backend routing to `/api/leads` and Merchant Dashboard inbox with 1-click WhatsApp/Call shortcuts. |
+| **3D Hardware Specimen Customizer** | Done | Interactive customizer for Standees & Cards with 5 materials (Matte Obsidian, Brushed Steel, Brushed Gold, Minimal White, Emerald), live logo upload, typography, and accent colors. |
+| **Direct Review vs Interactive Mode** | Done | Merchant choice between Pure Direct 1-Tap Google Review opening or Multi-action Dynamic Profile. |
+| **Core Hardware Products (zentap.in Integration)** | Done | Simple QR/NFC (₹499/₹999), Metal NFC with AI Replies (₹1,999), PVC NFC (₹699), Corporate Bulk Cards (₹499/unit). |
 | **Customized Review Categories ("What did you like most?")** | Done | Unlocked after standee payment. Allows merchants to add/remove/reset review tags. Admin console provides full CRUD modal for any merchant. |
 | **Multi-Draft AI Review Generator & Speech-to-Text 🎙️** | Done | Generates 3 distinct AI review drafts (Humanized, Detailed, Punchy). Web Speech API voice recording in English, Hindi, and Gujarati. |
 | **Locked & Blurry Analytics Dashboard** | Done | Unpaid merchants see real-time NFC/QR telemetry blurred with a padlock overlay and "Buy Standee to Unlock" CTA. |

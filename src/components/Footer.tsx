@@ -2,8 +2,9 @@
 
 import React from "react";
 import { ActiveView } from "./Header";
-import { ArrowUp, Radio } from "lucide-react";
+import { ArrowUp, Radio, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { trackPhoneClick, trackEmailClick, trackWhatsAppClick } from "@/lib/analytics";
 
 interface FooterProps {
   currentView?: ActiveView;
@@ -22,7 +23,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
   if (currentView === "portal" || currentView === "admin") {
     return (
       <footer className="w-full bg-[#FAF9F6] border-t border-[#E2DFD8] py-4 text-[11px] font-mono text-[#615E5B] text-center">
-        © 2026 ZenTap.ai · Workspace Session Active
+        © 2026 ZenTap · Workspace Session Active
       </footer>
     );
   }
@@ -36,7 +37,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
           <div className="flex items-start sm:items-center gap-3">
             <Radio className="w-4 h-4 text-[#D94826] flex-shrink-0 mt-0.5 sm:mt-0" />
             <p className="text-xs text-[#1C1B1A] leading-relaxed">
-              <strong>Google Anti-Gating Compliant:</strong> ZenTap.ai preserves public Google review access across all ratings, offering an expedited private resolution channel for sub-4 star experiences.
+              <strong>Google Anti-Gating Compliant:</strong> ZenTap preserves public Google review access across all ratings, offering an expedited private resolution channel for sub-4 star experiences.
             </p>
           </div>
 
@@ -58,7 +59,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
                 Z
               </div>
               <span className="font-headline font-bold text-base text-[#1C1B1A]">
-                Zen<span className="text-[#D94826]">Tap</span>.ai
+                Zen<span className="text-[#D94826]">Tap</span>
               </span>
             </div>
             <p className="text-xs text-[#615E5B] leading-relaxed">
@@ -67,6 +68,43 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
             <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-800">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
               <span>NTAG216 · 13.56 MHz · ISO 14443A</span>
+            </div>
+
+            {/* Direct Contact Touchpoints */}
+            <div className="mt-2 pt-3 border-t border-[#E2DFD8] flex flex-col gap-2 text-xs">
+              <a
+                href="tel:+919274560880"
+                onClick={() => trackPhoneClick("+919274560880", "footer")}
+                className="flex items-center gap-2 text-[#1C1B1A] hover:text-[#D94826] transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#D94826] flex-shrink-0" />
+                <span>+91 92745 60880</span>
+              </a>
+
+              <a
+                href="mailto:contact@zentapdigitalsolutions.com"
+                onClick={() => trackEmailClick("contact@zentapdigitalsolutions.com", "footer")}
+                className="flex items-center gap-2 text-[#1C1B1A] hover:text-[#D94826] transition-colors break-all"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#D94826] flex-shrink-0" />
+                <span>contact@zentapdigitalsolutions.com</span>
+              </a>
+
+              <a
+                href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20inquire%20about%20NFC%20Google%20Review%20Standees"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackWhatsAppClick("footer")}
+                className="flex items-center gap-2 text-emerald-700 hover:text-emerald-800 transition-colors font-medium"
+              >
+                <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>WhatsApp Instant Support</span>
+              </a>
+
+              <div className="flex items-start gap-2 text-[#615E5B] text-[11px] pt-1">
+                <MapPin className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0 mt-0.5" />
+                <span>Sindhu Bhavan Marg, Bodakdev, Ahmedabad, Gujarat 380054</span>
+              </div>
             </div>
           </div>
 
@@ -249,7 +287,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
 
         {/* Colophon Base */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono">
-          <p>© 2026 ZenTap.ai Digital Solutions · Precision Crafted NFC Hardware</p>
+          <p>© 2026 ZenTap Digital Solutions · Precision Crafted NFC Hardware</p>
           <button
             onClick={scrollToTop}
             className="flex items-center gap-1.5 hover:text-[#1C1B1A] transition-colors cursor-pointer"

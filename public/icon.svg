@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ztGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#DC2626"/>
+      <stop offset="50%" stop-color="#B91C1C"/>
+      <stop offset="100%" stop-color="#991B1B"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#B91C1C" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#ztGrad)" filter="url(#shadow)"/>
+  <!-- ZenTap Z Symbol -->
+  <path d="M140 160 H372 V210 L220 330 H372 V382 H140 V332 L292 212 H140 Z" fill="#FFFFFF"/>
+  <!-- NFC Radio Waves Accent -->
+  <circle cx="390" cy="140" r="14" fill="#34D399"/>
+</svg>

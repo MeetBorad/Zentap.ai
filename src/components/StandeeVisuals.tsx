@@ -100,7 +100,7 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
             TAP PHONE HERE
           </span>
           <span className="text-[9px] text-[#F7E7A9]/80 mt-0.5">
-            Instant 5-Star AI Review
+            Instant 5-Star Review
           </span>
         </div>
 
@@ -240,7 +240,7 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
           TAP PHONE HERE
         </span>
         <span className="text-[9px] text-amber-300/80 mt-0.5">
-          AI Review + Auto Sync
+          Smart Review + Auto Sync
         </span>
       </div>
 

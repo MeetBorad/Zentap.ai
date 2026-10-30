@@ -47,7 +47,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
 
   // Sample Profile form state
   const [sampleReviewUrl, setSampleReviewUrl] = useState("https://www.google.com/maps/place//@23.0393793,72.6446507,17z/data=!3m1!4b1!4m3!3m2!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!12e1?entry=ttu&g_ep=EgoyMDI2MTAyNy4wIKXMDSoASAFQAw%3D%3D");
-  const [sampleBizName, setSampleBizName] = useState("ZenTap.in Digital Solutions");
+  const [sampleBizName, setSampleBizName] = useState("ZenTap Digital Solutions");
   const [samplePhone, setSamplePhone] = useState("+91 92745 60880");
   const [sampleCity, setSampleCity] = useState("Ahmedabad");
 
@@ -99,7 +99,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
             Interactive Showcase
           </span>
           <p className="text-xs text-on-surface-variant">
-            Full demonstration of the <strong className="text-on-surface">Client Merchant Dashboard</strong> for ZenTap.in Digital Solutions (Ahmedabad).
+            Full demonstration of the <strong className="text-on-surface">Client Merchant Dashboard</strong> for ZenTap Digital Solutions (Ahmedabad).
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
             </div>
 
             <h1 className="font-headline font-bold text-2xl sm:text-3xl text-on-surface mt-1">
-              ZenTap.in Digital Solutions
+              ZenTap Digital Solutions
             </h1>
 
             <p className="text-xs text-on-surface-variant mt-0.5 flex flex-wrap items-center gap-1.5">
@@ -247,10 +247,10 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
 
             <div className="my-2">
               <h4 className="font-headline font-bold text-xl text-on-surface">
-                Standee + AI Automation Engine (₹2,000)
+                Standee + Automation Engine (₹2,000)
               </h4>
               <span className="block text-xs text-emerald-600 font-semibold mt-1">
-                ✓ Lifetime Standee &amp; WhatsApp AI Engine
+                ✓ Lifetime Standee &amp; WhatsApp Automation Engine
               </span>
             </div>
 
@@ -487,7 +487,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
           </h3>
 
           <div className="mb-4">
-            <StandeeVisual type="standee_auto_2000" businessName="ZENTAP.IN" />
+            <StandeeVisual type="standee_auto_2000" businessName="ZENTAP" />
           </div>
 
           <div className="w-full p-2.5 rounded-xl bg-surface border border-surface-variant/40 text-xs font-mono text-on-surface truncate mb-4">
@@ -564,7 +564,7 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
           </div>
           <div className="flex flex-wrap justify-between gap-2">
             <span className="text-on-surface-variant">Product Model:</span>
-            <span className="font-bold text-on-surface">Standee + AI Automation Engine (₹2,000)</span>
+            <span className="font-bold text-on-surface">Standee + Automation Engine (₹2,000)</span>
           </div>
           <div className="flex flex-wrap justify-between gap-2">
             <span className="text-on-surface-variant">Courier Partner:</span>

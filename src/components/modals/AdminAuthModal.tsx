@@ -102,8 +102,6 @@ export default function AdminAuthModal({
     // 2. Strict whitelist of authorized admin accounts
     const allowedAdminEmails = [
       "admin@zentapdigitalsolutions.com",
-      "admin@zentap.ai",
-      "meet@zentap.ai",
       "meetborad@hotmail.com",
       "thedayithappened736@gmail.com",
     ];
@@ -195,7 +193,7 @@ export default function AdminAuthModal({
         <div className="mb-5 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-zinc-300 flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-[#D94826] flex-shrink-0 mt-0.5" />
           <p className="leading-relaxed text-[11px]">
-            This portal is exclusively for ZenTap.ai system administrators. Authenticated sessions grant supreme directory authority and hardware provisioning access.
+            This portal is exclusively for ZenTap system administrators. Authenticated sessions grant supreme directory authority and hardware provisioning access.
           </p>
         </div>
 

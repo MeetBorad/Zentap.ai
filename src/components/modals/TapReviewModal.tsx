@@ -104,7 +104,7 @@ export default function TapReviewModal({
                   ))}
                 </div>
                 <span className="text-[11px] text-on-surface-variant mt-1 font-medium">
-                  {rating >= 4 ? "Redirecting to Google Business Profile" : "AI Interceptor Shield Active"}
+                  {rating >= 4 ? "Redirecting to Google Business Profile" : "Private Feedback Resolution Active"}
                 </span>
               </div>
 
@@ -118,7 +118,7 @@ export default function TapReviewModal({
                   value={authorName}
                   onChange={(e) => setAuthorName(e.target.value)}
                   placeholder="e.g. Rachel Green"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant text-base sm:text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
 
@@ -136,7 +136,7 @@ export default function TapReviewModal({
                       ? "What did you enjoy most about your visit?"
                       : "Tell the restaurant manager how we can improve..."
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-surface-container-low border border-outline-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant text-base sm:text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
               </div>
 

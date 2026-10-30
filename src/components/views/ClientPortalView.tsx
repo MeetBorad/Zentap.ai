@@ -49,7 +49,19 @@ import {
   FileCheck,
   Plus,
   Trash2,
-  Eye
+  Eye,
+  Palette,
+  Briefcase,
+  Calendar,
+  Globe,
+  Instagram,
+  MessageCircle,
+  Bell,
+  Menu,
+  X,
+  LogOut,
+  LayoutDashboard,
+  Settings
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -68,8 +80,16 @@ import {
   createQuotationRecord,
   getQuotationsForBusiness,
   logScan,
-  validateGoogleReviewUrl
+  validateGoogleReviewUrl,
+  LeadRecord,
+  CustomCardDesign,
+  getLeadsForBusiness,
+  updateLeadStatus,
+  deleteLeadRecord,
+  SAMPLE_DEMO_LEADS,
+  ProductPlan
 } from "@/lib/businessStore";
+import CardCustomizerModal from "@/components/CardCustomizerModal";
 import { 
   fetchUserBusinessFromDb, 
   upsertUserBusinessInDb, 
@@ -80,15 +100,19 @@ import StandeeVisual from "@/components/StandeeVisuals";
 import RazorpayCheckoutModal from "@/components/modals/RazorpayCheckoutModal";
 
 interface ClientPortalViewProps {
-  initialPlan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
+  initialPlan?: ProductPlan | null;
   onTriggerTapSimulator?: () => void;
   onOpenAuthModal?: (tab: "signin" | "signup") => void;
+  onNavigate?: (view: any) => void;
   onOpenUpcomingDrawer?: () => void;
 }
 
 export default function ClientPortalView({ 
   initialPlan,
   onOpenAuthModal, 
+  onTriggerTapSimulator,
+  onNavigate,
+  onOpenUpcomingDrawer,
 }: ClientPortalViewProps) {
   const { user, updateUserPassword, resetPasswordForEmail } = useAuth();
 
@@ -103,14 +127,51 @@ export default function ClientPortalView({
   // 5: assistant_qr (Review Assistant & QR Hub)
   // 6: orders (Standee Order & Status)
   // 7: plan (Current Plan & Controls)
+  
+  type ClientPortalMenuItem = 
+    | "dashboard"
+    | "standees"
+    | "reviews"
+    | "profile"
+    | "orders"
+    | "upcoming"
+    | "settings";
+
+  const [activeMenu, setActiveMenu] = useState<ClientPortalMenuItem>("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+
   const [portalSubTab, setPortalSubTab] = useState<
-    "dashboard" | "edit_details" | "link_gbp" | "custom_categories" | "assistant_qr" | "orders" | "plan"
+    | "dashboard"
+    | "dynamic_profile"
+    | "leads"
+    | "customizer"
+    | "edit_details"
+    | "link_gbp"
+    | "custom_categories"
+    | "assistant_qr"
+    | "orders"
+    | "plan"
   >("dashboard");
 
   const [business, setBusiness] = useState<BusinessRecord>(SAMPLE_DEMO_BUSINESS);
   const [feedbacks, setFeedbacks] = useState<FeedbackRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [quotations, setQuotations] = useState<QuotationRecord[]>([]);
+  const [leads, setLeads] = useState<LeadRecord[]>(SAMPLE_DEMO_LEADS);
+  const [leadStatusFilter, setLeadStatusFilter] = useState<"all" | "new" | "contacted" | "closed">("all");
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [customDesign, setCustomDesign] = useState<CustomCardDesign | null>(null);
+
+  // Dynamic Profile Form State
+  const [formWhatsapp, setFormWhatsapp] = useState("");
+  const [formWhatsappMsg, setFormWhatsappMsg] = useState("");
+  const [formBookingUrl, setFormBookingUrl] = useState("");
+  const [formPortfolioUrl, setFormPortfolioUrl] = useState("");
+  const [formInstagramUrl, setFormInstagramUrl] = useState("");
+  const [formWebsiteUrl, setFormWebsiteUrl] = useState("");
+  const [formRedirectMode, setFormRedirectMode] = useState<"direct_review" | "interactive_profile">("interactive_profile");
   const [analytics, setAnalytics] = useState({
     totalScans: 0,
     nfcScans: 0,
@@ -143,7 +204,7 @@ export default function ClientPortalView({
   const [newChipInput, setNewChipInput] = useState("");
 
   // Buy Standee & Custom Plan State
-  const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
+  const [selectedPlan, setSelectedPlan] = useState<ProductPlan>("standee_1500");
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPlacedOrder, setLastPlacedOrder] = useState<OrderRecord | null>(null);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -155,7 +216,7 @@ export default function ClientPortalView({
   const [quoteMultipleQr, setQuoteMultipleQr] = useState<boolean>(true);
   const [quoteAddons, setQuoteAddons] = useState<string[]>([
     "Unique QR per Branch Counter",
-    "Auto Google Review Reply AI",
+    "Auto Google Review Reply Engine",
     "Centralized Multi-Outlet Dashboard",
     "Custom Laser Logo Engraving",
   ]);
@@ -171,7 +232,7 @@ export default function ClientPortalView({
   const [passwordMsg, setPasswordMsg] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Sample data constants for preview mode (ZenTap.in Digital Solutions Showcase)
+  // Sample data constants for preview mode (ZenTap Digital Solutions Showcase)
   const SAMPLE_ANALYTICS = {
     totalScans: 1428,
     nfcScans: 1114,
@@ -182,12 +243,75 @@ export default function ClientPortalView({
     scansPerDay: [48, 54, 38, 62, 70, 85, 92],
   };
 
+  const handleSaveDynamicProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updates = {
+      whatsapp_number: formWhatsapp,
+      whatsapp_message: formWhatsappMsg,
+      booking_url: formBookingUrl,
+      portfolio_url: formPortfolioUrl,
+      instagram_url: formInstagramUrl,
+      website_url: formWebsiteUrl,
+      redirect_mode: formRedirectMode,
+    };
+    const updated = updateUserBusiness(business.id, updates);
+    setBusiness(updated);
+    upsertUserBusinessInDb({
+      owner_user_id: user?.id || business.owner_user_id,
+      slug: updated.slug,
+      name: updated.name,
+      email: updated.email,
+      ...updates,
+    }).catch((err) => console.warn(err));
+    setToastMsg("✓ Dynamic Profile & Interaction settings saved!");
+    setTimeout(() => setToastMsg(""), 3500);
+  };
+
+  const handleSaveCustomDesign = (design: CustomCardDesign) => {
+    setCustomDesign(design);
+    const updated = updateUserBusiness(business.id, { custom_design: design });
+    setBusiness(updated);
+    upsertUserBusinessInDb({
+      owner_user_id: user?.id || business.owner_user_id,
+      slug: updated.slug,
+      name: updated.name,
+      email: updated.email,
+      custom_design: design as any,
+    }).catch((err) => console.warn(err));
+    setToastMsg("✓ Hardware custom design saved to profile!");
+    setTimeout(() => setToastMsg(""), 3500);
+  };
+
+  const handleUpdateLeadStatus = (leadId: string, status: "new" | "contacted" | "closed") => {
+    updateLeadStatus(business.id, leadId, status as any);
+    setLeads(getLeadsForBusiness(business.id));
+    setToastMsg(`✓ Lead marked as ${status}`);
+    setTimeout(() => setToastMsg(""), 2500);
+  };
+
+  const handleDeleteLead = (leadId: string) => {
+    deleteLeadRecord(business.id, leadId);
+    setLeads(getLeadsForBusiness(business.id));
+    setToastMsg("✓ Lead removed");
+    setTimeout(() => setToastMsg(""), 2500);
+  };
+
+
   // Preselect plan and navigate to order tab when routed from landing page / pricing CTA
   useEffect(() => {
     if (initialPlan) {
-      setSelectedPlan(initialPlan);
+      setSelectedPlan(initialPlan as any);
       setDashboardTab("live");
       setPortalSubTab("orders");
+      setActiveMenu("orders");
+    }
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "dashboard" || tab === "standees" || tab === "reviews" || tab === "profile" || tab === "orders" || tab === "upcoming" || tab === "settings") {
+        setActiveMenu(tab as any);
+      }
     }
   }, [initialPlan]);
 
@@ -310,7 +434,7 @@ export default function ClientPortalView({
           console.warn("Supabase background sync notice:", err);
         }
       } else {
-        // Guest mode default to sample showcase (ZenTap.in)
+        // Guest mode default to sample showcase (ZenTap Digital Solutions)
         setBusiness(SAMPLE_DEMO_BUSINESS);
         populateForm(SAMPLE_DEMO_BUSINESS);
         setCustomChipsList(SAMPLE_DEMO_BUSINESS.custom_chips || []);
@@ -725,477 +849,584 @@ export default function ClientPortalView({
   };
 
   return (
-    <div className="flex flex-col w-full animate-in fade-in duration-300 px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto space-y-6">
+    <div className="flex h-screen w-full bg-[#F8F9FA] text-zinc-900 overflow-hidden font-sans">
       
       {/* Toast Alert */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
+        <div className="fixed top-5 right-6 z-50 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
           <Check className="w-4 h-4" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Guest Notice if viewing without login */}
-      {!user && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0" />
-            <div>
-              <h4 className="text-xs font-bold text-on-surface">
-                My Live Business Analytics (Interactive Showcase)
-              </h4>
-              <p className="text-[11px] text-on-surface-variant">
-                Previewing merchant telemetry, live Google review assistant linking, and standee order tracking. Log in to manage your registered store.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onOpenAuthModal && onOpenAuthModal("signin")}
-              className="px-4 py-1.5 rounded-full bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => onOpenAuthModal && onOpenAuthModal("signup")}
-              className="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container font-bold text-xs hover:opacity-90 transition-all cursor-pointer"
-            >
-              Register Business
-            </button>
-          </div>
-        </div>
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-in fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
       )}
 
       {/* ========================================================================= */}
-      {/* 1. TOP 2 OPTIONS FOR FIRST-TIME LOGIN:                                    */}
-      {/*    MY LIVE BUSINESS ANALYTICS vs SAMPLE DASHBOARD PREVIEW                 */}
+      {/* LEFT SIDE: FIXED VERTICAL SIDEBAR                                         */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-surface-variant/40">
-        <div className="inline-flex p-1.5 rounded-2xl bg-surface-container border border-surface-variant/50 shadow-sm">
-          <button
-            onClick={() => setDashboardTab("live")}
-            className={`px-4 py-2 rounded-xl font-headline font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-              dashboardTab === "live"
-                ? "bg-[#1C1B1A] text-white shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>My Live Business Analytics</span>
-          </button>
-
-          <button
-            onClick={() => setDashboardTab("sample")}
-            className={`px-4 py-2 rounded-xl font-headline font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-              dashboardTab === "sample"
-                ? "bg-secondary text-on-secondary shadow-sm"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Sample Dashboard Preview (See How It Looks When You Order Standee)</span>
-          </button>
-        </div>
-
-        {dashboardTab === "sample" ? (
-          <span className="text-xs font-semibold text-secondary flex items-center gap-1.5 bg-secondary/10 px-3 py-1.5 rounded-xl border border-secondary/25">
-            <Sparkles className="w-3.5 h-3.5 text-secondary" />
-            <span>Sample Showcase Mode (ZenTap.in Digital Solutions)</span>
-          </span>
-        ) : (
-          <span className="text-xs text-on-surface-variant font-mono">
-            Isolated Account • {user?.email || "Demo Session"}
-          </span>
-        )}
-      </div>
-
-      {/* SAMPLE DASHBOARD PREVIEW NOTICE BANNER */}
-      {dashboardTab === "sample" && (
-        <div className="p-5 rounded-3xl bg-secondary/10 border border-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-secondary flex-shrink-0" />
-            <div>
-              <h4 className="text-sm font-bold text-on-surface">
-                Sample Showcase: How Your Dashboard Looks Once You Order a Standee
-              </h4>
-              <p className="text-xs text-on-surface-variant leading-relaxed mt-0.5">
-                This is a live preview of the official ZenTap.in showcase (*ZenTap.in Digital Solutions*). Once you order your physical standee and connect your Google Review link, you will see your own customer NFC taps, Level Q QR scans, ~88% review conversions, and BlueDart delivery tracking!
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setDashboardTab("live")}
-            className="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 flex-shrink-0 cursor-pointer shadow-sm"
-          >
-            Return to My Live Profile
-          </button>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 2. MAIN HEADER BANNER (WITH BUY STANDEE & SAMPLE ZENTAP.IN REVIEW PAGE)   */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-br from-[#1C1B1A] via-[#2A2928] to-[#1C1B1A] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#3A3836] shadow-xl">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-secondary/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white border-r border-zinc-200/80 flex flex-col justify-between transition-transform duration-300 lg:static lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+      }`}>
         
-        <div className="flex items-start gap-4 sm:gap-5 relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#D94826] to-[#E68A00] text-white flex items-center justify-center font-headline font-black text-2xl shadow-xl border border-white/20 flex-shrink-0">
-            {displayBusiness.name ? displayBusiness.name[0].toUpperCase() : "Z"}
-          </div>
-
-          <div className="flex flex-col">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider border flex items-center gap-1 ${
-                isPaid 
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" 
-                  : "bg-zinc-700/50 text-zinc-300 border-zinc-600"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : "bg-zinc-400"}`} />
-                {isPaid ? "Subscribed & Active" : "No Active Standee Plan"}
-              </span>
-              <span className="text-xs text-zinc-300 font-mono">
-                Slug: /r/{displayBusiness.slug}
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-200 text-[10px] font-bold">
-                My Live Business Analytics
-              </span>
+        {/* Sidebar Header: ZenTap Logo */}
+        <div>
+          <div className="h-16 px-6 flex items-center justify-between border-b border-zinc-100">
+            <div 
+              onClick={() => onNavigate ? onNavigate("home") : null}
+              className="flex items-center gap-2.5 cursor-pointer group"
+              title="Return to ZenTap Homepage"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#B91C1C] to-red-600 text-white flex items-center justify-center font-black text-sm shadow-md">
+                Z
+              </div>
+              <div className="flex flex-col">
+                <span className="font-headline font-black text-base text-zinc-900 tracking-tight flex items-center">
+                  Zen<span className="text-[#B91C1C]">Tap</span>
+                </span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest -mt-1">
+                  Merchant Portal
+                </span>
+              </div>
             </div>
 
-            <h1 className="font-headline font-bold text-2xl sm:text-3xl text-white mt-1">
-              {displayBusiness.name || "My Business Profile"}
-            </h1>
-
-            <p className="text-xs text-zinc-300 mt-1 flex flex-wrap items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{[displayBusiness.city, displayBusiness.state, displayBusiness.country].filter(Boolean).join(", ") || "Ahmedabad, Gujarat, India"}</span>
-              <span className="mx-1">•</span>
-              <Phone className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{displayBusiness.phone || "No phone added"}</span>
-              <span className="mx-1">•</span>
-              <Mail className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
-              <span>{displayBusiness.email}</span>
-            </p>
+            <button 
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 lg:hidden cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
+
+          {/* Business Summary Pill in Sidebar */}
+          <div className="px-5 py-4 border-b border-zinc-100/80">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#D94826] to-[#E68A00] text-white flex items-center justify-center font-headline font-bold text-sm shadow-sm flex-shrink-0">
+                {displayBusiness.name ? displayBusiness.name[0].toUpperCase() : "Z"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-zinc-900 truncate">
+                  {displayBusiness.name || "My Store"}
+                </h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-500" : "bg-zinc-400"}`} />
+                  <span className="text-[10px] font-semibold text-zinc-500 truncate">
+                    {isPaid ? "Subscribed Standee" : "Free Showcase"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Menu (7 Items) */}
+          <nav className="py-4 px-3 space-y-1" aria-label="Portal Navigation">
+            {/* 1. Dashboard */}
+            <button
+              onClick={() => { setActiveMenu("dashboard"); setPortalSubTab("dashboard"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "dashboard"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+              <span>Dashboard</span>
+            </button>
+
+            {/* 2. Standees */}
+            <button
+              onClick={() => { setActiveMenu("standees"); setPortalSubTab("customizer"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "standees"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <QrCode className="w-4 h-4 flex-shrink-0" />
+              <span>Standees</span>
+            </button>
+
+            {/* 3. Reviews */}
+            <button
+              onClick={() => { setActiveMenu("reviews"); setPortalSubTab("leads"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "reviews"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Star className="w-4 h-4 flex-shrink-0" />
+              <span>Reviews</span>
+              {feedbacks.length > 0 && (
+                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  activeMenu === "reviews" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
+                }`}>
+                  {feedbacks.length}
+                </span>
+              )}
+            </button>
+
+            {/* 4. Business Profile */}
+            <button
+              onClick={() => { setActiveMenu("profile"); setPortalSubTab("edit_details"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "profile"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Building2 className="w-4 h-4 flex-shrink-0" />
+              <span>Business Profile</span>
+            </button>
+
+            {/* 5. Plans & Orders */}
+            <button
+              onClick={() => { setActiveMenu("orders"); setPortalSubTab("orders"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "orders"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <CreditCard className="w-4 h-4 flex-shrink-0" />
+              <span>Plans &amp; Orders</span>
+            </button>
+
+            {/* 6. Upcoming Services */}
+            <button
+              onClick={() => { 
+                if (onOpenUpcomingDrawer) onOpenUpcomingDrawer();
+                else setActiveMenu("upcoming");
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "upcoming"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 flex-shrink-0" />
+              <span>Upcoming Services</span>
+            </button>
+
+            {/* 7. Settings */}
+            <button
+              onClick={() => { setActiveMenu("settings"); setPortalSubTab("plan"); setMobileMenuOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                activeMenu === "settings"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Settings className="w-4 h-4 flex-shrink-0" />
+              <span>Settings</span>
+            </button>
+          </nav>
         </div>
 
-        {/* Dedicated Header Action Box (Beside Business Name) */}
-        <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-2xl bg-black/40 border border-white/15 backdrop-blur-md relative z-10">
+        {/* Sidebar Footer: WhatsApp Support */}
+        <div className="p-4 border-t border-zinc-100 space-y-2">
+          <a
+            href="https://wa.me/919274560880?text=Hello%20ZenTap%20Support,%20I%20need%20help%20with%20my%20Merchant%20Account"
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 text-[11px] font-bold border border-emerald-200 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+            <span>Merchant Support</span>
+          </a>
           
-          {/* Action 1: Buy / Order Standee */}
           <button
-            onClick={() => setPortalSubTab("orders")}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#D94826] to-[#E68A00] hover:brightness-110 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+            onClick={() => onNavigate ? onNavigate("home") : null}
+            className="w-full py-1.5 px-3 rounded-xl hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Buy / Order Standee</span>
+            <ExternalLink className="w-3 h-3" />
+            <span>Return to Website</span>
           </button>
-
-          {/* Action 2: Sample ZenTap.in Review Page */}
-          <a
-            href={zentapSampleUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary/20 hover:bg-secondary/30 border border-secondary/40 text-xs font-bold text-secondary shadow-sm transition-all cursor-pointer"
-            title="Open ZenTap.in official sample review page"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-secondary" />
-            <span>Sample ZenTap.in Review Page</span>
-          </a>
-
-          {/* Action 3: Test Customer Flow */}
-          <a
-            href={`${assistantUrl}?preview=1`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white shadow-sm transition-all cursor-pointer"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-300" />
-            <span>Test Customer Flow</span>
-          </a>
         </div>
-      </div>
+      </aside>
 
       {/* ========================================================================= */}
-      {/* 3. THE 7 HORIZONTAL NAVIGATION TABS (LEFT SIDE ONE BY ONE)                 */}
+      {/* RIGHT SIDE: TOP BAR + SCROLLABLE CONTENT AREA                             */}
       {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
-        {/* Left Side: Horizontal Navigation Tabs Stacked One by One */}
-        <nav className="w-full lg:w-80 flex-shrink-0 space-y-3 lg:sticky lg:top-20 z-10" aria-label="Dashboard Navigation">
-          <div className="p-2.5 sm:p-3 rounded-3xl bg-surface-container border border-surface-variant/40 shadow-sm space-y-2">
-            <div className="px-3 pt-1 pb-1 text-[10px] font-mono uppercase tracking-wider text-on-surface-variant font-bold flex items-center justify-between">
-              <span>Navigation Tabs</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-variant/50 text-on-surface-variant font-semibold">7 Sections</span>
+        {/* Sticky Top Bar */}
+        <header className="h-16 bg-white border-b border-zinc-200/80 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 z-30 shadow-xs">
+          {/* Mobile hamburger & Current page title */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl text-zinc-600 hover:bg-zinc-100 lg:hidden cursor-pointer"
+              aria-label="Open Sidebar Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
+              <h2 className="font-headline font-bold text-sm sm:text-base text-zinc-900 capitalize">
+                {activeMenu === "profile" ? "Business Profile" : activeMenu === "orders" ? "Plans & Orders" : activeMenu}
+              </h2>
+              <span className="hidden sm:inline-block text-xs text-zinc-400 font-normal">|</span>
+              <span className="hidden sm:inline-block text-xs font-semibold text-zinc-500">
+                {displayBusiness.name || "ZenTap Account"}
+              </span>
             </div>
+          </div>
 
-            {/* 1. Dashboard (Analytics) */}
-            <button
-              onClick={() => setPortalSubTab("dashboard")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "dashboard"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "dashboard" ? "bg-white/15 text-white" : "bg-emerald-500/15 text-emerald-600"
-                }`}>
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-xs font-bold truncate">1. Dashboard</span>
-                    {!isPaid && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 font-bold flex items-center gap-0.5">
-                        <Lock className="w-2.5 h-2.5" />
-                        <span>Locked</span>
-                      </span>
-                    )}
-                  </div>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "dashboard" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    NFC / QR Telemetry &amp; Growth
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "dashboard" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
+          {/* Right Action Icons: Notification Bell & User Avatar */}
+          <div className="flex items-center gap-3 relative">
+            
+            {/* 1. Test NFC Simulation CTA */}
+            {onTriggerTapSimulator && (
+              <button
+                onClick={onTriggerTapSimulator}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Radio className="w-3.5 h-3.5 text-[#B91C1C] animate-pulse" />
+                <span>Simulate NFC Tap</span>
+              </button>
+            )}
 
-            {/* 2. Edit Business Profile */}
-            <button
-              onClick={() => setPortalSubTab("edit_details")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "edit_details"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "edit_details" ? "bg-white/15 text-white" : "bg-primary/10 text-primary"
-                }`}>
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="block text-xs font-bold truncate">2. Edit Business Profile</span>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "edit_details" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    Store Name, Category &amp; Address
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "edit_details" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
+            {/* 2. Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setNotificationDropdownOpen(!notificationDropdownOpen);
+                  setUserDropdownOpen(false);
+                }}
+                className="p-2 rounded-full text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors relative cursor-pointer"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {(leads.length > 0 || feedbacks.length > 0) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#B91C1C] ring-2 ring-white" />
+                )}
+              </button>
 
-            {/* 3. Link Business Profile (Optional) */}
-            <button
-              onClick={() => setPortalSubTab("link_gbp")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "link_gbp"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "link_gbp" ? "bg-white/15 text-white" : "bg-secondary/15 text-secondary"
-                }`}>
-                  <Star className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-xs font-bold truncate">3. Link Business Profile</span>
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${
-                      portalSubTab === "link_gbp" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                    }`}>
-                      Optional
+              {/* Notification Dropdown */}
+              {notificationDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-xl border border-zinc-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-3">
+                    <span className="text-xs font-bold text-zinc-900">Notifications</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 font-semibold text-zinc-600">
+                      {leads.length + feedbacks.length} alerts
                     </span>
                   </div>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "link_gbp" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    Google Review Destination Link
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "link_gbp" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
 
-            {/* 4. Customize Review Categories ("What did you like most?") */}
-            <button
-              onClick={() => setPortalSubTab("custom_categories")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "custom_categories"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "custom_categories" ? "bg-white/15 text-white" : "bg-amber-500/15 text-amber-600"
-                }`}>
-                  <Sliders className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-xs font-bold truncate">4. Review Categories</span>
-                    {!isPaid ? (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 font-bold flex items-center gap-0.5">
-                        <Lock className="w-2.5 h-2.5" />
-                        <span>After Paid</span>
-                      </span>
-                    ) : (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 font-bold">
-                        Custom
-                      </span>
+                  <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
+                    {leads.slice(0, 3).map((lead) => (
+                      <div key={lead.id} className="p-2 rounded-xl bg-zinc-50 border border-zinc-100 flex items-start gap-2">
+                        <MessageSquare className="w-3.5 h-3.5 text-sky-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-zinc-900">{lead.name}</p>
+                          <p className="text-[11px] text-zinc-500 truncate">{lead.service_needed || lead.message}</p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {feedbacks.slice(0, 2).map((fb) => (
+                      <div key={fb.id} className="p-2 rounded-xl bg-amber-50/50 border border-amber-100 flex items-start gap-2">
+                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-zinc-900">Feedback: {fb.rating} Stars</p>
+                          <p className="text-[11px] text-zinc-500 truncate">{fb.text}</p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {leads.length === 0 && feedbacks.length === 0 && (
+                      <p className="text-center text-zinc-400 py-3">All caught up! No new alerts.</p>
                     )}
                   </div>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "custom_categories" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    &quot;What did you like most?&quot;
-                  </span>
                 </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "custom_categories" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
-
-            {/* 5. Review Assistant & QR Hub */}
-            <button
-              onClick={() => setPortalSubTab("assistant_qr")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "assistant_qr"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "assistant_qr" ? "bg-white/15 text-white" : "bg-emerald-500/15 text-emerald-600"
-                }`}>
-                  <QrCode className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="block text-xs font-bold truncate">5. Review Assistant &amp; QR Hub</span>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "assistant_qr" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    Your /r/{displayBusiness.slug || "link"} &amp; Laser QR
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "assistant_qr" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
-
-            {/* 6. Standee Order & Status */}
-            <button
-              onClick={() => setPortalSubTab("orders")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "orders"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "orders" ? "bg-white/15 text-white" : "bg-blue-500/15 text-blue-600"
-                }`}>
-                  <Truck className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-xs font-bold truncate">6. Standee Order &amp; Status</span>
-                    {(orderSuccess || displayOrders.length > 0) ? (
-                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-700 text-[9px] font-bold">
-                        Active Order
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-700 text-[9px] font-bold">
-                        Pending
-                      </span>
-                    )}
-                  </div>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "orders" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    Dispatch Tracking &amp; Buy Standee
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "orders" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
-
-            {/* 7. Current Plan & Controls */}
-            <button
-              onClick={() => setPortalSubTab("plan")}
-              className={`w-full flex items-center justify-between p-3 rounded-2xl text-left transition-all cursor-pointer border ${
-                portalSubTab === "plan"
-                  ? "bg-[#1C1B1A] text-white shadow-md border-white/20 ring-1 ring-white/10"
-                  : "bg-surface-container-low hover:bg-surface border-surface-variant/30 text-on-surface hover:border-surface-variant/70"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  portalSubTab === "plan" ? "bg-white/15 text-white" : "bg-purple-500/15 text-purple-600"
-                }`}>
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="block text-xs font-bold truncate">7. Current Plan &amp; Controls</span>
-                    {!isPaid && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-zinc-400/20 text-zinc-600 text-[9px] font-bold">
-                        No Active Plan
-                      </span>
-                    )}
-                  </div>
-                  <span className={`block text-[10px] truncate ${portalSubTab === "plan" ? "text-zinc-300" : "text-on-surface-variant"}`}>
-                    Hardware Tier &amp; Touchpoint State
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className={`w-4 h-4 flex-shrink-0 transition-transform ${
-                portalSubTab === "plan" ? "text-white translate-x-0.5" : "text-on-surface-variant/40"
-              }`} />
-            </button>
-          </div>
-
-          {/* Direct WhatsApp Specialist Contact Card */}
-          <div className="p-4 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-on-surface">Merchant WhatsApp Support</span>
+              )}
             </div>
-            <p className="text-[11px] text-on-surface-variant leading-relaxed">
-              Have questions regarding your standee engraving or Google Review destination?
-            </p>
-            <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20need%20assistance%20with%20my%20merchant%20account."
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>Chat +91 92745 60880</span>
-            </a>
+
+            {/* 3. User Avatar Menu */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setUserDropdownOpen(!userDropdownOpen);
+                  setNotificationDropdownOpen(false);
+                }}
+                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-xs">
+                  {user?.email ? user.email[0].toUpperCase() : (displayBusiness.name ? displayBusiness.name[0].toUpperCase() : "M")}
+                </div>
+                <span className="hidden md:inline-block text-xs font-semibold text-zinc-800 max-w-[120px] truncate">
+                  {user?.email || "Demo Merchant"}
+                </span>
+                <ChevronRight className="w-3.5 h-3.5 text-zinc-400 rotate-90" />
+              </button>
+
+              {/* User Avatar Dropdown Popover */}
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-3 py-2.5 border-b border-zinc-100">
+                    <p className="text-xs font-bold text-zinc-900 truncate">
+                      {displayBusiness.name || "Merchant Account"}
+                    </p>
+                    <p className="text-[11px] text-zinc-400 truncate font-mono">
+                      {user?.email || "Guest Demo Session"}
+                    </p>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setActiveMenu("profile");
+                        setPortalSubTab("edit_details");
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Edit Business Profile</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActiveMenu("settings");
+                        setPortalSubTab("plan");
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Account Settings</span>
+                    </button>
+
+                    {onNavigate && (
+                      <button
+                        onClick={() => {
+                          onNavigate("home");
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Visit Website</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-1 border-t border-zinc-100">
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        if (user) {
+                          // Sign out
+                          window.location.reload();
+                        } else if (onOpenAuthModal) {
+                          onOpenAuthModal("signin");
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-bold text-[#B91C1C] hover:bg-red-50 rounded-xl flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>{user ? "Sign Out" : "Log In to Account"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
-        </nav>
+        </header>
 
-        {/* Right Main Content Area */}
-        <div className="flex-1 min-w-0 w-full space-y-6">
+        {/* Scrollable Content Body */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8F9FA] space-y-6">
+          
+          {/* Guest Notice if viewing without login */}
+          {!user && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900">
+                    My Live Business Analytics (Interactive Showcase)
+                  </h4>
+                  <p className="text-[11px] text-zinc-600">
+                    Previewing merchant telemetry, live Google review assistant linking, and standee order tracking. Log in to manage your registered store.
+                  </p>
+                </div>
+              </div>
 
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => onOpenAuthModal && onOpenAuthModal("signin")}
+                  className="px-4 py-1.5 rounded-full bg-zinc-900 text-white font-bold text-xs hover:bg-zinc-800 transition-all cursor-pointer shadow-sm"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => onOpenAuthModal && onOpenAuthModal("signup")}
+                  className="px-4 py-1.5 rounded-full bg-[#B91C1C] text-white font-bold text-xs hover:bg-red-700 transition-all cursor-pointer shadow-sm"
+                >
+                  Register Business
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Business Summary Banner on Dashboard */}
+          {activeMenu === "dashboard" && (
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-br from-[#1C1B1A] via-[#2A2928] to-[#1C1B1A] text-white p-6 sm:p-7 rounded-3xl relative overflow-hidden border border-[#3A3836] shadow-xl">
+              <div className="absolute -right-16 -top-16 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex items-start gap-4 sm:gap-5 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#D94826] to-[#E68A00] text-white flex items-center justify-center font-headline font-black text-2xl shadow-xl border border-white/20 flex-shrink-0">
+                  {displayBusiness.name ? displayBusiness.name[0].toUpperCase() : "Z"}
+                </div>
+
+                <div className="flex flex-col">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider border flex items-center gap-1 ${
+                      isPaid 
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" 
+                        : "bg-zinc-700/50 text-zinc-300 border-zinc-600"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isPaid ? "bg-emerald-400" : "bg-zinc-400"}`} />
+                      {isPaid ? "Subscribed & Active" : "No Active Standee Plan"}
+                    </span>
+                    <span className="text-xs text-zinc-300 font-mono">
+                      Slug: /r/{displayBusiness.slug}
+                    </span>
+                  </div>
+
+                  <h1 className="font-headline font-bold text-xl sm:text-2xl text-white mt-1">
+                    {displayBusiness.name || "My Business Profile"}
+                  </h1>
+
+                  <p className="text-xs text-zinc-300 mt-1 flex flex-wrap items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                    <span>{[displayBusiness.city, displayBusiness.state, displayBusiness.country].filter(Boolean).join(", ") || "Ahmedabad, Gujarat, India"}</span>
+                    <span className="mx-1">•</span>
+                    <Phone className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                    <span>{displayBusiness.phone || "No phone added"}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Mode Switcher & Quick Actions */}
+              <div className="flex flex-wrap items-center gap-2.5 p-2 rounded-2xl bg-black/40 border border-white/15 backdrop-blur-md relative z-10">
+                <button
+                  onClick={() => setDashboardTab("live")}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    dashboardTab === "live" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-300 hover:text-white"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>My Live Data</span>
+                </button>
+
+                <button
+                  onClick={() => setDashboardTab("sample")}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    dashboardTab === "sample" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-300 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sample Showcase</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveMenu("orders"); setPortalSubTab("orders"); }}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#B91C1C] hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+                >
+                  Order Standee
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Sample Showcase Mode Banner */}
+          {activeMenu === "dashboard" && dashboardTab === "sample" && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900">
+                    Sample Showcase: How Your Dashboard Looks Once You Order a Standee
+                  </h4>
+                  <p className="text-[11px] text-zinc-600">
+                    Live preview of official ZenTap metrics: real customer NFC taps, Level Q QR scans, ~88% conversions, and BlueDart tracking!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDashboardTab("live")}
+                className="px-3 py-1 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 cursor-pointer whitespace-nowrap"
+              >
+                Return to Live Data
+              </button>
+            </div>
+          )}
+
+          {/* Upcoming Services Section (when activeMenu === 'upcoming') */}
+          {activeMenu === "upcoming" && (
+            <div className="p-8 rounded-3xl bg-white border border-zinc-200/80 shadow-sm space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 text-[#B91C1C] flex items-center justify-center">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-xl text-zinc-900">
+                    Upcoming Tech Services &amp; Products
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Explore the next-generation touchpoint technologies launching soon on the ZenTap platform.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
+                <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Coming Q1</span>
+                  <h4 className="font-bold text-sm text-zinc-900">NFC Smart Restaurant Menus</h4>
+                  <p className="text-xs text-zinc-500">Contactless digital menu standees with instant updates and ordering.</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Coming Q1</span>
+                  <h4 className="font-bold text-sm text-zinc-900">WhatsApp Automated Flow</h4>
+                  <p className="text-xs text-zinc-500">Automated feedback follow-ups and coupon delivery after customer tap.</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">Coming Q2</span>
+                  <h4 className="font-bold text-sm text-zinc-900">Corporate NFC Fleet</h4>
+                  <p className="text-xs text-zinc-500">Employee smart business cards with centralized enterprise management.</p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-zinc-100 flex items-center justify-between">
+                <p className="text-xs text-zinc-500">Want early beta access to upcoming products?</p>
+                <button
+                  onClick={() => onOpenUpcomingDrawer ? onOpenUpcomingDrawer() : null}
+                  className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  Open Full Innovation Drawer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Right Main Content Area (Conditional Tab Blocks) */}
+          <div className="w-full space-y-6">
+            
           {/* ========================================================================= */}
           {/* SUB-TAB 1: DASHBOARD (ANALYTICS - LOCKED & BLURRY IF NOT PAID)            */}
           {/* ========================================================================= */}
-          {portalSubTab === "dashboard" && (
+          {(activeMenu === "dashboard" || portalSubTab === "dashboard") && (
             <div className="space-y-6 animate-in fade-in duration-200 relative">
               
               {/* Header */}
@@ -1390,7 +1621,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 2: EDIT BUSINESS DETAILS (NAME, CATEGORY, PHONE, CITY, ADDRESS)   */}
           {/* ========================================================================= */}
-          {portalSubTab === "edit_details" && (
+          {(activeMenu === "profile" || portalSubTab === "edit_details") && (
             <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
                 <div>
@@ -1546,7 +1777,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 3: LINK BUSINESS PROFILE (OPTIONAL)                               */}
           {/* ========================================================================= */}
-          {portalSubTab === "link_gbp" && (
+          {(activeMenu === "standees" || portalSubTab === "link_gbp") && (
             <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
                 <div>
@@ -1615,7 +1846,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 4: CUSTOMIZE REVIEW CATEGORIES ("WHAT DID YOU LIKE MOST?")         */}
           {/* ========================================================================= */}
-          {portalSubTab === "custom_categories" && (
+          {(activeMenu === "reviews" || portalSubTab === "custom_categories") && (
             <div className="p-6 sm:p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-6 animate-in fade-in duration-200 relative">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-surface-variant/30">
@@ -1627,7 +1858,7 @@ export default function ClientPortalView({
                     </h3>
                   </div>
                   <p className="text-xs text-on-surface-variant leading-relaxed">
-                    Customize the quick tags your patrons see on their phone screen when tapping your NFC standee. These tags dynamically feed our AI review writer.
+                    Customize the quick tags your patrons see on their phone screen when tapping your NFC standee. These tags dynamically feed our smart review writer.
                   </p>
                 </div>
 
@@ -1760,7 +1991,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 5: REVIEW ASSISTANT & QR HUB                                      */}
           {/* ========================================================================= */}
-          {portalSubTab === "assistant_qr" && (
+          {(activeMenu === "standees" || portalSubTab === "assistant_qr") && (
             <div className="space-y-6 animate-in fade-in duration-200">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1865,7 +2096,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 6: STANDEE ORDER & STATUS (4-STAGE VISUAL TRACKING)               */}
           {/* ========================================================================= */}
-          {portalSubTab === "orders" && (
+          {(activeMenu === "orders" || portalSubTab === "orders") && (
             <div className="space-y-6 animate-in fade-in duration-200">
               
               {/* 4-Stage Attractive Order Status */}
@@ -1923,12 +2154,12 @@ export default function ClientPortalView({
                       </p>
                     </div>
 
-                    {/* Stage 3: Integration with ZenTap.in Smart Review Assistant */}
+                    {/* Stage 3: Integration with ZenTap Smart Review Assistant */}
                     <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-variant/50 space-y-1">
                       <div className="w-7 h-7 rounded-full bg-surface-variant text-on-surface flex items-center justify-center text-xs font-bold mb-2">
                         3
                       </div>
-                      <h4 className="font-bold text-xs text-on-surface">3. ZenTap.in Integration</h4>
+                      <h4 className="font-bold text-xs text-on-surface">3. ZenTap Integration</h4>
                       <p className="text-[11px] text-on-surface-variant">
                         Paired with your customized review assistant &amp; cloud router.
                       </p>
@@ -2033,7 +2264,7 @@ export default function ClientPortalView({
                       Hardware Visual Preview
                     </span>
                     <StandeeVisual 
-                      type={selectedPlan} 
+                      type={selectedPlan as any} 
                       businessName={formName || displayBusiness.name || "YOUR BUSINESS"} 
                     />
                     <span className="text-[11px] text-on-surface-variant mt-4 text-center">
@@ -2114,7 +2345,7 @@ export default function ClientPortalView({
                             </span>
                           </div>
                           <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                            Customized designed acrylic standee matched to your business branding with AI draft writer.
+                            Customized designed acrylic standee matched to your business branding with smart review draft assistant.
                           </p>
                           <span className="text-[11px] text-secondary font-bold block mt-1">
                             ₹1,000 / month starting next month of purchase
@@ -2155,7 +2386,7 @@ export default function ClientPortalView({
                             </span>
                           </div>
                           <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                            Custom acrylic standee PLUS AI automation engine that replies to every incoming Google review 24/7.
+                            Custom acrylic standee PLUS automated reply engine that responds to every incoming Google review 24/7.
                           </p>
                           <span className="text-[11px] text-primary font-bold block mt-1">
                             ₹1,000 / month starting next month of purchase
@@ -2302,7 +2533,7 @@ export default function ClientPortalView({
           {/* ========================================================================= */}
           {/* SUB-TAB 7: CURRENT PLAN INFORMATION & ACTIVE/DEACTIVATE CONTROLS          */}
           {/* ========================================================================= */}
-          {portalSubTab === "plan" && (
+          {(activeMenu === "settings" || portalSubTab === "plan") && (
             <div className="space-y-6 animate-in fade-in duration-200">
               
               {/* If user is not paid / no standee ordered: Show "No Active Plan" */}
@@ -2536,11 +2767,14 @@ export default function ClientPortalView({
 
             </div>
           )}
+          </div>
 
-        </div>
+        </main>
       </div>
 
-      {/* Razorpay Interactive Checkout Modal */}
+      {/* ========================================================================= */}
+      {/* MODALS PRESERVED                                                          */}
+      {/* ========================================================================= */}
       <RazorpayCheckoutModal
         isOpen={isCheckoutModalOpen}
         onClose={() => setIsCheckoutModalOpen(false)}
@@ -2552,6 +2786,19 @@ export default function ClientPortalView({
         pincode={formPincode || business.pincode || "380001"}
         shippingAddress={formAddress || business.address || ""}
         onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      <CardCustomizerModal
+        isOpen={isCustomizerOpen}
+        onClose={() => setIsCustomizerOpen(false)}
+        initialDesign={customDesign || undefined}
+        businessName={formName || displayBusiness.name || "YOUR BUSINESS"}
+        onSaveDesign={handleSaveCustomDesign}
+        onProceedOrder={(design) => {
+          handleSaveCustomDesign(design);
+          setPortalSubTab("orders");
+          setActiveMenu("orders");
+        }}
       />
 
     </div>

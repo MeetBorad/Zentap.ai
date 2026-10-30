@@ -32,7 +32,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
       points: [
         "High-permeability NTAG216 NFC chip (zero batteries or charging)",
         "Precision laser-etched dynamic QR for camera scanning",
-        "Encodes unique secure URL: https://zentap.ai/r/{slug}",
+        "Encodes unique secure URL: https://www.zentapdigitalsolutions.com/r/{slug}",
       ],
       icon: <Radio className="w-6 h-6 text-secondary" />,
     },
@@ -51,10 +51,10 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
     },
     {
       step: "03",
-      badge: "Customized AI Assistant",
-      title: "AI Review Assistant Drafts Glowing Review",
+      badge: "Customized Review Assistant",
+      title: "Review Assistant Drafts Authentic Feedback",
       description:
-        "The customer selects their star rating and taps what they liked (quality, polite staff, ambience). Our contextual AI crafts a personalized, highly relevant review in English, Gujarati, or Hindi.",
+        "The customer selects their star rating and taps what they liked (quality, polite staff, ambience). Our contextual review engine crafts a personalized, highly relevant review in English, Gujarati, or Hindi.",
       points: [
         "Tone selection: Balanced, Detailed, or Short & Punchy",
         "1-click draft regeneration if customer wants another suggestion",
@@ -67,7 +67,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
       badge: "Google Policy Compliant",
       title: "1-Click Post & Direct Google Review Redirection",
       description:
-        "When the customer taps 'Post Google Review', the AI suggestion is copied to their clipboard and they are seamlessly redirected to your live Google Business Profile review dialog to submit in seconds.",
+        "When the customer taps 'Post Google Review', the suggested review is copied to their clipboard and they are seamlessly redirected to your live Google Business Profile review dialog to submit in seconds.",
       points: [
         "All ratings (1 to 5) can post to Google in full compliance with Google policies",
         "For 1-2 stars, an additional private feedback form is provided directly to management",
@@ -174,7 +174,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
               {idx === 2 && (
                 <div className="py-4 text-left w-full space-y-2">
                   <div className="flex items-center justify-between text-[11px] text-secondary font-bold">
-                    <span>✨ AI Review Generator</span>
+                    <span>✨ Smart Review Drafts</span>
                     <span>EN • GU • HI</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-surface-container text-[11px] text-on-surface italic leading-relaxed">

@@ -14,11 +14,12 @@ import {
   ArrowRight
 } from "lucide-react";
 import { PLAN_PRICES, PLAN_NAMES, getCourierCharge } from "@/lib/razorpay";
+import { ProductPlan } from "@/lib/businessStore";
 
 interface RazorpayCheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  planId: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
+  planId: ProductPlan;
   businessId: string;
   businessName: string;
   customerEmail: string;

@@ -1,5 +1,5 @@
 -- =========================================================================
--- ZenTap.ai Production Database Schema & RLS Policies (Postgres / Supabase)
+-- ZenTap Production Database Schema & RLS Policies (Postgres / Supabase)
 -- Version: 2.2 (Conflict-Safe Migration)
 -- Handles existing legacy schema and replaces old empty subscriptions table.
 -- =========================================================================
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
 
 -- Seed default admin emails
 INSERT INTO public.admin_users (email)
-VALUES ('admin@zentap.ai'), ('meet@zentap.ai')
+VALUES ('admin@zentapdigitalsolutions.com'), ('meetborad@hotmail.com'), ('thedayithappened736@gmail.com')
 ON CONFLICT (email) DO NOTHING;
 
 -- Helper function to check if requesting user is an admin

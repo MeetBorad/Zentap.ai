@@ -10,6 +10,7 @@ import {
   logScan, 
   logEvent, 
   logFeedback, 
+  createLeadRecord,
   SAMPLE_DEMO_BUSINESS, 
   BusinessRecord 
 } from "@/lib/businessStore";
@@ -18,6 +19,12 @@ import {
   recordDbScan, 
   recordDbFeedback 
 } from "@/lib/supabase/service";
+import { 
+  trackContactFormSubmit, 
+  trackReviewSentiment, 
+  trackWhatsAppClick, 
+  trackPhoneClick 
+} from "@/lib/analytics";
 import { 
   Sparkles, 
   Radio, 
@@ -34,7 +41,16 @@ import {
   Info,
   Mic,
   MicOff,
-  Volume2
+  Volume2,
+  Calendar,
+  Briefcase,
+  Globe,
+  Instagram,
+  CheckCircle2,
+  ArrowRight,
+  Clock,
+  Layers,
+  Star
 } from "lucide-react";
 
 export default function CustomizedReviewAssistantPage() {
@@ -74,6 +90,67 @@ export default function CustomizedReviewAssistantPage() {
   const [fbPhone, setFbPhone] = useState("");
   const [fbText, setFbText] = useState("");
   const [fbSubmitted, setFbSubmitted] = useState(false);
+
+  // Active Public Page Tab: "review" | "profile" | "enquiry"
+  const [activePublicTab, setActivePublicTab] = useState<"review" | "profile" | "enquiry">("review");
+
+  // Lead capture form state (Routed straight to merchant)
+  const [leadName, setLeadName] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadService, setLeadService] = useState("General Inquiry");
+  const [leadMessage, setLeadMessage] = useState("");
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+
+  const handleSubmitLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadName.trim() || !leadPhone.trim()) {
+      showToast("Please enter your name and phone / WhatsApp number");
+      return;
+    }
+    setLeadSubmitting(true);
+    try {
+      await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: business?.id,
+          name: leadName.trim(),
+          phone: leadPhone.trim(),
+          email: leadEmail.trim(),
+          serviceNeeded: leadService.trim() || "General Inquiry",
+          message: leadMessage.trim(),
+          source,
+        }),
+      });
+
+      if (business) {
+        createLeadRecord({
+          business_id: business.id,
+          name: leadName.trim(),
+          phone: leadPhone.trim(),
+          email: leadEmail.trim(),
+          service_needed: leadService.trim() || "General Inquiry",
+          message: leadMessage.trim(),
+          source: source === "qr" ? "qr" : "nfc",
+        });
+      }
+
+      setLeadSubmitted(true);
+      trackContactFormSubmit("merchant_touchpoint_lead", {
+        business_slug: slug,
+        service: leadService.trim(),
+      });
+      showToast("✓ Enquiry received! Routed directly to the merchant.");
+    } catch (err) {
+      console.warn("Lead submit error:", err);
+      showToast("Enquiry saved. Merchant has been notified.");
+      setLeadSubmitted(true);
+    } finally {
+      setLeadSubmitting(false);
+    }
+  };
 
   // Initialize Speech Recognition if supported in browser
   useEffect(() => {
@@ -284,7 +361,7 @@ export default function CustomizedReviewAssistantPage() {
 
   // Generate 3 distinct review drafts (Humanized, Detailed, Short & Punchy)
   const generateMultiDrafts = async () => {
-    const bizName = business?.name || "ZenTap.in Digital Solutions";
+    const bizName = business?.name || "ZenTap Digital Solutions";
     const loc = business?.city ? ` in ${business.city}` : "";
     const highlights = selectedChips.length > 0 ? selectedChips.join(", ") : "their wonderful customer service";
     const voiceNoteAdd = voiceNotes.trim() ? ` ${voiceNotes.trim()}` : "";
@@ -321,7 +398,7 @@ export default function CustomizedReviewAssistantPage() {
     else if (activeDraftTab === "concise") setReviewDraft(draftC);
     else setReviewDraft(draftH);
 
-    // Also call background AI route if online
+    // Also call background review assistant route if online
     try {
       fetch("/api/ai/generate-review", {
         method: "POST",
@@ -369,6 +446,7 @@ export default function CustomizedReviewAssistantPage() {
     if (!business || !business.review_url) return;
 
     try {
+      trackReviewSentiment(currentRating, "google_redirect", slug);
       if (navigator.clipboard) {
         navigator.clipboard.writeText(reviewDraft);
         showToast("✓ Review copied! Redirecting to Google Maps...");
@@ -385,6 +463,7 @@ export default function CustomizedReviewAssistantPage() {
   // Low rating (1-2 stars): Post button (NO REDIRECT), saves feedback and shows thank you message
   const handlePostLowRatingFeedback = (e: React.FormEvent) => {
     e.preventDefault();
+    trackReviewSentiment(currentRating, "private_feedback", slug);
     const feedbackDetails = fbText.trim() 
       ? `${selectedChips.length > 0 ? `[Tags: ${selectedChips.join(", ")}] ` : ""}${fbText.trim()}`
       : (selectedChips.length > 0 ? `Issues reported: ${selectedChips.join(", ")}` : "Disappointed with service");
@@ -419,7 +498,7 @@ export default function CustomizedReviewAssistantPage() {
           This business review assistant page is temporarily paused. Please check back shortly or visit the store counter for assistance.
         </p>
         <span className="text-[10px] text-gray-600 font-mono">
-          Powered by ZenTap.ai Smart Review Network
+          Powered by ZenTap Smart Review Network
         </span>
       </div>
     );
@@ -493,7 +572,7 @@ export default function CustomizedReviewAssistantPage() {
         </div>
 
         {/* Brand Hero */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-5">
           <div className="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-tr from-[#3A0C13] via-[#58111A] to-[#1C0508] border-2 border-[#D4AF37] flex items-center justify-center shadow-[0_0_25px_rgba(212,175,55,0.35)]">
             <Sparkles className="w-9 h-9 text-[#F7E7A9]" />
           </div>
@@ -512,8 +591,67 @@ export default function CustomizedReviewAssistantPage() {
           </div>
         </div>
 
-        {/* Central Card */}
-        <div className="bg-[#16161E]/95 border border-[#D4AF37]/25 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl mb-5">
+        {/* Direct Google Review Mode Banner (if configured) */}
+        {business.redirect_mode === "direct_review" && linkReady && (
+          <div className="mb-5 p-4 rounded-2xl bg-[#D4AF37]/15 border border-[#D4AF37] text-center space-y-2">
+            <span className="text-[11px] font-bold text-[#F7E7A9] uppercase tracking-wider block">
+              ⚡ 1-Tap Direct Google Review Mode
+            </span>
+            <a
+              href={`/r/${slug}/go`}
+              className="py-3 px-5 rounded-xl bg-gradient-to-r from-[#F7E7A9] via-[#D4AF37] to-[#9A7B1C] text-black font-extrabold text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>Open Google Review Directly</span>
+              <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+        )}
+
+        {/* Dynamic 3-Way Navigation: Google Review, Dynamic Profile, Lead Capture */}
+        <div className="flex p-1 rounded-2xl bg-white/5 border border-[#D4AF37]/30 mb-5 gap-1 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setActivePublicTab("review")}
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activePublicTab === "review"
+                ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-md"
+                : "text-gray-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" />
+            <span>Review</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActivePublicTab("profile")}
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activePublicTab === "profile"
+                ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-md"
+                : "text-gray-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>Profile</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActivePublicTab("enquiry")}
+            className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activePublicTab === "enquiry"
+                ? "bg-gradient-to-r from-[#D4AF37] to-[#9A7B1C] text-black shadow-md"
+                : "text-gray-300 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>Enquiry</span>
+          </button>
+        </div>
+
+        {/* TAB 1: GOOGLE REVIEW ASSISTANT */}
+        {activePublicTab === "review" && (
+        <div className="bg-[#16161E]/95 border border-[#D4AF37]/25 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl mb-5 animate-in fade-in duration-200">
           
           {/* Step 1: Star Rating */}
           <div className="flex items-center gap-2 mb-2">
@@ -625,14 +763,14 @@ export default function CustomizedReviewAssistantPage() {
                         placeholder="Your Name (Optional)"
                         value={fbName}
                         onChange={(e) => setFbName(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/20 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400"
+                        className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/20 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400"
                       />
                       <input
                         type="tel"
                         placeholder="Mobile (Optional)"
                         value={fbPhone}
                         onChange={(e) => setFbPhone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/20 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400"
+                        className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/20 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400"
                       />
                     </div>
 
@@ -642,7 +780,7 @@ export default function CustomizedReviewAssistantPage() {
                       value={fbText}
                       onChange={(e) => setFbText(e.target.value)}
                       required
-                      className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/20 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400 resize-none font-sans"
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/20 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-400 resize-none font-sans"
                     />
                   </div>
 
@@ -665,7 +803,7 @@ export default function CustomizedReviewAssistantPage() {
             </div>
           ) : (
             /* ========================================================= */
-            /* FLOW B: FOR 3-5 STARS (Multi-Draft AI + Speech-to-Text)    */
+            /* FLOW B: FOR 3-5 STARS (Multi-Draft Suggestions + Speech-to-Text) */
             /* ========================================================= */
             <div className="pt-2 border-t border-white/10 animate-in fade-in duration-200 space-y-4">
               
@@ -756,7 +894,7 @@ export default function CustomizedReviewAssistantPage() {
                 />
               </div>
 
-              {/* Step 4: Multi-Draft AI Review Generator (3 Options) */}
+              {/* Step 4: Multi-Draft Review Suggestions (3 Options) */}
               <div className="p-3.5 rounded-2xl bg-black/40 border border-[#D4AF37]/35 relative space-y-2.5">
                 
                 {/* Draft Selector Tabs */}
@@ -804,7 +942,7 @@ export default function CustomizedReviewAssistantPage() {
                     type="button"
                     onClick={() => {
                       generateMultiDrafts();
-                      showToast("✨ Generated fresh 3 AI review drafts!");
+                      showToast("✨ Generated 3 fresh review suggestions!");
                     }}
                     className="text-[11px] text-[#F7E7A9] hover:underline flex items-center gap-1 cursor-pointer font-medium"
                   >
@@ -913,7 +1051,7 @@ export default function CustomizedReviewAssistantPage() {
 
               <p className="text-[11px] text-center text-gray-400 flex items-center justify-center gap-1">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Selected AI draft copies automatically to clipboard upon click.</span>
+                <span>Selected review draft copies automatically to clipboard upon click.</span>
               </p>
             </div>
           )}
@@ -924,6 +1062,288 @@ export default function CustomizedReviewAssistantPage() {
           </p>
 
         </div>
+        )}
+
+        {/* TAB 2: DYNAMIC PROFILE (INTERACTION: WhatsApp, Booking, Portfolio) */}
+        {activePublicTab === "profile" && (
+          <div className="bg-[#16161E]/95 border border-[#D4AF37]/25 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl mb-5 space-y-4 animate-in fade-in duration-200">
+            <div className="text-center pb-3 border-b border-white/10">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#F7E7A9] block">
+                Interaction &amp; Dynamic Profile
+              </span>
+              <h2 className="font-headline font-bold text-lg text-white mt-0.5">
+                Connect Directly with {business.name}
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Zero app install required. Access WhatsApp, table booking &amp; portfolios with a single tap.
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {/* WhatsApp Quick Chat */}
+              <a
+                href={`https://wa.me/${(business.whatsapp_number || business.phone || "919274560880").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                  business.whatsapp_message || `Hello ${business.name}! I scanned your smart standee and would like to connect.`
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="p-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-white flex items-center justify-between transition-all group cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                    <MessageCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block group-hover:text-emerald-300">
+                      Chat on WhatsApp
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Direct instant messaging with store &amp; team
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+              </a>
+
+              {/* Booking */}
+              <a
+                href={business.booking_url || "https://calendly.com"}
+                target="_blank"
+                rel="noreferrer"
+                className="p-4 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-white flex items-center justify-between transition-all group cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-md">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block group-hover:text-sky-300">
+                      Book Appointment / Table
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Online reservations &amp; schedule booking
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
+              </a>
+
+              {/* Portfolio / Catalog / Menu */}
+              <a
+                href={business.portfolio_url || "https://www.zentapdigitalsolutions.com/#products"}
+                target="_blank"
+                rel="noreferrer"
+                className="p-4 rounded-2xl bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 border border-[#D4AF37]/30 text-white flex items-center justify-between transition-all group cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-[#D4AF37] text-black flex items-center justify-center shadow-md">
+                    <Briefcase className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sm block group-hover:text-[#F7E7A9]">
+                      View Portfolio &amp; Digital Menu
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Explore services, product cards &amp; showcase
+                    </span>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#D4AF37] group-hover:translate-x-1 transition-transform" />
+              </a>
+
+              {/* Call Store Directly */}
+              {business.phone && (
+                <a
+                  href={`tel:${business.phone}`}
+                  className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-between transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                      <Phone className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm block">Call Store Directly</span>
+                      <span className="text-[11px] text-gray-400">{business.phone}</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                </a>
+              )}
+
+              {/* Instagram & Website */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {business.instagram_url && (
+                  <a
+                    href={business.instagram_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-white flex items-center gap-2 transition-all"
+                  >
+                    <Instagram className="w-4 h-4 text-pink-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold truncate">Instagram</span>
+                  </a>
+                )}
+                {business.website_url && (
+                  <a
+                    href={business.website_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-white flex items-center gap-2 transition-all"
+                  >
+                    <Globe className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold truncate">Website</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: LEAD CAPTURE (Built-in Enquiry Form Routed Straight to Merchant) */}
+        {activePublicTab === "enquiry" && (
+          <div className="bg-[#16161E]/95 border border-[#D4AF37]/25 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl mb-5 animate-in fade-in duration-200">
+            {leadSubmitted ? (
+              <div className="text-center py-6 space-y-3">
+                <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-lg">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-headline font-bold text-lg text-white">
+                  Enquiry Successfully Routed!
+                </h3>
+                <p className="text-xs text-gray-300 leading-relaxed max-w-xs mx-auto">
+                  Thank you, <strong className="text-white">{leadName}</strong>! Your message has been routed straight to {business.name}&apos;s merchant dashboard. We will get back to you shortly.
+                </p>
+                <div className="pt-2 flex flex-col gap-2">
+                  <a
+                    href={`https://wa.me/${(business.whatsapp_number || business.phone || "919274560880").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                      `Hi ${business.name}, I just submitted an enquiry on your ZenTap profile.`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Chat on WhatsApp Instantly</span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeadSubmitted(false);
+                      setLeadMessage("");
+                    }}
+                    className="text-xs text-gray-400 hover:text-white underline cursor-pointer mt-1"
+                  >
+                    Submit another enquiry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitLead} className="space-y-3.5">
+                <div className="text-center pb-2 border-b border-white/10">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-[#F7E7A9] block">
+                    Direct Lead Capture
+                  </span>
+                  <h2 className="font-headline font-bold text-lg text-white mt-0.5">
+                    Send an Enquiry
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Delivered directly to {business.name}&apos;s merchant portal
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
+                    Your Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={leadName}
+                    autoComplete="name"
+                    onChange={(e) => setLeadName(e.target.value)}
+                    placeholder="e.g. Rahul Sharma"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
+                    Phone / WhatsApp Number *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={leadPhone}
+                    autoComplete="tel"
+                    onChange={(e) => setLeadPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
+                    Email Address (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={leadEmail}
+                    autoComplete="email"
+                    onChange={(e) => setLeadEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-base sm:text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
+                    Service / Requirement
+                  </label>
+                  <select
+                    value={leadService}
+                    onChange={(e) => setLeadService(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-base sm:text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="General Inquiry">General Inquiry</option>
+                    <option value="Booking & Reservation">Booking &amp; Reservation</option>
+                    <option value="Product Order">Product Order</option>
+                    <option value="Corporate Bulk Cards">Corporate Bulk Cards</option>
+                    <option value="Partnership / Quote">Custom Quotation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
+                    Message / Details
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={leadMessage}
+                    onChange={(e) => setLeadMessage(e.target.value)}
+                    placeholder="How can we help you?"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={leadSubmitting}
+                  className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-[#F7E7A9] via-[#D4AF37] to-[#9A7B1C] text-black font-headline font-extrabold text-sm shadow-lg hover:brightness-105 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {leadSubmitting ? (
+                    <span>Submitting Enquiry...</span>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Submit Enquiry to Merchant</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         {/* Quick Venue Actions */}
         <div className="grid grid-cols-4 gap-2 py-3 px-2 border-t border-white/10 mb-6">
@@ -1002,7 +1422,7 @@ export default function CustomizedReviewAssistantPage() {
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span>Powered by</span>
             <span className="font-headline font-bold text-white tracking-tight">
-              Zen<span className="text-[#D4AF37]">Tap</span>.ai
+              Zen<span className="text-[#D4AF37]">Tap</span>
             </span>
           </div>
           <span className="text-[10px] text-gray-500">

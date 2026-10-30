@@ -2,12 +2,20 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 
 export const PLAN_PRICES: Record<string, number> = {
+  simple_direct: 499,
+  metal_reply: 1999,
+  pvc_nfc: 699,
+  corporate_bulk: 499,
   card_500: 500,
   standee_1500: 1500,
   standee_auto_2000: 2000,
 };
 
 export const PLAN_NAMES: Record<string, string> = {
+  simple_direct: "Simple QR/NFC Direct Review (Card ₹499 / Standee)",
+  metal_reply: "Metal NFC/QR Card/Standee with Google Review + Automated Replies (₹1,999)",
+  pvc_nfc: "PVC NFC Smart Card with Dynamic Profile (₹699)",
+  corporate_bulk: "Corporate Bulk Smart Cards (Custom Fleet Quotation)",
   card_500: "Normal Smart NFC Review Card (₹500)",
   standee_1500: "Auto Google Review Standee with NFC & QR (₹1,500)",
   standee_auto_2000: "Auto Google Review Standee + Auto Reply Engine (₹2,000)",

@@ -35,7 +35,7 @@ export default function ClientProofsView({ onNavigateToPricing }: ClientProofsVi
       rating: 5,
       avatar: "RD",
       content:
-        "We used to struggle getting our diners to leave reviews after their meal. With ZenTap standees on our tables, guests love the experience because they don't have to type anything—the AI drafts it for them. We went from 180 reviews to nearly 1,000 reviews in 4 months!",
+        "We used to struggle getting our diners to leave reviews after their meal. With ZenTap standees on our tables, guests love the experience because they don't have to type anything—the assistant drafts it for them. We went from 180 reviews to nearly 1,000 reviews in 4 months!",
       verifiedBadge: "Verified Standee Deployed (Brushed Brass)",
     },
     {

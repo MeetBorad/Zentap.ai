@@ -329,9 +329,10 @@ export default function AuthModal({
                     type="text"
                     required
                     value={fullName}
+                    autoComplete="name"
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Ramesh Patel"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
                   />
                 </div>
               </div>
@@ -346,9 +347,10 @@ export default function AuthModal({
                     type="text"
                     required
                     value={businessName}
+                    autoComplete="organization"
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="e.g. Copper Kettle Roasters"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
                   />
                 </div>
               </div>
@@ -365,9 +367,10 @@ export default function AuthModal({
                 type="email"
                 required
                 value={email}
+                autoComplete="email"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@yourbusiness.com"
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
               />
             </div>
           </div>
@@ -396,9 +399,10 @@ export default function AuthModal({
                 type="password"
                 required
                 value={password}
+                autoComplete={activeTab === "signin" ? "current-password" : "new-password"}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
               />
             </div>
           </div>

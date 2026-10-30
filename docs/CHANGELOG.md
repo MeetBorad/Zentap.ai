@@ -1,4 +1,66 @@
-# ZenTap.ai — Changelog
+# ZenTap — Changelog
+
+## [1.7.0] — 2026-10-30
+### Added & Enhanced (GSAP Animation Engine Integration)
+- **GSAP & `@gsap/react` Core Integration**: Installed and configured official GreenSock ecosystem with strict adherence to `gsap-react`, `gsap-core`, and `gsap-scrolltrigger` skill guidelines.
+- **Interactive 3D Standee 360° Flip (`Standee3DPreview.tsx`)**:
+  - Implemented GSAP `useGSAP()` scoped timeline with `preserve-3d` and physics-based `power2.inOut` easing.
+  - Interactive inspection toggle allowing users to rotate the standee between **Front Face** (NFC hotspot, NTAG216 chip) and **Reverse Face** (Laser Level Q dynamic QR code).
+  - GSAP spring haptic feedback on NFC phone tap simulation (`back.out(2)`).
+- **ScrollTrigger Staggered Section Entrances (`HomeView.tsx`)**:
+  - Staggered entry for 4 Core Hardware Product cards triggered via ScrollTrigger (`y: 40`, `stagger: 0.12`, `power3.out`).
+  - Staggered sequential illumination for the 3-Step "How ZenTap Works" walkthrough (`y: 35`, `stagger: 0.15`, `power2.out`).
+- **Production Deployment**: Live on `https://www.zentapdigitalsolutions.com`.
+
+## [1.6.0] — 2026-10-30
+### Added & Enhanced (React Bits UI Integration)
+- **React Bits Component Suite** (`src/components/react-bits/`):
+  - **`SpotlightCard`**: Radial mouse-following spotlight glow effect integrated into the 4 Core Hardware Product cards (*Simple QR/NFC*, *Metal Standee*, *PVC Card*, *Corporate Bulk*) and performance metrics cards.
+  - **`ShinyText`**: Shimmering metallic sheen gradient sweep across the primary hero headline (*"5-Star Google Reviews"*).
+  - **`BlurText`**: Staggered focus-reveal text animation on the opening hero value proposition (*"Turn customer footfall into"*).
+  - **`CountUp`**: Smooth cubic-eased numeric counter animation on tap velocity (`0.6s`), app install rate (`100%`), and documented client performance metrics (`+410%`, `4.9★`, `+34%`, `88%`).
+  - **`AuroraBackground`**: Ambient fluid mesh gradient pulsing gently behind the Hero Section to complement ZenTap's warm off-white and obsidian architectural design.
+  - **`TiltedCard`**: 3D perspective mouse-tilt specimen interaction for standee hardware.
+- **Production Deployment**: Live on `https://www.zentapdigitalsolutions.com`.
+
+## [1.5.0] — 2026-10-30
+### Changed & Deployed
+- **Brand Name Uniformity**: Standardized brand name strictly to **ZenTap** (removed all mentions of `ZenTap.ai`, `zentap.in`, `zentap.app`).
+- **Company Name**: Standardized legal entity and brand publisher strictly to **ZenTap Digital Solutions**.
+- **Domain Consolidation**: Consolidated all metadata, Open Graph, Twitter cards, sitemap, robots, and customer links to **`zentapdigitalsolutions.com`**.
+- **Removed "AI" Terminology**: Sanitized all customer-facing and merchant-facing copy to eliminate impressions that customer reviews are artificially generated:
+  - Replaced *"AI Review Assistant"* with *"Review Assistant"* / *"Smart Review Assistant"*.
+  - Replaced *"AI Review Drafts"* with *"Review Suggestions"* / *"Smart Review Suggestions"*.
+  - Replaced *"AI Interceptor Shield"* with *"Private Feedback Resolution Active"*.
+  - Replaced *"AI Reply Engine"* with *"Automated 24/7 Google Review Reply Engine"*.
+- **Production Deployment to Vercel**: Successfully deployed production build to `https://www.zentapdigitalsolutions.com` and `https://zentapdigitalsolutions.com`.
+### Added
+- **Minimal Website Redesign Inspired by `zentap.in/index.html`** (`HomeView.tsx`, `Header.tsx`):
+  - Streamlined hero section with bold value proposition, minimal typography, and clear dual CTAs.
+  - 3-step "How It Works" guide: Tap & Connect, Review & Engage, Grow & Dominate.
+  - Minimal top navigation bar with clean links: Home, Products & Pricing, How It Works, Features, Sample Showcase, and Merchant Dashboard.
+  - Interactive NFC Tap & Review Simulator embedded seamlessly on homepage.
+- **Official Products & Pricing Integration Matching `zentap.in/products.html`** (`PricingView.tsx`, `businessStore.ts`, `razorpay.ts`):
+  - **Product 1 — Simple QR/NFC Card / Standee** (₹499 Card / ₹999 Standee): Direct 1-tap mode that opens the Google Review page directly for customers with zero intermediary barriers.
+  - **Product 2 — Metal NFC/QR Standee with AI Replies** (₹1,999): Premium metal standee with automated AI review replies, anti-gating protection, and sentiment analytics.
+  - **Product 3 — PVC NFC Card** (₹699): Durable matte PVC card with embedded NTAG216 chip, dynamic QR, and lifetime cloud profile hosting.
+  - **Product 4 — Corporate Bulk Cards** (₹499/unit): Centralized dashboard to issue, update, and reassign digital cards across team members without physical reprints.
+- **Interactive 3D Hardware Specimen Customizer** (`CardCustomizerModal.tsx`):
+  - Form factor toggle: Counter Standee (L-Shaped) vs Pocket NFC Card.
+  - 5 authentic materials & finishes: Matte Obsidian, Brushed Steel, Brushed Gold, Clean Minimal White, and Executive Emerald.
+  - Live logo file upload with instant specimen preview.
+  - Live typography customization for business name and tagline.
+  - 6-color accent palette selector.
+  - Real-time Level Q QR code rendering.
+  - "Save Design to Profile" and "Order with this Design" direct checkout integration.
+- **Dynamic Profile & Interaction Hub on Review Page** (`/r/[slug]`):
+  - **Interaction Tab**: 1-tap WhatsApp direct chat with pre-filled message, Table/Appointment Booking (Calendly/reservations), Digital Portfolio / Menu showcase, Call Store, Directions, Instagram, and Website.
+  - **Lead Capture Tab**: Built-in customer enquiry form collecting name, phone, email, service requested, and message, submitted directly to `/api/leads`.
+  - **Direct Review Mode**: Dedicated high-visibility 1-tap banner and direct routing when `redirect_mode === "direct_review"`.
+- **Merchant Dashboard Expansion** (`ClientPortalView.tsx`):
+  - **Dynamic Profile & Interaction Tab**: Configure WhatsApp number/greetings, booking links, portfolio/menu URLs, social links, and toggle between "Interactive Profile" vs "Direct 1-Tap Google Review".
+  - **Leads & Inquiries Tab**: Real-time table displaying captured customer leads with status pills (New, Contacted, Converted, Archived) and 1-tap WhatsApp/Phone dialer shortcuts.
+  - **Hardware Design Studio Tab**: Instant access to launch the 3D Customizer and preview saved card/standee specs.
 
 ## [1.3.7] — 2026-10-29
 ### Added

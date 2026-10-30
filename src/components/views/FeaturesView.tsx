@@ -44,7 +44,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
           Complete Hardware &amp; Software Suite
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-5xl text-on-surface mt-2 tracking-tight">
-          Enterprise-Grade NFC Chips Meet Cloud AI Routing
+          Enterprise-Grade NFC Chips Meet Cloud Smart Routing
         </h1>
         <p className="text-sm sm:text-base text-on-surface-variant mt-3 leading-relaxed">
           Every ZenTap standee is precision-manufactured using scratch-resistant acrylic, encrypted NTAG216 circuitry, and dynamic QR fallbacks connected to real-time Google ranking telemetry.
@@ -152,17 +152,17 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
         </div>
       </div>
 
-      {/* Feature Grid 2: Multilingual AI + Auto Reply Engine */}
+      {/* Feature Grid 2: Multilingual + Auto Reply Engine */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-14">
         
-        {/* Multilingual AI Review Assistant */}
+        {/* Multilingual Review Assistant */}
         <div className="p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center mb-6">
               <Globe className="w-6 h-6" />
             </div>
             <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
-              Multilingual Contextual AI Assistant
+              Multilingual Contextual Review Assistant
             </h3>
             <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed mb-6">
               Trained on thousands of high-converting local Google reviews. Customers pick what stood out and receive polished, articulate review suggestions in English, Gujarati, or Hindi.
@@ -185,12 +185,12 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
           </div>
 
           <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
-            <span>Engine: ZenTap Neural NLP</span>
+            <span>Engine: ZenTap Review NLP</span>
             <span className="text-secondary font-bold">Local SEO Optimized</span>
           </div>
         </div>
 
-        {/* Automated AI Review Reply Engine */}
+        {/* Automated Review Reply Engine */}
         <div className="p-8 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mb-6">
@@ -226,7 +226,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
         </div>
       </div>
 
-      {/* Interactive AI Sentiment Guard Section */}
+      {/* Interactive Sentiment Guard Section */}
       <div className="mb-14">
         <SentimentSimulator />
       </div>

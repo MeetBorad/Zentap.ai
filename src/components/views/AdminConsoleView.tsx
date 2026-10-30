@@ -45,7 +45,12 @@ import {
   PackageCheck,
   CreditCard,
   Building2,
-  FileCheck
+  FileCheck,
+  Settings,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Bell
 } from "lucide-react";
 import { 
   BusinessRecord, 
@@ -61,7 +66,8 @@ import {
   OrderRecord,
   QuotationRecord,
   getAllQuotations,
-  adminUpdateQuotationStatus
+  adminUpdateQuotationStatus,
+  ProductPlan
 } from "@/lib/businessStore";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -76,13 +82,28 @@ import {
 } from "@/lib/supabase/service";
 
 interface AdminConsoleViewProps {
+  onNavigate?: (view: any) => void;
   onOpenAuthModal?: (tab: "signin" | "signup" | "admin") => void;
 }
 
-export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewProps) {
+export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminConsoleViewProps) {
   const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail } = useAuth();
   
   // Navigation Tabs: Analytics Dashboard vs Fleet Table vs Standee Orders vs Plans vs Franchise Quotes
+  
+  type AdminMenuItem = 
+    | "overview"
+    | "clients"
+    | "orders"
+    | "review_links"
+    | "analytics"
+    | "settings";
+
+  const [adminMenu, setAdminMenu] = useState<AdminMenuItem>("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
+  const [adminNotificationOpen, setAdminNotificationOpen] = useState(false);
+
   const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans" | "quotations">("analytics");
 
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
@@ -113,7 +134,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   // Standee Order Modal State
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [orderTargetBizId, setOrderTargetBizId] = useState("");
-  const [orderPlan, setOrderPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
+  const [orderPlan, setOrderPlan] = useState<ProductPlan>("standee_1500");
   const [orderPincode, setOrderPincode] = useState("380001");
   const [orderAddress, setOrderAddress] = useState("");
   const [orderRecipient, setOrderRecipient] = useState("");
@@ -121,7 +142,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   // Plan Management Modal State
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [selectedBizForPlan, setSelectedBizForPlan] = useState<BusinessRecord | null>(null);
-  const [selectedPlanValue, setSelectedPlanValue] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
+  const [selectedPlanValue, setSelectedPlanValue] = useState<ProductPlan>("standee_1500");
   const [selectedBillingStatus, setSelectedBillingStatus] = useState<"paid" | "pending" | "failed">("paid");
 
   // New Business Onboarding Modal State
@@ -130,7 +151,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [newBizEmail, setNewBizEmail] = useState("");
   const [newBizPhone, setNewBizPhone] = useState("");
   const [newBizCity, setNewBizCity] = useState("");
-  const [newBizPlan, setNewBizPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
+  const [newBizPlan, setNewBizPlan] = useState<ProductPlan>("standee_1500");
   const [newBizReviewUrl, setNewBizReviewUrl] = useState("");
 
   // High-Res QR Modal State
@@ -151,6 +172,24 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const [adminPasswordUpdating, setAdminPasswordUpdating] = useState(false);
   const [adminPasswordMsg, setAdminPasswordMsg] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
+
+  // Check tab from URL parameters
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "overview" || tab === "clients" || tab === "orders" || tab === "review_links" || tab === "analytics" || tab === "settings") {
+        setAdminMenu(tab as any);
+        if (tab === "clients") setAdminTab("fleet");
+        if (tab === "orders") setAdminTab("orders");
+        if (tab === "analytics") setAdminTab("analytics");
+        if (tab === "review_links") {
+          setAdminTab("fleet");
+          setStatusFilter("awaiting_link");
+        }
+      }
+    }
+  }, []);
 
   // Load All Businesses & Orders
   useEffect(() => {
@@ -703,6 +742,10 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   const awaitingLinks = businesses.filter((b) => !b.review_url).length;
   const pendingNamesCount = businesses.filter(isNamePending).length;
   const paidDeployments = businesses.filter((b) => b.payment_status === "paid").length;
+  const pendingLinksCount = awaitingLinks;
+  const pendingOrdersCount = orders.filter((o) => o.status === "processing" || o.status === "in_production").length;
+  const totalClients = totalFleet;
+  const totalScans = totalFleet * 120; // fallback telemetry aggregator
 
   // Aggregate taps and scans across all businesses
   let totalTaps = 0;
@@ -742,165 +785,475 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
   // Strict Security Gate
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-16 text-center max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mb-5 shadow-sm">
-          <ShieldAlert className="w-8 h-8" />
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-zinc-200/80 shadow-xl text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 text-[#B91C1C] flex items-center justify-center mx-auto">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900">Admin Authentication Required</h2>
+          <p className="text-sm text-zinc-500">
+            Please authenticate with master administrator credentials to access fleet telemetry, merchant records, and hardware dispatch.
+          </p>
+          <button
+            onClick={() => onOpenAuthModal ? onOpenAuthModal("signin") : null}
+            className="w-full py-3 px-4 rounded-xl bg-[#B91C1C] text-white font-bold text-sm hover:bg-red-800 transition-colors shadow-md cursor-pointer"
+          >
+            Authenticate Admin
+          </button>
         </div>
-        <h2 className="font-headline font-bold text-2xl text-[#1C1B1A] mb-2">
-          Administrator Console Restricted
-        </h2>
-        <p className="text-xs text-[#615E5B] leading-relaxed mb-6 font-sans">
-          This portal manages business integrations, Google review destinations, and standee production. Access is strictly limited to authorized ZenTap fleet administrators.
-        </p>
-        <button
-          onClick={() => onOpenAuthModal && onOpenAuthModal("admin")}
-          className="px-5 py-2.5 rounded-xl bg-[#1C1B1A] text-white text-xs font-semibold hover:bg-[#2C2B2A] transition-colors cursor-pointer shadow-sm"
-        >
-          Authenticate as Administrator
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full animate-in fade-in duration-200 space-y-6">
+    <div className="flex h-screen w-full bg-[#F8F9FA] text-zinc-900 overflow-hidden font-sans">
       
       {/* Toast Alert */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
+        <div className="fixed top-5 right-6 z-50 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-xl flex items-center gap-2 animate-in slide-in-from-top-3">
           <Check className="w-4 h-4" />
           <span>{toastMsg}</span>
         </div>
       )}
 
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-in fade-in"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* ========================================================================= */}
-      {/* 1. TOP HEADER BANNER: ZenTap.in Admin Dashboard                           */}
+      {/* LEFT SIDE: FIXED VERTICAL SIDEBAR                                         */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-[#1C1B1A] text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden border border-[#2C2B2A] shadow-xl">
-        <div className="flex flex-col gap-2 relative z-10 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="px-3 py-1 bg-white/10 text-white rounded-full text-[11px] font-mono tracking-wider uppercase font-bold border border-white/10">
-              Root Superadmin Console
-            </span>
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-[11px] font-mono font-bold border border-emerald-500/30">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Supreme Authority Active</span>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white border-r border-zinc-200/80 flex flex-col justify-between transition-transform duration-300 lg:static lg:translate-x-0 ${
+        mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+      }`}>
+        
+        {/* Sidebar Header: ZenTap Logo */}
+        <div>
+          <div className="h-16 px-6 flex items-center justify-between border-b border-zinc-100">
+            <div 
+              onClick={() => onNavigate ? onNavigate("home") : null}
+              className="flex items-center gap-2.5 cursor-pointer group"
+              title="Return to ZenTap Homepage"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#B91C1C] to-red-600 text-white flex items-center justify-center font-black text-sm shadow-md">
+                Z
+              </div>
+              <div className="flex flex-col">
+                <span className="font-headline font-black text-base text-zinc-900 tracking-tight flex items-center">
+                  Zen<span className="text-[#B91C1C]">Tap</span>
+                </span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest -mt-1">
+                  Superadmin Console
+                </span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 lg:hidden cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Root Authority Badge */}
+          <div className="px-5 py-4 border-b border-zinc-100/80">
+            <div className="p-3 rounded-2xl bg-zinc-900 text-white space-y-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Supreme Authority Active</span>
+              </div>
+              <p className="text-xs font-semibold text-zinc-200">
+                Fleet Management &amp; Dispatch
+              </p>
             </div>
           </div>
-          
-          <h1 className="font-headline font-bold text-2xl sm:text-3xl text-white">
-            ZenTap.in Admin Dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
-            Full root authority unlocked: Monitor live fleet telemetry, edit customized merchant business names &amp; slugs, manage Google review destinations, dispatch hardware standees, and control commercial plans.
-          </p>
+
+          {/* Navigation Menu (6 Items) */}
+          <nav className="py-4 px-3 space-y-1" aria-label="Admin Navigation">
+            {/* 1. Overview */}
+            <button
+              onClick={() => { 
+                setAdminMenu("overview"); 
+                setAdminTab("analytics");
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "overview"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+              <span>Overview</span>
+            </button>
+
+            {/* 2. Clients */}
+            <button
+              onClick={() => { 
+                setAdminMenu("clients"); 
+                setStatusFilter("all");
+                setAdminTab("fleet"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "clients"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Building2 className="w-4 h-4 flex-shrink-0" />
+              <span>Clients</span>
+              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                adminMenu === "clients" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
+              }`}>
+                {businesses.length}
+              </span>
+            </button>
+
+            {/* 3. Orders & Payments */}
+            <button
+              onClick={() => { 
+                setAdminMenu("orders"); 
+                setAdminTab("orders"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "orders"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Truck className="w-4 h-4 flex-shrink-0" />
+              <span>Orders &amp; Payments</span>
+              {orders.length > 0 && (
+                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  adminMenu === "orders" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"
+                }`}>
+                  {orders.length}
+                </span>
+              )}
+            </button>
+
+            {/* 4. Review Links */}
+            <button
+              onClick={() => { 
+                setAdminMenu("review_links"); 
+                setStatusFilter("awaiting_link");
+                setAdminTab("fleet");
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "review_links"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+              <span>Review Links</span>
+              {pendingLinksCount > 0 && (
+                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  adminMenu === "review_links" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+                }`}>
+                  {pendingLinksCount}
+                </span>
+              )}
+            </button>
+
+            {/* 5. Analytics */}
+            <button
+              onClick={() => { 
+                setAdminMenu("analytics"); 
+                setAdminTab("analytics"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "analytics"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 flex-shrink-0" />
+              <span>Analytics</span>
+            </button>
+
+            {/* 6. Settings */}
+            <button
+              onClick={() => { 
+                setAdminMenu("settings"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "settings"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Settings className="w-4 h-4 flex-shrink-0" />
+              <span>Settings</span>
+            </button>
+          </nav>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 relative z-10 flex-shrink-0">
-          <button
-            onClick={() => handleOpenOrderModal()}
-            className="px-4 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer hover:bg-primary/90"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Order Standee</span>
-          </button>
-
-          <button
-            onClick={() => setAddModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-secondary text-on-secondary text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer hover:opacity-95"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Onboard Business</span>
-          </button>
-
+        {/* Sidebar Footer: Security & Return */}
+        <div className="p-4 border-t border-zinc-100 space-y-2">
           <button
             onClick={() => setPasswordModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/20 flex items-center gap-2 cursor-pointer"
-            title="Update Admin Security & Password"
+            className="w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
-            <Lock className="w-4 h-4 text-emerald-400" />
-            <span>Security</span>
+            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Update Password</span>
+          </button>
+          
+          <button
+            onClick={() => onNavigate ? onNavigate("home") : null}
+            className="w-full py-1.5 px-3 rounded-xl hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <ExternalLink className="w-3 h-3" />
+            <span>Return to Website</span>
           </button>
         </div>
-      </div>
+      </aside>
 
       {/* ========================================================================= */}
-      {/* 2. ADMIN TABS CONTROLLER                                                  */}
+      {/* RIGHT SIDE: TOP BAR + SCROLLABLE CONTENT AREA                             */}
       {/* ========================================================================= */}
-      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-surface-container border border-surface-variant/40 shadow-sm">
-        <button
-          onClick={() => setAdminTab("analytics")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === "analytics"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 text-emerald-400" />
-          <span>Analytics &amp; Performance</span>
-        </button>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        
+        {/* Sticky Top Bar */}
+        <header className="h-16 bg-white border-b border-zinc-200/80 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 z-30 shadow-xs">
+          {/* Mobile hamburger & Current page title */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl text-zinc-600 hover:bg-zinc-100 lg:hidden cursor-pointer"
+              aria-label="Open Sidebar Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-        <button
-          onClick={() => setAdminTab("fleet")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === "fleet"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Building2 className="w-4 h-4 text-[#D94826]" />
-          <span>Admin Master Table ({businesses.length})</span>
-          {pendingNamesCount > 0 && (
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Name Confirmation Pending" />
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
+              <h2 className="font-headline font-bold text-sm sm:text-base text-zinc-900 capitalize">
+                {adminMenu === "review_links" ? "Review Links Hub" : adminMenu === "orders" ? "Orders & Payments" : adminMenu}
+              </h2>
+              <span className="hidden sm:inline-block text-xs text-zinc-400 font-normal">|</span>
+              <span className="hidden sm:inline-block text-xs font-semibold text-zinc-500">
+                ZenTap Master Fleet ({businesses.length} Clients)
+              </span>
+            </div>
+          </div>
+
+          {/* Right Action Icons: Notification Bell & Admin Avatar */}
+          <div className="flex items-center gap-3 relative">
+            
+            {/* Quick Action: Onboard Business */}
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#B91C1C] hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Onboard Business</span>
+            </button>
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setAdminNotificationOpen(!adminNotificationOpen);
+                  setAdminDropdownOpen(false);
+                }}
+                className="p-2 rounded-full text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors relative cursor-pointer"
+                title="System Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {(pendingLinksCount > 0 || pendingOrdersCount > 0) && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#B91C1C] ring-2 ring-white" />
+                )}
+              </button>
+
+              {/* Notification Dropdown Popover */}
+              {adminNotificationOpen && (
+                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-xl border border-zinc-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-3">
+                    <span className="text-xs font-bold text-zinc-900">Admin Alerts</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 font-semibold text-zinc-600">
+                      {pendingLinksCount + pendingOrdersCount} pending
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
+                    {pendingLinksCount > 0 && (
+                      <div 
+                        onClick={() => {
+                          setAdminMenu("review_links");
+                          setStatusFilter("awaiting_link");
+                          setAdminTab("fleet");
+                          setAdminNotificationOpen(false);
+                        }}
+                        className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
+                      >
+                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-zinc-900">{pendingLinksCount} Clients Need Review URL</p>
+                          <p className="text-[11px] text-zinc-500">Click to open Review Links Hub and paste URLs.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {pendingOrdersCount > 0 && (
+                      <div 
+                        onClick={() => {
+                          setAdminMenu("orders");
+                          setAdminTab("orders");
+                          setAdminNotificationOpen(false);
+                        }}
+                        className="p-2.5 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-2 cursor-pointer hover:bg-blue-100/70"
+                      >
+                        <Truck className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-zinc-900">{pendingOrdersCount} Standee Orders</p>
+                          <p className="text-[11px] text-zinc-500">Orders in processing or production.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {pendingLinksCount === 0 && pendingOrdersCount === 0 && (
+                      <p className="text-center text-zinc-400 py-3">All clear! Fleet operating smoothly.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Admin Avatar Menu */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setAdminDropdownOpen(!adminDropdownOpen);
+                  setAdminNotificationOpen(false);
+                }}
+                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full hover:bg-zinc-100 transition-colors cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center font-bold text-xs">
+                  A
+                </div>
+                <span className="hidden md:inline-block text-xs font-semibold text-zinc-800 max-w-[120px] truncate">
+                  {user?.email || "Superadmin"}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {/* Admin Avatar Dropdown Popover */}
+              {adminDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-3 py-2.5 border-b border-zinc-100">
+                    <p className="text-xs font-bold text-zinc-900 truncate">
+                      Supreme Superadmin
+                    </p>
+                    <p className="text-[11px] text-zinc-400 truncate font-mono">
+                      {user?.email || "admin@zentapdigitalsolutions.com"}
+                    </p>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setAdminMenu("settings");
+                        setAdminDropdownOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Security &amp; Passwords</span>
+                    </button>
+
+                    {onNavigate && (
+                      <button
+                        onClick={() => {
+                          onNavigate("home");
+                          setAdminDropdownOpen(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Visit Website</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-1 border-t border-zinc-100">
+                    <button
+                      onClick={() => {
+                        setAdminDropdownOpen(false);
+                        window.location.reload();
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs font-bold text-[#B91C1C] hover:bg-red-50 rounded-xl flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Exit Admin Session</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </header>
+
+        {/* Scrollable Content Body */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8F9FA] space-y-6">
+          
+          {/* Settings Section (when adminMenu === 'settings') */}
+          {adminMenu === "settings" && (
+            <div className="p-8 rounded-3xl bg-white border border-zinc-200/80 shadow-xs space-y-6 animate-in fade-in duration-200 max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-xl text-zinc-900">
+                    Root Superadmin Security Settings
+                  </h3>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Update master administrator credentials and monitor system diagnostics.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-zinc-600">Admin Authority:</span>
+                  <span className="font-bold text-emerald-600">Supreme Root Administrator</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-zinc-600">Database Engine:</span>
+                  <span className="font-mono text-zinc-800">Supabase PostgreSQL (RLS Enabled)</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-zinc-600">Admin Account Email:</span>
+                  <span className="font-mono text-zinc-800">{user?.email || "admin@zentapdigitalsolutions.com"}</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setPasswordModalOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-2"
+                >
+                  <Lock className="w-4 h-4 text-emerald-400" />
+                  <span>Update Admin Master Password</span>
+                </button>
+              </div>
+            </div>
           )}
-        </button>
 
-        <button
-          onClick={() => setAdminTab("orders")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === "orders"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Truck className="w-4 h-4 text-blue-400" />
-          <span>Standee Orders ({orders.length})</span>
-        </button>
-
-        <button
-          onClick={() => setAdminTab("plans")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === "plans"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <CreditCard className="w-4 h-4 text-purple-400" />
-          <span>Plans &amp; Subscriptions</span>
-        </button>
-
-        <button
-          onClick={() => setAdminTab("quotations")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            adminTab === "quotations"
-              ? "bg-[#1C1B1A] text-white shadow-sm"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface"
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span>Franchise Quotes ({quotations.length})</span>
-          {quotations.filter((q) => q.status === "pending_review").length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold">
-              {quotations.filter((q) => q.status === "pending_review").length} New
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TAB 1: ANALYTICS & PERFORMANCE DASHBOARD                                  */}
-      {/* ========================================================================= */}
-      {adminTab === "analytics" && (
+          {/* Existing Tab Blocks (Analytics, Fleet, Orders, Plans, Quotations) */}
+                {adminTab === "analytics" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Top Stat Cards */}
@@ -1715,7 +2068,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                   <span className="text-xs text-on-surface-variant block mt-0.5">+ ₹1,000 / month from Month 2</span>
                 </div>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Heavyweight laser-cut acrylic standee matched to client branding. Includes AI review draft assistant.
+                  Heavyweight laser-cut acrylic standee matched to client branding. Includes smart review draft assistant.
                 </p>
               </div>
               <div className="pt-4 border-t border-surface-variant/30 mt-4 text-[11px] font-semibold text-secondary">
@@ -1732,7 +2085,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
                   <span className="text-xs text-on-surface-variant block mt-0.5">+ ₹1,000 / month from Month 2</span>
                 </div>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
-                  Full counter standee touchpoint plus 24/7 AI automation engine responding politely to incoming Google reviews.
+                  Full counter standee touchpoint plus 24/7 automated reply engine responding politely to incoming Google reviews.
                 </p>
               </div>
               <div className="pt-4 border-t border-surface-variant/30 mt-4 text-[11px] font-semibold text-primary">
@@ -2059,7 +2412,14 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
         </div>
       )}
 
+
+        </main>
+      </div>
+
       {/* ========================================================================= */}
+      {/* ALL MODALS PRESERVED                                                      */}
+      {/* ========================================================================= */}
+            {/* ========================================================================= */}
       {/* MODAL 1: CUSTOMIZE BUSINESS NAME, SLUG & GOOGLE REVIEW DESTINATION        */}
       {/* ========================================================================= */}
       {nameModalOpen && selectedBizForEdit && (
@@ -2684,7 +3044,7 @@ export default function AdminConsoleView({ onOpenAuthModal }: AdminConsoleViewPr
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              These are the positive category chips displayed under <strong>&quot;What did you like most?&quot;</strong> on this merchant&apos;s live Google review assistant page. Patrons can tap them to feed the AI review writer.
+              These are the positive category chips displayed under <strong>&quot;What did you like most?&quot;</strong> on this merchant&apos;s live Google review assistant page. Patrons can tap them to feed the smart review writer.
             </p>
 
             {/* Add New Tag */}

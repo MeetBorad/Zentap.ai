@@ -1,4 +1,4 @@
--- ZenTap.ai Supabase Database Schema
+-- ZenTap Supabase Database Schema
 -- Run this in your Supabase SQL Editor: https://supabase.com/dashboard/project/_/sql
 
 -- 1. Businesses / Merchants Table

@@ -35,7 +35,7 @@ export default function BenefitsView({ onNavigateToPricing, onNavigateToSample }
       badge: "Frictionless Speed",
       title: "5X Faster Review Collection (Under 15 Seconds)",
       description:
-        "Asking customers to 'search us on Google' loses 92% of reviews. With ZenTap, a single phone tap immediately opens the AI Review Assistant with pre-crafted suggestions, converting 88% of willing guests on the spot.",
+        "Asking customers to 'search us on Google' loses 92% of reviews. With ZenTap, a single phone tap immediately opens the Review Assistant with pre-crafted suggestions, converting 88% of willing guests on the spot.",
       impact: "Average review submission drops from 4 minutes to 15 seconds",
     },
     {
@@ -49,7 +49,7 @@ export default function BenefitsView({ onNavigateToPricing, onNavigateToSample }
     {
       icon: <Globe className="w-6 h-6 text-purple-500" />,
       badge: "Multilingual Reach",
-      title: "Native English, Gujarati & Hindi AI Support",
+      title: "Native English, Gujarati & Hindi Language Support",
       description:
         "Cater to every demographic in India. Customers can toggle between English, Gujarati, and Hindi with 1 tap, generating articulate and culturally resonant feedback.",
       impact: "Caters to regional customer bases across Gujarat and pan-India",

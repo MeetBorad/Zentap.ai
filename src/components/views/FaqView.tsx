@@ -22,11 +22,11 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
     },
     {
       q: "How does the rating flow comply with Google review policies?",
-      a: "ZenTap is 100% compliant with Google's strict anti-gating policies. Every customer selecting 1 to 5 stars has full access to the 'Post Google Review' button. The AI draft is merely a helpful suggestion, and the customer submits the review themselves on their own Google account. For 1-2 stars, ZenTap additionally provides an extra option to send private confidential feedback directly to store management so the owner can resolve issues immediately.",
+      a: "ZenTap is 100% compliant with Google's strict anti-gating policies. Every customer selecting 1 to 5 stars has full access to the 'Post Google Review' button. The review draft is merely a helpful suggestion, and the customer submits the review themselves on their own Google account. For 1-2 stars, ZenTap additionally provides an extra option to send private confidential feedback directly to store management so the owner can resolve issues immediately.",
     },
     {
       q: "What is the difference between the ₹500 Smart Card and the Standees?",
-      a: "The ₹500 Smart Card is a credit-card-sized NFC card with a laser-printed dynamic QR code. It has zero monthly subscription and is ideal for mobile staff, delivery, or solo desks. The ₹1,500 and ₹2,000 Standees are heavy-duty, luxury acrylic or brushed brass counter displays custom-branded with your logo and colors, and include the full AI review assistant suite (+ ₹1,000/month subscription starting next month).",
+      a: "The ₹500 Smart Card is a credit-card-sized NFC card with a laser-printed dynamic QR code. It has zero monthly subscription and is ideal for mobile staff, delivery, or solo desks. The ₹1,500 and ₹2,000 Standees are heavy-duty, luxury acrylic or brushed brass counter displays custom-branded with your logo and colors, and include the full review assistant suite (+ ₹1,000/month subscription starting next month).",
     },
     {
       q: "Do you support franchises and multi-location businesses?",
@@ -34,7 +34,7 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
     },
     {
       q: "Can I update my Google review link after receiving the physical standee?",
-      a: "Yes! Your physical hardware encodes a dynamic cloud URL (e.g. https://zentap.ai/r/your-business). You can update your Google Review Link, business address, phone number, or target destination anytime in 1 click from your merchant dashboard without ever replacing the physical hardware.",
+      a: "Yes! Your physical hardware encodes a dynamic cloud URL (e.g. https://www.zentapdigitalsolutions.com/r/your-business). You can update your Google Review Link, business address, phone number, or target destination anytime in 1 click from your merchant dashboard without ever replacing the physical hardware.",
     },
     {
       q: "How fast is delivery and how does payment work?",

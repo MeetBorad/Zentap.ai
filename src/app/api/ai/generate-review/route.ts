@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("AI review generation error:", error);
+    console.error("Review generation error:", error);
     return NextResponse.json(
       {
         success: false,

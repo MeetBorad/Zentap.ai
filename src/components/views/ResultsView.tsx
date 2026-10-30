@@ -13,6 +13,7 @@ import {
   Award,
   ArrowRight
 } from "lucide-react";
+import { SpotlightCard, CountUp } from "@/components/react-bits";
 
 interface ResultsViewProps {
   onNavigateToSample: () => void;
@@ -22,7 +23,7 @@ interface ResultsViewProps {
 export default function ResultsView({ onNavigateToSample, onNavigateToPricing }: ResultsViewProps) {
   const stats = [
     { value: "+410%", label: "Review Volume Increase", detail: "Average review surge across 150+ onboarded venues within 60 days." },
-    { value: "4.9 ★", label: "Average Google Rating", detail: "Protected by ZenTap's Google policy-compliant AI review assistant." },
+    { value: "4.9 ★", label: "Average Google Rating", detail: "Protected by ZenTap's Google policy-compliant review assistant." },
     { value: "+34%", label: "Google Maps Footfall Lift", detail: "Measurable increase in Google directions, calls, and walk-in visitors." },
     { value: "88%", label: "Tap Conversion Rate", detail: "88 out of 100 tapping guests successfully publish a Google review." },
   ];
@@ -47,7 +48,7 @@ export default function ResultsView({ onNavigateToSample, onNavigateToPricing }:
       after: "964 Reviews (4.8 ★)",
       lift: "+435% Review Lift",
       quote:
-        "The AI assistant is magic. Guests love seeing drafts highlighting our sourdough toasts and craft coffee. It boosted our Google profile reach tremendously and brought in waves of new weekend brunch walk-ins.",
+        "The review assistant is magic. Guests love seeing drafts highlighting our sourdough toasts and craft coffee. It boosted our Google profile reach tremendously and brought in waves of new weekend brunch walk-ins.",
       metrics: ["964 Verified Guest Reviews", "+45% Weekend Dine-in Lift", "18s Average Tap Time"],
     },
     {
@@ -103,16 +104,20 @@ export default function ResultsView({ onNavigateToSample, onNavigateToPricing }:
         </button>
       </div>
 
-      {/* 4 Stats Cards */}
+      {/* 4 Stats Cards with React Bits SpotlightCard & CountUp */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16">
         {stats.map((st, idx) => (
-          <div
+          <SpotlightCard
             key={idx}
+            spotlightColor="rgba(217, 72, 38, 0.15)"
             className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between"
           >
             <div>
               <span className="font-headline font-black text-3xl sm:text-4xl text-secondary block">
-                {st.value}
+                {idx === 0 && <CountUp prefix="+" to={410} suffix="%" />}
+                {idx === 1 && <CountUp to={4.9} decimals={1} suffix=" ★" />}
+                {idx === 2 && <CountUp prefix="+" to={34} suffix="%" />}
+                {idx === 3 && <CountUp to={88} suffix="%" />}
               </span>
               <span className="font-headline font-bold text-xs sm:text-sm text-on-surface block mt-1">
                 {st.label}
@@ -121,7 +126,7 @@ export default function ResultsView({ onNavigateToSample, onNavigateToPricing }:
             <p className="text-[11px] text-on-surface-variant mt-3 leading-relaxed border-t border-surface-variant/20 pt-2">
               {st.detail}
             </p>
-          </div>
+          </SpotlightCard>
         ))}
       </div>
 
@@ -191,7 +196,7 @@ export default function ResultsView({ onNavigateToSample, onNavigateToPricing }:
                 </div>
 
                 <div className="p-3 rounded-xl bg-secondary-container/20 border border-secondary-container text-secondary">
-                  <span className="text-[10px] font-bold uppercase block text-secondary">With ZenTap AI:</span>
+                  <span className="text-[10px] font-bold uppercase block text-secondary">With ZenTap:</span>
                   <span className="font-headline font-black text-lg text-secondary">
                     {cs.after}
                   </span>

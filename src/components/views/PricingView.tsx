@@ -15,10 +15,15 @@ import {
   Layers, 
   ExternalLink,
   MessageSquare,
-  Building2
+  Building2,
+  Palette,
+  Sliders
 } from "lucide-react";
 import { ActiveView } from "../Header";
 import StandeeVisual from "@/components/StandeeVisuals";
+import CardCustomizerModal from "@/components/CardCustomizerModal";
+import { CustomCardDesign } from "@/lib/businessStore";
+import { trackCtaClick, trackWhatsAppClick } from "@/lib/analytics";
 
 interface PricingViewProps {
   onNavigate: (view: ActiveView, plan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom") => void;
@@ -30,6 +35,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
   const [dailyCustomers, setDailyCustomers] = useState(150);
   const [selectedPlan, setSelectedPlan] = useState<"card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom">("standee_1500");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [customDesign, setCustomDesign] = useState<CustomCardDesign | null>(null);
 
   // ROI estimation calculations
   const monthlyTaps = Math.round(dailyCustomers * 30 * 0.15);
@@ -42,8 +49,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
       a: "No app, download, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and Android automatically detect the NTAG216 chip instantly when held within 4cm of the standee or smart card.",
     },
     {
-      q: "How does the AI Sentiment Interceptor protect my Google rating?",
-      a: "When a guest selects 3, 4, or 5 stars on their phone, they are greeted by an AI-crafted review draft and guided directly to post on your live Google Business Profile. If they select 1 or 2 stars, it displays a confidential private feedback form that delivers directly to store management with ZERO public Google redirect.",
+      q: "How does the Sentiment Protection Shield protect my Google rating?",
+      a: "When a guest selects 3, 4, or 5 stars on their phone, they are greeted by a pre-crafted review draft and guided directly to post on your live Google Business Profile. If they select 1 or 2 stars, it displays a confidential private feedback form that delivers directly to store management with ZERO public Google redirect.",
     },
     {
       q: "How does ZenTap boost my Google reach and SEO?",
@@ -55,7 +62,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
     },
     {
       q: "What are the courier and subscription charges?",
-      a: "Hardware is shipped pan-India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free AI routing and auto-sync, followed by an affordable ₹1,000/month subscription starting the next month of purchase. For multi-branch franchises, bulk volume standee discounts (₹1,200/standee) and custom SaaS rates (from ₹800/branch/mo) apply.",
+      a: "Hardware is shipped pan-India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free smart routing and auto-sync, followed by an affordable ₹1,000/month subscription starting the next month of purchase. For multi-branch franchises, bulk volume standee discounts (₹1,200/standee) and custom SaaS rates (from ₹800/branch/mo) apply.",
     },
     {
       q: "How does Plan 4 (Franchise & Multi-Location Custom Plan) work?",
@@ -69,7 +76,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-xs font-bold tracking-wider uppercase text-secondary">
-          Transparent Hardware &amp; AI Plans
+          Transparent Hardware &amp; Service Plans
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-4xl text-on-surface mt-1 tracking-tight">
           Choose Your Standee &amp; Card Growth Pack
@@ -98,18 +105,53 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setIsCustomizerOpen(true)}
+            className="px-5 py-3 rounded-2xl bg-secondary text-on-secondary font-bold text-xs hover:bg-secondary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm flex items-center gap-2"
+          >
+            <Palette className="w-4 h-4" />
+            <span>Customize Hardware &amp; Logo</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate("portal")}
+            className="px-5 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm"
+          >
+            Buy in Merchant Portal
+          </button>
+        </div>
+      </div>
+
+      {/* Hardware Design Customizer Callout */}
+      <div className="mb-10 p-5 rounded-3xl bg-surface-container border border-surface-variant/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center flex-shrink-0">
+            <Sliders className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-on-surface block">
+              Want Custom Branding? Logo, Material &amp; 3D Live Specimen Preview
+            </span>
+            <p className="text-[11px] text-on-surface-variant">
+              Upload your business logo and preview your card or standee in Matte Obsidian, Brushed Steel, Brushed Gold, or Emerald finish.
+            </p>
+          </div>
+        </div>
+
         <button
-          onClick={() => onNavigate("portal")}
-          className="px-6 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm"
+          onClick={() => setIsCustomizerOpen(true)}
+          className="px-4 py-2.5 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-all border border-surface-variant/50 cursor-pointer flex items-center gap-2 whitespace-nowrap"
         >
-          Buy Standee in Merchant Portal
+          <Palette className="w-3.5 h-3.5 text-secondary" />
+          <span>Launch 3D Design Studio</span>
         </button>
       </div>
 
-      {/* Pricing Cards Grid (The 4 Plans) */}
+      {/* Pricing Cards Grid (The 4 Core Products) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 items-stretch">
         
-        {/* Plan 1: Normal Smart Card with NFC and QR (Card, not standee) */}
+        {/* PRODUCT 1: Simple QR/NFC Card / Standee (Direct Google Review) */}
         <div 
           onClick={() => setSelectedPlan("card_500")}
           className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
@@ -120,41 +162,41 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             <div className="flex justify-between items-start mb-5">
               <div>
                 <span className="px-2.5 py-0.5 rounded-full bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 font-bold text-[10px] uppercase">
-                  Card Format
+                  Direct Review Mode
                 </span>
-                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Normal Smart Card</h3>
-                <span className="text-xs text-on-surface-variant">Pocket NFC tap card with QR code (Single Card, not standee)</span>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Simple QR / NFC</h3>
+                <span className="text-xs text-on-surface-variant">Card or Counter Standee (Direct to Google Review)</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-on-surface">₹500</span>
-                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">+ Extra Courier</span>
+                <span className="font-headline font-extrabold text-2xl text-on-surface">₹499</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">Card • ₹999 Standee</span>
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold mb-6">
-              ✓ Zero Monthly Subscription
+              ✓ Pure Direct 1-Tap Google Review (Zero Monthly Fee)
             </div>
 
             <ul className="space-y-3 mb-8 text-xs text-on-surface font-medium">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>NFC Smart Card (Pocket / Wallet Format)</span>
+                <span>Opens Google Review page directly to enter reviews</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Laser-Engraved Dynamic QR Code</span>
+                <span>High-Speed NTAG216 NFC (0.6s Tap Velocity)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Direct Google Review Redirect</span>
+                <span>Laser-Engraved Dynamic QR Code fallback</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Lifetime Cloud Link Hosting</span>
+                <span>Zero app install, zero Bluetooth pairing</span>
               </li>
-              <li className="flex items-center gap-2 text-zinc-400">
-                <span className="w-4 text-center">—</span>
-                <span>Standee Acrylic Body (Standalone Card)</span>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Lifetime Cloud Link Hosting Included</span>
               </li>
             </ul>
           </div>
@@ -167,13 +209,16 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               }}
               className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
             >
-              Order Smart Card (₹500)
+              Order Simple NFC / QR (₹499)
             </button>
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%201%20(Normal%20Smart%20NFC%20Card%20-%20₹500).%20Please%20share%20more%20details."
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Simple%20QR/NFC%20Direct%20Review%20Card/Standee.%20Please%20share%20details."
               target="_blank"
               rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                trackWhatsAppClick("pricing_simple_nfc");
+              }}
               className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -182,129 +227,56 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
         </div>
 
-        {/* Plan 2: Auto Google Review Standee with NFC and QR (Most Popular) */}
+        {/* PRODUCT 2: Metal NFC/QR Card / Standee with Google Review + Replies */}
         <div 
-          onClick={() => setSelectedPlan("standee_1500")}
+          onClick={() => setSelectedPlan("standee_auto_2000")}
           className={`relative p-6 sm:p-7 rounded-3xl bg-primary text-on-primary shadow-xl border-2 transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container border-secondary-container" : "border-white/20"
+            selectedPlan === "standee_auto_2000" ? "ring-2 ring-secondary-container border-secondary-container" : "border-white/20"
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-secondary-container text-white text-[11px] font-bold shadow-md">
-            Most Popular • Standee
+            Most Popular • Metal &amp; Auto-Replies
           </div>
 
           <div>
             <div className="flex justify-between items-start mb-5 pt-2">
               <div>
                 <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white font-bold text-[10px] uppercase">
-                  Branded Acrylic
+                  Brushed Metal &amp; Standee
                 </span>
-                <h3 className="font-headline font-bold text-lg text-white mt-2">Auto Review Standee</h3>
-                <span className="text-xs text-zinc-300">Customized designed standee as per business to match</span>
+                <h3 className="font-headline font-bold text-lg text-white mt-2">Metal NFC / Standee + Replies</h3>
+                <span className="text-xs text-zinc-300">Google Review + Automated 24/7 Replies</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-white">₹1,500</span>
+                <span className="font-headline font-extrabold text-2xl text-white">₹1,999</span>
                 <span className="text-[10px] block text-zinc-300 font-semibold mt-0.5">+ Extra Courier</span>
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-[11px] font-bold mb-6">
-              ✨ ₹1,000/month subscription starting next month
+              ✨ 24/7 Automated Google Review Reply Engine Included
             </div>
 
             <ul className="space-y-3 mb-8 text-xs text-white font-medium">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Heavyweight Acrylic Standee (Customized Design)</span>
+                <span>Heavyweight Brushed Metal Card or Acrylic Standee</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Customized Review Assistant (EN, GU, HI)</span>
+                <span>Auto Google Review Reply Engine (24/7 Automated)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Negative Review Shield (1-2★ private, 3-5★ to Google)</span>
+                <span>Review Assistant in English, Gujarati, Hindi</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Full Scan &amp; Tap Analytics Ingestion Dashboard</span>
+                <span>Negative Review Shield (1-2★ private feedback)</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Express Courier Dispatch across India</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="space-y-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigate("portal", "standee_1500");
-              }}
-              className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
-            >
-              Order Customized Standee (₹1,500)
-            </button>
-            <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%202%20(Auto%20Google%20Review%20Standee%20-%20₹1,500).%20Please%20share%20more%20details."
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Instant WhatsApp Chat</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Plan 3: Auto Google Review Standee + Auto Reply */}
-        <div 
-          onClick={() => setSelectedPlan("standee_auto_2000")}
-          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "standee_auto_2000" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
-          }`}
-        >
-          <div>
-            <div className="flex justify-between items-start mb-5">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-600 font-bold text-[10px] uppercase">
-                  All-In-One Enterprise
-                </span>
-                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Standee + Auto Reply</h3>
-                <span className="text-xs text-on-surface-variant">Customized Standee + Automated AI Google Review Reply</span>
-              </div>
-              <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-on-surface">₹2,000</span>
-                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">+ Extra Courier</span>
-              </div>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-400 text-[11px] font-bold mb-6">
-              ⚡ ₹1,000/month subscription starting next month
-            </div>
-
-            <ul className="space-y-3 mb-8 text-xs text-on-surface font-medium">
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Everything in Auto Standee Pack Included</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Auto Google Review Reply Engine (AI Powered 24/7)</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Instant Smart Reply to Every Incoming Review</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>VIP Priority Laser Engraving &amp; Shipping</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>Dedicated Merchant Success Specialist</span>
+                <span>Dynamic Profile (WhatsApp, Booking, Portfolio)</span>
               </li>
             </ul>
           </div>
@@ -315,15 +287,94 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 e.stopPropagation();
                 onNavigate("portal", "standee_auto_2000");
               }}
-              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
+              className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
             >
-              Order Standee + Auto Reply (₹2,000)
+              Order Metal Review + Replies (₹1,999)
             </button>
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%203%20(Standee%20+%20Auto%20Reply%20Engine%20-%20₹2,000).%20Please%20share%20more%20details."
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Metal%20NFC/QR%20with%20Google%20Review%20+%20Replies.%20Please%20share%20details."
               target="_blank"
               rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                trackWhatsAppClick("pricing_metal_replies");
+              }}
+              className="w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Instant WhatsApp Chat</span>
+            </a>
+          </div>
+        </div>
+
+        {/* PRODUCT 3: PVC NFC Card */}
+        <div 
+          onClick={() => setSelectedPlan("standee_1500")}
+          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
+          }`}
+        >
+          <div>
+            <div className="flex justify-between items-start mb-5">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 font-bold text-[10px] uppercase">
+                  Dynamic Card
+                </span>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">PVC NFC Card</h3>
+                <span className="text-xs text-on-surface-variant">Custom Print Smart Tap Card + Dynamic Profile</span>
+              </div>
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-headline font-extrabold text-2xl text-on-surface">₹699</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">+ Extra Courier</span>
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-300 text-[11px] font-bold mb-6">
+              ⚡ Full Dynamic Profile (WhatsApp, Booking, Leads)
+            </div>
+
+            <ul className="space-y-3 mb-8 text-xs text-on-surface font-medium">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Full-color custom printed PVC card with your logo</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Interactive Dynamic Profile: WhatsApp, Booking, Portfolio</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Built-in Enquiry Form routed directly to dashboard</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Instant Google Review write button</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-secondary flex-shrink-0" />
+                <span>Zero monthly fees for standard profile hosting</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("portal", "standee_1500");
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
+            >
+              Order PVC NFC Card (₹699)
+            </button>
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20the%20PVC%20NFC%20Card.%20Please%20share%20details."
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackWhatsAppClick("pricing_pvc_nfc");
+              }}
               className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -332,7 +383,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
         </div>
 
-        {/* Plan 4: Franchise & Multi-Location Custom Plan */}
+        {/* PRODUCT 4: Corporate Bulk Cards */}
         <div 
           onClick={() => setSelectedPlan("franchise_custom")}
           className={`relative p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
@@ -340,48 +391,48 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-amber-600 text-white text-[11px] font-bold shadow-md">
-            Franchise Fleet • Multi-QR
+            Enterprise Fleet • Central Portal
           </div>
 
           <div>
             <div className="flex justify-between items-start mb-5 pt-2">
               <div>
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold text-[10px] uppercase">
-                  Multi-Branch Chains
+                  Teams &amp; Multi-Branch
                 </span>
-                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Franchise Custom Plan</h3>
-                <span className="text-xs text-on-surface-variant">Multi-branch standee fleet with unique QR per counter</span>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Corporate Bulk Cards</h3>
+                <span className="text-xs text-on-surface-variant">Centralized team management with zero reprint costs</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
                 <span className="font-headline font-extrabold text-xl text-amber-600">Custom Quote</span>
-                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">Bulk Discounts</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">From ₹499/Card</span>
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] font-bold mb-6">
-              🏢 ₹1,200/standee &bull; From ₹800/mo SaaS
+              🏢 Central Dashboard: Update Cards Anytime Without Reprints
             </div>
 
             <ul className="space-y-3 mb-8 text-xs text-on-surface font-medium">
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Custom Standee Fleet (Matte Acrylic, Laser Wood, Hybrid)</span>
+                <span>Centralized dashboard to issue, update &amp; reassign employee cards</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Unique QR Codes &amp; Separate Google Review Links per Branch</span>
+                <span>Role or contact updates reflect instantly with zero physical reprints</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Centralized Multi-Outlet Owner Reporting Dashboard</span>
+                <span>Individual team member tap analytics &amp; lead tracking</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Auto Google Review Reply AI across All Outlets</span>
+                <span>Custom laser logo engraving &amp; executive metal finishes</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Split-Shipment Priority Logistics to Multiple Cities</span>
+                <span>Bulk tiers with split logistics to multiple corporate offices</span>
               </li>
             </ul>
           </div>
@@ -394,17 +445,20 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               }}
               className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md text-center block"
             >
-              Build Franchise Quotation
+              Build Corporate Bulk Quotation
             </button>
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Plan%204%20(Franchise%20Multi-Location%20Fleet).%20Please%20provide%20a%20custom%20quotation."
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Corporate%20Bulk%20Cards%20for%20our%20team.%20Please%20share%20quotation."
               target="_blank"
               rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                trackWhatsAppClick("pricing_corporate_bulk");
+              }}
               className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Instant WhatsApp Quote Chat</span>
+              <span>Instant Corporate WhatsApp Chat</span>
             </a>
           </div>
         </div>
@@ -544,6 +598,21 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </button>
         </div>
       </div>
+
+      {/* 3D Hardware Specimen Customizer Modal */}
+      <CardCustomizerModal
+        isOpen={isCustomizerOpen}
+        onClose={() => setIsCustomizerOpen(false)}
+        initialDesign={customDesign || undefined}
+        businessName="YOUR BUSINESS"
+        onSaveDesign={(d) => {
+          setCustomDesign(d);
+        }}
+        onProceedOrder={(d) => {
+          setCustomDesign(d);
+          onNavigate("portal", selectedPlan);
+        }}
+      />
 
     </div>
   );

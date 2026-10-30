@@ -1,5 +1,38 @@
-// Zentap.ai Business Store & Analytics
+// ZenTap Business Store & Analytics
 // Isomorphic store: Works on both server (route handlers/SSR) and browser (localStorage)
+
+export type ProductPlan =
+  | "simple_direct"
+  | "metal_reply"
+  | "pvc_nfc"
+  | "corporate_bulk"
+  | "card_500"
+  | "standee_1500"
+  | "standee_auto_2000"
+  | "franchise_custom";
+
+export interface CustomCardDesign {
+  format: "standee" | "card";
+  material: "metal_obsidian" | "brushed_silver" | "brushed_gold" | "acrylic_minimal" | "executive_emerald";
+  logo_url?: string;
+  logo_preview?: string;
+  business_name?: string;
+  tagline?: string;
+  accent_color?: string;
+}
+
+export interface LeadRecord {
+  id: string;
+  business_id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  service_needed?: string;
+  message?: string;
+  source: "qr" | "nfc" | "web";
+  status: "new" | "contacted" | "closed";
+  at: string;
+}
 
 export interface BusinessRecord {
   id: string;
@@ -13,13 +46,22 @@ export interface BusinessRecord {
   pincode: string;
   gbp_link: string;
   slug: string; // unique slug e.g. cafe-aroma-x7k2
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom" | null;
+  plan: ProductPlan | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
   active: boolean;
   address?: string;
   category?: string;
   custom_chips?: string[];
+  // Dynamic Profile (Interaction)
+  whatsapp_number?: string;
+  whatsapp_message?: string;
+  booking_url?: string;
+  portfolio_url?: string;
+  instagram_url?: string;
+  website_url?: string;
+  redirect_mode?: "direct_review" | "interactive_profile";
+  custom_design?: CustomCardDesign;
   created_at: string;
 }
 
@@ -52,7 +94,7 @@ export interface FeedbackRecord {
 export interface OrderRecord {
   id: string;
   business_id: string;
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom";
+  plan: ProductPlan;
   amount: number;
   courier: number;
   status: "processing" | "in_production" | "shipped" | "delivered";
@@ -60,6 +102,7 @@ export interface OrderRecord {
   tracking_number?: string;
   courier_name?: string;
   estimated_delivery?: string;
+  custom_design?: CustomCardDesign;
   at: string;
 }
 
@@ -90,6 +133,7 @@ const EVENTS_KEY_PREFIX = "zentap_v2_events_";
 const FEEDBACK_KEY_PREFIX = "zentap_v2_feedback_";
 const ORDERS_KEY_PREFIX = "zentap_v2_orders_";
 const QUOTATIONS_INDEX_KEY = "zentap_v2_quotations";
+const LEADS_KEY_PREFIX = "zentap_v2_leads_";
 
 // Google Review Link Validation Regex as specified
 export const GOOGLE_REVIEW_LINK_REGEX = /^https:\/\/(g\.page\/r\/|search\.google\.com\/local\/writereview\?placeid=|maps\.app\.goo\.gl\/)/i;
@@ -145,12 +189,12 @@ export function calculateCourierCharge(pincode: string): { amount: number; zone:
   return { amount: 149, zone: "Special Delivery Zone" };
 }
 
-// Sample Demonstration Business (ZenTap.in Official Google Review Assistant Showcase)
+// Sample Demonstration Business (ZenTap Official Google Review Assistant Showcase)
 export const SAMPLE_DEMO_BUSINESS: BusinessRecord = {
   id: "sample-demo-biz-01",
   owner_user_id: "demo-owner",
-  name: "ZenTap.in Digital Solutions",
-  email: "contact@zentap.in",
+  name: "ZenTap Digital Solutions",
+  email: "contact@zentapdigitalsolutions.com",
   phone: "+91 92745 60880",
   city: "Ahmedabad",
   state: "Gujarat",
@@ -158,12 +202,26 @@ export const SAMPLE_DEMO_BUSINESS: BusinessRecord = {
   pincode: "380001",
   gbp_link: "https://share.google/9PoGc4WwJpFoTgAMh",
   slug: "zentap",
-  plan: "standee_auto_2000",
+  plan: "metal_reply",
   payment_status: "paid",
   review_url: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z/data=!3m1!4b1!4m3!3m2!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!12e1?entry=ttu&g_ep=EgoyMDI2MTAyNy4wIKXMDSoASAFQAw%3D%3D",
   active: true,
   address: "Ahmedabad, Gujarat, India",
-  category: "NFC & Dynamic QR Smart Standee Solutions",
+  category: "NFC & Dynamic QR Smart Hardware Solutions",
+  whatsapp_number: "919274560880",
+  whatsapp_message: "Hello ZenTap Team! I scanned your standee and would like to inquire about NFC products for my business.",
+  booking_url: "https://calendly.com",
+  portfolio_url: "https://www.zentapdigitalsolutions.com/#products",
+  instagram_url: "https://www.instagram.com/zentapdigitalsolutions",
+  website_url: "https://www.zentapdigitalsolutions.com",
+  redirect_mode: "interactive_profile",
+  custom_design: {
+    format: "standee",
+    material: "metal_obsidian",
+    business_name: "ZenTap Digital",
+    tagline: "Tap Phone or Scan QR to Connect & Review",
+    accent_color: "#D94826",
+  },
   custom_chips: [
     "Instant NFC Phone Tap",
     "Dynamic QR Standee",
@@ -641,10 +699,15 @@ export function getFeedbacksForBusiness(bizId: string): FeedbackRecord[] {
 // Create an order (Razorpay checkout)
 export function createOrderRecord(
   businessId: string,
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom",
-  pincode: string
+  plan: ProductPlan,
+  pincode: string,
+  customDesign?: CustomCardDesign
 ): OrderRecord {
   const planPrices: Record<string, number> = {
+    simple_direct: 499,
+    metal_reply: 1999,
+    pvc_nfc: 699,
+    corporate_bulk: 499,
     card_500: 500,
     standee_1500: 1500,
     standee_auto_2000: 2000,
@@ -652,7 +715,7 @@ export function createOrderRecord(
   };
 
   const courierInfo = calculateCourierCharge(pincode);
-  const amount = planPrices[plan];
+  const amount = planPrices[plan] ?? 999;
   const orderId = `ZT-ORD-${Math.floor(10000 + Math.random() * 90000)}`;
 
   const order: OrderRecord = {
@@ -666,6 +729,7 @@ export function createOrderRecord(
     courier_name: "BlueDart Express / Delhivery",
     tracking_number: `BD-${Math.floor(1000000 + Math.random() * 9000000)}`,
     estimated_delivery: "3 to 5 business days",
+    custom_design: customDesign,
     at: new Date().toISOString(),
   };
 
@@ -821,7 +885,7 @@ export function adminUpdateOrderStatus(
 // Admin create a standee order on behalf of a business
 export function adminCreateOrder(
   businessId: string,
-  plan: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom",
+  plan: ProductPlan,
   pincode: string = "380001",
   address?: string
 ): OrderRecord {
@@ -850,7 +914,7 @@ const INITIAL_QUOTATIONS: QuotationRecord[] = [
     multiple_qr: true,
     addons: [
       "Unique QR per Branch Counter",
-      "Auto Google Review Reply AI",
+      "Auto Google Review Reply Engine",
       "Centralized Multi-Outlet Dashboard",
       "Custom Laser Logo Engraving",
     ],
@@ -926,5 +990,130 @@ export function adminUpdateQuotationStatus(
   } catch (err) {
     console.warn("adminUpdateQuotationStatus error:", err);
     return getAllQuotations();
+  }
+}
+
+// -------------------------------------------------------------
+// LEADS & INQUIRIES CAPTURE HUB
+// -------------------------------------------------------------
+
+export const SAMPLE_DEMO_LEADS: LeadRecord[] = [
+  {
+    id: "lead_101",
+    business_id: "sample-demo-biz-01",
+    name: "Pooja Mehta",
+    phone: "+91 98980 12345",
+    email: "pooja.mehta@fintech.co",
+    service_needed: "15 Custom Metal NFC Cards for Executive Team",
+    message: "We need custom black matte finish with company logo engraved on both sides.",
+    source: "nfc",
+    status: "new",
+    at: "29 Oct 2026, 11:20 AM",
+  },
+  {
+    id: "lead_102",
+    business_id: "sample-demo-biz-01",
+    name: "Vikram Patel",
+    phone: "+91 97230 55441",
+    email: "vikram@theurbanbrew.in",
+    service_needed: "3 Acrylic Standees for Cafe Counters",
+    message: "Interested in the Auto Google Review Standee with dynamic QR and auto-replies.",
+    source: "qr",
+    status: "contacted",
+    at: "28 Oct 2026, 03:45 PM",
+  },
+  {
+    id: "lead_103",
+    business_id: "sample-demo-biz-01",
+    name: "Dr. Ananya Roy",
+    phone: "+91 98240 88990",
+    email: "ananya.roy@dentalcare.com",
+    service_needed: "NFC Standee + Google Maps Review Boost",
+    message: "Want to know delivery timeline for Clinic reception counter.",
+    source: "nfc",
+    status: "closed",
+    at: "27 Oct 2026, 05:10 PM",
+  },
+];
+
+export function createLeadRecord(lead: Omit<LeadRecord, "id" | "at" | "status">): LeadRecord {
+  const newLead: LeadRecord = {
+    ...lead,
+    id: `lead_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    status: "new",
+    at: new Date().toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }),
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      const key = `${LEADS_KEY_PREFIX}${lead.business_id}`;
+      const raw = localStorage.getItem(key);
+      const list: LeadRecord[] = raw ? JSON.parse(raw) : [];
+      list.unshift(newLead);
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch (err) {
+      console.warn("createLeadRecord storage error:", err);
+    }
+  }
+
+  return newLead;
+}
+
+export function getLeadsForBusiness(businessId: string): LeadRecord[] {
+  if (typeof window === "undefined") {
+    return businessId === SAMPLE_DEMO_BUSINESS.id ? SAMPLE_DEMO_LEADS : [];
+  }
+
+  try {
+    const key = `${LEADS_KEY_PREFIX}${businessId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+    if (businessId === SAMPLE_DEMO_BUSINESS.id) {
+      return SAMPLE_DEMO_LEADS;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export function updateLeadStatus(
+  businessId: string,
+  leadId: string,
+  status: "new" | "contacted" | "closed"
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    const key = `${LEADS_KEY_PREFIX}${businessId}`;
+    const raw = localStorage.getItem(key);
+    const list: LeadRecord[] = raw
+      ? JSON.parse(raw)
+      : businessId === SAMPLE_DEMO_BUSINESS.id
+      ? [...SAMPLE_DEMO_LEADS]
+      : [];
+    const updated = list.map((l) => (l.id === leadId ? { ...l, status } : l));
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch (err) {
+    console.warn("updateLeadStatus error:", err);
+  }
+}
+
+export function deleteLeadRecord(businessId: string, leadId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const key = `${LEADS_KEY_PREFIX}${businessId}`;
+    const raw = localStorage.getItem(key);
+    const list: LeadRecord[] = raw ? JSON.parse(raw) : [];
+    const updated = list.filter((l) => l.id !== leadId);
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch (err) {
+    console.warn("deleteLeadRecord error:", err);
   }
 }

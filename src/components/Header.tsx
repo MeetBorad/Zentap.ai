@@ -44,15 +44,11 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
 
   const navItems: { id: ActiveView; label: string }[] = [
     { id: "home", label: "Home" },
-    { id: "portal", label: "Merchant Dashboard" },
+    { id: "pricing", label: "Products & Pricing" },
     { id: "how-it-works", label: "How It Works" },
     { id: "features", label: "Features" },
-    { id: "benefits", label: "Benefits" },
-    { id: "results", label: "Results" },
     { id: "sample-dashboard", label: "Sample Showcase" },
-    { id: "client-proofs", label: "Client Proofs" },
-    { id: "pricing", label: "Pricing" },
-    { id: "faq", label: "FAQ" },
+    { id: "portal", label: "Merchant Dashboard" },
   ];
 
   const handleNavClick = (view: ActiveView) => {
@@ -88,7 +84,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
                 Z
               </div>
               <span className="font-headline font-bold text-base text-[#1C1B1A] tracking-tight">
-                Zen<span className="text-[#D94826]">Tap</span>.ai
+                Zen<span className="text-[#D94826]">Tap</span>
               </span>
             </div>
 
@@ -98,7 +94,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             <button
               onClick={() => handleNavClick("home")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] text-xs font-semibold transition-colors cursor-pointer"
-              title="Browse ZenTap.ai public marketing website"
+              title="Browse ZenTap public marketing website"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return to Main Site</span>
@@ -110,7 +106,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             {currentView === "admin" ? (
               <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>ZenTap.in Admin Dashboard</span>
+                <span>ZenTap Admin Dashboard</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-[#1C1B1A] font-semibold">
@@ -163,7 +159,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
           </div>
           <div className="flex flex-col">
             <span className="font-headline font-bold text-lg text-[#1C1B1A] tracking-tight leading-none">
-              Zen<span className="text-[#D94826]">Tap</span>.ai
+              Zen<span className="text-[#D94826]">Tap</span>
             </span>
             <span className="text-[10px] tracking-wider font-mono font-medium text-[#615E5B] uppercase mt-0.5">
               NFC · Dynamic QR
@@ -294,8 +290,9 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
           {/* Mobile Hamburger Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 rounded-lg bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] transition-colors cursor-pointer"
-            aria-label="Toggle navigation menu"
+            className="lg:hidden p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-[#F2F0EB] hover:bg-[#E2DFD8] text-[#1C1B1A] transition-colors cursor-pointer"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -310,7 +307,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                className={`text-left px-3 py-2.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                className={`text-left px-4 py-3 min-h-[44px] flex items-center rounded-xl text-sm font-medium cursor-pointer transition-colors ${
                   currentView === item.id
                     ? "bg-[#1C1B1A] text-white font-semibold"
                     : "text-[#615E5B] hover:bg-[#F2F0EB] hover:text-[#1C1B1A]"
