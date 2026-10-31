@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.17.0] — 2026-11-01
+### Enhanced (Stitch Design System & Content Alignment Across 3 Core Pages)
+- **Home View Alignment ([`src/components/views/HomeView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HomeView.tsx))**:
+  - Aligned hero badge with verified counter pill (`Over 45,382+ Verified Reviews Generated`).
+  - Aligned primary headline to Stitch: *"Turn Every Customer Tap into 5-Star Google Reviews instantly"*.
+  - Aligned subtitle: *"Smart NFC & Dynamic QR standees that boost your local business rating by 300% without awkward asking or paperwork."*
+  - Integrated Stitch 3-pillar section: *"Engineered for Rapid Growth • Zero Friction. Pure 5-Star Velocity"* (`Instant Tap-to-Review`, `AI Sentiment Guard`, `Dynamic Link Updates`).
+- **How It Works View Alignment ([`src/components/views/HowItWorksView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HowItWorksView.tsx))**:
+  - Aligned page header to Stitch: *"Complete Ecosystem & How It Works • Advanced Hardware & AI Routing Capabilities"*.
+  - Added Stitch 4-Pillar Hardware & AI Capability Grid (`NTAG216 High-Performance Chip`, `Automated Sentiment Interceptor`, `Live Tap Telemetry & Analytics`, `Custom Pantone Branding`) alongside the 4-step process and 9:16 interactive video stage.
+- **Product & Pricing View Alignment ([`src/components/views/PricingView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/PricingView.tsx))**:
+  - Aligned page header to Stitch: *"Transparent Investment • Choose Your Growth Pack"*.
+  - Updated subtitle: *"Zero monthly fees for basic routing. Own your hardware outright, collect hundreds of 5-star Google reviews, and dominate your local neighborhood."*
+  - Added Stitch `"Best Value"` badges to the most popular hardware tiers while preserving full Razorpay payment and multi-location franchise logic.
+
 ## [1.16.0] — 2026-11-01
 ### Fixed & Enhanced (Global High-Contrast Typography & Font Visibility Overhaul)
 - **Home Page Hero & Headline Contrast Fix**:

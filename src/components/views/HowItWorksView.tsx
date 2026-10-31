@@ -86,14 +86,89 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
       {/* Section Header */}
       <div className="text-center max-w-3xl mx-auto mb-14">
         <span className="text-xs font-bold tracking-wider uppercase text-secondary">
-          Frictionless 4-Step Process
+          Complete Ecosystem &amp; How It Works
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-5xl text-on-surface mt-2 tracking-tight">
-          How ZenTap Turns Counter Visits Into 5-Star Reviews
+          Advanced Hardware &amp; AI Routing Capabilities
         </h1>
         <p className="text-xs sm:text-sm text-on-surface-variant mt-3 leading-relaxed">
-          From the physical NFC tap to live publication on Google Maps, our automated workflow turns 88% of happy customers into enthusiastic online advocates in under 15 seconds.
+          Every standee is packed with enterprise-grade NTAG216 NFC chips, weatherproof matte acrylic, and real-time cloud management that turns 88% of happy customers into 5-star Google reviews.
         </p>
+      </div>
+
+      {/* Stitch 4-Pillar Hardware & AI Capability Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+        <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-low border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-secondary/15 flex items-center justify-center text-secondary mb-4">
+              <Radio className="w-6 h-6 text-secondary" />
+            </div>
+            <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
+              NTAG216 High-Performance Chip
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Embedded with top-tier NFC technology allowing instantaneous reading speeds even through protective phone cases. Fully encrypted write-protection prevents tampering.
+            </p>
+          </div>
+          <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
+            <span>Protocol: ISO 14443-A</span>
+            <span className="text-emerald-400 font-bold">100% Battery-Free</span>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-low border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center text-amber-400 mb-4">
+              <Sparkles className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
+              Automated Sentiment Interceptor
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Our smart landing page dynamically assesses customer mood. 4-5 star taps go straight to Google review popups, while 1-3 star reviews open a private resolution form for managers.
+            </p>
+          </div>
+          <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
+            <span>Protection: FTC / Google Compliant</span>
+            <span className="text-amber-400 font-bold">Private Resolution</span>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-low border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/15 flex items-center justify-center text-sky-400 mb-4">
+              <TrendingUp className="w-6 h-6 text-sky-400" />
+            </div>
+            <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
+              Live Tap Telemetry &amp; Analytics
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Monitor peak review hours, conversion rates per table or cashier station, and track employee performance bonuses linked directly to customer engagement.
+            </p>
+          </div>
+          <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
+            <span>Engine: Real-Time Webhooks</span>
+            <span className="text-sky-400 font-bold">Live Conversion Tracking</span>
+          </div>
+        </div>
+
+        <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-low border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 mb-4">
+              <ShieldCheck className="w-6 h-6 text-emerald-400" />
+            </div>
+            <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
+              Custom Pantone Branding
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Match your exact interior aesthetic. Choose between obsidian matte black, brushed gold metallic, minimalist white, or custom corporate brand colors.
+            </p>
+          </div>
+          <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
+            <span>Finishes: 4 Studio Materials</span>
+            <span className="text-emerald-400 font-bold">Laser Engraved</span>
+          </div>
+        </div>
       </div>
 
       {/* Interactive Standee 9:16 Video Stage Showcase */}

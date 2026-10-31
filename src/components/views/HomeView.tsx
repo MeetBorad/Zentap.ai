@@ -109,25 +109,27 @@ export default function HomeView({
             {/* Left: Value Proposition */}
             <div className="lg:col-span-7 flex flex-col">
               
-              {/* OpenDesign Pill Badge */}
-              <div className="mb-6 self-start">
-                <OpenDesignBadge variant="neutral">
-                  Smart NFC &amp; Dynamic QR Standees &amp; Cards
-                </OpenDesignBadge>
+              {/* Stitch Verified Counter Pill Badge */}
+              <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#1e2230] border border-[#2d3345] mb-6 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-[#ff7a00] animate-pulse" />
+                <CheckCircle2 className="w-4 h-4 text-[#ff7a00]" />
+                <span className="text-xs font-semibold text-white tracking-tight">
+                  Over <span className="font-bold text-[#ff7a00]">45,382</span>+ Verified Reviews Generated
+                </span>
               </div>
 
-              {/* Headline with 100% visible high contrast typography */}
+              {/* Stitch Hero Headline */}
               <h1 className="font-headline font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-snug sm:leading-[1.14] mb-5">
-                Turn customer footfall into{" "}
+                Turn Every Customer Tap into{" "}
                 <span className="text-[#ff7a00] font-black underline decoration-[#ff7a00]/40 decoration-wavy inline-block">
                   5-Star Google Reviews
                 </span>{" "}
-                and qualified leads instantly.
+                instantly
               </h1>
 
-              {/* Description */}
+              {/* Stitch Subtitle */}
               <p className="text-base sm:text-lg text-slate-200 mb-6 leading-relaxed max-w-2xl font-sans">
-                Precision-crafted NFC &amp; Dynamic QR cards and counter standees for restaurants, salons, clinics, and professional networking. Zero apps to download, 0.6-second instant tap detection, and 100% Google policy compliant.
+                Smart NFC &amp; Dynamic QR standees that boost your local business rating by 300% without awkward asking or paperwork.
               </p>
 
               {/* Local SEO Callout Bar */}
@@ -212,35 +214,44 @@ export default function HomeView({
       </AuroraBackground>
 
       {/* ========================================================================= */}
-      {/* 2. HOW IT WORKS (3 SIMPLE STEPS — MINIMAL & EASY TO UNDERSTAND)           */}
+      {/* 2. STITCH RAPID GROWTH & 5-STAR VELOCITY ENGINE                           */}
       {/* ========================================================================= */}
       <section className="px-4 sm:px-6 lg:px-8 py-16 bg-[#0a0c10] border-y border-[#232734] w-full">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
-              Simple 3-Step Process
-            </span>
-            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mt-1 tracking-tight">
-              How ZenTap Works
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed">
-              Designed for zero friction. Guests tap with their smartphone and connect with your business in under 1 second.
-            </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
+            <div>
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
+                Engineered for Rapid Growth
+              </span>
+              <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mt-1 tracking-tight">
+                Zero Friction. Pure 5-Star Velocity.
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed max-w-2xl">
+                Designed for zero friction. Guests tap with their smartphone and connect with your business in under 1 second.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate("how-it-works")}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#ff7a00] hover:underline cursor-pointer self-start md:self-auto"
+            >
+              <span>Explore full mechanism</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 steps-grid-trigger">
             
-            {/* Step 1 */}
+            {/* Stitch Card 1: Instant Tap-to-Review */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#1e2230] border border-[#2d3345] flex items-center justify-center text-white font-headline font-bold text-lg mb-5">
-                  1
+                <div className="w-12 h-12 rounded-2xl bg-[#ff7a00]/15 border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] font-headline font-bold text-lg mb-5">
+                  <Smartphone className="w-6 h-6 text-[#ff7a00]" />
                 </div>
                 <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  1. Tap Phone or Scan QR
+                  Instant Tap-to-Review
                 </h3>
                 <p className="text-xs text-slate-200 leading-relaxed font-normal">
-                  Guest brings any iPhone or Android phone within 4cm of your standee or smart card. No app, download, or Bluetooth pairing needed.
+                  Works seamlessly with modern iOS and Android devices without installing apps, entering passwords, or pairing Bluetooth.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-[#ff7a00] font-semibold">
@@ -249,41 +260,41 @@ export default function HomeView({
               </div>
             </OpenDesignCard>
 
-            {/* Step 2 */}
+            {/* Stitch Card 2: AI Sentiment Guard */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#1e2230] border border-[#2d3345] flex items-center justify-center text-white font-headline font-bold text-lg mb-5">
-                  2
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-headline font-bold text-lg mb-5">
+                  <ShieldCheck className="w-6 h-6 text-amber-400" />
                 </div>
                 <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  2. Direct Review or Dynamic Profile
+                  AI Sentiment Guard
                 </h3>
                 <p className="text-xs text-slate-200 leading-relaxed font-normal">
-                  Opens Google Review directly or launches your interactive profile with WhatsApp chat, table booking, and digital portfolio showcase.
+                  Routes happy customers to Google and negative feedback to private management tickets, safeguarding your public reputation.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-amber-400 font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Review assistant in EN, GU, HI</span>
+                <span>Anti-Gating Compliant Shield</span>
               </div>
             </OpenDesignCard>
 
-            {/* Step 3 */}
+            {/* Stitch Card 3: Dynamic Link Updates */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#1e2230] border border-[#2d3345] flex items-center justify-center text-white font-headline font-bold text-lg mb-5">
-                  3
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-headline font-bold text-lg mb-5">
+                  <RefreshCw className="w-6 h-6 text-emerald-400" />
                 </div>
                 <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  3. Capture Leads &amp; Boost SEO
+                  Dynamic Link Updates
                 </h3>
                 <p className="text-xs text-slate-200 leading-relaxed font-normal">
-                  Inquiries from built-in forms route straight to your merchant dashboard, while verified reviews elevate your Google Business ranking.
+                  Repoint your standee destination instantly to Google Maps, WhatsApp, Instagram, or Guest WiFi without ever replacing hardware.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-emerald-400 font-semibold">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Live leads &amp; Google Local 3-Pack lift</span>
+                <span>1-Click Cloud Re-Routing</span>
               </div>
             </OpenDesignCard>
 

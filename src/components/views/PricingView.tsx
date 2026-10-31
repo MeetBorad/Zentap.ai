@@ -77,13 +77,13 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
       {/* Header */}
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-xs font-bold tracking-wider uppercase text-secondary">
-          Transparent Hardware &amp; Service Plans
+          Transparent Investment
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-4xl text-on-surface mt-1 tracking-tight">
-          Choose Your Standee &amp; Card Growth Pack
+          Choose Your Growth Pack
         </h1>
         <p className="text-xs sm:text-sm text-on-surface-variant mt-3 leading-relaxed">
-          Own your custom NFC hardware outright, collect hundreds of 5-star Google reviews, and safeguard your brand against negative ratings.
+          Zero monthly fees for basic routing. Own your hardware outright, collect hundreds of 5-star Google reviews, and dominate your local neighborhood.
         </p>
       </div>
 
@@ -238,7 +238,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-secondary-container text-white text-[11px] font-bold shadow-md">
-            Most Popular • Metal &amp; Auto-Replies
+            Best Value • Metal &amp; Auto-Replies
           </div>
 
           <div>
