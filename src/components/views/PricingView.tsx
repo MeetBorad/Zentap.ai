@@ -24,6 +24,7 @@ import StandeeVisual from "@/components/StandeeVisuals";
 import CardCustomizerModal from "@/components/CardCustomizerModal";
 import { CustomCardDesign } from "@/lib/businessStore";
 import { trackCtaClick, trackWhatsAppClick } from "@/lib/analytics";
+import { OpenDesignButton } from "@/components/open-design";
 
 interface PricingViewProps {
   onNavigate: (view: ActiveView, plan?: "card_500" | "standee_1500" | "standee_auto_2000" | "franchise_custom") => void;
@@ -154,14 +155,14 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* PRODUCT 1: Simple QR/NFC Card / Standee (Direct Google Review) */}
         <div 
           onClick={() => setSelectedPlan("card_500")}
-          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "card_500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
+          className={`tactile-card p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "card_500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40 hover:border-secondary/40"
           }`}
         >
           <div>
             <div className="flex justify-between items-start mb-5">
               <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 font-bold text-[10px] uppercase">
+                <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200 font-bold text-[10px] uppercase border border-white/10">
                   Direct Review Mode
                 </span>
                 <h3 className="font-headline font-bold text-lg text-on-surface mt-2">Simple QR / NFC</h3>
@@ -202,15 +203,17 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <div className="space-y-2">
-            <button
+            <OpenDesignButton
+              variant="secondary"
+              size="md"
+              className="w-full text-center"
               onClick={(e) => {
                 e.stopPropagation();
                 onNavigate("portal", "card_500");
               }}
-              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
             >
               Order Simple NFC / QR (₹499)
-            </button>
+            </OpenDesignButton>
             <a
               href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Simple%20QR/NFC%20Direct%20Review%20Card/Standee.%20Please%20share%20details."
               target="_blank"
@@ -219,7 +222,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 e.stopPropagation();
                 trackWhatsAppClick("pricing_simple_nfc");
               }}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="tactile-btn-subtle w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Instant WhatsApp Chat</span>
@@ -230,8 +233,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* PRODUCT 2: Metal NFC/QR Card / Standee with Google Review + Replies */}
         <div 
           onClick={() => setSelectedPlan("standee_auto_2000")}
-          className={`relative p-6 sm:p-7 rounded-3xl bg-primary text-on-primary shadow-xl border-2 transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "standee_auto_2000" ? "ring-2 ring-secondary-container border-secondary-container" : "border-white/20"
+          className={`tactile-card relative p-6 sm:p-7 rounded-3xl bg-primary text-on-primary shadow-xl border-2 flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "standee_auto_2000" ? "ring-2 ring-secondary-container border-secondary-container" : "border-white/20 hover:border-[#D4AF37]/60"
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-secondary-container text-white text-[11px] font-bold shadow-md">
@@ -282,15 +285,17 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <div className="space-y-2">
-            <button
+            <OpenDesignButton
+              variant="accent"
+              size="md"
+              className="w-full text-center"
               onClick={(e) => {
                 e.stopPropagation();
                 onNavigate("portal", "standee_auto_2000");
               }}
-              className="w-full py-3.5 px-4 rounded-xl bg-secondary-container hover:bg-secondary-container/90 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer text-center"
             >
               Order Metal Review + Replies (₹1,999)
-            </button>
+            </OpenDesignButton>
             <a
               href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Metal%20NFC/QR%20with%20Google%20Review%20+%20Replies.%20Please%20share%20details."
               target="_blank"
@@ -299,7 +304,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 e.stopPropagation();
                 trackWhatsAppClick("pricing_metal_replies");
               }}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="tactile-btn-subtle w-full py-2 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-400/40 cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
               <span>Instant WhatsApp Chat</span>
@@ -310,8 +315,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* PRODUCT 3: PVC NFC Card */}
         <div 
           onClick={() => setSelectedPlan("standee_1500")}
-          className={`p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40"
+          className={`tactile-card p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "standee_1500" ? "ring-2 ring-secondary-container bg-surface-container-low shadow-md" : "border-surface-variant/40 hover:border-secondary/40"
           }`}
         >
           <div>
@@ -358,15 +363,17 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <div className="space-y-2">
-            <button
+            <OpenDesignButton
+              variant="secondary"
+              size="md"
+              className="w-full text-center"
               onClick={(e) => {
                 e.stopPropagation();
                 onNavigate("portal", "standee_1500");
               }}
-              className="w-full py-3 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-colors cursor-pointer text-center"
             >
               Order PVC NFC Card (₹699)
-            </button>
+            </OpenDesignButton>
             <a
               href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20the%20PVC%20NFC%20Card.%20Please%20share%20details."
               target="_blank"
@@ -375,7 +382,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 e.stopPropagation();
                 trackWhatsAppClick("pricing_pvc_nfc");
               }}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="tactile-btn-subtle w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Instant WhatsApp Chat</span>
@@ -386,8 +393,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
         {/* PRODUCT 4: Corporate Bulk Cards */}
         <div 
           onClick={() => setSelectedPlan("franchise_custom")}
-          className={`relative p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border transition-all flex flex-col justify-between cursor-pointer ${
-            selectedPlan === "franchise_custom" ? "ring-2 ring-amber-500 bg-amber-500/5 shadow-md" : "border-surface-variant/40"
+          className={`tactile-card relative p-6 sm:p-7 rounded-3xl bg-surface-container shadow-sm border flex flex-col justify-between cursor-pointer ${
+            selectedPlan === "franchise_custom" ? "ring-2 ring-amber-500 bg-amber-500/5 shadow-md" : "border-surface-variant/40 hover:border-amber-500/40"
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-amber-600 text-white text-[11px] font-bold shadow-md">
@@ -438,15 +445,17 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           </div>
 
           <div className="space-y-2">
-            <button
+            <OpenDesignButton
+              variant="accent"
+              size="md"
+              className="w-full text-center bg-amber-600 hover:bg-amber-500 border-amber-600"
               onClick={(e) => {
                 e.stopPropagation();
                 onNavigate("portal", "franchise_custom");
               }}
-              className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md text-center block"
             >
               Build Corporate Bulk Quotation
-            </button>
+            </OpenDesignButton>
             <a
               href="https://wa.me/919274560880?text=Hello%20ZenTap%20Team,%20I%20am%20interested%20in%20Corporate%20Bulk%20Cards%20for%20our%20team.%20Please%20share%20quotation."
               target="_blank"
@@ -455,7 +464,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 e.stopPropagation();
                 trackWhatsAppClick("pricing_corporate_bulk");
               }}
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5"
+              className="tactile-btn-subtle w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 cursor-pointer text-center flex items-center justify-center gap-1.5"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Instant Corporate WhatsApp Chat</span>
@@ -511,7 +520,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             <p className="font-headline font-bold text-2xl text-on-surface mt-1">
               ~{monthlyTaps}
             </p>
-            <span className="text-[10px] text-zinc-500">NFC &amp; QR scans</span>
+            <span className="text-[10px] text-slate-300">NFC &amp; QR scans</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-secondary-fixed/50 text-center border border-secondary-container/20">

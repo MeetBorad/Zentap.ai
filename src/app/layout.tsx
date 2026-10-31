@@ -23,7 +23,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#B91C1C",
+  themeColor: "#0e1015",
 };
 
 export const metadata: Metadata = {
@@ -208,7 +208,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${plusJakarta.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" className={`dark ${plusJakarta.variable} ${spaceGrotesk.variable}`}>
       <head>
         {/* Google Analytics 4 (GA4) Global Site Tag */}
         <script

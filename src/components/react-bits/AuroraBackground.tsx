@@ -16,7 +16,7 @@ export default function AuroraBackground({ children, className = "" }: AuroraBac
           className="absolute -top-[40%] -left-[20%] w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] rounded-full blur-3xl animate-aurora"
           style={{
             background:
-              "radial-gradient(circle, rgba(217, 72, 38, 0.12) 0%, rgba(212, 175, 55, 0.08) 50%, transparent 70%)",
+              "radial-gradient(circle, rgba(255, 122, 0, 0.14) 0%, rgba(212, 175, 55, 0.08) 50%, transparent 70%)",
           }}
         />
         <div

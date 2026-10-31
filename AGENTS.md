@@ -18,7 +18,10 @@
    - Offer private feedback for ratings $\le$ 2 stars with a single "Post" button (no redirect).
    - Offer AI review drafts and direct Google posting for ratings $\ge$ 3 stars.
    - Maintain a discreet secondary option for all visitors to access Google directly to prevent policy penalties.
-4. **Documentation**:
+4. **OpenDesign Craftsmanship**:
+   - Consult skills in `.agents/skills/` (`emil-design-eng`, `taste-skill`, `ui-animation`, `redesign-skill`, `brandkit`).
+   - Every redesigned component or CTA must strictly comply with `design.md` and Emil Kowalski's tactile microinteractions (`.tactile-btn`, physical press scale `0.978`, explicit property transitions).
+5. **Documentation**:
    - Consult files in `docs/` before making major changes.
    - Update `docs/CHANGELOG.md` and `docs/FEATURE_STATUS.md` after adding or modifying features.
    - Never commit API keys, service role keys, or secrets into documentation or git.

@@ -51,7 +51,13 @@ A locked design system for ZenTap.ai. Every page and component redesign reads th
 - **Reveal Pattern**: Opacity fade with subtle 6px Y-axis settle on initial load only. No repetitive scroll-triggered fade animations.
 - **Reduced-motion Fallback**: Instant opacity-only transition (≤ 150ms).
 
-## Microinteractions Stance
+## Microinteractions Stance & OpenDesign Craftsmanship
+- **Design Engineering Contract (OpenDesign & Emil Kowalski)**:
+  - **No `transition: all`**: Always declare explicit properties (`transform`, `opacity`, `background-color`, `border-color`, `box-shadow`) with targeted durations (120ms–220ms).
+  - **Physical Press Response (`.tactile-btn`)**: Every button and clickable element must feel responsive to press (`active:scale-[0.978]` on buttons, `active:scale-[0.985]` on subtle pills).
+  - **Tactile Specimen Lift (`.tactile-card`)**: Hardware cards elevate subtly (`translateY(-2.5px)`) on hover with smooth shadow bloom without layout thrashing.
+  - **Popovers and Menus**: Scale from their trigger origin (`transform-origin: top right / bottom center`) with custom easing curve `--ease-out`.
+  - **Anti-AI-Slop Discipline (`taste-skill`)**: Reject generic purple/neon gradient slop. Retain authentic physical acrylic, laser-engraved NFC chips, and architectural hairline borders (`--color-rule`).
 - **Silent Success**: Configuration updates and QR generation complete silently without obstructive celebratory banners or popups.
 - **Hover Timing**: Instant border and elevation response; tooltip delay 500ms; focus ring delay 0ms.
 - **Tactile Tap**: Physical press feedback (`transform: scale(0.985)`) on standee simulation buttons.

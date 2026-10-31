@@ -189,8 +189,8 @@ export default function ResultsView({ onNavigateToSample, onNavigateToPricing }:
 
               <div className="space-y-4">
                 <div className="p-3 rounded-xl bg-surface-container-low border border-surface-variant/30">
-                  <span className="text-[10px] text-zinc-500 font-medium block">Before ZenTap:</span>
-                  <span className="font-headline font-bold text-sm text-zinc-400 line-through">
+                  <span className="text-[10px] text-slate-300 font-medium block">Before ZenTap:</span>
+                  <span className="font-headline font-bold text-sm text-slate-300 line-through">
                     {cs.before}
                   </span>
                 </div>

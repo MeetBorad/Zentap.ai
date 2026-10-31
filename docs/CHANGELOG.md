@@ -1,5 +1,140 @@
 # ZenTap — Changelog
 
+## [1.16.0] — 2026-11-01
+### Fixed & Enhanced (Global High-Contrast Typography & Font Visibility Overhaul)
+- **Home Page Hero & Headline Contrast Fix**:
+  - Replaced animated `BlurText` (which initialized with `opacity: 0`) and `ShinyText` with crisp, high-contrast semantic typography in [`src/components/views/HomeView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HomeView.tsx) (`text-white` with `#ff7a00` wavy accent).
+  - Adjusted GSAP ScrollTrigger `.fromTo()` parameters on `.step-card-stagger` and `.product-card-stagger` to prevent cards from rendering transparent before scroll trigger initialization.
+- **Obsidian Theme Color Tokens & Contrast Calibration (`src/app/globals.css`, `tailwind.config.ts`)**:
+  - Upgraded `--color-ink-2` from low-contrast `#9ba1b0` to `#cbd5e1` (Tailwind `slate-300`).
+  - Calibrated `on-surface` to `#ffffff`, `on-surface-variant` to `#cbd5e1`, and `on-secondary-container` to `#000000` on `#ff7a00` background.
+  - Neutral badges updated to high-contrast dark slate (`bg-[#1e2230] border-[#3a4154] text-white`).
+- **Comprehensive Project-Wide Contrast Audit**:
+  - **Hardware Studio Modal ([`src/components/CardCustomizerModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/CardCustomizerModal.tsx))**: Converted all form labels, format selectors, material tabs, and inputs from legacy light-mode classes to obsidian high-contrast tokens (`text-white`, `text-slate-200`, `text-slate-300`, `bg-[#0e1015]`, `border-[#232734]`).
+  - **Sentiment Simulator ([`src/components/SentimentSimulator.tsx`](file:///d:/Projects/Zentap.ai/src/components/SentimentSimulator.tsx))**: Elevated contrast on star rating states, route descriptions, input placeholders, and resolution channel alerts.
+  - **Standee 3D Hero Preview ([`src/components/Standee3DPreview.tsx`](file:///d:/Projects/Zentap.ai/src/components/Standee3DPreview.tsx)) & Visuals ([`src/components/StandeeVisuals.tsx`](file:///d:/Projects/Zentap.ai/src/components/StandeeVisuals.tsx))**: Upgraded finish selection pill text and telemetry metrics to `text-slate-300 hover:text-white`.
+  - **Customer Tap / Review Page ([`src/app/r/[slug]/page.tsx`](file:///d:/Projects/Zentap.ai/src/app/r/[slug]/page.tsx))**: Upgraded unselected star contrast and powered-by footer text from faint `text-gray-600` to high-contrast `text-slate-400`.
+  - **Modals & Overlays ([`src/components/modals/AuthModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/modals/AuthModal.tsx), [`AdminAuthModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/modals/AdminAuthModal.tsx), [`TapReviewModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/modals/TapReviewModal.tsx))**: Fully overhauled to dark obsidian palette with legible input borders, placeholders, and error alerts.
+  - **Analytics Consent Banner ([`src/components/GoogleAnalytics.tsx`](file:///d:/Projects/Zentap.ai/src/components/GoogleAnalytics.tsx))**: Redesigned into obsidian dark theme (`bg-[#141720]/95`, `text-white`, `text-slate-300`) with high-contrast buttons.
+  - **Navigation & Footer ([`src/components/Header.tsx`](file:///d:/Projects/Zentap.ai/src/components/Header.tsx), [`Footer.tsx`](file:///d:/Projects/Zentap.ai/src/components/Footer.tsx))**: Elevated menu links, dropdown item descriptions, and colophon text to `text-zinc-200` and `text-slate-300`.
+  - **Public Views ([`PricingView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/PricingView.tsx), [`FeaturesView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/FeaturesView.tsx), [`ResultsView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/ResultsView.tsx))**: Replaced all remaining muted grays with bright `text-slate-200`, `text-slate-300`, and `text-emerald-400`.
+
+## [1.15.0] — 2026-11-01
+### Added & Configured (Physical Standee Authentic Hardware Photography Showcase)
+- **High-Resolution Standee Photography Assets (`public/standees/`)**:
+  - Imported and optimized all 10 authentic factory photography assets from `Photos of standee/`:
+    - 4 Premium Finishes: Champagne Gold Mirror (`Gold.png`), Brushed Stainless Steel (`Steel.png`), Natural Wood & Transparent Acrylic (`Wood Trans.png`), Rose Gold Metallic (`Pink.png`).
+    - 6 Counter Perspectives: Counter Perspective (`1.png`), NFC Tap Zone (`2.png`), Frontal Portrait (`3.png`), Beveled Acrylic Edges (`4.png`), Table Placement (`5.png`), Laser Dynamic QR (`6.png`).
+- **New Interactive Physical Hardware Gallery (`src/components/PhysicalStandeeGallery.tsx`)**:
+  - Built full interactive hardware viewer with 3-tab filtering (*All 10 Photos*, *4 Material Finishes*, *Counter Angles*).
+  - High-resolution hero stage with ambient backlight, specification overlays, interactive zoom modal, and quick thumbnail strip.
+  - Seamlessly integrated directly into [`src/components/views/HomeView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HomeView.tsx) below the products section.
+- **Upgraded Interactive 3D Standee Hero Simulator (`src/components/Standee3DPreview.tsx`)**:
+  - Replaced vector schematic with real standee photography for Gold, Steel, Wood Base, and Blush Pink.
+  - Retained 3D flip card mechanics, GSAP haptic press, AudioContext chime, and tap review simulator trigger.
+- **Physical Photography in Visual Components & Customizer**:
+  - Upgraded [`src/components/StandeeVisuals.tsx`](file:///d:/Projects/Zentap.ai/src/components/StandeeVisuals.tsx) to render real standee photos across Pricing, Client Portal, and Sample Dashboard.
+  - Enhanced [`src/components/CardCustomizerModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/CardCustomizerModal.tsx) with a Real Photo toggle mapping user-selected materials directly to high-res studio photography.
+
+
+## [1.14.0] — 2026-11-01
+### Enhanced (Tactile Obsidian Dark Theme for High-Contrast Brand Logo Display)
+- **Obsidian Dark Palette Foundation (`src/app/globals.css`, `tailwind.config.ts`, `src/app/layout.tsx`)**:
+  - Re-anchored base color tokens from light ivory (`#FAF9F6`) to a sleek, modern tactile obsidian palette (`#0e1015` base canvas, `#141720` surface, `#1e2230` container, `#232734` border outlines, `#f5f5f7` ink text, `#9ba1b0` muted text).
+  - Added default `dark` class to `<html>` tag and updated viewport theme-color to `#0e1015`.
+  - Harmonized accent color tokens with the official ZenTap logo's vivid amber/orange radar hue (`#ff7a00`).
+- **Logo Contrast & Visibility Optimization**:
+  - The white 3D-beveled 'Z' emblem and dual-tone 'ZenTap' lettering now pop with striking contrast and clarity across both [`src/components/Header.tsx`](file:///d:/Projects/Zentap.ai/src/components/Header.tsx) and [`src/components/Footer.tsx`](file:///d:/Projects/Zentap.ai/src/components/Footer.tsx).
+- **Component & View Modernization**:
+  - Redesigned [`src/components/open-design/`](file:///d:/Projects/Zentap.ai/src/components/open-design/) primitive components (`Card`, `Badge`, `Button`) to adhere to Emil Kowalski tactile interactions in dark mode.
+  - Refactored [`src/components/views/HomeView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HomeView.tsx) hero headline, value props, 3-step process cards, product spotlight cards, and lead capture showcase to dark obsidian styling.
+  - Upgraded [`src/components/SentimentSimulator.tsx`](file:///d:/Projects/Zentap.ai/src/components/SentimentSimulator.tsx) and [`src/components/CardCustomizerModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/CardCustomizerModal.tsx) to dark acrylic card containers with obsidian borders.
+
+
+## [1.13.0] — 2026-11-01
+### Added & Configured (Official Brand Logo Integration)
+- **Official Brand Logo Asset (`public/logo.png`, `public/zentap-logo.png`)**:
+  - Imported the official high-resolution ZenTap logo featuring the 3D-beveled white 'Z', orange gradient radar NFC arcs, and dual-tone 'ZenTap' typography.
+- **Header & Footer Brand Updates**:
+  - Replaced the generic block 'Z' emblem and text combo in [`src/components/Header.tsx`](file:///d:/Projects/Zentap.ai/src/components/Header.tsx) (both public site navigation and dashboard return bar) with the official logo image.
+  - Replaced the footer identity badge in [`src/components/Footer.tsx`](file:///d:/Projects/Zentap.ai/src/components/Footer.tsx) with the new official brand logo.
+  - Updated the closing Scene 6 outro in [`src/components/SmartStandeeAnimation.tsx`](file:///d:/Projects/Zentap.ai/src/components/SmartStandeeAnimation.tsx) to display the official high-res logo.
+
+
+## [1.12.0] — 2026-11-01
+### Added & Enhanced (Cloudflare Security Audit & Navigation Streamlining)
+- **Cloudflare Security Audit Suite (`.agents/skills/security-audit/`, `.claude/skills/security-audit/`, `.gemini/skills/security-audit/`)**:
+  - Integrated official Cloudflare Security Audit skill suite covering Client-Side, Web Protocol & Auth, Data Isolation, Cloud/Deployment, and Supply Chain review specifications.
+  - Hardened server-side payment verification in `src/app/api/checkout/verify-payment/route.ts`: required non-empty `razorpay_signature` in request payload to prevent bypass during checkout verification.
+  - Audited multi-tenant boundary checks (`owner_user_id = auth.uid()`), webhook HMAC-SHA256 signatures, and lead capture endpoints.
+- **Main Navigation Cleanliness**:
+  - Streamlined primary navigation in `Header.tsx`, `page.tsx`, and `Footer.tsx`.
+  - Removed redundant `Features` and `Sample Showcase` tabs from the main website navigation bar and mobile bottom nav, focusing user attention on **Home**, **Products & Pricing**, **How It Works**, and **Merchant Dashboard**.
+
+
+## [1.11.0] — 2026-11-01
+### Added & Configured (Paul Bakaus Impeccable Design Quality & Anti-Slop Suite)
+- **Impeccable Skills Suite (`.agents/skills/impeccable/`, `.claude/skills/impeccable/`, `.gemini/skills/impeccable/`)**:
+  - Installed official `pbakaus/impeccable` design suite (24 design commands including `/impeccable critique`, `/impeccable audit`, `/impeccable polish`, `/impeccable typeset`, `/impeccable layout`, `/impeccable animate`).
+  - Added full reference library across visual hierarchy, responsive adaptation, craft floors, and motion design.
+- **Automated Anti-Slop Detection Engine (`npx impeccable detect`)**:
+  - Executed full detector scan across all 64 source files in `src/`.
+  - Replaced decorative text gradient fills with crisp solid typography in `src/app/r/[slug]/page.tsx` for optimal readability and contrast.
+  - Eliminated tacky bounce easings in favor of physical exponential deceleration (`cubic-bezier(.16, 1, .3, 1)`) in `SmartStandeeAnimation.tsx` and smooth hover scaling in `HowItWorksView.tsx`.
+  - Configured design system brand font exemption in `.impeccable/config.json`.
+  - Detector now returns **0 anti-patterns** across the entire codebase.
+
+
+## [1.10.0] — 2026-11-01
+### Added & Enhanced (Smart Standee Interactive 9:16 Video Animation Showcase)
+- **Interactive Smart Standee 9:16 Showcase (`src/components/SmartStandeeAnimation.tsx`)**:
+  - Implemented responsive portrait (9:16) video animation component inside an ultra-clean mobile mockup stage.
+  - 7 sequential scenes (`s0` to `s6`) with smooth keyframe transitions:
+    1. `s0`: Premium All-in-One Smart NFC Standee intro with 3D pop & spin.
+    2. `s1`: Dual functionality (NFC Enabled + QR Enabled chip badges).
+    3. `s2`: Floating social & review ecosystem (Google, Facebook, Instagram, WhatsApp).
+    4. `s3`: Tap walkthrough with NFC pulse waves and live AI review generation simulator.
+    5. `s4`: Scan walkthrough with laser QR scanning beam and phone frame mockup.
+    6. `s5`: Core feature highlights (All-in-One, Unlimited Taps/Scans, Dynamic QR, AI Review Assistant).
+    7. `s6`: High-conversion brand outro with glowing CTA.
+  - Integrated dynamic real-time replay progress bar and click-to-replay haptic controls.
+- **Embedded into How It Works Page (`src/components/views/HowItWorksView.tsx`)**:
+  - Positioned prominently as a featured hardware walkthrough section right above the 4-step process.
+  - Paired with OpenDesign buttons (`OpenDesignButton`) and feature capability badges.
+  - Maintained complete anti-gating compliance and Emil Kowalski design standards.
+
+
+## [1.9.0] — 2026-11-01
+### Added & Enhanced (HeyGen HyperFrames Video Framework Integration)
+- **HyperFrames Agent Skills & Design Templates** (`.agents/skills/hyperframes/`, `.agents/skills/video-hyperframes/`):
+  - Installed official HeyGen HyperFrames composition protocols and templates.
+  - Added continuous frame animation standards and Remotion/HyperFrames compatibility.
+- **Interactive HyperFrames Showcase Player** (`src/components/HyperFramesPlayer.tsx`):
+  - Developed a 6-frame kinetic motion timeline showcasing ZenTap's 0.6s tap velocity, obsidian acrylic hardware, zero-app native NFC detection, anti-gating sentiment shield, automated multilingual replies, and Local 3-Pack authority.
+  - Linear timeline progress bar with millisecond frame interpolation.
+  - Scrubber navigation with glassmorphism controls (Play, Pause, Step Next, Step Prev, Frame Select).
+  - GSAP physics-eased entry transitions on every frame change.
+  - Embedded into `HomeView.tsx` right below the 3-step walkthrough.
+
+
+## [1.8.0] — 2026-10-31
+### Added & Enhanced (OpenDesign Ecosystem & Emil Kowalski Design Engineering)
+- **OpenDesign Multi-Agent Skills Suite** (`.agents/skills/`, `.claude/skills/`, `.gemini/skills/`):
+  - Installed and configured OpenDesign core design skills: `emil-design-eng`, `taste-skill`, `ui-animation`, `design-brief`, `redesign-skill`, `brandkit`, and `web-design-guidelines`.
+  - Added official agent design engineering rules in `AGENTS.md` and locked design contract in `design.md`.
+- **OpenDesign In-Project Component Suite** (`src/components/open-design/`):
+  - Created reusable OpenDesign primitives (`OpenDesignButton`, `OpenDesignCard`, `OpenDesignBadge`) fully typed for Next.js 15 & React 19.
+  - Implemented variants (`primary`, `accent`, `secondary`, `ghost`, `subtle`, `metal`) and sizes (`sm`, `md`, `lg`, `icon`) with built-in tactile micro-interactions.
+  - Deployed in `HomeView.tsx` (Hero badge, main CTAs, 3-step walkthrough cards, bottom banner) and `PricingView.tsx` (all 4 product order buttons).
+- **OpenDesign Full Systems & Templates Catalog** (`open-design/`):
+  - Installed complete `design-systems/` (151 design system token sets including Apple, Bento, Linear, Stripe, Vercel, Minimal) and `design-templates/` (SaaS landing, pricing pages, prototypes).
+- **Emil Kowalski Design Engineering & Micro-Interactions** (`src/app/globals.css`, `HomeView.tsx`, `Header.tsx`, `PricingView.tsx`):
+  - Added `.tactile-btn` and `.tactile-btn-subtle` with physical press feedback (`active:scale-[0.978]` and `active:scale-[0.985]`).
+  - Added `.tactile-card` with smooth physical lift (`translateY(-2.5px)`) and shadow bloom on hover.
+  - Eliminated blanket `transition-all` declarations on primary CTAs in favor of targeted transitions (`transform`, `background-color`, `border-color`, `box-shadow`) with exact cubic-bezier timing.
+  - Upgraded public header nav pills, merchant action buttons, product catalog cards, and hero CTAs with tactile press response.
+
+
 ## [1.7.0] — 2026-10-30
 ### Added & Enhanced (GSAP Animation Engine Integration)
 - **GSAP & `@gsap/react` Core Integration**: Installed and configured official GreenSock ecosystem with strict adherence to `gsap-react`, `gsap-core`, and `gsap-scrolltrigger` skill guidelines.

@@ -497,7 +497,7 @@ export default function CustomizedReviewAssistantPage() {
         <p className="text-xs text-gray-400 max-w-sm leading-relaxed mb-6">
           This business review assistant page is temporarily paused. Please check back shortly or visit the store counter for assistance.
         </p>
-        <span className="text-[10px] text-gray-600 font-mono">
+        <span className="text-[10px] text-slate-400 font-mono">
           Powered by ZenTap Smart Review Network
         </span>
       </div>
@@ -577,7 +577,7 @@ export default function CustomizedReviewAssistantPage() {
             <Sparkles className="w-9 h-9 text-[#F7E7A9]" />
           </div>
 
-          <h1 className="font-serif tracking-wider font-extrabold text-2xl sm:text-3xl bg-gradient-to-r from-white via-[#F7E7A9] to-white bg-clip-text text-transparent uppercase">
+          <h1 className="font-serif tracking-wider font-extrabold text-2xl sm:text-3xl text-white uppercase">
             {business.name}
           </h1>
 
@@ -674,7 +674,7 @@ export default function CustomizedReviewAssistantPage() {
                   className={`text-4xl sm:text-5xl transition-all duration-200 cursor-pointer select-none active:scale-95 ${
                     isActive
                       ? "text-[#FFB800] scale-110 drop-shadow-[0_0_14px_rgba(255,184,0,0.6)]"
-                      : "text-zinc-600 grayscale opacity-40 hover:opacity-75"
+                      : "text-zinc-500 grayscale opacity-60 hover:opacity-100"
                   }`}
                   aria-label={`Rate ${starVal} Stars`}
                 >

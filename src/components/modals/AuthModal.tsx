@@ -207,34 +207,34 @@ export default function AuthModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-[#FAF9F6] rounded-3xl shadow-2xl border border-[#E2DFD8] p-6 sm:p-8 animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-[#141720] text-white rounded-3xl shadow-2xl border border-[#232734] p-6 sm:p-8 animate-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#E2DFD8] mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-[#232734] mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1C1B1A] text-white flex items-center justify-center font-headline font-bold text-lg shadow-sm">
-              <Store className="w-5 h-5 text-[#D94826]" />
+            <div className="w-10 h-10 rounded-xl bg-[#1e2230] text-white flex items-center justify-center font-headline font-bold text-lg shadow-sm border border-[#2d3345]">
+              <Store className="w-5 h-5 text-[#ff7a00]" />
             </div>
             <div>
-              <h3 className="font-headline font-bold text-lg text-[#1C1B1A]">
+              <h3 className="font-headline font-bold text-lg text-white">
                 Client Merchant Portal
               </h3>
-              <p className="text-[11px] text-[#615E5B]">
+              <p className="text-[11px] text-slate-300">
                 Access your business profile &amp; standee controls
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#F2F0EB] hover:bg-[#E2DFD8] flex items-center justify-center text-[#615E5B] hover:text-[#1C1B1A] transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#1e2230] hover:bg-[#252b3d] border border-[#2d3345] flex items-center justify-center text-zinc-300 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tab Switcher: ONLY Sign In and Register */}
-        <div className="grid grid-cols-2 p-1 bg-[#F2F0EB] rounded-2xl mb-5 border border-[#E2DFD8]">
+        <div className="grid grid-cols-2 p-1 bg-[#0e1015] rounded-2xl mb-5 border border-[#232734]">
           <button
             onClick={() => {
               setActiveTab("signin");
@@ -242,8 +242,8 @@ export default function AuthModal({
             }}
             className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
               activeTab === "signin"
-                ? "bg-[#1C1B1A] text-white shadow-sm"
-                : "text-[#615E5B] hover:text-[#1C1B1A]"
+                ? "bg-[#ff7a00] text-black font-bold shadow-sm"
+                : "text-zinc-400 hover:text-white"
             }`}
           >
             Merchant Sign In
@@ -255,8 +255,8 @@ export default function AuthModal({
             }}
             className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
               activeTab === "signup"
-                ? "bg-[#1C1B1A] text-white shadow-sm"
-                : "text-[#615E5B] hover:text-[#1C1B1A]"
+                ? "bg-[#ff7a00] text-black font-bold shadow-sm"
+                : "text-zinc-400 hover:text-white"
             }`}
           >
             Register Business
@@ -265,15 +265,15 @@ export default function AuthModal({
 
         {/* Alert Messages */}
         {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-700">
-            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 rounded-xl bg-red-950/50 border border-red-800/50 flex items-start gap-2 text-xs text-red-300">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {authSuccessMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2 text-xs text-emerald-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+          <div className="mb-4 p-3 rounded-xl bg-emerald-950/50 border border-emerald-800/50 flex items-start gap-2 text-xs text-emerald-300">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
             <span>{authSuccessMessage}</span>
           </div>
         )}
@@ -283,7 +283,7 @@ export default function AuthModal({
           type="button"
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="w-full mb-4 py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-50 border border-[#E2DFD8] text-xs font-semibold text-[#1C1B1A] transition-colors flex items-center justify-center gap-3 cursor-pointer shadow-sm disabled:opacity-60"
+          className="w-full mb-4 py-2.5 px-4 rounded-xl bg-[#1e2230] hover:bg-[#252b3d] border border-[#2d3345] text-xs font-semibold text-white transition-colors flex items-center justify-center gap-3 cursor-pointer shadow-sm disabled:opacity-60"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -307,11 +307,11 @@ export default function AuthModal({
         </button>
 
         <div className="relative flex py-2 items-center mb-4">
-          <div className="flex-grow border-t border-[#E2DFD8]"></div>
-          <span className="flex-shrink mx-3 text-[10px] text-[#615E5B] uppercase font-mono tracking-wider">
+          <div className="flex-grow border-t border-[#232734]"></div>
+          <span className="flex-shrink mx-3 text-[10px] text-zinc-400 uppercase font-mono tracking-wider">
             Or with business email
           </span>
-          <div className="flex-grow border-t border-[#E2DFD8]"></div>
+          <div className="flex-grow border-t border-[#232734]"></div>
         </div>
 
         {/* Credentials Form */}
@@ -320,11 +320,11 @@ export default function AuthModal({
           {activeTab === "signup" && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   Full Name
                 </label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+                  <UserIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"
                     required
@@ -332,17 +332,17 @@ export default function AuthModal({
                     autoComplete="name"
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Ramesh Patel"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0e1015] border border-[#232734] text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#ff7a00]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   Registered Business Name
                 </label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+                  <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"
                     required
@@ -350,7 +350,7 @@ export default function AuthModal({
                     autoComplete="organization"
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="e.g. Copper Kettle Roasters"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0e1015] border border-[#232734] text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#ff7a00]"
                   />
                 </div>
               </div>
@@ -358,11 +358,11 @@ export default function AuthModal({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
+            <label className="block text-xs font-semibold text-slate-200 mb-1">
               Business Email Address
             </label>
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+              <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
                 type="email"
                 required
@@ -370,14 +370,14 @@ export default function AuthModal({
                 autoComplete="email"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="owner@yourbusiness.com"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0e1015] border border-[#232734] text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#ff7a00]"
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-[#1C1B1A]">
+              <label className="block text-xs font-semibold text-slate-200">
                 Account Password
               </label>
               {activeTab === "signin" && (
@@ -387,14 +387,14 @@ export default function AuthModal({
                     setIsResetMode(true);
                     setErrorMessage("");
                   }}
-                  className="text-[11px] text-[#D94826] font-semibold hover:underline cursor-pointer"
+                  className="text-[11px] text-[#ff7a00] font-semibold hover:underline cursor-pointer"
                 >
                   Forgot Password?
                 </button>
               )}
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+              <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
                 type="password"
                 required
@@ -402,7 +402,7 @@ export default function AuthModal({
                 autoComplete={activeTab === "signin" ? "current-password" : "new-password"}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-[#E2DFD8] text-base sm:text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#0e1015] border border-[#232734] text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#ff7a00]"
               />
             </div>
           </div>
@@ -410,11 +410,11 @@ export default function AuthModal({
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#1C1B1A] hover:bg-[#2C2B2A] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-black" />
                 <span>Authenticating...</span>
               </>
             ) : (
@@ -424,7 +424,7 @@ export default function AuthModal({
                     ? "Open Merchant Dashboard"
                     : "Create Business Account"}
                 </span>
-                <ArrowRight className="w-4 h-4 text-[#D94826]" />
+                <ArrowRight className="w-4 h-4 text-black" />
               </>
             )}
           </button>
@@ -432,28 +432,28 @@ export default function AuthModal({
         ) : (
           /* PASSWORD RESET FORM (Visible when isResetMode is active) */
           <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in duration-150">
-            <div className="p-4 rounded-2xl bg-[#F2F0EB] border border-[#E2DFD8]">
-              <h4 className="font-bold text-xs text-[#1C1B1A] mb-1">
+            <div className="p-4 rounded-2xl bg-[#0e1015] border border-[#232734]">
+              <h4 className="font-bold text-xs text-white mb-1">
                 Password Recovery Assistant
               </h4>
-              <p className="text-[11px] text-[#615E5B]">
+              <p className="text-[11px] text-slate-300">
                 Enter your account email address and we will immediately send you a secure password reset link.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1C1B1A] mb-1">
+              <label className="block text-xs font-semibold text-slate-200 mb-1">
                 Your Registered Email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#615E5B]" />
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="owner@yourbusiness.com"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-[#E2DFD8] text-xs text-[#1C1B1A] focus:outline-none focus:ring-1 focus:ring-[#1C1B1A]"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#0e1015] border border-[#232734] text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#ff7a00]"
                 />
               </div>
             </div>
@@ -461,17 +461,17 @@ export default function AuthModal({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-[#1C1B1A] hover:bg-[#2C2B2A] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
                   <span>Sending Reset Email...</span>
                 </>
               ) : (
                 <>
                   <span>Send Password Reset Link</span>
-                  <ArrowRight className="w-4 h-4 text-[#D94826]" />
+                  <ArrowRight className="w-4 h-4 text-black" />
                 </>
               )}
             </button>
@@ -483,22 +483,22 @@ export default function AuthModal({
                 setErrorMessage("");
                 setAuthSuccessMessage("");
               }}
-              className="w-full py-2 text-xs font-semibold text-[#615E5B] hover:text-[#1C1B1A] transition-colors cursor-pointer text-center"
+              className="w-full py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer text-center"
             >
               ← Return to Merchant Sign In
             </button>
           </form>
         )}
 
-        <div className="mt-4 pt-3 border-t border-[#E2DFD8] text-center">
-          <p className="text-[11px] text-[#615E5B]">
+        <div className="mt-4 pt-3 border-t border-[#232734] text-center">
+          <p className="text-[11px] text-zinc-400">
             {activeTab === "signin" ? (
               <>
                 Don&apos;t have a business account yet?{" "}
                 <button
                   type="button"
                   onClick={() => setActiveTab("signup")}
-                  className="font-bold text-[#D94826] hover:underline cursor-pointer"
+                  className="font-bold text-[#ff7a00] hover:underline cursor-pointer"
                 >
                   Register here
                 </button>
@@ -509,7 +509,7 @@ export default function AuthModal({
                 <button
                   type="button"
                   onClick={() => setActiveTab("signin")}
-                  className="font-bold text-[#D94826] hover:underline cursor-pointer"
+                  className="font-bold text-[#ff7a00] hover:underline cursor-pointer"
                 >
                   Sign in here
                 </button>

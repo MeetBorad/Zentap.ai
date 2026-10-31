@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "stitch_zentap_digital_redesign_platform"]
+  "exclude": ["node_modules", "stitch_zentap_digital_redesign_platform", "open-design"]
 }

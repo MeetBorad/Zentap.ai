@@ -69,37 +69,37 @@ export default function GoogleAnalytics() {
         <aside
           role="region"
           aria-label="Cookie consent banner"
-          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 p-4 sm:p-5 rounded-2xl bg-white/95 backdrop-blur-md border border-zinc-200 shadow-2xl text-zinc-900 transition-all duration-300 animate-in slide-in-from-bottom-5"
+          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 p-4 sm:p-5 rounded-2xl bg-[#141720]/95 backdrop-blur-md border border-[#232734] shadow-2xl text-white transition-all duration-300 animate-in slide-in-from-bottom-5"
         >
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-50 text-[#B91C1C] flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#ff7a00]/15 text-[#ff7a00] flex items-center justify-center flex-shrink-0">
               <Cookie className="w-5 h-5" />
             </div>
             <div className="flex-1 space-y-1">
-              <h3 className="font-bold text-xs text-zinc-900 tracking-tight flex items-center gap-1.5">
+              <h3 className="font-bold text-xs text-white tracking-tight flex items-center gap-1.5">
                 <span>Privacy &amp; Analytics Consent</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-mono font-medium">GA4</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium border border-emerald-500/40">GA4</span>
               </h3>
-              <p className="text-[11px] text-zinc-600 leading-relaxed font-sans">
+              <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
                 We use privacy-friendly analytics to optimize standee review conversion telemetry. No third-party ad tracking.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 mt-3.5 pt-3 border-t border-zinc-100">
+          <div className="flex items-center justify-end gap-2.5 mt-3.5 pt-3 border-t border-[#232734]">
             <button
               type="button"
               onClick={() => handleConsent("denied")}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             >
               Essential Only
             </button>
             <button
               type="button"
               onClick={() => handleConsent("granted")}
-              className="px-4 py-1.5 rounded-lg bg-[#B91C1C] text-white text-xs font-bold hover:bg-red-800 transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-1.5 rounded-lg bg-[#ff7a00] text-black text-xs font-bold hover:bg-[#e56d00] transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
             >
-              <Check className="w-3.5 h-3.5" />
+              <Check className="w-3.5 h-3.5 text-black" />
               <span>Accept Analytics</span>
             </button>
           </div>

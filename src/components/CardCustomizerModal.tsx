@@ -50,7 +50,16 @@ export default function CardCustomizerModal({
   const [accentColor, setAccentColor] = useState<string>(initialDesign?.accent_color || "#D94826");
   const [logoPreview, setLogoPreview] = useState<string | null>(initialDesign?.logo_preview || null);
   const [qrUrl, setQrUrl] = useState<string>("");
+  const [showRealPhoto, setShowRealPhoto] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MATERIAL_PHOTOS: Record<string, string> = {
+    brushed_gold: "/standees/Gold.png",
+    brushed_silver: "/standees/Steel.png",
+    acrylic_minimal: "/standees/Wood Trans.png",
+    executive_emerald: "/standees/Pink.png",
+    metal_obsidian: "/standees/3.png",
+  };
 
   useEffect(() => {
     if (initialDesign) {
@@ -144,19 +153,19 @@ export default function CardCustomizerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-white dark:bg-[#1C1B1A] rounded-3xl border border-[#E2DFD8] dark:border-white/10 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-4xl bg-[#141720] text-white rounded-3xl border border-[#232734] shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#E2DFD8] dark:border-white/10 flex items-center justify-between flex-shrink-0 bg-[#FAF9F6] dark:bg-[#141413]">
+        <div className="px-6 py-4 border-b border-[#232734] flex items-center justify-between flex-shrink-0 bg-[#0e1015]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#1C1B1A] dark:bg-white text-white dark:text-[#1C1B1A] flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-[#ff7a00] text-black flex items-center justify-center font-bold">
               <Sliders className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-headline font-bold text-base text-[#1C1B1A] dark:text-white">
+              <h2 className="font-headline font-bold text-base text-white">
                 Hardware Design Studio
               </h2>
-              <p className="text-[11px] text-[#615E5B] dark:text-zinc-400">
+              <p className="text-[11px] text-slate-300">
                 Customize your physical NFC Standee or Metal/PVC Card in real-time
               </p>
             </div>
@@ -164,7 +173,7 @@ export default function CardCustomizerModal({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#615E5B] dark:text-zinc-300 transition-colors cursor-pointer"
+            className="p-2 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -178,7 +187,7 @@ export default function CardCustomizerModal({
             
             {/* Format Selector: Standee vs Card */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Hardware Format
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -187,16 +196,16 @@ export default function CardCustomizerModal({
                   onClick={() => setFormat("standee")}
                   className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
                     format === "standee"
-                      ? "border-[#D94826] bg-[#D94826]/10 text-[#D94826] font-bold shadow-sm"
-                      : "border-[#E2DFD8] dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-[#1C1B1A] dark:text-zinc-300"
+                      ? "border-[#ff7a00] bg-[#ff7a00]/10 text-[#ff7a00] font-bold shadow-sm"
+                      : "border-[#232734] bg-[#0e1015] hover:border-[#ff7a00]/50 text-white"
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-xs font-bold block">Counter Standee</span>
-                    <span className="text-[10px] text-[#615E5B] dark:text-zinc-400">For Desk / Dining Tables</span>
+                    <span className="text-[10px] text-slate-300">For Desk / Dining Tables</span>
                   </div>
                 </button>
 
@@ -205,16 +214,16 @@ export default function CardCustomizerModal({
                   onClick={() => setFormat("card")}
                   className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
                     format === "card"
-                      ? "border-[#D94826] bg-[#D94826]/10 text-[#D94826] font-bold shadow-sm"
-                      : "border-[#E2DFD8] dark:border-white/10 hover:border-black/30 dark:hover:border-white/30 text-[#1C1B1A] dark:text-zinc-300"
+                      ? "border-[#ff7a00] bg-[#ff7a00]/10 text-[#ff7a00] font-bold shadow-sm"
+                      : "border-[#232734] bg-[#0e1015] hover:border-[#ff7a00]/50 text-white"
                   }`}
                 >
-                  <div className="w-8 h-8 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
                     <Radio className="w-4 h-4" />
                   </div>
                   <div>
                     <span className="text-xs font-bold block">Smart Tap Card</span>
-                    <span className="text-[10px] text-[#615E5B] dark:text-zinc-400">Metal / PVC Pocket Card</span>
+                    <span className="text-[10px] text-slate-300">Metal / PVC Pocket Card</span>
                   </div>
                 </button>
               </div>
@@ -222,7 +231,7 @@ export default function CardCustomizerModal({
 
             {/* Material & Finish */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Material Finish
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -239,12 +248,12 @@ export default function CardCustomizerModal({
                     onClick={() => setMaterial(mat.id as any)}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
                       material === mat.id
-                        ? "border-[#D94826] ring-1 ring-[#D94826] bg-black/5 dark:bg-white/5 font-bold"
-                        : "border-[#E2DFD8] dark:border-white/10 hover:border-zinc-400"
+                        ? "border-[#ff7a00] ring-1 ring-[#ff7a00] bg-white/10 font-bold"
+                        : "border-[#232734] bg-[#0e1015] hover:border-zinc-400"
                     }`}
                   >
                     <span className={`w-4 h-4 rounded-full ${mat.color} ${mat.border} border shadow-inner flex-shrink-0`} />
-                    <span className="text-[11px] truncate text-[#1C1B1A] dark:text-zinc-200">
+                    <span className="text-[11px] truncate text-white">
                       {mat.name}
                     </span>
                   </button>
@@ -254,7 +263,7 @@ export default function CardCustomizerModal({
 
             {/* Business Logo Upload */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Business Logo / Symbol
               </label>
               <div className="flex items-center gap-3">
@@ -268,9 +277,9 @@ export default function CardCustomizerModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="py-2.5 px-4 rounded-xl border border-dashed border-[#E2DFD8] dark:border-white/20 hover:border-[#D94826] text-xs font-semibold text-[#1C1B1A] dark:text-zinc-200 transition-colors flex items-center gap-2 cursor-pointer bg-[#F2F0EB]/50 dark:bg-white/5"
+                  className="py-2.5 px-4 rounded-xl border border-dashed border-[#232734] hover:border-[#ff7a00] text-xs font-semibold text-white transition-colors flex items-center gap-2 cursor-pointer bg-[#0e1015]"
                 >
-                  <Upload className="w-3.5 h-3.5 text-[#D94826]" />
+                  <Upload className="w-3.5 h-3.5 text-[#ff7a00]" />
                   <span>{logoPreview ? "Change Logo" : "Upload Business Logo"}</span>
                 </button>
 
@@ -284,14 +293,14 @@ export default function CardCustomizerModal({
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-[#615E5B] dark:text-zinc-400 mt-1">
+              <p className="text-[10px] text-slate-300 mt-1">
                 PNG, SVG, or JPG with transparent or clean background recommended
               </p>
             </div>
 
             {/* Business Name Input */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Business Name (Laser-Etched / Printed)
               </label>
               <input
@@ -299,13 +308,13 @@ export default function CardCustomizerModal({
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="Enter Business Name"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2DFD8] dark:border-white/20 bg-white dark:bg-[#141413] text-sm text-[#1C1B1A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#D94826]"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#232734] bg-[#0e1015] text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff7a00]"
               />
             </div>
 
             {/* Custom Tagline */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Custom Tagline / Call to Action
               </label>
               <input
@@ -313,13 +322,13 @@ export default function CardCustomizerModal({
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
                 placeholder="e.g. Tap with phone or scan QR to review"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2DFD8] dark:border-white/20 bg-white dark:bg-[#141413] text-sm text-[#1C1B1A] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#D94826]"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#232734] bg-[#0e1015] text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#ff7a00]"
               />
             </div>
 
             {/* Accent Color Picker */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#615E5B] dark:text-zinc-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-200 mb-2">
                 Accent Highlight Color
               </label>
               <div className="flex items-center gap-2">
@@ -348,76 +357,137 @@ export default function CardCustomizerModal({
           </div>
 
           {/* Right Column: Live Interactive Specimen Preview */}
-          <div className="lg:col-span-6 flex flex-col items-center justify-center p-6 rounded-2xl bg-[#F2F0EB]/60 dark:bg-black/30 border border-[#E2DFD8] dark:border-white/10">
-            <span className="text-[11px] font-mono uppercase tracking-widest text-[#615E5B] dark:text-zinc-400 mb-4 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-[#D94826]" />
-              <span>Real-Time Production Specimen</span>
-            </span>
+          <div className="lg:col-span-6 flex flex-col items-center justify-center p-6 rounded-2xl bg-[#0e1015] border border-[#232734]">
+            
+            {/* View Mode Switcher */}
+            <div className="w-full flex items-center justify-between mb-4">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-slate-300 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-[#ff7a00]" />
+                <span>Live Specimen Preview</span>
+              </span>
+
+              {format === "standee" && (
+                <div className="flex items-center gap-1 bg-[#141720] p-1 rounded-full border border-[#232734]">
+                  <button
+                    type="button"
+                    onClick={() => setShowRealPhoto(true)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors cursor-pointer ${
+                      showRealPhoto ? "bg-[#ff7a00] text-black font-bold" : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    Real Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowRealPhoto(false)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors cursor-pointer ${
+                      !showRealPhoto ? "bg-[#ff7a00] text-black font-bold" : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    Diagram
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* STAND DISPLAY */}
             {format === "standee" ? (
-              <div className={`relative w-full max-w-[280px] sm:max-w-[300px] aspect-[1/1.6] rounded-3xl p-6 border-2 transition-all duration-300 flex flex-col items-center justify-between text-center ${getMaterialClasses()}`}>
-                
-                {/* Standee Header */}
-                <div className="w-full flex flex-col items-center">
-                  {/* Logo or Emblem */}
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md mb-2 overflow-hidden border"
-                    style={{ borderColor: accentColor }}
-                  >
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Custom business logo preview on ZenTap standee" width={48} height={48} className="w-full h-full object-cover" />
-                    ) : (
-                      <Sparkles className="w-7 h-7" style={{ color: accentColor }} />
+              showRealPhoto ? (
+                /* Authentic Real Photo Showcase */
+                <div className="relative w-full max-w-[280px] sm:max-w-[300px] aspect-[3/4] rounded-3xl overflow-hidden bg-gradient-to-b from-[#141720] to-[#0a0c10] border-2 border-[#232734] shadow-2xl flex flex-col items-center justify-between p-3.5 select-none group">
+                  <img
+                    src={MATERIAL_PHOTOS[material] || "/standees/Gold.png"}
+                    alt="Authentic ZenTap Standee"
+                    className="absolute inset-0 w-full h-full object-contain p-2"
+                  />
+                  
+                  {/* Top Business Name / Logo Badge */}
+                  <div className="relative z-10 w-full flex items-center justify-between px-2 pt-1">
+                    <span className="font-headline font-black text-[11px] text-white bg-black/75 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 truncate max-w-[170px] drop-shadow">
+                      {customName.toUpperCase()}
+                    </span>
+                    {logoPreview && (
+                      <img src={logoPreview} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-black/70 border border-white/20 p-0.5 shadow" />
                     )}
                   </div>
 
-                  <span 
-                    className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-1"
-                    style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
-                  >
-                    Review Us On Google
-                  </span>
+                  {/* Center Tap Hotspot Animation */}
+                  <div className="relative z-10 my-auto flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-full bg-[#ff7a00]/30 border-2 border-[#ff7a00] flex items-center justify-center animate-pulse backdrop-blur-xs">
+                      <Radio className="w-6 h-6 text-[#ff7a00]" />
+                    </div>
+                  </div>
 
-                  <h3 className="font-headline font-black text-base sm:text-lg leading-tight truncate max-w-full">
-                    {customName.toUpperCase()}
-                  </h3>
-
-                  <div className="flex items-center gap-1 text-amber-400 text-xs my-1">
-                    {"★".repeat(5)}
+                  {/* Bottom Chip Bar */}
+                  <div className="relative z-10 w-full bg-black/80 backdrop-blur-md rounded-xl py-1.5 px-3 flex items-center justify-between text-[9px] font-mono border border-white/10">
+                    <span className="text-[#ff7a00] font-bold">NTAG216 NFC</span>
+                    <span className="text-zinc-300">Level-Q Laser QR</span>
                   </div>
                 </div>
+              ) : (
+                <div className={`relative w-full max-w-[280px] sm:max-w-[300px] aspect-[1/1.6] rounded-3xl p-6 border-2 transition-all duration-300 flex flex-col items-center justify-between text-center ${getMaterialClasses()}`}>
+                  
+                  {/* Standee Header */}
+                  <div className="w-full flex flex-col items-center">
+                    {/* Logo or Emblem */}
+                    <div 
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md mb-2 overflow-hidden border"
+                      style={{ borderColor: accentColor }}
+                    >
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="Custom business logo preview on ZenTap standee" width={48} height={48} className="w-full h-full object-cover" />
+                      ) : (
+                        <Sparkles className="w-7 h-7" style={{ color: accentColor }} />
+                      )}
+                    </div>
 
-                {/* NFC Target Zone */}
-                <div className="my-auto p-4 rounded-2xl bg-black/20 dark:bg-white/10 border border-white/20 flex flex-col items-center justify-center w-full max-w-[190px]">
-                  <div 
-                    className="w-11 h-11 rounded-full flex items-center justify-center mb-1.5 animate-pulse"
-                    style={{ backgroundColor: `${accentColor}30`, color: accentColor }}
-                  >
-                    <Radio className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-extrabold tracking-wide uppercase">
-                    Tap Phone Here
-                  </span>
-                  <span className="text-[8px] opacity-70">
-                    Instant NFC Connection
-                  </span>
-                </div>
+                    <span 
+                      className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-1"
+                      style={{ backgroundColor: `${accentColor}20`, color: accentColor }}
+                    >
+                      Review Us On Google
+                    </span>
 
-                {/* Bottom QR Code & Tagline */}
-                <div className="w-full flex flex-col items-center pt-2 border-t border-current/20">
-                  <div className="w-20 h-20 rounded-xl bg-white p-1.5 shadow-md flex items-center justify-center mb-2">
-                    {qrUrl ? (
-                      <img src={qrUrl} alt="Laser encoded Level Q QR code" width={160} height={160} className="w-full h-full object-contain" />
-                    ) : (
-                      <QrCode className="w-16 h-16 text-black" />
-                    )}
+                    <h3 className="font-headline font-black text-base sm:text-lg leading-tight truncate max-w-full">
+                      {customName.toUpperCase()}
+                    </h3>
+
+                    <div className="flex items-center gap-1 text-amber-400 text-xs my-1">
+                      {"★".repeat(5)}
+                    </div>
                   </div>
-                  <p className="text-[10px] font-medium leading-snug opacity-80 px-2">
-                    {tagline}
-                  </p>
+
+                  {/* NFC Target Zone */}
+                  <div className="my-auto p-4 rounded-2xl bg-black/20 dark:bg-white/10 border border-white/20 flex flex-col items-center justify-center w-full max-w-[190px]">
+                    <div 
+                      className="w-11 h-11 rounded-full flex items-center justify-center mb-1.5 animate-pulse"
+                      style={{ backgroundColor: `${accentColor}30`, color: accentColor }}
+                    >
+                      <Radio className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-extrabold tracking-wide uppercase">
+                      Tap Phone Here
+                    </span>
+                    <span className="text-[8px] opacity-70">
+                      Instant NFC Connection
+                    </span>
+                  </div>
+
+                  {/* Bottom QR Code & Tagline */}
+                  <div className="w-full flex flex-col items-center pt-2 border-t border-current/20">
+                    <div className="w-20 h-20 rounded-xl bg-white p-1.5 shadow-md flex items-center justify-center mb-2">
+                      {qrUrl ? (
+                        <img src={qrUrl} alt="Laser encoded Level Q QR code" width={160} height={160} className="w-full h-full object-contain" />
+                      ) : (
+                        <QrCode className="w-16 h-16 text-black" />
+                      )}
+                    </div>
+                    <p className="text-[10px] font-medium leading-snug opacity-80 px-2">
+                      {tagline}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )
             ) : (
               /* CARD DISPLAY */
               <div className={`relative w-full max-w-[340px] aspect-[1.586/1] rounded-2xl p-5 border-2 transition-all duration-300 flex flex-col justify-between ${getMaterialClasses()}`}>
@@ -487,7 +557,7 @@ export default function CardCustomizerModal({
               </div>
             )}
 
-            <div className="mt-4 flex items-center gap-2 text-[11px] text-[#615E5B] dark:text-zinc-400">
+            <div className="mt-4 flex items-center gap-2 text-[11px] text-slate-300">
               <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
               <span>Laser-engraved acrylic &amp; NTAG216 certified chip</span>
             </div>
@@ -496,8 +566,8 @@ export default function CardCustomizerModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-[#E2DFD8] dark:border-white/10 bg-[#FAF9F6] dark:bg-[#141413] flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
-          <p className="text-xs text-[#615E5B] dark:text-zinc-400">
+        <div className="px-6 py-4 border-t border-[#232734] bg-[#0e1015] flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+          <p className="text-xs text-slate-300">
             Your customized hardware specs will be attached to your account &amp; order.
           </p>
 
@@ -505,7 +575,7 @@ export default function CardCustomizerModal({
             <button
               type="button"
               onClick={handleSave}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-[#E2DFD8] dark:border-white/20 hover:bg-[#F2F0EB] dark:hover:bg-white/10 text-xs font-semibold text-[#1C1B1A] dark:text-white transition-colors cursor-pointer text-center"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-[#232734] hover:bg-[#1e2230] text-xs font-semibold text-white transition-colors cursor-pointer text-center"
             >
               Save Design to Profile
             </button>
@@ -513,7 +583,7 @@ export default function CardCustomizerModal({
             <button
               type="button"
               onClick={handleOrder}
-              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#1C1B1A] dark:bg-white text-white dark:text-[#1C1B1A] hover:bg-[#2C2B2A] text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#ff7a00] text-black hover:bg-[#e56d00] text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Order with this Design</span>

@@ -110,9 +110,9 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-slate-300">
             <span>Protocol: ISO 14443-A</span>
-            <span className="text-emerald-600 font-bold">100% Battery-Free</span>
+            <span className="text-emerald-400 font-bold">100% Battery-Free</span>
           </div>
         </div>
 
@@ -131,21 +131,21 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
 
             <div className="space-y-2.5 text-xs text-on-surface font-medium">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Dynamic URL updating without ever reprinting or replacing standees</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>High-contrast UV-cured ink resistant to bleach, alcohol &amp; spills</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Sub-millimeter laser precision guarantees 100% scan clarity</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-slate-300">
             <span>Resolution: 600 DPI Laser</span>
             <span className="text-secondary font-bold">Spill &amp; Scratch Proof</span>
           </div>
@@ -174,17 +174,17 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
                 <span>Full support for regional languages (English, Gujarati, Hindi)</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Style adjustments: Balanced, In-Depth Detailed, or Short &amp; Punchy</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>1-click draft regeneration if customer wants another variation</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-slate-300">
             <span>Engine: ZenTap Review NLP</span>
             <span className="text-secondary font-bold">Local SEO Optimized</span>
           </div>
@@ -205,23 +205,23 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
 
             <div className="space-y-2.5 text-xs text-on-surface font-medium">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Automatically thanks reviewers by name in the merchant&apos;s brand voice</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Boosts local SEO engagement signals recognized by Google Search</span>
               </div>
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-emerald-400" />
                 <span>Saves store owners 5+ hours every month of manual review responses</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-zinc-500">
+          <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-slate-300">
             <span>Availability: Plan 3 (₹2,000)</span>
-            <span className="text-amber-600 font-bold">100% Automated Sync</span>
+            <span className="text-amber-400 font-bold">100% Automated Sync</span>
           </div>
         </div>
       </div>

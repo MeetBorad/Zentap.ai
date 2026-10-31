@@ -270,16 +270,6 @@ export default function Page() {
             </button>
 
             <button
-              onClick={() => handleNavigate("sample-dashboard")}
-              className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "sample-dashboard" ? "text-secondary-container" : "text-on-surface-variant"
-              }`}
-            >
-              <Sparkles className="w-4 h-4 mb-0.5 text-amber-400" />
-              <span>Sample</span>
-            </button>
-
-            <button
               onClick={() => handleNavigate("pricing")}
               className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
                 currentView === "pricing" ? "text-secondary-container" : "text-on-surface-variant"

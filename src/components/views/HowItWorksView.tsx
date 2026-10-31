@@ -12,9 +12,12 @@ import {
   CheckCircle2, 
   ArrowRight,
   Zap,
-  Globe
+  Globe,
+  Play
 } from "lucide-react";
 import StandeeVisual from "@/components/StandeeVisuals";
+import SmartStandeeAnimation from "@/components/SmartStandeeAnimation";
+import { OpenDesignButton, OpenDesignCard } from "@/components/open-design";
 
 interface HowItWorksViewProps {
   onOpenAuth: (tab: "signin" | "signup" | "admin") => void;
@@ -93,6 +96,101 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
         </p>
       </div>
 
+      {/* Interactive Standee 9:16 Video Stage Showcase */}
+      <div className="mb-20 p-8 sm:p-12 rounded-[2.5rem] bg-gradient-to-b from-surface-container via-surface-container-low to-surface border border-secondary/20 shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
+
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          
+          {/* Left Column: Context, Features & Narrative */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-secondary/15 border border-secondary/30 text-secondary text-xs font-bold tracking-wide uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-secondary" />
+              <span>Interactive Hardware Simulation</span>
+            </div>
+
+            <h2 className="font-headline font-black text-2xl sm:text-4xl text-on-surface leading-tight tracking-tight">
+              See the ZenTap Smart Standee in Action
+            </h2>
+
+            <p className="text-sm sm:text-base text-on-surface-variant leading-relaxed">
+              Watch how our acrylic and brushed metal hardware bridges physical foot traffic directly into 5-star Google reviews. Customers simply tap their NFC-capable smartphone or scan the laser-cut dynamic QR code.
+            </p>
+
+            {/* Micro Highlights */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+              <div className="p-3.5 rounded-2xl bg-surface-container-high/60 border border-surface-variant/30 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-secondary/20 flex items-center justify-center text-secondary flex-shrink-0 mt-0.5">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface">Dual NFC + QR Standee</h4>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Zero battery, zero cables. Works seamlessly on iOS &amp; Android.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-surface-container-high/60 border border-surface-variant/30 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center text-primary flex-shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface">AI Review Engine</h4>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Generates authentic, keyword-dense reviews in under 5 seconds.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-surface-container-high/60 border border-surface-variant/30 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-500 flex-shrink-0 mt-0.5">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface">Google Policy Safe</h4>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Anti-gating compliant with transparent direct posting.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-surface-container-high/60 border border-surface-variant/30 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-sky-500/20 flex items-center justify-center text-sky-500 flex-shrink-0 mt-0.5">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface">Multilingual Drafts</h4>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Instant review suggestions in English, Gujarati, and Hindi.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <OpenDesignButton
+                variant="primary"
+                size="md"
+                onClick={onNavigateToSample}
+                className="shadow-sm"
+              >
+                <span>View Sample Dashboard</span>
+                <ArrowRight className="w-4 h-4" />
+              </OpenDesignButton>
+
+              <OpenDesignButton
+                variant="subtle"
+                size="md"
+                onClick={() => onOpenAuth("signup")}
+              >
+                <span>Order Custom Standee</span>
+              </OpenDesignButton>
+            </div>
+          </div>
+
+          {/* Right Column: 9:16 Interactive Video Container */}
+          <div className="lg:col-span-5 flex justify-center">
+            <SmartStandeeAnimation />
+          </div>
+
+        </div>
+      </div>
+
       {/* SEO Boost Value Proposition Banner */}
       <div className="mb-16 p-6 rounded-3xl bg-gradient-to-r from-secondary/15 via-primary/10 to-secondary/15 border border-secondary/30 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
         <div className="flex items-center gap-4">
@@ -164,7 +262,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
               )}
               {idx === 1 && (
                 <div className="py-6 flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 mb-2 animate-bounce">
+                  <div className="w-16 h-16 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 mb-2 transition-transform duration-500 hover:scale-105">
                     <Smartphone className="w-8 h-8" />
                   </div>
                   <span className="text-xs font-bold text-on-surface">Hold Phone Close</span>

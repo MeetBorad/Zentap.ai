@@ -72,8 +72,8 @@ export default function TapReviewModal({
                 <h3 className="font-headline font-bold text-base text-on-surface">
                   The Urban Bistro &amp; Lounge
                 </h3>
-                <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   NFC Tap Detected • Leave a Review
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function TapReviewModal({
           </div>
         ) : (
           <div className="py-6 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mb-3">
               <CheckCircle className="w-8 h-8" />
             </div>
             <h4 className="font-headline font-bold text-lg text-on-surface">

@@ -7,19 +7,19 @@
 
 @layer base {
   :root {
-    /* Locked OKLCH Design Tokens from design.md */
-    --color-paper: oklch(0.985 0.003 80);       /* Warm tactile ivory */
-    --color-paper-2: oklch(0.955 0.006 80);     /* Sandstone neutral surface */
-    --color-paper-dark: oklch(0.140 0.008 50);  /* Obsidian acrylic background */
-    --color-ink: oklch(0.145 0.008 50);         /* Deep warm charcoal ink */
-    --color-ink-2: oklch(0.420 0.015 50);       /* Muted technical graphite */
-    --color-rule: oklch(0.890 0.008 80);        /* Hairline architectural border */
-    --color-rule-dark: oklch(0.240 0.010 50);   /* Dark acrylic hairline border */
-    --color-accent: oklch(0.620 0.185 42);      /* Precision vermilion/amber */
-    --color-accent-hover: oklch(0.560 0.190 42);
-    --color-focus: oklch(0.550 0.190 48);       /* Accessible focus ring */
-    --color-success: oklch(0.680 0.160 145);    /* Emerald verified badge */
-    --color-star: oklch(0.820 0.160 85);       /* Gold review star */
+    /* Refined Dark Theme Tokens - Obsidian & Charcoal backdrop to elevate bright white & orange ZenTap logo */
+    --color-paper: #0e1015;                     /* Deep obsidian night canvas */
+    --color-paper-2: #141720;                   /* Elevated charcoal surface */
+    --color-paper-dark: #090a0d;                /* Ultra dark hardware foundation */
+    --color-ink: #f5f5f7;                       /* Crisp white text */
+    --color-ink-2: #cbd5e1;                     /* Bright slate-300 high-contrast secondary text */
+    --color-rule: #232734;                      /* Subtle architectural border */
+    --color-rule-dark: #1b1e28;                 /* Deep hairline border */
+    --color-accent: #ff7a00;                    /* ZenTap signal orange/amber */
+    --color-accent-hover: #e56d00;
+    --color-focus: #ff7a00;                     /* Accessible focus ring */
+    --color-success: #10b981;                  /* Emerald verified badge */
+    --color-star: #f5b800;                     /* Gold review star */
 
     /* Typography tokens */
     --font-display: var(--font-space-grotesk), 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -142,3 +142,39 @@
 .animate-aurora {
   animation: aurora 14s ease-in-out infinite alternate;
 }
+
+/* ========================================================================= */
+/* OpenDesign & Emil Kowalski Design Engineering Micro-Interaction Utilities */
+/* ========================================================================= */
+.tactile-btn {
+  transform: translateZ(0);
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tactile-btn:active {
+  transform: scale(0.978) translateZ(0);
+}
+
+.tactile-btn-subtle {
+  transform: translateZ(0);
+  transition: transform 120ms var(--ease-out), background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tactile-btn-subtle:active {
+  transform: scale(0.985) translateZ(0);
+}
+
+.tactile-card {
+  transform: translateZ(0);
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out);
+  will-change: transform, box-shadow;
+}
+
+.tactile-card:hover {
+  transform: translateY(-2.5px) translateZ(0);
+}
+

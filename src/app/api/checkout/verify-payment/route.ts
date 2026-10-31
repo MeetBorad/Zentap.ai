@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       customerEmail,
     } = body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !planId) {
+    if (!razorpay_order_id || !razorpay_payment_id || !planId || !razorpay_signature) {
       return NextResponse.json(
         { error: "Missing required transaction verification parameters" },
         { status: 400 }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const isValid = verifyRazorpaySignature(
       razorpay_order_id,
       razorpay_payment_id,
-      razorpay_signature || "test_signature"
+      razorpay_signature
     );
 
     if (!isValid) {

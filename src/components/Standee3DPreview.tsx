@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Zap, Check, RotateCw, ShieldCheck, Radio, QrCode } from "lucide-react";
+import { Zap, Check, RotateCw, ShieldCheck, Radio, QrCode, Sparkles } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
@@ -13,9 +13,17 @@ interface Standee3DPreviewProps {
   onTapSuccess?: () => void;
 }
 
+const FINISHES = [
+  { id: "gold", name: "Gold", img: "/standees/Gold.png", color: "from-[#F7E7A9] to-[#D4AF37]" },
+  { id: "steel", name: "Steel", img: "/standees/Steel.png", color: "from-slate-200 to-slate-400" },
+  { id: "wood", name: "Wood Base", img: "/standees/Wood Trans.png", color: "from-amber-200 to-amber-600" },
+  { id: "pink", name: "Blush Pink", img: "/standees/Pink.png", color: "from-pink-300 to-rose-400" },
+];
+
 export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [selectedFinish, setSelectedFinish] = useState(FINISHES[0]);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isTapping, setIsTapping] = useState(false);
   const [tapSuccess, setTapSuccess] = useState(false);
@@ -46,7 +54,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
       osc.type = "sine";
       osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
       osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.10, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -60,7 +68,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
     if (cardRef.current) {
       gsap.fromTo(
         cardRef.current,
-        { scale: 0.96 },
+        { scale: 0.95 },
         { scale: 1, duration: 0.35, ease: "back.out(2)" }
       );
     }
@@ -80,73 +88,103 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
   };
 
   return (
-    <div ref={containerRef} className="relative rounded-3xl bg-[#1C1B1A] p-6 sm:p-8 text-white border border-[#2C2B2A] shadow-2xl">
+    <div ref={containerRef} className="relative rounded-3xl bg-[#141720] p-6 sm:p-7 text-white border border-[#232734] shadow-2xl">
+      
       {/* Top Spec Bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#232734]">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-mono font-medium tracking-wider uppercase text-zinc-300">
-            Hardware Specimen
+          <span className="text-xs font-mono font-bold tracking-wider uppercase text-zinc-300">
+            Physical Specimen
           </span>
         </div>
         <button
           type="button"
           onClick={flipStandee}
-          className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 border border-white/15 transition-all cursor-pointer active:scale-95"
-          title="Inspect 360° reverse side"
+          className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1 rounded-full bg-[#1e2230] hover:bg-[#252b3d] text-zinc-200 border border-[#2d3345] transition-all cursor-pointer active:scale-95"
+          title="Inspect reverse dynamic QR"
         >
-          <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+          <RotateCw className="w-3.5 h-3.5 text-[#ff7a00]" />
           <span>{isFlipped ? "View Front (NFC)" : "Inspect Reverse (QR)"}</span>
         </button>
       </div>
 
+      {/* Finish Switcher Buttons */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        {FINISHES.map((f) => {
+          const isSelected = selectedFinish.id === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setSelectedFinish(f)}
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
+                isSelected
+                  ? "bg-[#ff7a00] text-black font-bold shadow-md scale-105"
+                  : "bg-[#0e1015] hover:bg-[#1e2230] text-slate-300 hover:text-white border border-[#232734]"
+              }`}
+            >
+              {f.name}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 3D Stage with GSAP preserve-3d */}
-      <div className="relative w-full py-8 rounded-2xl bg-[#141414] border border-white/10 mb-6 flex flex-col items-center justify-center [perspective:1000px]">
+      <div className="relative w-full py-6 rounded-2xl bg-gradient-to-b from-[#10131b] to-[#0a0c10] border border-[#232734] mb-4 flex flex-col items-center justify-center [perspective:1000px] overflow-hidden">
+        
+        {/* Soft Radial Backlight Glow */}
+        <div className="absolute inset-0 bg-radial from-[#ff7a00]/10 via-transparent to-transparent pointer-events-none" />
+
         {/* Physical Standee Representation with 3D Flip */}
         <div
           ref={cardRef}
           style={{ transformStyle: "preserve-3d" }}
-          className="relative w-48 sm:w-56 h-[270px] rounded-2xl transition-shadow shadow-2xl cursor-pointer"
-          onClick={flipStandee}
-          title="Click to flip standee"
+          className="relative w-52 sm:w-60 h-[310px] rounded-2xl transition-shadow cursor-pointer select-none"
+          onClick={triggerNfcTap}
+          title="Tap phone against standee"
         >
-          {/* ==================== FRONT FACE (NFC TAP) ==================== */}
+          {/* ==================== FRONT FACE (REAL HARDWARE PHOTOGRAPHY) ==================== */}
           <div
             style={{ backfaceVisibility: "hidden" }}
-            className="absolute inset-0 p-5 rounded-2xl bg-[#202020] border border-white/20 shadow-2xl flex flex-col items-center justify-between text-center select-none"
+            className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-black/60 flex flex-col items-center justify-between p-2"
           >
-            {/* Brand & Chip */}
-            <div className="flex items-center justify-between w-full px-1">
-              <span className="font-headline font-bold text-xs tracking-tight text-white">
-                Zen<span className="text-[#D94826]">Tap</span>
+            {/* Real Photograph of Selected Standee */}
+            <img
+              src={selectedFinish.img}
+              alt={selectedFinish.name}
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+            />
+
+            {/* Live Tap Hotspot Overlay */}
+            <div className="relative z-10 w-full flex items-center justify-between px-3 pt-2">
+              <span className="font-headline font-bold text-[11px] tracking-tight text-white drop-shadow-md">
+                Zen<span className="text-[#ff7a00]">Tap</span>
               </span>
-              <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-400/40 backdrop-blur-sm">
                 NTAG216
               </span>
             </div>
 
-            {/* Tap Hotspot Icon */}
-            <div className="my-auto flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-[#D94826]/15 border-2 border-[#D94826]/40 flex items-center justify-center mb-2 shadow-inner group-hover:scale-105 transition-transform">
-                <Radio className="w-8 h-8 text-[#D94826] animate-pulse" />
+            {/* Glowing Interactive Tap Target Indicator */}
+            <div className="relative z-10 my-auto flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-[#ff7a00]/25 border-2 border-[#ff7a00] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform backdrop-blur-xs">
+                <Radio className="w-8 h-8 text-[#ff7a00] animate-pulse" />
               </div>
-              <p className="text-xs font-bold text-white tracking-wide font-headline">
+              <span className="mt-2 text-[10px] font-bold text-white tracking-wider uppercase font-headline drop-shadow-md bg-black/60 px-3 py-1 rounded-full border border-white/10">
                 TAP PHONE HERE
-              </p>
-              <span className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                Instant 0.6s Handshake
               </span>
             </div>
 
-            <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono pt-2 border-t border-white/10 w-full justify-center">
+            {/* Footer Spec Overlay */}
+            <div className="relative z-10 w-full flex items-center justify-center gap-2 text-[9px] text-white/90 font-mono pb-2 drop-shadow">
               <span>13.56 MHz</span>
               <span>·</span>
-              <span>ISO 14443A</span>
+              <span>0.6s Handshake</span>
             </div>
 
             {isTapping && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="tap-ripple" />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                <div className="w-32 h-32 rounded-full border-4 border-[#ff7a00] animate-ping opacity-75" />
               </div>
             )}
           </div>
@@ -157,42 +195,23 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
             }}
-            className="absolute inset-0 p-5 rounded-2xl bg-[#1A1A1A] border border-[#D4AF37]/40 shadow-2xl flex flex-col items-center justify-between text-center select-none"
+            className="absolute inset-0 p-5 rounded-2xl bg-[#0e1015] border border-[#ff7a00]/40 shadow-2xl flex flex-col items-center justify-between text-center select-none"
           >
             {/* Brand Header */}
             <div className="flex items-center justify-between w-full px-1">
-              <span className="font-headline font-bold text-xs tracking-tight text-[#F7E7A9]">
-                Zen<span className="text-[#D94826]">Tap</span> Dynamic
+              <span className="font-headline font-bold text-xs tracking-tight text-white">
+                Zen<span className="text-[#ff7a00]">Tap</span> Dynamic
               </span>
-              <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">
+              <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono border border-amber-500/40">
                 Level Q
               </span>
             </div>
 
             {/* Dynamic QR Code */}
-            <div className="p-2.5 rounded-xl bg-white text-black shadow-md my-auto relative">
-              <svg viewBox="0 0 40 40" className="w-24 h-24" aria-hidden>
-                <rect x="2" y="2" width="11" height="11" rx="2" fill="#0f172a" />
-                <rect x="5" y="5" width="5" height="5" rx="1" fill="#fff" />
-                <rect x="27" y="2" width="11" height="11" rx="2" fill="#0f172a" />
-                <rect x="30" y="5" width="5" height="5" rx="1" fill="#fff" />
-                <rect x="2" y="27" width="11" height="11" rx="2" fill="#0f172a" />
-                <rect x="5" y="30" width="5" height="5" rx="1" fill="#fff" />
-                <rect x="24" y="24" width="5" height="5" rx="1" fill="#D94826" />
-                <rect x="31" y="24" width="5" height="5" rx="1" fill="#D94826" />
-                <rect x="24" y="31" width="5" height="5" rx="1" fill="#D94826" />
-                <rect x="16" y="2" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="20" y="7" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="16" y="14" width="8" height="8" rx="2" fill="#0f172a" />
-                <rect x="2" y="16" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="9" y="20" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="27" y="16" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="34" y="20" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="16" y="27" width="4" height="4" rx="1" fill="#0f172a" />
-                <rect x="16" y="34" width="8" height="4" rx="1" fill="#0f172a" />
-              </svg>
+            <div className="p-3 rounded-2xl bg-white text-black shadow-xl my-auto relative">
+              <QrCode className="w-24 h-24 text-black" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-5 h-5 rounded bg-[#D94826] text-white flex items-center justify-center font-bold text-[9px] shadow">
+                <div className="w-6 h-6 rounded bg-[#ff7a00] text-black flex items-center justify-center font-black text-[10px] shadow">
                   Z
                 </div>
               </div>
@@ -205,14 +224,14 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
         </div>
 
         {/* Action Button */}
-        <div className="mt-6 flex flex-col items-center">
+        <div className="mt-5 flex flex-col items-center">
           <button
             onClick={triggerNfcTap}
             disabled={isTapping}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-xs transition-all shadow-md cursor-pointer ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-bold text-xs transition-all shadow-md cursor-pointer ${
               tapSuccess
-                ? "bg-emerald-600 text-white"
-                : "bg-[#D94826] hover:bg-[#C23C1D] text-white active:scale-95"
+                ? "bg-emerald-500 text-black shadow-emerald-500/25"
+                : "bg-[#ff7a00] hover:bg-[#e56d00] text-black active:scale-95 shadow-[#ff7a00]/25"
             }`}
           >
             {tapSuccess ? (
@@ -222,7 +241,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
               </>
             ) : (
               <>
-                <Zap className="w-4 h-4 text-amber-200" />
+                <Zap className="w-4 h-4 text-black" />
                 <span>Simulate Physical Phone Tap</span>
               </>
             )}
@@ -231,18 +250,18 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
       </div>
 
       {/* Bottom Technical Telemetry */}
-      <div className="grid grid-cols-3 gap-3 text-center pt-3 border-t border-white/10 text-xs font-mono text-zinc-400">
+      <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-[#232734] text-xs font-mono text-zinc-400">
         <div>
           <p className="text-white font-bold text-sm">888 bytes</p>
           <p className="text-[10px]">EEPROM Memory</p>
         </div>
         <div>
           <p className="text-white font-bold text-sm">Level Q</p>
-          <p className="text-[10px]">QR Error Correction</p>
+          <p className="text-[10px]">Laser QR Precision</p>
         </div>
         <div>
-          <p className="text-white font-bold text-sm">AES-128</p>
-          <p className="text-[10px]">Tamper Protection</p>
+          <p className="text-white font-bold text-sm">Zero Wire</p>
+          <p className="text-[10px]">Battery-Free Passive</p>
         </div>
       </div>
     </div>
