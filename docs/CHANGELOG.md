@@ -1,5 +1,14 @@
 # ZenTap — Changelog
 
+## [1.27.1] — 2026-11-02
+### Production Deployment & Canonical Domain Consolidation
+- **Canonical Production Domain**: Standardized live production deployment strictly to `https://zentapdigitalsolutions.com` and `https://www.zentapdigitalsolutions.com`.
+- **Legacy Domain Removal**: Completely removed unconfigured and legacy deployment aliases (`zentap.app`) from Vercel alias mappings and project domain configurations.
+- **Vercel Cloud Build Ignore Fix**: Root-anchored `/open-design/` and `/Photos of standee/` in `.vercelignore` to prevent Next.js component resolution errors during cloud builds.
+- **Internal URL & Metadata Standardization**: Updated all application fallbacks, QR generation links, metadata, and admin helpers to target `https://zentapdigitalsolutions.com`.
+- **Live Verification**: Verified HTTP 200 responses across apex domain, www subdomain, and App Router redirect routes.
+
+
 ## [1.27.0] — 2026-11-02
 ### Added & Redesigned (Independent Webpages Architecture & Unified Admin Tables)
 - **Database Schema Migration (`009_admin_webpages_redesign.sql`)**:

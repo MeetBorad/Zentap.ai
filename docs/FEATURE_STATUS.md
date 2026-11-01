@@ -2,6 +2,7 @@
 
 | Feature | Status | Notes |
 |---|---|---|
+| **Production Canonical Domain** | Done | Exclusively deployed and aliased to `https://zentapdigitalsolutions.com` and `https://www.zentapdigitalsolutions.com`. All legacy unconfigured aliases (`zentap.app`) completely purged from Vercel and application configuration. |
 | **Unique Business ID Fleet System** | Done | Sequential unique IDs (`ZT-0001`, `ZT-0002`...) assigned upon registration, integrated across Clients table, search filters, and routing tags. |
 | **Google Links & QR Setting Tab** | Done | Dedicated administrative table with Business ID, destination dropdown (Direct Google Review, ZenTap Google Review, Not Assigned), manual entry modal, and tag assignment. |
 | **Social Links & QR Setting Tab** | Done | Dedicated table for social NFC/QR routing (WhatsApp, Instagram, Facebook), manual social link setup, platform filter pills, and quick NFC/QR generation. |
