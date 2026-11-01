@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.25.0] — 2026-11-01
+### Fixed & Improved (Admin Fleet Directory Deletion & Permanent Purge Workflow)
+- **Fleet Filter Logic Fix**:
+  - Corrected `filtered` business calculation in [`AdminConsoleView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/AdminConsoleView.tsx) where `statusFilter === 'all'` previously bypassed the `b.is_deleted` check.
+  - Soft-deleted businesses now strictly disappear from the main "All", "Unpaid", and "Paid" lists and appear exclusively under the **"Deleted"** tab.
+- **Permanent Purge & Seed Immunity (`PURGED_BIZ_IDS_KEY`)**:
+  - Resolved issue where seed businesses (e.g., "Iron Works Fitness Arena") were resurrected by `INITIAL_FLEET` re-seeding on page load or state refresh.
+  - Implemented persistent `zentap_v2_purged_biz_ids` registry in [`businessStore.ts`](file:///d:/Projects/Zentap.ai/src/lib/businessStore.ts); purged business IDs are permanently remembered and filtered out from both local stores and Supabase synchronization.
+  - Updated `purgeBusinessRecord` to automatically release all attached NFC/QR tags back to the inventory pool before deletion, avoiding foreign key blockers.
+- **Fail-Safe Cascade in Supabase**:
+  - Updated `adminPermanentDeleteDbBusiness` in [`service.ts`](file:///d:/Projects/Zentap.ai/src/lib/supabase/service.ts) to safely unassign child tags and delete dependent records in `scans`, `manual_payments`, `page_design`, and review tables before executing the deletion in Postgres.
+- **Streamlined Deletion & Restore UI**:
+  - Delete button on main list performs a clean delete moving the business into the "Deleted" tab with full restoration capability.
+  - "Deleted" tab features clear 1-click **Restore** (green) and **Purge** (red) actions.
+  - Confirmation modal supports typing either `delete` or the business name (case-insensitive and trimmed) for smooth verification.
+
 ## [1.24.0] — 2026-11-01
 ### Added & Streamlined (Direct WhatsApp Ordering & Founder Manual Dashboard Operations)
 - **Customer-Facing Pivot to Direct WhatsApp-First Business Model**:
