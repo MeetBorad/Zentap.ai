@@ -67,7 +67,7 @@ export default function SocialLinksAndQrSettingsTab({
   const [qrModalTag, setQrModalTag] = useState<TagRecord | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
 
-  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
 
   // Filter tags that are cards or social types, or unassigned tags
   const socialTags = tags.filter((t) => {
@@ -111,7 +111,7 @@ export default function SocialLinksAndQrSettingsTab({
 
   const handleDownloadQr = async (tag: TagRecord) => {
     try {
-      const domain = typeof window !== "undefined" && localStorage.getItem("zentap_site_domain") ? localStorage.getItem("zentap_site_domain")! : "https://zentap.in";
+      const domain = typeof window !== "undefined" && localStorage.getItem("zentap_site_domain") ? localStorage.getItem("zentap_site_domain")! : "https://zentapdigitalsolutions.com";
       const targetUrl = `${domain}/t/${tag.code}?s=qr`;
       const url = await QRCode.toDataURL(targetUrl, {
         width: 600,
@@ -134,7 +134,7 @@ export default function SocialLinksAndQrSettingsTab({
 
   const handleShowQrModal = async (tag: TagRecord) => {
     try {
-      const domain = typeof window !== "undefined" && localStorage.getItem("zentap_site_domain") ? localStorage.getItem("zentap_site_domain")! : "https://zentap.in";
+      const domain = typeof window !== "undefined" && localStorage.getItem("zentap_site_domain") ? localStorage.getItem("zentap_site_domain")! : "https://zentapdigitalsolutions.com";
       const targetUrl = `${domain}/t/${tag.code}?s=qr`;
       const url = await QRCode.toDataURL(targetUrl, {
         width: 320,
@@ -390,7 +390,7 @@ export default function SocialLinksAndQrSettingsTab({
                             className="font-mono text-xs text-zinc-700 hover:text-emerald-600 truncate max-w-[140px] underline"
                             title={tagLink}
                           >
-                            zentap.in/t/{tag.code}
+                            /t/{tag.code}
                           </a>
                           <button
                             onClick={() => handleCopy(tagLink, "Social Link")}
@@ -646,7 +646,7 @@ export default function SocialLinksAndQrSettingsTab({
                   <option value="">-- Select Available Card Code --</option>
                   {unassignedCardTags.map((t) => (
                     <option key={t.id} value={t.code}>
-                      {t.code} ({t.form.toUpperCase()}) - zentap.in/t/{t.code}
+                      {t.code} ({t.form.toUpperCase()}) - /t/{t.code}
                     </option>
                   ))}
                   {/* Also show all tags in case user wants any tag */}

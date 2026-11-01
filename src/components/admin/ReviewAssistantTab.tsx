@@ -183,7 +183,7 @@ export default function ReviewAssistantTab({
   const productOptions = options.filter((o) => o.kind === "product");
   const aspectOptions = options.filter((o) => o.kind === "aspect");
 
-  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

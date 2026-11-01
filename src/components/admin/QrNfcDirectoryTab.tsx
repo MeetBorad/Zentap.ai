@@ -32,7 +32,7 @@ export default function QrNfcDirectoryTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+  const originUrl = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
 
   const handleCopyLink = (text: string, id: string) => {
     navigator.clipboard.writeText(text);

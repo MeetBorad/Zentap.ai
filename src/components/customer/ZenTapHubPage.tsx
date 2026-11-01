@@ -544,7 +544,7 @@ export default function ZenTapHubPage({
             <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-300 font-medium">
               <span>Powered by</span>
               <a 
-                href="https://zentap.in" 
+                href="https://zentapdigitalsolutions.com" 
                 target="_blank" 
                 rel="noreferrer" 
                 className="font-bold text-zinc-200 hover:text-white transition-colors flex items-center gap-1"

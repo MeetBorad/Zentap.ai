@@ -29,7 +29,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
   const { user } = useAuth();
 
   const [adminWhatsapp, setAdminWhatsapp] = useState("919274560880");
-  const [siteDomain, setSiteDomain] = useState("https://zentap.in");
+  const [siteDomain, setSiteDomain] = useState("https://zentapdigitalsolutions.com");
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [subTab, setSubTab] = useState<"general" | "ai_models">("general");
 
@@ -153,7 +153,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                 required
                 value={siteDomain}
                 onChange={(e) => setSiteDomain(e.target.value)}
-                placeholder="https://zentap.in"
+                placeholder="https://zentapdigitalsolutions.com"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 font-mono text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
               />
             </div>

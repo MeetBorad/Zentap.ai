@@ -808,7 +808,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   };
 
   const handleExportNfcCsv = () => {
-    const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || "https://zentap.in";
+    const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || (typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com");
     const rows = [
       ["Tag Code", "Item Form", "NFC Link", "QR Link", "Assigned Business", "Status"],
       ...tags.map((t) => [
@@ -834,7 +834,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const handleDownloadQrZip = async () => {
     try {
       showToast("Generating QR codes ZIP bundle...");
-      const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || "https://zentap.in";
+      const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || (typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com");
       const zip = new JSZip();
       const folder = zip.folder("zentap_qr_codes");
       for (const t of tags) {
@@ -980,7 +980,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   };
 
   const handleCopyNfcLink = (code: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
     const url = `${origin}/t/${code.toLowerCase()}?s=nfc`;
     navigator.clipboard.writeText(url);
     showToast(`✓ Copied NFC Link: ${url}`);
@@ -988,7 +988,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
   const handleOpenTagQrModal = async (tag: TagRecord) => {
     setTagQrModalTag(tag);
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
     const url = `${origin}/t/${tag.code.toLowerCase()}?s=qr`;
     try {
       const [png, svg] = await Promise.all([
@@ -2638,7 +2638,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                               className="hover:text-emerald-600 flex items-center gap-1 transition-colors"
                               title="Test Hardware Tag Link"
                             >
-                              <span>zentap.in/t/{tag.code}</span>
+                              <span>/t/{tag.code}</span>
                               <ExternalLink className="w-2.5 h-2.5 text-zinc-400" />
                             </a>
                             <button
@@ -4530,7 +4530,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   Codes will be formatted sequentially as <code className="bg-white px-1.5 py-0.5 rounded border">zt-XXXX</code>
                 </p>
                 <p className="text-[10px] text-zinc-500">
-                  NFC URL format: <code className="font-mono">https://zentap.in/t/zt-XXXX?s=nfc</code>
+                  NFC URL format: <code className="font-mono">https://zentapdigitalsolutions.com/t/zt-XXXX?s=nfc</code>
                 </p>
               </div>
 
@@ -4818,10 +4818,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
             {/* Encoded URL */}
             <div className="p-2.5 rounded-xl bg-surface-container-low border border-surface-variant/30 text-[11px] font-mono text-secondary break-all flex items-center justify-between gap-2">
-              <span className="truncate">{typeof window !== "undefined" ? window.location.origin : "https://zentap.in"}/t/{tagQrModalTag.code}?s=qr</span>
+              <span className="truncate">{typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com"}/t/{tagQrModalTag.code}?s=qr</span>
               <button
                 onClick={() => {
-                  const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+                  const origin = typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com";
                   navigator.clipboard.writeText(`${origin}/t/${tagQrModalTag.code}?s=qr`);
                   showToast("✓ QR URL copied to clipboard!");
                 }}
@@ -4867,7 +4867,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 className="w-full py-2 px-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <Radio className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Copy NFC Writing Link (zentap.in/t/{tagQrModalTag.code}?s=nfc)</span>
+                <span>Copy NFC Writing Link (/t/{tagQrModalTag.code}?s=nfc)</span>
               </button>
             </div>
           </div>

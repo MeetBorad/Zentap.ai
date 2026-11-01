@@ -631,7 +631,7 @@ export default function PartnersTab({ tags, onTagsUpdated, showToast }: Partners
 
               <a
                 href={`https://wa.me/${pinDialogData.phone}?text=${encodeURIComponent(
-                  `Hi ${pinDialogData.partnerName}, your ZenTap Partner Admin PIN is: ${pinDialogData.pin}\nUse this PIN to access and manage your standees/cards at: https://zentap.in/activate`
+                  `Hi ${pinDialogData.partnerName}, your ZenTap Partner Admin PIN is: ${pinDialogData.pin}\nUse this PIN to access and manage your standees/cards at: https://zentapdigitalsolutions.com/activate`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

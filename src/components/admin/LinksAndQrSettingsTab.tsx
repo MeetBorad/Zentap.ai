@@ -325,10 +325,10 @@ export default function LinksAndQrSettingsTab({
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="font-mono text-[10px] text-zinc-500 truncate max-w-[130px]">
-                                zentap.in/t/{primaryTag.code}
+                                /t/{primaryTag.code}
                               </span>
                               <button
-                                onClick={() => handleCopy(`https://zentap.in/t/${primaryTag.code}`, "Tag Link")}
+                                onClick={() => handleCopy(`${typeof window !== "undefined" ? window.location.origin : "https://zentapdigitalsolutions.com"}/t/${primaryTag.code}`, "Tag Link")}
                                 className="p-1 rounded hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 cursor-pointer"
                                 title="Copy Tag Link"
                               >
@@ -627,7 +627,7 @@ export default function LinksAndQrSettingsTab({
                 </label>
                 <div className="flex items-center">
                   <span className="px-3 py-2.5 rounded-l-xl bg-zinc-100 border border-r-0 border-zinc-300 text-xs font-mono text-zinc-500">
-                    zentap.in/r/
+                    /r/
                   </span>
                   <input
                     type="text"
@@ -668,7 +668,7 @@ export default function LinksAndQrSettingsTab({
                   <option value="">-- No hardware tag linked yet --</option>
                   {unassignedTags.map((t) => (
                     <option key={t.id} value={t.code}>
-                      {t.code} ({t.form.toUpperCase()}) - zentap.in/t/{t.code}
+                      {t.code} ({t.form.toUpperCase()}) - /t/{t.code}
                     </option>
                   ))}
                 </select>

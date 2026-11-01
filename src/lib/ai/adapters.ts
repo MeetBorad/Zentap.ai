@@ -148,7 +148,7 @@ export class OpenAIAdapter implements ModelAdapter {
     };
 
     if (this.providerName === "openrouter") {
-      headers["HTTP-Referer"] = "https://zentap.in";
+      headers["HTTP-Referer"] = "https://zentapdigitalsolutions.com";
       headers["X-Title"] = "ZenTap Digital Solutions";
     }
 
