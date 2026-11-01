@@ -231,12 +231,34 @@ export interface QuotationRecord {
 
 const STORAGE_KEY_PREFIX = "zentap_v2_biz_";
 const ALL_BIZ_INDEX_KEY = "zentap_v2_all_businesses";
+const PURGED_BIZ_IDS_KEY = "zentap_v2_purged_biz_ids";
 const SCANS_KEY_PREFIX = "zentap_v2_scans_";
 const EVENTS_KEY_PREFIX = "zentap_v2_events_";
 const FEEDBACK_KEY_PREFIX = "zentap_v2_feedback_";
 const ORDERS_KEY_PREFIX = "zentap_v2_orders_";
 const QUOTATIONS_INDEX_KEY = "zentap_v2_quotations";
 const LEADS_KEY_PREFIX = "zentap_v2_leads_";
+
+export function getPurgedBusinessIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PURGED_BIZ_IDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addPurgedBusinessId(bizId: string) {
+  if (typeof window === "undefined" || !bizId) return;
+  try {
+    const list = getPurgedBusinessIds();
+    if (!list.includes(bizId)) {
+      list.push(bizId);
+      localStorage.setItem(PURGED_BIZ_IDS_KEY, JSON.stringify(list));
+    }
+  } catch {}
+}
 
 // Google Review Link Validation Regex as specified
 export const GOOGLE_REVIEW_LINK_REGEX = /^https:\/\/(g\.page\/r\/|search\.google\.com\/local\/writereview\?placeid=|maps\.app\.goo\.gl\/)/i;
@@ -554,14 +576,15 @@ function saveToGlobalIndex(record: BusinessRecord) {
 export function getAllBusinesses(): BusinessRecord[] {
   if (typeof window === "undefined") return INITIAL_FLEET;
   try {
+    const purgedIds = getPurgedBusinessIds();
     const raw = localStorage.getItem(ALL_BIZ_INDEX_KEY);
     let list: BusinessRecord[] = raw ? JSON.parse(raw) : [];
     INITIAL_FLEET.forEach((seed) => {
-      if (!list.some((b) => b.id === seed.id || b.slug === seed.slug)) {
+      if (!purgedIds.includes(seed.id) && !list.some((b) => b.id === seed.id || b.slug === seed.slug)) {
         list.push(seed);
       }
     });
-    return list;
+    return list.filter((b) => !purgedIds.includes(b.id));
   } catch {
     return INITIAL_FLEET;
   }
@@ -625,7 +648,11 @@ export function restoreBusiness(bizId: string): BusinessRecord[] {
 export function permanentlyDeleteBusiness(bizId: string): BusinessRecord[] {
   if (typeof window === "undefined") return INITIAL_FLEET;
   try {
-    let list = getAllBusinesses().filter((b) => b.id !== bizId);
+    addPurgedBusinessId(bizId);
+    const purgedIds = getPurgedBusinessIds();
+    const raw = localStorage.getItem(ALL_BIZ_INDEX_KEY);
+    let list: BusinessRecord[] = raw ? JSON.parse(raw) : [];
+    list = list.filter((b) => b.id !== bizId && !purgedIds.includes(b.id));
     localStorage.setItem(ALL_BIZ_INDEX_KEY, JSON.stringify(list));
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}${bizId}`);
     return list;
@@ -2167,19 +2194,20 @@ export function rejectResetRequest(requestId: string): ResetRequestRecord[] {
   return getAllResetRequests();
 }
 
-// Business Permanent Purge (Refuses if any tag is still assigned)
+// Business Permanent Purge (Auto-releases assigned tags and completely removes business)
 export function purgeBusinessRecord(businessId: string): { success: boolean; error?: string } {
   if (typeof window === "undefined") return { success: true };
-  const allTags = getAllTags();
-  const assigned = allTags.filter((t) => t.business_id === businessId);
-  if (assigned.length > 0) {
-    return {
-      success: false,
-      error: `Cannot purge business: ${assigned.length} standee/card(s) are still assigned. Please Take Back (release) all tags first.`,
-    };
+  
+  // Auto-release any assigned tags so they return safely to the pool
+  try {
+    const allTags = getAllTags();
+    const assigned = allTags.filter((t) => t.business_id === businessId);
+    assigned.forEach((t) => releaseTag(t.id));
+  } catch (err) {
+    console.warn("purgeBusinessRecord release tags notice:", err);
   }
 
-  // Remove business
+  // Remove business & remember purge
   permanentlyDeleteBusiness(businessId);
   return { success: true };
 }

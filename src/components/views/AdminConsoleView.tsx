@@ -99,7 +99,8 @@ import {
   getAllPartners,
   getAllResetRequests,
   purgeBusinessRecord,
-  batchAssignTags
+  batchAssignTags,
+  getPurgedBusinessIds
 } from "@/lib/businessStore";
 import JSZip from "jszip";
 import PartnersTab from "@/components/admin/PartnersTab";
@@ -350,32 +351,45 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
       // 2. Fetch all merchant records from Supabase
       try {
+        const purgedIds = getPurgedBusinessIds();
         const remote = await fetchDbAdminBusinesses();
         if (remote && remote.length > 0) {
-          const formatted: BusinessRecord[] = remote.map((b) => ({
-            id: b.id,
-            owner_user_id: b.owner_user_id,
-            name: b.name,
-            email: b.email,
-            phone: b.phone || "",
-            city: b.city || "",
-            state: b.state || "",
-            country: b.country || "India",
-            pincode: b.pincode || "",
-            gbp_link: b.gbp_link || "",
-            slug: b.slug,
-            plan: b.plan,
-            payment_status: b.payment_status,
-            review_url: b.review_url,
-            active: b.active,
-            address: b.address || "",
-            category: b.category || "",
-            created_at: b.created_at,
-          }));
+          const formatted: BusinessRecord[] = remote
+            .filter((b) => !purgedIds.includes(b.id))
+            .map((b) => ({
+              id: b.id,
+              owner_user_id: b.owner_user_id,
+              name: b.name,
+              owner_name: b.owner_name || "",
+              email: b.email,
+              phone: b.phone || "",
+              city: b.city || "",
+              state: b.state || "",
+              country: b.country || "India",
+              pincode: b.pincode || "",
+              gbp_link: b.gbp_link || "",
+              slug: b.slug,
+              plan: b.plan,
+              payment_status: b.payment_status,
+              review_url: b.review_url,
+              google_review_link: b.google_review_link || b.review_url || "",
+              active: b.active,
+              is_deleted: !!b.is_deleted,
+              deleted_at: b.deleted_at || null,
+              address: b.address || "",
+              category: b.category || "",
+              created_at: b.created_at,
+            }));
 
-          const merged = [...formatted];
+          const merged = formatted.map((rem) => {
+            const loc = local.find((l) => l.id === rem.id);
+            if (loc && loc.is_deleted && !rem.is_deleted) {
+              return { ...rem, is_deleted: true, active: false };
+            }
+            return rem;
+          });
           local.forEach((loc) => {
-            if (!merged.some((m) => m.id === loc.id || m.slug === loc.slug)) {
+            if (!purgedIds.includes(loc.id) && !merged.some((m) => m.id === loc.id || m.slug === loc.slug)) {
               merged.push(loc);
             }
           });
@@ -747,8 +761,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     setSoftDeleteModalBiz(null);
     showToast(
       releasedTagsCount > 0
-        ? `✓ "${biz.name}" soft-deleted. ${releasedTagsCount} standee/card(s) freed up.`
-        : `✓ "${biz.name}" soft-deleted. Scans will show neutral 'Page Unavailable' screen.`
+        ? `✓ "${biz.name}" deleted. Moved to Deleted tab (${releasedTagsCount} standee/card(s) freed up).`
+        : `✓ "${biz.name}" deleted. Moved to Deleted tab.`
     );
   };
 
@@ -764,7 +778,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     const updated = restoreBusiness(biz.id);
     adminRestoreDbBusiness(biz.id).catch((e) => console.warn(e));
     setBusinesses(updated);
-    showToast(`✓ "${biz.name}" restored & activated!`);
+    showToast(`✓ "${biz.name}" restored & activated on main list!`);
   };
 
   const handleExecutePermanentDelete = (biz: BusinessRecord) => {
@@ -774,7 +788,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       return;
     }
     adminPermanentDeleteDbBusiness(biz.id).catch((e) => console.warn(e));
-    setBusinesses(getAllBusinesses());
+    setBusinesses((prev) => prev.filter((b) => b.id !== biz.id));
+    setTags(getAllTags());
     setPermDeleteModalBiz(null);
     setPermDeleteConfirmInput("");
     showToast(`✓ "${biz.name}" permanently deleted.`);
@@ -1205,13 +1220,13 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     if (!matchesQuery) return false;
 
     if (statusFilter === "deleted") return !!b.is_deleted;
-    if (b.is_deleted && statusFilter !== "all") return false;
-    if (statusFilter === "active") return b.active && !b.is_deleted;
-    if (statusFilter === "awaiting_link") return !b.review_url && !b.is_deleted;
-    if (statusFilter === "name_pending") return isNamePending(b) && !b.is_deleted;
-    if (statusFilter === "paid") return b.payment_status === "paid" && !b.is_deleted;
-    if (statusFilter === "pending") return b.payment_status === "pending" && !b.is_deleted;
-    if ((statusFilter as any) === "direct_mode") return b.redirect_mode === "direct_review" && !b.is_deleted;
+    if (b.is_deleted) return false;
+    if (statusFilter === "active") return b.active;
+    if (statusFilter === "awaiting_link") return !b.review_url;
+    if (statusFilter === "name_pending") return isNamePending(b);
+    if (statusFilter === "paid") return b.payment_status === "paid";
+    if (statusFilter === "pending") return b.payment_status === "pending";
+    if ((statusFilter as any) === "direct_mode") return b.redirect_mode === "direct_review";
 
     return true;
   });
@@ -2513,23 +2528,25 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                           <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5 justify-end">
                               {b.is_deleted ? (
-                                <div className="inline-flex items-center gap-1">
+                                <div className="inline-flex items-center gap-1.5">
                                   <button
                                     onClick={() => handleRestoreBusiness(b)}
-                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 cursor-pointer shadow-2xs"
-                                    title="Restore Business"
+                                    className="tactile-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                                    title="Restore Business to Active Fleet"
                                   >
-                                    Restore
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Restore</span>
                                   </button>
                                   <button
                                     onClick={() => {
                                       setPermDeleteModalBiz(b);
                                       setPermDeleteConfirmInput("");
                                     }}
-                                    className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer shadow-2xs"
-                                    title="Permanently Delete"
+                                    className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shadow-2xs"
+                                    title="Permanently Purge Record"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Purge</span>
                                   </button>
                                 </div>
                               ) : (
@@ -4035,7 +4052,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 5b: SOFT DELETE CONFIRMATION DIALOG                                 */}
+      {/* MODAL 5b: DELETE BUSINESS CONFIRMATION DIALOG                              */}
       {/* ========================================================================= */}
       {softDeleteModalBiz && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -4045,29 +4062,25 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
 
             <h3 className="font-headline font-bold text-lg text-on-surface">
-              Soft Delete Business?
+              Delete Business?
             </h3>
 
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Are you sure you want to soft delete <strong>{softDeleteModalBiz.name}</strong>?
+              Are you sure you want to delete <strong>{softDeleteModalBiz.name}</strong>?
             </p>
 
             <div className="p-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-left text-xs text-on-surface space-y-2">
               <div className="flex items-center gap-2 text-rose-700 font-bold">
                 <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>This will free {tags.filter((t) => t.business_id === softDeleteModalBiz.id).length} standee/card(s) currently assigned.</span>
+                <span>Moves to the Deleted list (can be restored anytime).</span>
               </div>
               <div className="flex items-center gap-2 text-amber-700">
                 <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>The permanent slug <code className="font-mono font-bold">/r/{softDeleteModalBiz.slug}</code> is preserved.</span>
+                <span>Frees up {tags.filter((t) => t.business_id === softDeleteModalBiz.id).length} standee/card(s) assigned.</span>
               </div>
               <div className="flex items-center gap-2 text-on-surface-variant">
                 <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Scans on printed standees / NFC cards will show a neutral <strong>"Page Unavailable"</strong> screen.</span>
-              </div>
-              <div className="flex items-center gap-2 text-on-surface-variant">
-                <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>You can restore this business anytime from the fleet directory.</span>
+                <span>The permanent slug <code className="font-mono font-bold">/r/{softDeleteModalBiz.slug}</code> will show 'Page Unavailable'.</span>
               </div>
             </div>
 
@@ -4084,7 +4097,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 onClick={() => handleExecuteSoftDelete(softDeleteModalBiz)}
                 className="tactile-btn px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-sm"
               >
-                Confirm Soft Delete
+                Delete Business
               </button>
             </div>
           </div>
@@ -4111,11 +4124,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-left text-xs space-y-2">
               <p className="font-bold text-rose-900">
-                Type "{permDeleteModalBiz.name}" to confirm:
+                Type <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-rose-300">delete</span> or "{permDeleteModalBiz.name}" to confirm:
               </p>
               <input
                 type="text"
-                placeholder={permDeleteModalBiz.name}
+                placeholder={`Type 'delete' or '${permDeleteModalBiz.name}'`}
                 value={permDeleteConfirmInput}
                 onChange={(e) => setPermDeleteConfirmInput(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-rose-300 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-600"
@@ -4135,7 +4148,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </button>
               <button
                 type="button"
-                disabled={permDeleteConfirmInput.trim() !== permDeleteModalBiz.name.trim()}
+                disabled={
+                  permDeleteConfirmInput.trim().toLowerCase() !== "delete" &&
+                  permDeleteConfirmInput.trim().toLowerCase() !== permDeleteModalBiz.name.trim().toLowerCase()
+                }
                 onClick={() => handleExecutePermanentDelete(permDeleteModalBiz)}
                 className="tactile-btn px-5 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >

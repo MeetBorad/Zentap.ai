@@ -516,12 +516,28 @@ export async function adminRestoreDbBusiness(businessId: string): Promise<boolea
 }
 
 /**
- * 11e. Permanently delete business
+ * 11e. Permanently delete business (Cascades child relations safely)
  */
 export async function adminPermanentDeleteDbBusiness(businessId: string): Promise<boolean> {
   try {
     const supabase = getSupabase(true);
     if (!isValidUuid(businessId)) return false;
+
+    // Unlink tags from this business
+    await supabase.from("tags").update({ business_id: null }).eq("business_id", businessId);
+    
+    // Remove related child records to prevent foreign key errors
+    await supabase.from("scans").delete().eq("business_id", businessId);
+    await supabase.from("manual_payments").delete().eq("business_id", businessId);
+    await supabase.from("page_design").delete().eq("business_id", businessId);
+    await supabase.from("page_buttons").delete().eq("business_id", businessId);
+    await supabase.from("page_sections").delete().eq("business_id", businessId);
+    await supabase.from("page_photos").delete().eq("business_id", businessId);
+    await supabase.from("business_review_config").delete().eq("business_id", businessId);
+    await supabase.from("review_options").delete().eq("business_id", businessId);
+    await supabase.from("review_generations").delete().eq("business_id", businessId);
+    await supabase.from("review_events").delete().eq("business_id", businessId);
+    await supabase.from("feedback").delete().eq("business_id", businessId);
 
     const { error } = await supabase
       .from("businesses")
@@ -529,7 +545,8 @@ export async function adminPermanentDeleteDbBusiness(businessId: string): Promis
       .eq("id", businessId);
 
     return !error;
-  } catch {
+  } catch (e) {
+    console.warn("adminPermanentDeleteDbBusiness error:", e);
     return false;
   }
 }
