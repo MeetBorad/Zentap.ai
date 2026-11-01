@@ -34,9 +34,10 @@ import { BusinessRecord } from "@/lib/businessStore";
 interface ManualPaymentsTabProps {
   businesses: BusinessRecord[];
   onShowToast: (msg: string) => void;
+  onPaymentConfirmed?: (bizId: string) => void;
 }
 
-export default function ManualPaymentsTab({ businesses, onShowToast }: ManualPaymentsTabProps) {
+export default function ManualPaymentsTab({ businesses, onShowToast, onPaymentConfirmed }: ManualPaymentsTabProps) {
   const [payments, setPayments] = useState<ManualPaymentRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -159,6 +160,20 @@ export default function ManualPaymentsTab({ businesses, onShowToast }: ManualPay
 
     onShowToast(editingPayment ? "✓ Payment record updated" : "✓ New payment recorded");
     setIsModalOpen(false);
+    reloadPayments();
+  };
+
+  const handleQuickConfirm = (payment: ManualPaymentRecord) => {
+    saveManualPayment({
+      ...payment,
+      amount_received: payment.total_agreed_amount,
+      payment_status: "completed",
+      admin_notes: (payment.admin_notes ? payment.admin_notes + " • " : "") + "Payment Confirmed by Admin",
+    });
+    if (onPaymentConfirmed && payment.business_id) {
+      onPaymentConfirmed(payment.business_id);
+    }
+    onShowToast(`✓ Payment confirmed for "${payment.business_name}"! Status updated to Paid.`);
     reloadPayments();
   };
 
@@ -430,6 +445,16 @@ export default function ManualPaymentsTab({ businesses, onShowToast }: ManualPay
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {payment.payment_status !== "completed" && (
+                            <button
+                              onClick={() => handleQuickConfirm(payment)}
+                              className="tactile-btn px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-[11px] font-bold cursor-pointer transition-transform active:scale-[0.978] shadow-xs flex items-center gap-1 whitespace-nowrap"
+                              title="Confirm this payment and unlock hardware activation"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                              <span>Confirm Paid</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => handleOpenEditModal(payment)}
                             className="p-1.5 rounded-lg bg-[#0e1015] hover:bg-[#232734] text-zinc-300 hover:text-white transition-colors cursor-pointer border border-[#232734]"

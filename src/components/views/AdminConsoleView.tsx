@@ -110,6 +110,7 @@ import PageDesignerTab from "@/components/admin/PageDesignerTab";
 import PrivateFeedbackTab from "@/components/admin/PrivateFeedbackTab";
 import QrNfcDirectoryTab from "@/components/admin/QrNfcDirectoryTab";
 import ManualPaymentsTab from "@/components/admin/ManualPaymentsTab";
+import LinksAndQrSettingsTab from "@/components/admin/LinksAndQrSettingsTab";
 import { getManualPaymentStats, saveManualPayment, getAllManualPayments } from "@/lib/manualPaymentStore";
 import QuickTagSetupModal from "@/components/admin/QuickTagSetupModal";
 import BulkAssignCardsModal from "@/components/admin/BulkAssignCardsModal";
@@ -611,14 +612,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     e.preventDefault();
     if (!newBizName.trim()) return;
 
-    const baseSlug = newBizSlug.trim() ? generatePermanentSlug(newBizSlug) : generatePermanentSlug(newBizName);
-    const cleanSlug = baseSlug.toLowerCase();
-
-    // Check slug collision
-    const slugExists = businesses.some((b) => b.slug.toLowerCase() === cleanSlug);
-    if (slugExists) {
-      showToast("⚠️ Slug already in use! Please adjust the slug name.");
-      return;
+    // Auto-generate unique permanent slug from business name
+    const baseSlug = generatePermanentSlug(newBizName.trim());
+    let cleanSlug = baseSlug.toLowerCase();
+    if (businesses.some((b) => b.slug.toLowerCase() === cleanSlug)) {
+      cleanSlug = `${cleanSlug}-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     // 1. Create in Supabase Database first to acquire real backend UUID
@@ -635,12 +633,12 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         pincode: "380001",
         slug: cleanSlug,
         plan: newBizPlan,
-        payment_status: newBizPaymentStatus,
-        review_url: newBizReviewUrl.trim() || null,
+        payment_status: "pending",
+        review_url: null,
         whatsapp_number: newBizWhatsapp.trim(),
         instagram_url: newBizInstagram.trim(),
-        redirect_mode: newBizRedirectMode,
-        active: newBizActive && newBizPaymentStatus === "paid",
+        redirect_mode: "interactive_profile",
+        active: false, // Locked until payment confirmation
         service_valid_until: newBizValidUntil,
       });
       if (dbRecord && dbRecord.id) {
@@ -664,26 +662,22 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       gbp_link: "",
       slug: cleanSlug,
       plan: newBizPlan,
-      payment_status: newBizPaymentStatus,
-      review_url: newBizReviewUrl.trim() || null,
+      payment_status: "pending",
+      review_url: null,
       whatsapp_number: newBizWhatsapp.trim(),
       instagram_url: newBizInstagram.trim(),
-      redirect_mode: newBizRedirectMode,
-      active: newBizActive && newBizPaymentStatus === "paid",
+      redirect_mode: "interactive_profile",
+      active: false, // Locked until payment confirmation
       service_valid_until: newBizValidUntil,
       owner_user_id: dbId || `admin-managed-${Date.now()}`,
     });
 
-    // 3. Automatically record entry in Manual Payments ledger
+    // 3. Automatically record entry in Manual Payments ledger as Unpaid
     const planPrices: Record<string, number> = {
       business_review_standee: 999,
       zentap_smart_review_standee: 1499,
       zentap_smart_business_card: 699,
       custom_solution: 2499,
-      card_500: 500,
-      standee_1500: 1500,
-      standee_auto_2000: 2000,
-      franchise_custom: 2500,
     };
     const agreedAmount = planPrices[newBizPlan] || 999;
     saveManualPayment({
@@ -691,13 +685,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       business_name: newRecord.name,
       product_purchased: newBizPlan,
       total_agreed_amount: agreedAmount,
-      amount_received: newBizPaymentStatus === "paid" ? agreedAmount : 0,
+      amount_received: 0,
       payment_date: new Date().toISOString().split("T")[0],
       payment_method: "upi",
-      payment_status: newBizPaymentStatus === "paid" ? "completed" : "pending",
-      admin_notes: newBizPaymentStatus === "paid" 
-        ? "Initial registration (Payment Verified)" 
-        : "Initial registration (Awaiting payment confirmation to activate hardware)",
+      payment_status: "pending",
+      admin_notes: "Initial registration (Awaiting payment confirmation to activate hardware)",
     });
 
     const updated = [newRecord, ...businesses.filter((b) => b.id !== newRecord.id && b.slug !== newRecord.slug)];
@@ -713,14 +705,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     setNewBizReviewUrl("");
     setNewBizWhatsapp("");
     setNewBizInstagram("");
+    setNewBizPlan("business_review_standee");
     setNewBizRedirectMode("interactive_profile");
-    setNewBizActive(true);
+    setNewBizActive(false);
     setNewBizPaymentStatus("pending");
-    showToast(
-      newBizPaymentStatus === "paid"
-        ? `✓ Business "${newRecord.name}" created and payment verified!`
-        : `✓ Business "${newRecord.name}" registered! Awaiting payment confirmation before standee activation.`
-    );
+    showToast(`✓ Business "${newRecord.name}" registered as Unpaid! Confirm payment in Clients or Payments tab to activate hardware.`);
   };
 
   // -------------------------------------------------------------
@@ -1302,16 +1291,24 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     totalDefusedFeedback += a.privateFeedbackCount;
   });
 
-  // Calculate Total Earnings
+  // Calculate Total Earnings from Manual Payments, Business Plans & Orders
+  const manualPaymentStats = getManualPaymentStats();
   const totalOrderRevenue = orders.reduce((sum, o) => sum + (o.amount || 0) + (o.courier || 0), 0);
   const totalPlanBase = businesses.reduce((sum, b) => {
     if (b.payment_status === "paid") {
-      const p = b.plan === "card_500" ? 500 : b.plan === "standee_1500" ? 1500 : b.plan === "standee_auto_2000" ? 2000 : 2500;
+      const p = 
+        b.plan === "business_review_standee" ? 999 :
+        b.plan === "zentap_smart_review_standee" ? 1499 :
+        b.plan === "zentap_smart_business_card" ? 699 :
+        b.plan === "custom_solution" ? 2499 :
+        b.plan === "card_500" ? 500 :
+        b.plan === "standee_1500" ? 1500 :
+        b.plan === "standee_auto_2000" ? 2000 : 2500;
       return sum + p;
     }
     return sum;
   }, 0);
-  const totalFleetEarnings = Math.max(totalOrderRevenue, totalPlanBase);
+  const totalFleetEarnings = Math.max(manualPaymentStats.totalReceived, totalPlanBase, totalOrderRevenue);
 
   // Order Pipeline Counts
   const ordersProcessing = orders.filter((o) => o.status === "processing" || o.status === "in_production").length;
@@ -1412,7 +1409,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
           </div>
 
-          {/* Navigation Menu (6 Items) */}
+          {/* Navigation Menu (11 Items in Exact Operational Sequence) */}
           <nav className="py-4 px-3 space-y-1" aria-label="Admin Navigation">
             {/* 1. Overview */}
             <button
@@ -1454,7 +1451,67 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </span>
             </button>
 
-            {/* Page Designer */}
+            {/* 3. Payments (Manual Payments) */}
+            <button
+              onClick={() => { 
+                setAdminMenu("manual_payments"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "manual_payments"
+                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <DollarSign className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+              <span>Payments</span>
+            </button>
+
+            {/* 4. Standees & Cards (Generate Batch) */}
+            <button
+              onClick={() => { 
+                setAdminMenu("tags"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "tags"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Radio className="w-4 h-4 flex-shrink-0" />
+              <span>Standees &amp; Cards</span>
+              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                adminMenu === "tags" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
+              }`}>
+                {tags.length}
+              </span>
+            </button>
+
+            {/* 5. Links & QR Settings */}
+            <button
+              onClick={() => { 
+                setAdminMenu("review_links"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "review_links"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+              <span>Links &amp; QR Settings</span>
+              {pendingLinksCount > 0 && (
+                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  adminMenu === "review_links" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
+                }`}>
+                  {pendingLinksCount}
+                </span>
+              )}
+            </button>
+
+            {/* 6. Page Editor */}
             <button
               onClick={() => { 
                 setAdminMenu("page_designer"); 
@@ -1467,26 +1524,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }`}
             >
               <Palette className="w-4 h-4 flex-shrink-0 text-indigo-400" />
-              <span>Page Designer</span>
+              <span>Page Editor</span>
             </button>
 
-            {/* Review Assistant */}
-            <button
-              onClick={() => { 
-                setAdminMenu("review_assistant"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "review_assistant"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <Sparkles className="w-4 h-4 flex-shrink-0 text-amber-500" />
-              <span>Review Assistant</span>
-            </button>
-
-            {/* QR & NFC Directory */}
+            {/* 7. QR & NFC Directory */}
             <button
               onClick={() => { 
                 setAdminMenu("qr_nfc"); 
@@ -1502,49 +1543,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <span>QR &amp; NFC</span>
             </button>
 
-            {/* Standees & Cards (Physical Tags) */}
-            <button
-              onClick={() => { 
-                setAdminMenu("tags"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "tags"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <QrCode className="w-4 h-4 flex-shrink-0" />
-              <span>Standees &amp; Cards</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                adminMenu === "tags" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
-              }`}>
-                {tags.length}
-              </span>
-            </button>
-
-            {/* Partners & Distributors */}
-            <button
-              onClick={() => { 
-                setAdminMenu("partners"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "partners"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <Users className="w-4 h-4 flex-shrink-0" />
-              <span>Partners</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                adminMenu === "partners" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
-              }`}>
-                {partners.length}
-              </span>
-            </button>
-
-            {/* Reset Requests (with alert badge) */}
+            {/* 8. Requests (with alert badge) */}
             <button
               onClick={() => { 
                 setAdminMenu("requests"); 
@@ -1571,48 +1570,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               )}
             </button>
 
-            {/* Manual Payments & Ledger */}
-            <button
-              onClick={() => { 
-                setAdminMenu("manual_payments"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "manual_payments"
-                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <DollarSign className="w-4 h-4 flex-shrink-0 text-emerald-500" />
-              <span>Manual Payments</span>
-            </button>
-
-            {/* 4. Review Links */}
-            <button
-              onClick={() => { 
-                setAdminMenu("review_links"); 
-                setStatusFilter("awaiting_link");
-                setAdminTab("fleet");
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "review_links"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <ExternalLink className="w-4 h-4 flex-shrink-0" />
-              <span>Review Links</span>
-              {pendingLinksCount > 0 && (
-                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  adminMenu === "review_links" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
-                }`}>
-                  {pendingLinksCount}
-                </span>
-              )}
-            </button>
-
-            {/* 5. Analytics */}
+            {/* 9. Usage Analytics */}
             <button
               onClick={() => { 
                 setAdminMenu("analytics"); 
@@ -1626,10 +1584,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }`}
             >
               <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span>Usage &amp; Analytics</span>
+              <span>Usage Analytics</span>
             </button>
 
-            {/* Private Customer Feedback */}
+            {/* 10. Private Customer Feedback */}
             <button
               onClick={() => { 
                 setAdminMenu("feedback"); 
@@ -1645,7 +1603,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <span>Feedback</span>
             </button>
 
-            {/* 6. Settings */}
+            {/* 11. Platform Settings */}
             <button
               onClick={() => { 
                 setAdminMenu("settings"); 
@@ -1704,21 +1662,27 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
               <h2 className="font-headline font-bold text-sm sm:text-base text-zinc-900 capitalize">
                 {adminMenu === "manual_payments"
-                  ? "Manual Payments & Ledger"
+                  ? "Payments (Manual Payments)"
                   : adminMenu === "review_links" 
-                  ? "Review Links Hub" 
-                  : adminMenu === "orders" 
-                  ? "Orders & Payments" 
+                  ? "Links & QR Settings" 
                   : adminMenu === "tags"
                   ? "Standees & Cards"
                   : adminMenu === "page_designer"
-                  ? "Hub Page Designer"
-                  : adminMenu === "review_assistant"
-                  ? "Review Assistant"
+                  ? "Page Editor"
                   : adminMenu === "qr_nfc"
-                  ? "QR & NFC Hub"
+                  ? "QR & NFC"
+                  : adminMenu === "clients"
+                  ? "Clients"
+                  : adminMenu === "overview"
+                  ? "Overview"
+                  : adminMenu === "analytics"
+                  ? "Usage Analytics"
                   : adminMenu === "feedback"
                   ? "Private Feedback"
+                  : adminMenu === "requests"
+                  ? "Requests"
+                  : adminMenu === "settings"
+                  ? "Settings"
                   : adminMenu}
               </h2>
               <span className="hidden sm:inline-block text-xs text-zinc-400 font-normal">|</span>
@@ -1893,6 +1857,35 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
           {adminMenu === "manual_payments" && (
             <ManualPaymentsTab
               businesses={businesses}
+              onShowToast={showToast}
+              onPaymentConfirmed={(bizId) => {
+                const target = businesses.find((b) => b.id === bizId);
+                if (target) handleConfirmPayment(target);
+              }}
+            />
+          )}
+
+          {/* Links & QR Settings Section (when adminMenu === 'review_links') */}
+          {adminMenu === "review_links" && (
+            <LinksAndQrSettingsTab
+              businesses={businesses}
+              tags={tags}
+              onUpdateBusiness={(id, updates) => {
+                adminUpdateBusinessRecord(id, updates);
+                adminUpdateDbBusiness(id, updates).catch((e) => console.warn(e));
+                setBusinesses(getAllBusinesses());
+              }}
+              onUpdateTagDestination={(tag, dest) => {
+                handleToggleTagDestination(tag, dest);
+              }}
+              onOpenPageEditor={(bizId) => {
+                setPageDesignerTargetBizId(bizId);
+                setAdminMenu("page_designer");
+              }}
+              onOpenTagSetup={(biz) => {
+                setSelectedBizForEdit(biz);
+                setQuickTagModalOpen(true);
+              }}
               onShowToast={showToast}
             />
           )}
@@ -2304,7 +2297,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       {/* ========================================================================= */}
       {/* TAB 2: CLIENTS DIRECTORY / ADMIN TABLE                                    */}
       {/* ========================================================================= */}
-      {adminTab === "fleet" && (adminMenu === "clients" || adminMenu === "review_links") && (
+      {adminMenu === "clients" && (
         <div className="space-y-4 animate-in fade-in duration-300">
           
           {/* Page Title & Help Text */}
@@ -2314,7 +2307,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 Clients
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Manage onboarded businesses, links, and hardware assignments.
+                Manage registered business clients, contact details, payment confirmation, and status.
               </p>
             </div>
 
@@ -2333,7 +2326,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input
                 type="text"
-                placeholder="Search business name, city, email, slug..."
+                placeholder="Search business name, city, email, phone, slug..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
@@ -2351,12 +2344,12 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 All ({businesses.filter((b) => !b.is_deleted).length})
               </button>
               <button
-                onClick={() => setStatusFilter("awaiting_link")}
+                onClick={() => setStatusFilter("pending")}
                 className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-                  statusFilter === "awaiting_link" ? "bg-red-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                  statusFilter === "pending" ? "bg-amber-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >
-                Google Link Missing ({awaitingLinks})
+                Unpaid ({businesses.filter((b) => !b.is_deleted && b.payment_status !== "paid").length})
               </button>
               <button
                 onClick={() => setStatusFilter("paid")}
@@ -2364,23 +2357,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   statusFilter === "paid" ? "bg-emerald-700 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >
-                Paid ({paidDeployments})
-              </button>
-              <button
-                onClick={() => setStatusFilter("active")}
-                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-                  statusFilter === "active" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
-                }`}
-              >
-                Active ({activeBusinesses})
-              </button>
-              <button
-                onClick={() => setStatusFilter("direct_mode" as any)}
-                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-                  (statusFilter as any) === "direct_mode" ? "bg-blue-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
-                }`}
-              >
-                Direct Mode ({businesses.filter((b) => !b.is_deleted && b.redirect_mode === "direct_review").length})
+                Paid ({businesses.filter((b) => !b.is_deleted && b.payment_status === "paid").length})
               </button>
               <button
                 onClick={() => setStatusFilter("deleted")}
@@ -2399,38 +2376,31 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
-                    <th className="py-3.5 px-4 sm:px-6">Business Name &amp; Link Name</th>
+                    <th className="py-3.5 px-4 sm:px-6">Business Name</th>
                     <th className="py-3.5 px-4">Owner Phone &amp; Email</th>
-                    <th className="py-3.5 px-4">Open Review Page</th>
-                    <th className="py-3.5 px-4">Package</th>
-                    <th className="py-3.5 px-4">Payment</th>
-                    <th className="py-3.5 px-4">Link On/Off</th>
-                    <th className="py-3.5 px-4">Total Scans</th>
-                    <th className="py-3.5 px-4">Google Review Link</th>
-                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                    <th className="py-3.5 px-4">Payment Status</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Delete Business</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-variant/30">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-on-surface-variant">
+                      <td colSpan={4} className="py-8 text-center text-on-surface-variant">
                         No businesses matched your search filters.
                       </td>
                     </tr>
                   ) : (
                     filtered.map((b) => {
-                      const a = getBusinessAnalytics(b.id);
-                      const isPendingName = isNamePending(b);
-                      const isEditingThisReview = editingBizId === b.id;
+                      const isPaid = b.payment_status === "paid";
 
                       return (
                         <tr key={b.id} className={`hover:bg-surface-container-low/50 transition-colors ${b.is_deleted ? "opacity-60 bg-rose-500/5" : ""}`}>
                           
-                          {/* 1. Business Name & Link Name */}
+                          {/* 1. Business Name */}
                           <td className="py-4 px-4 sm:px-6">
-                            <div className="flex flex-col gap-1 max-w-[210px]">
+                            <div className="flex flex-col gap-1 max-w-[260px]">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-on-surface truncate block" title={b.name}>
+                                <span className="font-bold text-sm text-zinc-900 truncate block" title={b.name}>
                                   {b.name}
                                 </span>
                                 {b.is_deleted && (
@@ -2439,96 +2409,99 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 font-mono text-[11px] text-secondary truncate">
-                                <span>/r/{b.slug}</span>
-                                {b.slug_locked && (
-                                  <span title="Slug is permanently locked"><Lock className="w-2.5 h-2.5 text-zinc-400" /></span>
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 font-semibold text-[10px] border border-zinc-200">
+                                  {b.plan === "business_review_standee"
+                                    ? "Business Review Standee (₹999)"
+                                    : b.plan === "zentap_smart_review_standee"
+                                    ? "Smart Review Standee (₹1,499)"
+                                    : b.plan === "zentap_smart_business_card"
+                                    ? "Smart Business Card (₹699)"
+                                    : b.plan === "custom_solution"
+                                    ? "Custom Solution"
+                                    : "Standee Plan"}
+                                </span>
+                                {b.city && (
+                                  <span className="text-[10px] text-zinc-500 font-medium">
+                                    {b.city}
+                                  </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <button
-                                  onClick={() => {
-                                    setAdminMenu("tags");
-                                    setTagSearchQuery(b.name);
-                                  }}
-                                  className="px-2 py-0.5 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                                  title={`Click to view tags assigned to ${b.name}`}
+                              <div className="flex items-center gap-1 font-mono text-[11px] text-zinc-400 mt-0.5">
+                                <a
+                                  href={`/r/${b.slug}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="hover:text-emerald-600 flex items-center gap-1 transition-colors"
+                                  title="View Review Link"
                                 >
-                                  <Tag className="w-2.5 h-2.5 text-zinc-500" />
-                                  <span>Cards: {tags.filter((t) => t.business_id === b.id).length}</span>
-                                </button>
-                                <button
-                                  onClick={() => handleOpenNameModal(b)}
-                                  className="text-[10px] font-bold text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Edit2 className="w-2.5 h-2.5" />
-                                  <span>Edit</span>
-                                </button>
+                                  <span>/r/{b.slug}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 text-zinc-400" />
+                                </a>
                               </div>
                             </div>
                           </td>
 
                           {/* 2. Owner Phone & Email */}
                           <td className="py-4 px-4">
-                            <div className="flex flex-col text-[11px] text-on-surface-variant max-w-[150px]">
-                              <span className="text-on-surface font-semibold truncate">{b.owner_name || "Owner"}</span>
-                              <span className="truncate">{b.phone || "No phone"}</span>
-                              <span className="text-[10px] text-zinc-400 truncate" title={b.email}>{b.email}</span>
-                              <span className="text-[10px] text-zinc-500">{b.city || "Ahmedabad"}</span>
-                            </div>
-                          </td>
-
-                          {/* 3. Open Review Page */}
-                          <td className="py-4 px-4">
-                            <a
-                              href={`${originUrl}/r/${b.slug}?preview=1`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-zinc-200 hover:bg-zinc-50 text-[11px] font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
-                            >
-                              <span>Open Review Page</span>
-                              <ExternalLink className="w-3 h-3 text-zinc-400" />
-                            </a>
-                          </td>
-
-                          {/* 4. Package */}
-                          <td className="py-4 px-4">
-                            <div className="flex flex-col gap-1 items-start">
-                              <button
-                                onClick={() => handleOpenPlanModal(b)}
-                                className="px-2.5 py-1 rounded-full bg-surface-container font-semibold text-[11px] text-on-surface border border-surface-variant/40 hover:border-primary cursor-pointer flex items-center gap-1 whitespace-nowrap"
-                                title="Click to change package"
-                              >
-                                <span>
-                                  {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : b.plan === "standee_auto_2000" ? "Standee + AI ₹2,000" : "Corporate Fleet"}
-                                </span>
-                                <ChevronDown className="w-2.5 h-2.5 text-on-surface-variant" />
-                              </button>
-                              {b.service_valid_until && (
-                                <span className="text-[9px] text-zinc-400 font-mono" title="Service valid until">
-                                  Valid: {b.service_valid_until.slice(0, 10)}
+                            <div className="flex flex-col text-xs text-zinc-700 max-w-[220px]">
+                              {b.owner_name && (
+                                <span className="font-semibold text-zinc-900 truncate">
+                                  {b.owner_name}
                                 </span>
                               )}
+                              {b.phone ? (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <a
+                                    href={`tel:${b.phone}`}
+                                    className="font-medium hover:text-emerald-600 transition-colors"
+                                  >
+                                    {b.phone}
+                                  </a>
+                                  {b.whatsapp_number && (
+                                    <a
+                                      href={`https://wa.me/${b.whatsapp_number.replace(/\D/g, "")}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-emerald-600 hover:text-emerald-700 text-[10px] font-bold"
+                                      title="Chat on WhatsApp"
+                                    >
+                                      (WhatsApp)
+                                    </a>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-zinc-400 italic">No phone</span>
+                              )}
+                              {b.email ? (
+                                <a
+                                  href={`mailto:${b.email}`}
+                                  className="text-[11px] text-zinc-400 hover:text-zinc-600 truncate mt-0.5"
+                                  title={b.email}
+                                >
+                                  {b.email}
+                                </a>
+                              ) : null}
                             </div>
                           </td>
 
-                          {/* 5. Payment Status & Confirmation Gate */}
+                          {/* 3. Payment Status */}
                           <td className="py-4 px-4">
-                            {b.payment_status === "paid" ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            {isPaid ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>Paid (Verified)</span>
                               </span>
                             ) : (
-                              <div className="flex flex-col gap-1.5 items-start">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/15 text-amber-700 border border-amber-500/30">
-                                  <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
-                                  <span>Awaiting Payment</span>
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-700 border border-amber-500/30">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                  <span>Unpaid</span>
                                 </span>
                                 <button
                                   onClick={() => handleConfirmPayment(b)}
-                                  className="tactile-btn px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer transition-colors shadow-sm whitespace-nowrap"
-                                  title="Confirm payment received to activate hardware routing"
+                                  className="tactile-btn px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition-transform active:scale-[0.978] shadow-xs whitespace-nowrap"
+                                  title="Confirm payment received to unlock hardware activation"
                                 >
                                   ✓ Confirm Payment
                                 </button>
@@ -2536,213 +2509,36 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                             )}
                           </td>
 
-                          {/* 6. Link On/Off (Gated by Payment Confirmation) */}
-                          <td className="py-4 px-4">
-                            {b.payment_status === "pending" ? (
-                              <div className="flex items-center gap-1 text-[11px] text-zinc-400" title="Locked until payment confirmation">
-                                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                                <span className="text-[10px] font-semibold text-amber-600">Locked</span>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleToggleActive(b)}
-                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  b.active ? "bg-emerald-600" : "bg-zinc-300"
-                                }`}
-                                title={b.active ? "Link is ON" : "Link is OFF"}
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                    b.active ? "translate-x-4" : "translate-x-0"
-                                  }`}
-                                />
-                              </button>
-                            )}
-                          </td>
-
-                          {/* 7. Total Scans */}
-                          <td className="py-4 px-4 font-mono">
-                            <div className="flex flex-col gap-0.5 text-[11px]">
-                              <span className="font-bold text-zinc-900 text-xs">{a.totalScans}</span>
-                              <span className="text-[10px] text-zinc-400">NFC: {a.nfcScans} • QR: {a.qrScans}</span>
-                            </div>
-                          </td>
-
-                          {/* 8. Google Review Link */}
-                          <td className="py-4 px-4">
-                            {isEditingThisReview ? (
-                              <div className="flex flex-col gap-1 min-w-[200px]">
-                                <input
-                                  type="url"
-                                  value={editReviewUrl}
-                                  onChange={(e) => setEditReviewUrl(e.target.value)}
-                                  placeholder="https://g.page/r/.../review"
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-surface-variant text-[11px] font-mono text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                                {validationWarning && (
-                                  <span className="text-[10px] text-amber-600 font-semibold">{validationWarning}</span>
-                                )}
-                                {validationError && (
-                                  <span className="text-[10px] text-red-600 font-semibold">{validationError}</span>
-                                )}
-                                <div className="flex items-center gap-1.5 pt-0.5">
-                                  <button
-                                    onClick={() => handleSaveReviewUrl(b.id)}
-                                    className="px-2.5 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingBizId(null)}
-                                    className="px-2 py-1 rounded bg-surface-container text-on-surface-variant font-bold text-[10px] cursor-pointer"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-1 max-w-[200px]">
-                                {b.review_url ? (
-                                  <>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                                      <span className="text-[11px] font-mono text-zinc-700 truncate" title={b.review_url}>
-                                        {b.review_url.replace(/^https?:\/\//, "")}
-                                      </span>
-                                      <button
-                                        onClick={() => handleStartEditReview(b)}
-                                        className="p-1 rounded hover:bg-zinc-100 text-zinc-500 cursor-pointer"
-                                        title="Edit Google Review Link"
-                                      >
-                                        <Edit2 className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                    {b.review_url.includes("maps.app.goo.gl") && (
-                                      <span className="text-[9px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-bold block" title="Warning: Maps app share link opens profile, not write review directly">
-                                        ⚠️ Maps link (Not write-review)
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 font-bold text-[10px]">
-                                      Google Link Missing
-                                    </span>
-                                    <button
-                                      onClick={() => handleStartEditReview(b)}
-                                      className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
-                                    >
-                                      + Add
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* 9. Actions */}
+                          {/* 4. Delete Business Option */}
                           <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5 justify-end">
-                              {/* Redirect Mode Toggle */}
-                              <button
-                                onClick={() => handleToggleRedirectMode(b)}
-                                className={`px-2 py-1 rounded-md text-[10px] font-bold border cursor-pointer ${
-                                  b.redirect_mode === "direct_review"
-                                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                }`}
-                                title="Toggle: ON = ZenTap Page, OFF = Direct Google"
-                              >
-                                {b.redirect_mode === "direct_review" ? "Direct Google" : "ZenTap Page"}
-                              </button>
-
-                              {/* QR Assets */}
-                              <button
-                                onClick={() => handleOpenQRModal(b)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-zinc-700 cursor-pointer"
-                                title="QR Codes (Review, WhatsApp, Instagram)"
-                              >
-                                <QrCode className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Quick WhatsApp & Instagram Edit */}
-                              <button
-                                onClick={() => setQuickSocialBiz(b)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-emerald-50 text-emerald-600 cursor-pointer"
-                                title="Quick Edit WhatsApp & Instagram buttons"
-                              >
-                                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                              </button>
-
-                              {/* Chips categories */}
-                              <button
-                                onClick={() => handleOpenChipsModal(b)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-amber-600 cursor-pointer"
-                                title="Customize Review Chips"
-                              >
-                                <Sliders className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Page Designer */}
-                              <button
-                                onClick={() => {
-                                  setPageDesignerTargetBizId(b.id);
-                                  setAdminMenu("page_designer");
-                                }}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-indigo-50 text-indigo-600 cursor-pointer"
-                                title="Page Designer (Hub Page & Theme)"
-                              >
-                                <Palette className="w-3.5 h-3.5 text-indigo-500" />
-                              </button>
-
-                              {/* Review Assistant */}
-                              <button
-                                onClick={() => {
-                                  setReviewAssistantTargetBizId(b.id);
-                                  setAdminMenu("review_assistant");
-                                }}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-amber-50 text-amber-600 cursor-pointer"
-                                title="Review Assistant Settings"
-                              >
-                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                              </button>
-
-                              {/* Link Legacy Standee Tag (if not already linked) */}
-                              {!b.is_deleted && !tags.some((t) => t.code.toLowerCase() === b.slug.toLowerCase()) && (
-                                <button
-                                  onClick={() => handleLinkLegacyStandee(b)}
-                                  className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-600 cursor-pointer"
-                                  title={`Create legacy hardware tag for /r/${b.slug} to switch destination remotely`}
-                                >
-                                  <Radio className="w-3.5 h-3.5 text-zinc-600" />
-                                </button>
-                              )}
-
-                              {/* Soft Delete or Restore */}
                               {b.is_deleted ? (
                                 <div className="inline-flex items-center gap-1">
                                   <button
                                     onClick={() => handleRestoreBusiness(b)}
-                                    className="px-2 py-1 rounded-md bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 cursor-pointer shadow-2xs"
                                     title="Restore Business"
                                   >
                                     Restore
                                   </button>
                                   <button
-                                    onClick={() => setPermDeleteModalBiz(b)}
-                                    className="px-2 py-1 rounded-md bg-rose-600 text-white font-bold text-[10px] hover:bg-rose-700 cursor-pointer"
+                                    onClick={() => {
+                                      setPermDeleteModalBiz(b);
+                                      setPermDeleteConfirmInput("");
+                                    }}
+                                    className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 cursor-pointer shadow-2xs"
                                     title="Permanently Delete"
                                   >
-                                    Delete
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : (
                                 <button
                                   onClick={() => setSoftDeleteModalBiz(b)}
-                                  className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-rose-50 text-rose-600 cursor-pointer"
-                                  title="Soft Delete Business"
+                                  className="p-2 rounded-xl bg-surface hover:bg-rose-50 text-rose-600 border border-surface-variant/50 hover:border-rose-200 cursor-pointer transition-colors shadow-2xs"
+                                  title="Delete Business"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
                             </div>
@@ -2903,42 +2699,65 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
-                    <th className="py-3.5 px-4 sm:px-6">Code</th>
+                    <th className="py-3.5 px-4 sm:px-6">Business Name</th>
                     <th className="py-3.5 px-4">Item</th>
-                    <th className="py-3.5 px-4">Chip Written</th>
-                    <th className="py-3.5 px-4">Owner (Partner)</th>
-                    <th className="py-3.5 px-4">Purpose</th>
-                    <th className="py-3.5 px-4">Assigned To</th>
-                    <th className="py-3.5 px-4">Employee / Note</th>
-                    <th className="py-3.5 px-4">Scan Goes To</th>
-                    <th className="py-3.5 px-4">On/Off</th>
-                    <th className="py-3.5 px-4">Scans</th>
-                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                    <th className="py-3.5 px-4">Code</th>
+                    <th className="py-3.5 px-4">Link</th>
+                    <th className="py-3.5 px-4">Assigned Status To</th>
+                    <th className="py-3.5 px-4">Status of Link</th>
+                    <th className="py-3.5 px-4">Scans / Taps</th>
+                    <th className="py-3.5 px-4 text-center">Download QR</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Copy NFC Link</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-variant/30">
                   {filteredTags.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-on-surface-variant">
+                      <td colSpan={9} className="py-8 text-center text-on-surface-variant">
                         No standees or cards match your search criteria.
                       </td>
                     </tr>
                   ) : (
                     filteredTags.map((tag) => (
                       <tr key={tag.id} className="hover:bg-surface-container-low/50 transition-colors">
-                        {/* 1. Code */}
+                        
+                        {/* 1. Business Name */}
                         <td className="py-4 px-4 sm:px-6">
-                          <div className="flex flex-col">
-                            <span className="font-mono font-bold text-sm text-zinc-900 uppercase">
-                              {tag.code}
-                            </span>
-                            <span className="font-mono text-[10px] text-zinc-400">
-                              zentap.in/t/{tag.code}
-                            </span>
-                          </div>
+                          {tag.business_name ? (
+                            <div className="flex flex-col gap-1 max-w-[200px]">
+                              <span className="font-bold text-zinc-900 text-sm truncate" title={tag.business_name}>
+                                {tag.business_name}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[10px] text-zinc-400 truncate">
+                                  /r/{tag.business_slug}
+                                </span>
+                                <button
+                                  onClick={() => setTakeBackModalTag(tag)}
+                                  className="text-[10px] font-bold text-amber-600 hover:text-amber-700 underline cursor-pointer"
+                                  title="Unassign this card/standee"
+                                >
+                                  Release
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/25 font-bold text-[11px]">
+                                Not Assigned
+                              </span>
+                              <button
+                                onClick={() => handleOpenAssignModal(tag)}
+                                className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 underline cursor-pointer"
+                                title="Assign this standee/card to a business"
+                              >
+                                + Assign Business
+                              </button>
+                            </div>
+                          )}
                         </td>
 
-                        {/* 2. Item */}
+                        {/* 2. Item (Standee / Card) */}
                         <td className="py-4 px-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
                             tag.form === "standee"
@@ -2949,111 +2768,73 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                           </span>
                         </td>
 
-                        {/* 2b. Chip Written Checkbox / Toggle */}
+                        {/* 3. Code (zt-0007) */}
                         <td className="py-4 px-4">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleChipWritten(tag)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-all active:scale-[0.97] ${
-                              tag.chip_written
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
-                            }`}
-                            title={
-                              tag.chip_written
-                                ? "NFC chip written & verified. Click to toggle."
-                                : "NFC chip not written yet. Click to mark written after NFC Tools write."
-                            }
-                          >
-                            {tag.chip_written ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
-                                <span>Written</span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                <span>Needs Writing</span>
-                              </>
-                            )}
-                          </button>
-                        </td>
-
-                        {/* 2c. Owner (Partner) */}
-                        <td className="py-4 px-4 font-mono text-[11px] text-zinc-700">
-                          <span className="font-semibold text-zinc-800">
-                            {tag.partner_name || "ZenTap Master"}
+                          <span className="font-mono font-bold text-sm text-zinc-900 uppercase">
+                            {tag.code}
                           </span>
                         </td>
 
-                        {/* 3. Purpose */}
+                        {/* 4. Link (zentap.in/t/zt-0007) */}
                         <td className="py-4 px-4">
-                          {tag.type ? (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                              tag.type === "review"
-                                ? "bg-amber-100 text-amber-800"
-                                : tag.type === "whatsapp"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-pink-100 text-pink-800"
-                            }`}>
-                              {tag.type === "review" ? "Google Review" : tag.type === "whatsapp" ? "WhatsApp" : "Instagram"}
-                            </span>
-                          ) : (
-                            <span className="text-zinc-400 text-xs italic">Unassigned</span>
-                          )}
-                        </td>
-
-                        {/* 4. Assigned To */}
-                        <td className="py-4 px-4">
-                          {tag.business_name ? (
-                            <div className="flex flex-col max-w-[160px]">
-                              <span className="font-bold text-zinc-900 truncate">
-                                {tag.business_name}
-                              </span>
-                              <span className="font-mono text-[10px] text-zinc-400 truncate">
-                                /r/{tag.business_slug}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
-                              Free to Give Out
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 5. Employee / Note */}
-                        <td className="py-4 px-4">
-                          <span className="text-xs text-zinc-600 truncate max-w-[120px] block">
-                            {tag.label || "—"}
-                          </span>
-                        </td>
-
-                        {/* 6. Scan Goes To */}
-                        <td className="py-4 px-4">
-                          {tag.type === "review" ? (
-                            <select
-                              value={tag.destination}
-                              onChange={(e) => handleToggleTagDestination(tag, e.target.value as TagDestination)}
-                              className="px-2 py-1 rounded-lg bg-surface border border-surface-variant text-[11px] font-semibold text-on-surface cursor-pointer focus:outline-none"
+                          <div className="flex items-center gap-1.5 font-mono text-xs text-zinc-700">
+                            <a
+                              href={`/t/${tag.code}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:text-emerald-600 flex items-center gap-1 transition-colors"
+                              title="Test Hardware Tag Link"
                             >
-                              <option value="zentap_page">ZenTap Page</option>
-                              <option value="direct">Direct Google</option>
-                            </select>
+                              <span>zentap.in/t/{tag.code}</span>
+                              <ExternalLink className="w-2.5 h-2.5 text-zinc-400" />
+                            </a>
+                            <button
+                              onClick={() => handleCopyNfcLink(tag.code)}
+                              className="p-1 rounded hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 cursor-pointer"
+                              title="Copy Tag URL"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* 5. Assigned Status To */}
+                        <td className="py-4 px-4">
+                          {!tag.business_id ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/25 font-bold text-[11px]">
+                              Not Assigned
+                            </span>
+                          ) : tag.type === "review" && tag.destination === "direct" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[11px]">
+                              Direct Google review
+                            </span>
+                          ) : tag.type === "review" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[11px]">
+                              Zentap Google review
+                            </span>
+                          ) : tag.type === "whatsapp" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                              WhatsApp
+                            </span>
+                          ) : tag.type === "instagram" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-800 font-bold text-[11px]">
+                              Direct Insta
+                            </span>
                           ) : (
-                            <span className="text-xs text-zinc-500 font-medium">
-                              Direct {tag.type === "whatsapp" ? "WhatsApp" : tag.type === "instagram" ? "Instagram" : "Link"}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[11px]">
+                              Facebook
                             </span>
                           )}
                         </td>
 
-                        {/* 7. On/Off */}
+                        {/* 6. Status of the Link (Option to turn on/off whenever) */}
                         <td className="py-4 px-4">
                           <button
                             onClick={() => handleToggleTagActive(tag)}
                             className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                               tag.active ? "bg-emerald-600" : "bg-zinc-300"
                             }`}
-                            title={tag.active ? "Item is On (Active)" : "Item is Off (Inactive)"}
+                            title={tag.active ? "Link is ON (Active) - Click to turn OFF" : "Link is OFF (Inactive) - Click to turn ON"}
                           >
                             <span
                               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -3063,54 +2844,34 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                           </button>
                         </td>
 
-                        {/* 8. Scans */}
-                        <td className="py-4 px-4">
-                          <span className="font-mono font-bold text-xs text-zinc-900">
-                            {tag.scan_count || 0}
-                          </span>
+                        {/* 7. Scans/taps count */}
+                        <td className="py-4 px-4 font-mono font-bold text-xs text-zinc-900">
+                          {tag.scan_count || 0}
                         </td>
 
-                        {/* 9. Actions */}
+                        {/* 8. Download QR */}
+                        <td className="py-4 px-4 text-center">
+                          <button
+                            onClick={() => handleOpenTagQrModal(tag)}
+                            className="p-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-700 cursor-pointer shadow-2xs"
+                            title="Download QR code (PNG / SVG)"
+                          >
+                            <QrCode className="w-4 h-4" />
+                          </button>
+                        </td>
+
+                        {/* 9. Copy NFC writing link */}
                         <td className="py-4 px-4 sm:px-6 text-right">
-                          <div className="inline-flex items-center gap-1.5 justify-end">
-                            {/* Give to Business or Take Back */}
-                            {tag.business_id ? (
-                              <button
-                                onClick={() => setTakeBackModalTag(tag)}
-                                className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold cursor-pointer transition-colors"
-                                title="Free up this standee/card for someone new"
-                              >
-                                Take Back
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleOpenAssignModal(tag)}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
-                                title="Assign this standee/card to a business"
-                              >
-                                Give to Business
-                              </button>
-                            )}
-
-                            {/* Download QR */}
-                            <button
-                              onClick={() => handleOpenTagQrModal(tag)}
-                              className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-700 cursor-pointer"
-                              title="Download QR code"
-                            >
-                              <QrCode className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Copy NFC Link */}
-                            <button
-                              onClick={() => handleCopyNfcLink(tag.code)}
-                              className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-700 cursor-pointer"
-                              title="Copy NFC writing link (URL for NTAG)"
-                            >
-                              <Radio className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleCopyNfcLink(tag.code)}
+                            className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold cursor-pointer transition-transform active:scale-[0.978] shadow-2xs whitespace-nowrap"
+                            title="Copy NFC writing URL for NTAG chip"
+                          >
+                            <Radio className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Copy NFC Link</span>
+                          </button>
                         </td>
+
                       </tr>
                     ))
                   )}
@@ -4010,11 +3771,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: ADD NEW BUSINESS (PERMANENT NFC/QR LINK CREATION)               */}
+      {/* MODAL 4: ADD NEW BUSINESS (STREAMLINED REGISTRATION)                      */}
       {/* ========================================================================= */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200 my-8">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200 my-8">
             <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
               <div className="flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-secondary" />
@@ -4023,7 +3784,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                     Add New Business
                   </h3>
                   <p className="text-[11px] text-on-surface-variant">
-                    Creates permanent standee slug, review flow &amp; NFC/QR credentials
+                    Registers client in backend &amp; records unpaid entry awaiting payment confirmation
                   </p>
                 </div>
               </div>
@@ -4036,47 +3797,22 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
 
             <form onSubmit={handleAddNewBusiness} className="space-y-4">
-              {/* Business Name & Permanent Slug */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">
-                    Business Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newBizName}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewBizName(val);
-                      if (!newBizSlug || newBizSlug === generatePermanentSlug(newBizName)) {
-                        setNewBizSlug(generatePermanentSlug(val));
-                      }
-                    }}
-                    placeholder="e.g. Blue Tokai Coffee"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">
-                    Permanent Link Slug *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newBizSlug}
-                    onChange={(e) => setNewBizSlug(generatePermanentSlug(e.target.value))}
-                    placeholder="e.g. blue-tokai-coffee"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
-                  />
-                  <span className="text-[10px] text-zinc-400 block mt-0.5">
-                    Link: /r/{newBizSlug || "slug"} (Permanently encoded on standee)
-                  </span>
-                </div>
+              {/* Business Name */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Business Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newBizName}
+                  onChange={(e) => setNewBizName(e.target.value)}
+                  placeholder="e.g. Blue Tokai Coffee"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                />
               </div>
 
-              {/* Owner Name, Email, Phone, City */}
+              {/* Owner Name & Owner Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">Owner Name</label>
@@ -4100,6 +3836,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 </div>
               </div>
 
+              {/* Owner Phone & City */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">Owner Phone / Contact</label>
@@ -4123,59 +3860,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 </div>
               </div>
 
-              {/* Plan & Payment Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Selected Plan</label>
-                  <select
-                    value={newBizPlan}
-                    onChange={(e: any) => setNewBizPlan(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
-                  >
-                    <option value="business_review_standee">1. Business Review Standee (₹999 - Direct Google Review)</option>
-                    <option value="zentap_smart_review_standee">2. ZenTap Smart Review Standee (₹1,499 - Review Assistant)</option>
-                    <option value="zentap_smart_business_card">3. ZenTap Smart Business Card (₹699 - Digital Card)</option>
-                    <option value="custom_solution">4. ZenTap Custom Solutions (Bespoke / Multi-Branch)</option>
-                    <option value="card_500">Legacy: NFC Smart Card (₹500)</option>
-                    <option value="standee_1500">Legacy: Smart Review Standee (₹1,500)</option>
-                    <option value="standee_auto_2000">Legacy: Auto Standee + AI Replies (₹2,000)</option>
-                    <option value="franchise_custom">Legacy: Corporate Fleet (Custom)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Payment Status</label>
-                  <select
-                    value={newBizPaymentStatus}
-                    onChange={(e: any) => setNewBizPaymentStatus(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
-                  >
-                    <option value="pending">PENDING (Wait for payment confirmation)</option>
-                    <option value="paid">PAID (Verified &amp; Confirmed)</option>
-                    <option value="failed">FAILED / CANCELLED</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Google Review URL */}
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  Google Review URL (Pasted manually)
-                </label>
-                <input
-                  type="url"
-                  value={newBizReviewUrl}
-                  onChange={(e) => setNewBizReviewUrl(e.target.value)}
-                  placeholder="https://g.page/r/.../review or https://search.google.com/local/writereview?placeid=..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none"
-                />
-              </div>
-
               {/* WhatsApp Number & Instagram Link */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">
-                    WhatsApp Number (Shown as button on review page)
+                    WhatsApp Number
                   </label>
                   <input
                     type="tel"
@@ -4188,76 +3877,41 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
                 <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">
-                    Instagram Handle / URL (Shown as button on review page)
+                    Instagram Link
                   </label>
                   <input
                     type="text"
                     value={newBizInstagram}
                     onChange={(e) => setNewBizInstagram(e.target.value)}
-                    placeholder="@bluetokaicoffee or full URL"
+                    placeholder="https://instagram.com/bluetokaicoffee"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Redirect Mode & Active Toggles */}
-              <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-variant/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-on-surface block">Redirect Mode</span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      {newBizRedirectMode === "interactive_profile"
-                        ? "ON = Customised ZenTap review assistant (stars, AI draft, WhatsApp, Instagram)"
-                        : "OFF = Redirect straight to Google review page"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewBizRedirectMode(
-                        newBizRedirectMode === "interactive_profile" ? "direct_review" : "interactive_profile"
-                      )
-                    }
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
-                      newBizRedirectMode === "interactive_profile"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-blue-600 text-white"
-                    }`}
-                  >
-                    {newBizRedirectMode === "interactive_profile" ? "ON (ZenTap Page)" : "OFF (Direct Google)"}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-surface-variant/30">
-                  <div>
-                    <span className="text-xs font-bold text-on-surface block">Active Status</span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Switches the whole standee link on or off
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setNewBizActive(!newBizActive)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
-                      newBizActive ? "bg-emerald-600 text-white" : "bg-zinc-600 text-white"
-                    }`}
-                  >
-                    {newBizActive ? "ACTIVE" : "INACTIVE"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Service Valid Until (Internal Date) */}
+              {/* Selected Plan (Current 4 options ONLY) */}
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
-                  Internal Service Valid Until (Tracks 6-Month Period)
+                  Selected Plan *
                 </label>
-                <input
-                  type="date"
-                  value={newBizValidUntil}
-                  onChange={(e) => setNewBizValidUntil(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
-                />
+                <select
+                  value={newBizPlan}
+                  onChange={(e: any) => setNewBizPlan(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface font-semibold focus:outline-none"
+                >
+                  <option value="business_review_standee">1. Business Review Standee (₹999 - Direct Google Review)</option>
+                  <option value="zentap_smart_review_standee">2. ZenTap Smart Review Standee (₹1,499 - Review Assistant)</option>
+                  <option value="zentap_smart_business_card">3. ZenTap Smart Business Card (₹699 - Digital Card)</option>
+                  <option value="custom_solution">4. ZenTap Custom Solutions (Bespoke / Multi-Branch)</option>
+                </select>
+              </div>
+
+              {/* Notice of Payment Gate */}
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span>
+                  Business will be registered as <strong>Unpaid</strong>. Hardware activation will be held until you confirm payment in Clients or Payments.
+                </span>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-surface-variant/30">
@@ -4272,7 +3926,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   type="submit"
                   className="tactile-btn px-6 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
                 >
-                  Create Business &amp; Link
+                  Register Business
                 </button>
               </div>
             </form>
@@ -4993,19 +4647,19 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
-                  Batch Quantity (1 - 500) *
+                  Batch Quantity (1 - 100 units) *
                 </label>
                 <input
                   type="number"
                   min={1}
-                  max={500}
+                  max={100}
                   required
                   value={batchCount}
-                  onChange={(e) => setBatchCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                  onChange={(e) => setBatchCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-sm font-bold text-on-surface focus:outline-none"
                 />
                 <div className="flex gap-1.5 mt-2">
-                  {[10, 25, 50, 100].map((qty) => (
+                  {[5, 10, 25, 50, 100].map((qty) => (
                     <button
                       key={qty}
                       type="button"
