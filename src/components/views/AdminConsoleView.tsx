@@ -107,12 +107,13 @@ import {
 } from "@/lib/businessStore";
 import JSZip from "jszip";
 import PartnersTab from "@/components/admin/PartnersTab";
-import RequestsTab from "@/components/admin/RequestsTab";
 import PlatformSettingsTab from "@/components/admin/PlatformSettingsTab";
-import ReviewAssistantTab from "@/components/admin/ReviewAssistantTab";
-import PageDesignerTab from "@/components/admin/PageDesignerTab";
-import PrivateFeedbackTab from "@/components/admin/PrivateFeedbackTab";
-import QrNfcDirectoryTab from "@/components/admin/QrNfcDirectoryTab";
+import ClientsWebpageTab from "@/components/admin/tabs/ClientsWebpageTab";
+import PaymentsWebpageTab from "@/components/admin/tabs/PaymentsWebpageTab";
+import QrNfcGeneratorWebpageTab from "@/components/admin/tabs/QrNfcGeneratorWebpageTab";
+import GoogleLinksWebpageTab from "@/components/admin/tabs/GoogleLinksWebpageTab";
+import SocialLinksWebpageTab from "@/components/admin/tabs/SocialLinksWebpageTab";
+import PageEditorWebpageTab from "@/components/admin/tabs/PageEditorWebpageTab";
 import ManualPaymentsTab from "@/components/admin/ManualPaymentsTab";
 import LinksAndQrSettingsTab from "@/components/admin/LinksAndQrSettingsTab";
 import SocialLinksAndQrSettingsTab from "@/components/admin/SocialLinksAndQrSettingsTab";
@@ -153,18 +154,57 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     | "review_links"
     | "social_links"
     | "page_designer"
-    | "review_assistant"
-    | "qr_nfc"
-    | "partners"
-    | "requests"
-    | "orders"
-    | "analytics"
-    | "feedback"
     | "settings";
 
   const [adminMenu, setAdminMenu] = useState<AdminMenuItem>("overview");
-  const [reviewAssistantTargetBizId, setReviewAssistantTargetBizId] = useState<string>("");
-  const [pageDesignerTargetBizId, setPageDesignerTargetBizId] = useState<string>("");
+
+  // Sync tab with URL search parameter (?tab=clients, ?tab=payments, etc.)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam) {
+        const tabMap: Record<string, AdminMenuItem> = {
+          overview: "overview",
+          clients: "clients",
+          payments: "manual_payments",
+          manual_payments: "manual_payments",
+          generator: "tags",
+          tags: "tags",
+          google_links: "review_links",
+          review_links: "review_links",
+          social_links: "social_links",
+          page_editor: "page_designer",
+          page_designer: "page_designer",
+          settings: "settings",
+        };
+        if (tabMap[tabParam]) {
+          setAdminMenu(tabMap[tabParam]);
+        }
+      }
+    }
+  }, []);
+
+  const handleSelectTab = (menu: AdminMenuItem) => {
+    setAdminMenu(menu);
+    setMobileMenuOpen(false);
+    if (typeof window !== "undefined") {
+      const slugMap: Record<AdminMenuItem, string> = {
+        overview: "overview",
+        clients: "clients",
+        manual_payments: "payments",
+        tags: "generator",
+        review_links: "google_links",
+        social_links: "social_links",
+        page_designer: "page_editor",
+        settings: "settings",
+      };
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", slugMap[menu] || menu);
+      window.history.pushState({}, "", url.toString());
+    }
+  };
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [adminNotificationOpen, setAdminNotificationOpen] = useState(false);
@@ -302,42 +342,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const [adminPasswordMsg, setAdminPasswordMsg] = useState("");
   const [adminPasswordError, setAdminPasswordError] = useState("");
 
-  // Check tab from URL parameters
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get("tab");
-      const bizParam = params.get("biz");
-      if (bizParam) {
-        setReviewAssistantTargetBizId(bizParam);
-        setPageDesignerTargetBizId(bizParam);
-      }
-      if (
-        tab === "overview" || 
-        tab === "clients" || 
-        tab === "page_designer" ||
-        tab === "review_assistant" || 
-        tab === "qr_nfc" || 
-        tab === "tags" || 
-        tab === "partners" || 
-        tab === "requests" || 
-        tab === "orders" || 
-        tab === "review_links" || 
-        tab === "analytics" || 
-        tab === "feedback" || 
-        tab === "settings"
-      ) {
-        setAdminMenu(tab as any);
-        if (tab === "clients") setAdminTab("fleet");
-        if (tab === "orders") setAdminTab("orders");
-        if (tab === "analytics") setAdminTab("analytics");
-        if (tab === "review_links") {
-          setAdminTab("fleet");
-          setStatusFilter("awaiting_link");
-        }
-      }
-    }
-  }, []);
+
 
   // Load All Businesses, Orders & Physical Tags
   useEffect(() => {
@@ -1433,19 +1438,18 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
           </div>
 
-          {/* Navigation Menu (11 Items in Exact Operational Sequence) */}
-          <nav className="py-4 px-3 space-y-1" aria-label="Admin Navigation">
+          {/* Navigation Menu (8 Core Webpages in Exact Requested Sequence) */}
+          <nav className="py-4 px-3 space-y-1.5" aria-label="Admin Navigation">
             {/* 1. Overview */}
             <button
               onClick={() => { 
-                setAdminMenu("overview"); 
+                handleSelectTab("overview");
                 setAdminTab("analytics");
-                setMobileMenuOpen(false); 
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "overview"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-zinc-900 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
               <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
@@ -1454,205 +1458,89 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
             {/* 2. Clients */}
             <button
-              onClick={() => { 
-                setAdminMenu("clients"); 
-                setStatusFilter("all");
-                setAdminTab("fleet"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("clients")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "clients"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-zinc-900 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
               <Building2 className="w-4 h-4 flex-shrink-0" />
               <span>Clients</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                adminMenu === "clients" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
-              }`}>
-                {businesses.length}
-              </span>
             </button>
 
-            {/* 3. Payments (Manual Payments) */}
+            {/* 3. Payments */}
             <button
-              onClick={() => { 
-                setAdminMenu("manual_payments"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("manual_payments")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "manual_payments"
-                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-emerald-700 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
-              <DollarSign className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+              <DollarSign className="w-4 h-4 flex-shrink-0 text-emerald-600" />
               <span>Payments</span>
             </button>
 
             {/* 4. QR/NFC Generator */}
             <button
-              onClick={() => { 
-                setAdminMenu("tags"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("tags")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "tags"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-zinc-900 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
               <Radio className="w-4 h-4 flex-shrink-0" />
               <span>QR/NFC Generator</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                adminMenu === "tags" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
-              }`}>
-                {tags.length}
-              </span>
             </button>
 
-            {/* 5. Google Links & QR Setting */}
+            {/* 5. Google Links & QR Sharing */}
             <button
-              onClick={() => { 
-                setAdminMenu("review_links"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("review_links")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "review_links"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-amber-600 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
-              <ExternalLink className="w-4 h-4 flex-shrink-0" />
-              <span>Google Links &amp; QR Setting</span>
-              {pendingLinksCount > 0 && (
-                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  adminMenu === "review_links" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
-                }`}>
-                  {pendingLinksCount}
-                </span>
-              )}
+              <ExternalLink className="w-4 h-4 flex-shrink-0 text-amber-500" />
+              <span>Google Links &amp; QR Sharing</span>
             </button>
 
             {/* 6. Social Links & QR Setting */}
             <button
-              onClick={() => { 
-                setAdminMenu("social_links"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("social_links")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "social_links"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
-              <Share2 className="w-4 h-4 flex-shrink-0 text-pink-500" />
+              <Share2 className="w-4 h-4 flex-shrink-0 text-blue-500" />
               <span>Social Links &amp; QR Setting</span>
             </button>
 
-            {/* 6. Page Editor */}
+            {/* 7. Page Editor */}
             <button
-              onClick={() => { 
-                setAdminMenu("page_designer"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("page_designer")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "page_designer"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-purple-700 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
-              <Palette className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+              <Palette className="w-4 h-4 flex-shrink-0 text-purple-500" />
               <span>Page Editor</span>
             </button>
 
-            {/* 7. QR & NFC Directory */}
+            {/* 8. Settings */}
             <button
-              onClick={() => { 
-                setAdminMenu("qr_nfc"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "qr_nfc"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <QrCode className="w-4 h-4 flex-shrink-0" />
-              <span>QR &amp; NFC</span>
-            </button>
-
-            {/* 8. Requests (with alert badge) */}
-            <button
-              onClick={() => { 
-                setAdminMenu("requests"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "requests"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <RotateCcw className="w-4 h-4 flex-shrink-0" />
-              <span>Requests</span>
-              {pendingRequestsCount > 0 ? (
-                <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-600 text-white animate-pulse">
-                  {pendingRequestsCount}
-                </span>
-              ) : (
-                <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  adminMenu === "requests" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
-                }`}>
-                  {resetRequests.length}
-                </span>
-              )}
-            </button>
-
-            {/* 9. Usage Analytics */}
-            <button
-              onClick={() => { 
-                setAdminMenu("analytics"); 
-                setAdminTab("analytics"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "analytics"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span>Usage Analytics</span>
-            </button>
-
-            {/* 10. Private Customer Feedback */}
-            <button
-              onClick={() => { 
-                setAdminMenu("feedback"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "feedback"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-              }`}
-            >
-              <MessageSquare className="w-4 h-4 flex-shrink-0" />
-              <span>Feedback</span>
-            </button>
-
-            {/* 11. Platform Settings */}
-            <button
-              onClick={() => { 
-                setAdminMenu("settings"); 
-                setMobileMenuOpen(false); 
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              onClick={() => handleSelectTab("settings")}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${
                 adminMenu === "settings"
-                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
-                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  ? "bg-zinc-900 text-white shadow-sm font-bold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 font-semibold"
               }`}
             >
               <Settings className="w-4 h-4 flex-shrink-0" />
@@ -1702,27 +1590,19 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
               <h2 className="font-headline font-bold text-sm sm:text-base text-zinc-900 capitalize">
                 {adminMenu === "manual_payments"
-                  ? "Payments (Manual Payments)"
+                  ? "Payments"
                   : adminMenu === "review_links" 
-                  ? "Google Links & QR Setting" 
+                  ? "Google Links & QR Sharing" 
                   : adminMenu === "social_links"
                   ? "Social Links & QR Setting"
                   : adminMenu === "tags"
                   ? "QR/NFC Generator"
                   : adminMenu === "page_designer"
                   ? "Page Editor"
-                  : adminMenu === "qr_nfc"
-                  ? "QR & NFC"
                   : adminMenu === "clients"
                   ? "Clients"
                   : adminMenu === "overview"
                   ? "Overview"
-                  : adminMenu === "analytics"
-                  ? "Usage Analytics"
-                  : adminMenu === "feedback"
-                  ? "Private Feedback"
-                  : adminMenu === "requests"
-                  ? "Requests"
                   : adminMenu === "settings"
                   ? "Settings"
                   : adminMenu}
@@ -1895,65 +1775,37 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         {/* Scrollable Content Body */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8F9FA] space-y-6">
           
-          {/* Manual Payments Section (when adminMenu === 'manual_payments') */}
+          {/* 1. Clients Webpage */}
+          {adminMenu === "clients" && (
+            <ClientsWebpageTab onShowToast={showToast} />
+          )}
+
+          {/* 2. Payments Webpage */}
           {adminMenu === "manual_payments" && (
-            <ManualPaymentsTab
-              businesses={businesses}
-              onShowToast={showToast}
-              onPaymentConfirmed={(bizId) => {
-                const target = businesses.find((b) => b.id === bizId);
-                if (target) handleConfirmPayment(target);
-              }}
-            />
+            <PaymentsWebpageTab onShowToast={showToast} />
           )}
 
-          {/* Links & QR Settings Section (when adminMenu === 'review_links') */}
+          {/* 3. QR/NFC Generator Webpage */}
+          {adminMenu === "tags" && (
+            <QrNfcGeneratorWebpageTab onShowToast={showToast} />
+          )}
+
+          {/* 4. Google Links & QR Sharing Webpage */}
           {adminMenu === "review_links" && (
-            <LinksAndQrSettingsTab
-              businesses={businesses}
-              tags={tags}
-              onUpdateBusiness={(id, updates) => {
-                adminUpdateBusinessRecord(id, updates);
-                adminUpdateDbBusiness(id, updates).catch((e) => console.warn(e));
-                setBusinesses(getAllBusinesses());
-              }}
-              onUpdateTagDestination={(tag, dest) => {
-                handleToggleTagDestination(tag, dest);
-              }}
-              onOpenPageEditor={(bizId) => {
-                setPageDesignerTargetBizId(bizId);
-                setAdminMenu("page_designer");
-              }}
-              onOpenTagSetup={(biz) => {
-                setSelectedBizForEdit(biz);
-                setSingleTagBusinessId(biz.id);
-                setSingleTagModalOpen(true);
-              }}
-              onShowToast={showToast}
-              onTagsUpdated={(t) => setTags(t)}
-            />
+            <GoogleLinksWebpageTab onShowToast={showToast} />
           )}
 
-          {/* Social Links & QR Setting Section (when adminMenu === 'social_links') */}
+          {/* 5. Social Links & QR Setting Webpage */}
           {adminMenu === "social_links" && (
-            <SocialLinksAndQrSettingsTab
-              businesses={businesses}
-              tags={tags}
-              onUpdateBusiness={(id, updates) => {
-                adminUpdateBusinessRecord(id, updates);
-                adminUpdateDbBusiness(id, updates).catch((e) => console.warn(e));
-                setBusinesses(getAllBusinesses());
-              }}
-              onUpdateTag={(tagId, updates) => {
-                updateTagDetails(tagId, updates);
-                setTags(getAllTags());
-              }}
-              onShowToast={showToast}
-              onTagsUpdated={(t) => setTags(t)}
-            />
+            <SocialLinksWebpageTab onShowToast={showToast} />
           )}
 
-          {/* Settings Section (when adminMenu === 'settings') */}
+          {/* 6. Page Editor Webpage */}
+          {adminMenu === "page_designer" && (
+            <PageEditorWebpageTab onShowToast={showToast} />
+          )}
+
+          {/* 7. Settings Webpage */}
           {adminMenu === "settings" && (
             <PlatformSettingsTab
               showToast={showToast}
@@ -1961,63 +1813,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             />
           )}
 
-          {/* Partners Section (when adminMenu === 'partners') */}
-          {adminMenu === "partners" && (
-            <PartnersTab
-              tags={tags}
-              onTagsUpdated={(t) => setTags(t)}
-              showToast={showToast}
-            />
-          )}
-
-          {/* Reset Requests Section (when adminMenu === 'requests') */}
-          {adminMenu === "requests" && (
-            <RequestsTab
-              onTagsUpdated={(t) => setTags(t)}
-              showToast={showToast}
-            />
-          )}
-
-          {/* Page Designer Section (when adminMenu === 'page_designer') */}
-          {adminMenu === "page_designer" && (
-            <PageDesignerTab
-              businesses={businesses}
-              initialBusinessId={pageDesignerTargetBizId}
-              showToast={showToast}
-              onNavigateToReviews={(bizId) => {
-                setReviewAssistantTargetBizId(bizId);
-                setAdminMenu("review_assistant");
-              }}
-            />
-          )}
-
-          {/* Review Assistant Section (when adminMenu === 'review_assistant') */}
-          {adminMenu === "review_assistant" && (
-            <ReviewAssistantTab
-              businesses={businesses}
-              initialBusinessId={reviewAssistantTargetBizId}
-              showToast={showToast}
-            />
-          )}
-
-          {/* QR & NFC Hub Section (when adminMenu === 'qr_nfc') */}
-          {adminMenu === "qr_nfc" && (
-            <QrNfcDirectoryTab
-              businesses={businesses}
-              tags={tags}
-              showToast={showToast}
-            />
-          )}
-
-          {/* Private Feedback Section (when adminMenu === 'feedback') */}
-          {adminMenu === "feedback" && (
-            <PrivateFeedbackTab
-              businesses={businesses}
-            />
-          )}
-
-          {/* Existing Tab Blocks (Analytics, Fleet, Orders, Plans, Quotations) */}
-          {adminTab === "analytics" && (adminMenu === "overview" || adminMenu === "analytics") && (
+          {/* 8. Overview Webpage */}
+          {adminMenu === "overview" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Top Stat Cards */}
@@ -2357,10 +2154,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2: CLIENTS DIRECTORY / ADMIN TABLE                                    */}
-      {/* ========================================================================= */}
-      {adminMenu === "clients" && (
+      {/* Legacy Clients Table (Superseded by dedicated ClientsWebpageTab) */}
+      {false && adminMenu === "clients" && (
         <div className="space-y-4 animate-in fade-in duration-300">
           
           {/* Page Title & Help Text */}
@@ -2624,10 +2419,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2b: STANDEES & CARDS (PHYSICAL HARDWARE TAGS LAYER)                    */}
-      {/* ========================================================================= */}
-      {adminMenu === "tags" && (
+      {/* Legacy Tags Table (Superseded by dedicated QrNfcGeneratorWebpageTab) */}
+      {false && adminMenu === "tags" && (
         <div className="space-y-4 animate-in fade-in duration-300">
           
           {/* Page Title & Help Text */}
@@ -2942,10 +2735,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 3: STANDEE ORDERS & DISPATCH HUB                                      */}
-      {/* ========================================================================= */}
-      {adminTab === "orders" && adminMenu === "orders" && (
+      {/* Legacy Orders Hub (Superseded) */}
+      {false && adminTab === "orders" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">

@@ -1,6 +1,7 @@
 // lib/resolveTag.ts (server-only: uses Supabase service role key with local store fallback)
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getTagByCode, getAllBusinesses, logScan } from '@/lib/businessStore';
+import { getAllQrNfcTags, getAllGoogleReviewLinks, getAllSocialLinks } from '@/lib/adminPlatformStore';
 
 export type Resolution =
   | { kind: 'redirect'; url: string }
@@ -47,6 +48,44 @@ export async function resolveScan(
 ): Promise<Resolution> {
   const code = rawCode.toLowerCase().trim();
   if (!CODE_RE.test(code)) return { kind: 'unavailable' };
+
+  // 0. Check new QR/NFC Generator system (ST1, ST2... CRD1, CRD2...)
+  const allPlatformTags = getAllQrNfcTags();
+  const matchedPlatformTag = allPlatformTags.find((t) => t.tag_id.toLowerCase() === code);
+  if (matchedPlatformTag) {
+    if (!matchedPlatformTag.business_id) {
+      return { kind: 'unavailable', unassigned: true };
+    }
+
+    if (matchedPlatformTag.product_type === 'Counter Standee') {
+      const gLinks = getAllGoogleReviewLinks();
+      const gLink = gLinks.find((g) => g.tag_id.toLowerCase() === code);
+      if (gLink) {
+        if (gLink.destination === 'direct_google' && gLink.business_google_review_link) {
+          const direct = safeHttps(gLink.business_google_review_link);
+          if (direct) return { kind: 'redirect', url: direct };
+        }
+        if (gLink.destination === 'zentap_google') {
+          return { kind: 'page', slug: 'zentap' };
+        }
+      }
+    } else if (matchedPlatformTag.product_type === 'Business NFC Card') {
+      const sLinks = getAllSocialLinks();
+      const sLink = sLinks.find((s) => s.tag_id.toLowerCase() === code);
+      if (sLink && sLink.destination === 'assigned' && sLink.social_link) {
+        let destUrl = sLink.social_link;
+        if (sLink.social_platform === 'WhatsApp') {
+          const wa = waUrl(destUrl);
+          if (wa) return { kind: 'redirect', url: wa };
+        } else if (sLink.social_platform === 'Instagram') {
+          const ig = igUrl(destUrl);
+          if (ig) return { kind: 'redirect', url: ig };
+        }
+        const safe = safeHttps(destUrl);
+        if (safe) return { kind: 'redirect', url: safe };
+      }
+    }
+  }
 
   let tag: any = null;
   let biz: any = null;

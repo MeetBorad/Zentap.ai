@@ -1,5 +1,47 @@
 # ZenTap — Changelog
 
+## [1.27.0] — 2026-11-02
+### Added & Redesigned (Independent Webpages Architecture & Unified Admin Tables)
+- **Database Schema Migration (`009_admin_webpages_redesign.sql`)**:
+  - `public.clients`: Dedicated table for active businesses with `business_id`, `business_name`, `owner_name`, `owner_phone`, `owner_email`, `whatsapp`, `instagram_link`, `facebook_link`, `city`.
+  - `public.deleted_businesses`: Permanent audit registry for permanently deleted clients with timestamps and reasons.
+  - `public.payments`: Dedicated financial ledger storing `business_id`, `business_name`, `product`, `product_price`, `selling_rate`, `payment_date`, `payment_method`, `payment_status`, `notes`.
+  - `public.qr_nfc_tags`: Hardware tag registry for `ST1`, `ST2`... (Counter Standees) and `CRD1`, `CRD2`... (Business NFC Cards).
+  - `public.google_review_links`: Backend routing table for standees with destination modes (`not_assigned`, `direct_google`, `zentap_google`) and setup statuses (`pending`, `completed`).
+  - `public.social_links`: Backend routing table for smart business cards with platform selectors (`WhatsApp`, `Instagram`, `Facebook`, `N/A`) and setup statuses.
+  - `public.page_editor_configs`: Showcase page customizer configurations for standee merchants.
+- **Dedicated Webpages & URL Routing (`?tab=...`)**:
+  - **1. Clients Webpage (`ClientsWebpageTab.tsx`)**:
+    - Columns: `Business ID`, `Business Name`, `Owner name`, `Owner Phone`, `Owner Email`, `Whatsapp`, `Instagram Link`, `Facebook Link`, `Actions`.
+    - Search across ID, name, number, email, WhatsApp.
+    - Two views only: **All Clients** and **Deleted** (permanent registry with 1-click restore).
+    - Add New Business modal with Facebook link and auto-assigned ID preview.
+  - **2. Payments Webpage (`PaymentsWebpageTab.tsx`)**:
+    - Columns: `Business ID`, `Name`, `Product Price`, `Selling Rate / Amount received`, `Date & Method`, `Status of payment`, `Notes`, `Actions`.
+    - Record Payment modal with client lookup, product presets, and payment modes (UPI/Cash).
+    - Password-protected deletion: strictly requires Super Admin password to delete financial records.
+  - **3. QR/NFC Generator Webpage (`QrNfcGeneratorWebpageTab.tsx`)**:
+    - Single Tag creation: assigns sequential Tag ID (`ST1`, `ST2`... or `CRD1`, `CRD2`...) with immediate client assignment.
+    - Batch Generation: asks only for Product Type and Quantity (1-100 units).
+    - Columns: `Business ID`, `Product type`, `Tag ID`, `Status` (Assigned in Green / Not Assigned in Red), `Generated Link`, `Download QR`, `Copy NFC Link`, `Assign/Reassign Business`.
+    - Default filter: **Unassigned**.
+  - **4. Google Links & QR Sharing Webpage (`GoogleLinksWebpageTab.tsx`)**:
+    - Standee-exclusive backend routing hub populated automatically from assigned standee tags.
+    - Columns: `Business ID`, `Business Name`, `Tag ID`, `Link of Tag ID`, `QR Code`, `NFC Link`, `Setup Status` (Completed in Green / Pending in Red), `Total Scans/Taps`, `Destination of QR/NFC`, `Edit`.
+    - Destination modes: Not Assigned (Red), Direct Google Review (Orange), ZenTap Google Review (Green).
+    - Manual entry modal.
+  - **5. Social Links & QR Setting Webpage (`SocialLinksWebpageTab.tsx`)**:
+    - Card-exclusive backend routing hub populated automatically from assigned card tags.
+    - Columns: `Business ID`, `Business Name`, `Social Platform` (WhatsApp, Instagram, Facebook, N/A), `Tag ID`, `Link of Tag ID`, `QR Code`, `NFC Link`, `Setup Status`, `Total Scans/Taps`, `Destination of QR/NFC`, `Edit`.
+    - Manual entry modal.
+  - **6. Page Editor Webpage (`PageEditorWebpageTab.tsx`)**:
+    - Showcase customizer for Standee merchants.
+    - Columns: `Business ID`, `Name`, `Tag ID`, `Link`, `QR Code`, `Setup Status` (Pending in Red, changes to Completed in Green upon save), `Open Page Editor`.
+    - Full-screen split visual designer with Theme Presets, live interactive 3D phone mockup, and instant preview.
+- **Global Font Visibility & Contrast Polish**:
+  - Eliminated dark text on dark backgrounds across sidebar, tables, cards, and modal dialogs.
+  - High-contrast slate typography (`text-zinc-900`) on crisp light cards and clean zinc badges.
+
 ## [1.26.0] — 2026-11-01
 ### Added & Enhanced (Unique Business IDs, Google & Social Links Tabs, Live Preview Fix, and Hardware Routing)
 - **Live Preview Fix on `/r/[slug]?preview=1`**:
