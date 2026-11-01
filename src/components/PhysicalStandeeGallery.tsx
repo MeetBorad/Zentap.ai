@@ -143,10 +143,10 @@ export default function PhysicalStandeeGallery({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1e2230] border border-[#2d3345] text-[11px] font-mono text-[#ff7a00] font-semibold mb-3">
-            <span className="w-2 h-2 rounded-full bg-[#ff7a00] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
             <span>AUTHENTIC PHYSICAL HARDWARE PHOTOGRAPHY</span>
           </div>
-          <h2 className="font-headline font-extrabold text-2xl sm:text-4xl text-white tracking-tight">
+          <h2 className="font-headline font-extrabold text-2xl sm:text-4xl text-white tracking-tight text-balance">
             How ZenTap Look on Your Counter
           </h2>
           <p className="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
@@ -208,7 +208,7 @@ export default function PhysicalStandeeGallery({
 
             {/* Badges Over Image */}
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
-              <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[10px] font-mono text-[#ff7a00] font-bold uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-mono text-[#ff7a00] font-bold uppercase tracking-wider">
                 {selectedPhoto.tag}
               </span>
             </div>
@@ -222,7 +222,7 @@ export default function PhysicalStandeeGallery({
             </button>
           </div>
 
-          <span className="text-[11px] font-mono text-slate-300 mt-3 flex items-center gap-1.5">
+          <span className="text-xs font-mono text-slate-300 mt-3 flex items-center gap-1.5">
             <Eye className="w-3.5 h-3.5 text-[#ff7a00]" />
             <span>Authentic unedited studio specimen · Click thumbnails below to inspect</span>
           </span>
@@ -232,11 +232,11 @@ export default function PhysicalStandeeGallery({
         <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-6">
           
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#1e2230] border border-[#2d3345] text-[10px] font-mono text-[#ff7a00] font-semibold mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#1e2230] border border-[#2d3345] text-[11px] font-mono text-[#ff7a00] font-semibold mb-2">
               <span>{selectedPhoto.category === "finish" ? "PREMIUM FINISH" : "STUDIO PERSPECTIVE"}</span>
             </div>
 
-            <h3 className="font-headline font-extrabold text-2xl sm:text-3xl text-white">
+            <h3 className="font-headline font-extrabold text-2xl sm:text-3xl text-white text-balance">
               {selectedPhoto.name}
             </h3>
 
@@ -244,10 +244,10 @@ export default function PhysicalStandeeGallery({
               {selectedPhoto.description}
             </p>
 
-            <div className="mt-5 p-4 rounded-xl bg-[#0e1015] border border-[#232734] flex items-center gap-3">
+            <div className="mt-5 pt-4 border-t border-[#232734] flex items-center gap-3">
               <Radio className="w-5 h-5 text-[#ff7a00] flex-shrink-0" />
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">
+                <span className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
                   Hardware Specification
                 </span>
                 <span className="text-xs font-semibold text-white font-mono">
@@ -257,22 +257,22 @@ export default function PhysicalStandeeGallery({
             </div>
 
             {/* Hardware Pillars */}
-            <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
-              <div className="p-3 rounded-xl bg-[#0e1015]/60 border border-[#232734] flex items-start gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 text-xs">
+              <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-[11px] font-medium">Zero batteries or charging required</span>
+                <span className="text-slate-100 text-xs font-medium">Zero batteries or charging required</span>
               </div>
-              <div className="p-3 rounded-xl bg-[#0e1015]/60 border border-[#232734] flex items-start gap-2">
+              <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-[11px] font-medium">Instant 0.6s smartphone handshake</span>
+                <span className="text-slate-100 text-xs font-medium">Instant 0.6s smartphone handshake</span>
               </div>
-              <div className="p-3 rounded-xl bg-[#0e1015]/60 border border-[#232734] flex items-start gap-2">
+              <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-[11px] font-medium">Custom laser-engraved with your logo</span>
+                <span className="text-slate-100 text-xs font-medium">Custom laser-engraved with your logo</span>
               </div>
-              <div className="p-3 rounded-xl bg-[#0e1015]/60 border border-[#232734] flex items-start gap-2">
+              <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-[11px] font-medium">Dynamic cloud-editable Google link</span>
+                <span className="text-slate-100 text-xs font-medium">Dynamic cloud-editable Google link</span>
               </div>
             </div>
           </div>
@@ -325,10 +325,10 @@ export default function PhysicalStandeeGallery({
                   className="w-full h-full object-contain"
                 />
               </div>
-              <p className={`text-[10px] font-bold truncate leading-tight ${isSelected ? "text-black" : "text-white"}`}>
+              <p className={`text-[11px] font-bold truncate leading-tight ${isSelected ? "text-black" : "text-white"}`}>
                 {photo.name}
               </p>
-              <span className={`text-[9px] font-mono block truncate ${isSelected ? "text-black/80" : "text-slate-300"}`}>
+              <span className={`text-[11px] font-mono block truncate ${isSelected ? "text-black/80" : "text-slate-300"}`}>
                 {photo.tag}
               </span>
             </button>

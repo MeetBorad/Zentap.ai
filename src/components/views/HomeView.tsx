@@ -112,7 +112,7 @@ export default function HomeView({
               
               {/* Stitch Verified Counter Pill Badge */}
               <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#1e2230] border border-[#2d3345] mb-6 shadow-sm">
-                <span className="w-2 h-2 rounded-full bg-[#ff7a00] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
                 <CheckCircle2 className="w-4 h-4 text-[#ff7a00]" />
                 <span className="text-xs font-semibold text-white tracking-tight">
                   Over <span className="font-bold text-[#ff7a00]">45,382</span>+ Verified Reviews Generated
@@ -120,7 +120,7 @@ export default function HomeView({
               </div>
 
               {/* Stitch Hero Headline */}
-              <h1 className="font-headline font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-snug sm:leading-[1.14] mb-5">
+              <h1 className="font-headline font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-snug sm:leading-[1.14] mb-5 text-balance">
                 Turn Every Customer Tap into{" "}
                 <span className="text-[#ff7a00] font-black underline decoration-[#ff7a00]/40 decoration-wavy inline-block">
                   5-Star Google Reviews
@@ -167,7 +167,7 @@ export default function HomeView({
                 <OpenDesignButton
                   variant="subtle"
                   size="lg"
-                  icon={<Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />}
+                  icon={<Radio className="w-3.5 h-3.5 text-emerald-400" />}
                   iconPosition="left"
                   onClick={() => {
                     trackCtaClick("hero_tap_simulator", "tap_modal");
@@ -184,17 +184,17 @@ export default function HomeView({
                   <p className="font-headline font-extrabold text-2xl text-white">
                     <CountUp to={0.6} decimals={1} suffix="s" />
                   </p>
-                  <p className="text-[11px] font-mono text-slate-300 mt-0.5">Average Tap Velocity</p>
+                  <p className="text-xs font-mono text-slate-300 mt-0.5">Average Tap Velocity</p>
                 </div>
                 <div>
                   <p className="font-headline font-extrabold text-2xl text-white">
                     <CountUp to={100} suffix="%" />
                   </p>
-                  <p className="text-[11px] font-mono text-slate-300 mt-0.5">Zero App Install Required</p>
+                  <p className="text-xs font-mono text-slate-300 mt-0.5">Zero App Install Required</p>
                 </div>
                 <div>
                   <p className="font-headline font-extrabold text-2xl text-white">NTAG216</p>
-                  <p className="text-[11px] font-mono text-slate-300 mt-0.5">Certified 888-Byte NFC Chip</p>
+                  <p className="text-xs font-mono text-slate-300 mt-0.5">Certified 888-Byte NFC Chip</p>
                 </div>
               </div>
             </div>
@@ -214,13 +214,10 @@ export default function HomeView({
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
-                Engineered for Rapid Growth
-              </span>
-              <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mt-1 tracking-tight">
+              <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
                 Zero Friction. Pure 5-Star Velocity.
               </h2>
-              <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed max-w-2xl text-pretty">
                 Designed for zero friction. Guests tap with their smartphone and connect with your business in under 1 second.
               </p>
             </div>
@@ -238,17 +235,19 @@ export default function HomeView({
             {/* Stitch Card 1: Instant Tap-to-Review */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#ff7a00]/15 border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] font-headline font-bold text-lg mb-5">
-                  <Smartphone className="w-6 h-6 text-[#ff7a00]" />
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#ff7a00]/15 border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] flex-shrink-0">
+                    <Smartphone className="w-5 h-5 text-[#ff7a00]" />
+                  </div>
+                  <h3 className="font-headline font-bold text-lg text-white">
+                    Instant Tap-to-Review
+                  </h3>
                 </div>
-                <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  Instant Tap-to-Review
-                </h3>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
                   Works seamlessly with modern iOS and Android devices without installing apps, entering passwords, or pairing Bluetooth.
                 </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-[#ff7a00] font-semibold">
+              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-[#ff7a00] font-semibold">
                 <Radio className="w-3.5 h-3.5 text-[#ff7a00]" />
                 <span>Instant 0.6s NFC detection</span>
               </div>
@@ -257,17 +256,19 @@ export default function HomeView({
             {/* Stitch Card 2: AI Sentiment Guard */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 font-headline font-bold text-lg mb-5">
-                  <ShieldCheck className="w-6 h-6 text-amber-400" />
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
+                    <ShieldCheck className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <h3 className="font-headline font-bold text-lg text-white">
+                    AI Sentiment Guard
+                  </h3>
                 </div>
-                <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  AI Sentiment Guard
-                </h3>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
                   Routes happy customers to Google and negative feedback to private management tickets, safeguarding your public reputation.
                 </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-amber-400 font-semibold">
+              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-amber-400 font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>Anti-Gating Compliant Shield</span>
               </div>
@@ -276,17 +277,19 @@ export default function HomeView({
             {/* Stitch Card 3: Dynamic Link Updates */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-headline font-bold text-lg mb-5">
-                  <RefreshCw className="w-6 h-6 text-emerald-400" />
+                <div className="flex items-center gap-3.5 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                    <RefreshCw className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <h3 className="font-headline font-bold text-lg text-white">
+                    Dynamic Link Updates
+                  </h3>
                 </div>
-                <h3 className="font-headline font-bold text-lg text-white mb-2">
-                  Dynamic Link Updates
-                </h3>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal">
+                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
                   Repoint your standee destination instantly to Google Maps, WhatsApp, Instagram, or Guest WiFi without ever replacing hardware.
                 </p>
               </div>
-              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-[11px] text-emerald-400 font-semibold">
+              <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-emerald-400 font-semibold">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                 <span>1-Click Cloud Re-Routing</span>
               </div>
@@ -301,13 +304,10 @@ export default function HomeView({
       {/* ========================================================================= */}
       <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
-            Interactive Product Motion
-          </span>
-          <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mt-1 tracking-tight">
+          <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
             The ZenTap Experience in Motion
           </h2>
-          <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed text-pretty">
             Continuous kinetic timeline powered by HyperFrames. Discover how 1 tap turns physical customer footfall into 5-star Google Maps authority.
           </p>
         </div>
@@ -321,13 +321,10 @@ export default function HomeView({
       <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
           <div>
-            <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
-              Product Ecosystem
-            </span>
-            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white mt-1 tracking-tight">
+            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
               Four Core QR &amp; NFC Solutions
             </h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1.5 max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-200 mt-1.5 max-w-xl text-pretty">
               From direct Google review standees to AI review assistants, dynamic smart business cards, and bespoke enterprise solutions.
             </p>
           </div>
@@ -349,20 +346,20 @@ export default function HomeView({
             className="p-6 rounded-3xl bg-[#161a26] border border-[#2d3345] hover:border-[#ff7a00]/60 shadow-sm transition-all hover:shadow-md flex flex-col justify-between product-card-stagger"
           >
             <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#1e2230] text-[#ff7a00] text-[10px] font-bold uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#1e2230] text-[#ff7a00] text-[11px] font-bold uppercase tracking-wider">
                 Direct Review Mode
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-[#ff7a00] transition-colors">
                 Business Review Standee
               </h3>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
                 Direct Google Review redirection. Tap or scan immediately opens your Google review write page with zero intermediate steps.
               </p>
               <div className="mt-4 pt-3 border-t border-[#232734]">
                 <span className="font-headline font-extrabold text-2xl text-white">₹999</span>
-                <span className="text-[10px] text-slate-300 block font-semibold">Standee • ₹499 Card</span>
+                <span className="text-xs text-slate-300 block font-semibold">Standee • ₹499 Card</span>
               </div>
-              <ul className="mt-4 space-y-2 text-[11px] text-slate-100 font-medium">
+              <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#ff7a00] flex-shrink-0" />
                   <span>Opens Google Review page directly to post reviews</span>
@@ -394,24 +391,24 @@ export default function HomeView({
             spotlightColor="rgba(212, 175, 55, 0.28)"
             className="p-6 rounded-3xl bg-[#161a26] text-white border-2 border-[#D4AF37] shadow-xl hover:scale-[1.015] transition-transform duration-200 ease-out flex flex-col justify-between relative overflow-hidden product-card-stagger"
           >
-            <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-[#D4AF37] text-black text-[9px] font-black uppercase tracking-wider">
+            <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-[#D4AF37] text-black text-[11px] font-black uppercase tracking-wider">
               Popular • AI Flow
             </div>
             <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#F7E7A9] text-[10px] font-bold uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#F7E7A9] text-[11px] font-bold uppercase tracking-wider">
                 Review Assistant
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3">
                 ZenTap Smart Review Standee
               </h3>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
                 Advanced review standee with customized Review Assistant page, AI draft suggestions, and negative feedback sentiment protection.
               </p>
               <div className="mt-4 pt-3 border-t border-white/20">
                 <span className="font-headline font-extrabold text-2xl text-white">₹1,499</span>
-                <span className="text-[10px] text-slate-300 block font-semibold">Standee + Smart Assistant</span>
+                <span className="text-xs text-slate-300 block font-semibold">Standee + Smart Assistant</span>
               </div>
-              <ul className="mt-4 space-y-2 text-[11px] text-slate-100 font-medium">
+              <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
                   <span>Customized Review Assistant page (/r/[slug])</span>
@@ -444,20 +441,20 @@ export default function HomeView({
             className="p-6 rounded-3xl bg-[#161a26] border border-[#2d3345] hover:border-sky-500/60 shadow-sm transition-all hover:shadow-md flex flex-col justify-between product-card-stagger"
           >
             <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-sky-950/60 text-sky-400 border border-sky-800/50 text-[10px] font-bold uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full bg-sky-950/60 text-sky-400 border border-sky-800/50 text-[11px] font-bold uppercase tracking-wider">
                 Digital Profile Hub
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-sky-400 transition-colors">
                 ZenTap Smart Business Card
               </h3>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
                 NFC &amp; QR digital business card. Tap or scan to instantly share contact vCard, Instagram, Facebook, website, and WhatsApp.
               </p>
               <div className="mt-4 pt-3 border-t border-[#232734]">
                 <span className="font-headline font-extrabold text-2xl text-white">₹699</span>
-                <span className="text-[10px] text-slate-300 block font-semibold">PVC • ₹1,499 Metal</span>
+                <span className="text-xs text-slate-300 block font-semibold">PVC • ₹1,499 Metal</span>
               </div>
-              <ul className="mt-4 space-y-2 text-[11px] text-slate-100 font-medium">
+              <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
                   <span>1-Tap contact save straight into customer phone</span>
@@ -490,20 +487,20 @@ export default function HomeView({
             className="p-6 rounded-3xl bg-[#161a26] border border-[#2d3345] hover:border-amber-500/60 shadow-sm transition-all hover:shadow-md flex flex-col justify-between product-card-stagger"
           >
             <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-950/60 text-amber-400 border border-amber-800/50 text-[10px] font-bold uppercase tracking-wider">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-950/60 text-amber-400 border border-amber-800/50 text-[11px] font-bold uppercase tracking-wider">
                 Custom Solutions
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-amber-400 transition-colors">
                 ZenTap Custom Solutions
               </h3>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
                 Tailored QR &amp; NFC solutions for multi-location businesses, custom branded acrylics, menu cards, event displays, and loyalty cards.
               </p>
               <div className="mt-4 pt-3 border-t border-[#232734]">
                 <span className="font-headline font-extrabold text-2xl text-amber-400">Custom Quote</span>
-                <span className="text-[10px] text-slate-300 block font-semibold">Bulk Volume Pricing</span>
+                <span className="text-xs text-slate-300 block font-semibold">Bulk Volume Pricing</span>
               </div>
-              <ul className="mt-4 space-y-2 text-[11px] text-slate-100 font-medium">
+              <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                   <span>Custom branded acrylic &amp; metal standees with your logo</span>
@@ -548,13 +545,10 @@ export default function HomeView({
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
           <div className="lg:col-span-6 space-y-4">
-            <span className="text-[11px] font-mono uppercase tracking-widest text-[#ff7a00] font-bold">
-              Interaction &amp; Lead Generation
-            </span>
-            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
+            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-white tracking-tight text-balance">
               More than reviews: Your Complete Digital Customer Front Desk
             </h2>
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal text-pretty">
               When guests tap your standee or card, they can not only write 5-star Google reviews, but also engage directly with your brand through an app-free digital hub:
             </p>
 
@@ -564,8 +558,8 @@ export default function HomeView({
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">1-Tap WhatsApp Direct Chat</h4>
-                  <p className="text-[11px] text-slate-200">Connects guests with your staff or owner directly with a prefilled message.</p>
+                  <h3 className="text-xs font-bold text-white">1-Tap WhatsApp Direct Chat</h3>
+                  <p className="text-xs text-slate-200">Connects guests with your staff or owner directly with a prefilled message.</p>
                 </div>
               </div>
 
@@ -574,8 +568,8 @@ export default function HomeView({
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Table &amp; Appointment Booking</h4>
-                  <p className="text-[11px] text-slate-200">Direct link to your Calendly, table reservation system, or clinic booking.</p>
+                  <h3 className="text-xs font-bold text-white">Table &amp; Appointment Booking</h3>
+                  <p className="text-xs text-slate-200">Direct link to your Calendly, table reservation system, or clinic booking.</p>
                 </div>
               </div>
 
@@ -584,8 +578,8 @@ export default function HomeView({
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Digital Menu &amp; Portfolio Showcase</h4>
-                  <p className="text-[11px] text-slate-200">Allows diners and clients to view your services, photo galleries &amp; PDF menus.</p>
+                  <h3 className="text-xs font-bold text-white">Digital Menu &amp; Portfolio Showcase</h3>
+                  <p className="text-xs text-slate-200">Allows diners and clients to view your services, photo galleries &amp; PDF menus.</p>
                 </div>
               </div>
 
@@ -594,8 +588,8 @@ export default function HomeView({
                   <Send className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Built-in Lead Capture Form</h4>
-                  <p className="text-[11px] text-slate-200">Inquiries route straight to your email &amp; WhatsApp with instant alerts.</p>
+                  <h3 className="text-xs font-bold text-white">Built-in Lead Capture Form</h3>
+                  <p className="text-xs text-slate-200">Inquiries route straight to your email &amp; WhatsApp with instant alerts.</p>
                 </div>
               </div>
             </div>
@@ -637,13 +631,10 @@ export default function HomeView({
       <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full">
         <div className="rounded-3xl bg-gradient-to-br from-[#141720] via-[#1a1f2c] to-[#141720] text-white p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 border border-[#232734] shadow-xl">
           <div className="max-w-xl">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-[#ff7a00] font-bold">
-              Express PAN-India Courier Dispatch
-            </span>
-            <h2 className="font-headline font-bold text-2xl sm:text-3xl text-white mt-1">
+            <h2 className="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight text-balance">
               Equip your front desk with smart review standees today.
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed">
+            <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed text-pretty">
               Custom laser-engraved with your business name and logo, pre-configured with your Google Maps link.
             </p>
           </div>

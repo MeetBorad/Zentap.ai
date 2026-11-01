@@ -93,7 +93,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
       {/* Top Spec Bar */}
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#232734]">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-xs font-mono font-bold tracking-wider uppercase text-zinc-300">
             Physical Specimen
           </span>
@@ -101,7 +101,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
         <button
           type="button"
           onClick={flipStandee}
-          className="flex items-center gap-1.5 text-[11px] font-mono px-3 py-1 rounded-full bg-[#1e2230] hover:bg-[#252b3d] text-zinc-200 border border-[#2d3345] transition-all cursor-pointer active:scale-95"
+          className="flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-[#1e2230] hover:bg-[#252b3d] text-zinc-200 border border-[#2d3345] transition-all cursor-pointer active:scale-95"
           title="Inspect reverse dynamic QR"
         >
           <RotateCw className="w-3.5 h-3.5 text-[#ff7a00]" />
@@ -130,7 +130,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
       </div>
 
       {/* 3D Stage with GSAP preserve-3d */}
-      <div className="relative w-full py-6 rounded-2xl bg-gradient-to-b from-[#10131b] to-[#0a0c10] border border-[#232734] mb-4 flex flex-col items-center justify-center [perspective:1000px] overflow-hidden">
+      <div className="relative w-full py-6 rounded-2xl bg-gradient-to-b from-[#10131b]/80 to-[#0a0c10]/80 mb-4 flex flex-col items-center justify-center [perspective:1000px] overflow-hidden">
         
         {/* Soft Radial Backlight Glow */}
         <div className="absolute inset-0 bg-radial from-[#ff7a00]/10 via-transparent to-transparent pointer-events-none" />
@@ -160,7 +160,7 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
               <span className="font-headline font-bold text-[11px] tracking-tight text-white drop-shadow-md">
                 Zen<span className="text-[#ff7a00]">Tap</span>
               </span>
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-400/40 backdrop-blur-sm">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 font-mono border border-emerald-400/40 backdrop-blur-sm">
                 NTAG216
               </span>
             </div>
@@ -168,15 +168,15 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
             {/* Glowing Interactive Tap Target Indicator */}
             <div className="relative z-10 my-auto flex flex-col items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-[#ff7a00]/25 border-2 border-[#ff7a00] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform backdrop-blur-xs">
-                <Radio className="w-8 h-8 text-[#ff7a00] animate-pulse" />
+                <Radio className="w-8 h-8 text-[#ff7a00]" />
               </div>
-              <span className="mt-2 text-[10px] font-bold text-white tracking-wider uppercase font-headline drop-shadow-md bg-black/60 px-3 py-1 rounded-full border border-white/10">
+              <span className="mt-2 text-xs font-bold text-white tracking-wider uppercase font-headline drop-shadow-md bg-black/60 px-3 py-1 rounded-full border border-white/10">
                 TAP PHONE HERE
               </span>
             </div>
 
             {/* Footer Spec Overlay */}
-            <div className="relative z-10 w-full flex items-center justify-center gap-2 text-[9px] text-white/90 font-mono pb-2 drop-shadow">
+            <div className="relative z-10 w-full flex items-center justify-center gap-2 text-[11px] text-white/90 font-mono pb-2 drop-shadow">
               <span>13.56 MHz</span>
               <span>·</span>
               <span>0.6s Handshake</span>
@@ -202,22 +202,22 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
               <span className="font-headline font-bold text-xs tracking-tight text-white">
                 Zen<span className="text-[#ff7a00]">Tap</span> Dynamic
               </span>
-              <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono border border-amber-500/40">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono border border-amber-500/40">
                 Level Q
               </span>
             </div>
 
             {/* Dynamic QR Code */}
-            <div className="p-3 rounded-2xl bg-white text-black shadow-xl my-auto relative">
+            <div className="p-3 rounded-xl bg-white text-black shadow-xl my-auto relative">
               <QrCode className="w-24 h-24 text-black" />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-6 h-6 rounded bg-[#ff7a00] text-black flex items-center justify-center font-black text-[10px] shadow">
+                <div className="w-6 h-6 rounded bg-[#ff7a00] text-black flex items-center justify-center font-black text-xs shadow">
                   Z
                 </div>
               </div>
             </div>
 
-            <p className="text-[10px] text-zinc-300 font-medium">
+            <p className="text-xs text-zinc-300 font-medium">
               Or Scan with Smartphone Camera
             </p>
           </div>
@@ -253,15 +253,15 @@ export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps
       <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-[#232734] text-xs font-mono text-zinc-400">
         <div>
           <p className="text-white font-bold text-sm">888 bytes</p>
-          <p className="text-[10px]">EEPROM Memory</p>
+          <p className="text-[11px]">EEPROM Memory</p>
         </div>
         <div>
           <p className="text-white font-bold text-sm">Level Q</p>
-          <p className="text-[10px]">Laser QR Precision</p>
+          <p className="text-[11px]">Laser QR Precision</p>
         </div>
         <div>
           <p className="text-white font-bold text-sm">Zero Wire</p>
-          <p className="text-[10px]">Battery-Free Passive</p>
+          <p className="text-[11px]">Battery-Free Passive</p>
         </div>
       </div>
     </div>

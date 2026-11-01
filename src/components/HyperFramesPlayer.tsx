@@ -40,8 +40,8 @@ const FRAMES: HyperFrame[] = [
     subtext: "If you don't ask at the moment of peak satisfaction, you lose the review forever. ZenTap intercepts customers at the physical counter.",
     badge: "Customer Footfall Conversion",
     duration: 4000,
-    accentColor: "#D94826",
-    icon: <TrendingUp className="w-6 h-6 text-[#D94826]" />,
+    accentColor: "#FF7A59",
+    icon: <TrendingUp className="w-6 h-6 text-[#FF7A59]" />,
     metric: { value: "0.6s", label: "Instant Tap Velocity" }
   },
   {
@@ -65,7 +65,7 @@ const FRAMES: HyperFrame[] = [
     badge: "Instant Native NFC",
     duration: 3500,
     accentColor: "#10B981",
-    icon: <Radio className="w-6 h-6 text-emerald-500 animate-pulse" />,
+    icon: <Radio className="w-6 h-6 text-emerald-500" />,
     metric: { value: "100%", label: "Native Phone Compatibility" }
   },
   {
@@ -213,7 +213,7 @@ export default function HyperFramesPlayer({ onOrderClick }: HyperFramesPlayerPro
               <span className="font-headline font-black text-xl text-white">
                 {currentFrame.metric.value}
               </span>
-              <span className="text-[10px] font-mono text-zinc-400">
+              <span className="text-xs font-mono text-zinc-400">
                 {currentFrame.metric.label}
               </span>
             </div>
@@ -228,7 +228,7 @@ export default function HyperFramesPlayer({ onOrderClick }: HyperFramesPlayerPro
             </div>
           </div>
 
-          <h2 className="font-headline font-black text-2xl sm:text-4xl lg:text-5xl leading-tight sm:leading-tight text-white tracking-tight mb-4 hyper-anim">
+          <h2 className="font-headline font-black text-2xl sm:text-4xl lg:text-5xl leading-tight sm:leading-tight text-white tracking-tight mb-4 hyper-anim text-balance">
             {currentFrame.headline}{" "}
             <span 
               className="underline decoration-wavy decoration-white/30"
@@ -306,7 +306,7 @@ export default function HyperFramesPlayer({ onOrderClick }: HyperFramesPlayerPro
 
         {/* HyperFrames Framework Badge & CTA */}
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400">
             <span>Powered by</span>
             <strong className="text-white">HyperFrames Engine</strong>
           </span>

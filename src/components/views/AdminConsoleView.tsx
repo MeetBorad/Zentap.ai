@@ -3842,7 +3842,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 onClick={() => setQrActiveTab("instagram")}
                 className={`py-2 rounded-lg transition-colors cursor-pointer ${
                   qrActiveTab === "instagram"
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold shadow-sm"
+                    ? "bg-[#E1306C] text-white font-extrabold shadow-sm"
                     : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >

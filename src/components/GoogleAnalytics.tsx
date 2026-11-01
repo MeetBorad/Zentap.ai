@@ -78,9 +78,9 @@ export default function GoogleAnalytics() {
             <div className="flex-1 space-y-1">
               <h3 className="font-bold text-xs text-white tracking-tight flex items-center gap-1.5">
                 <span>Privacy &amp; Analytics Consent</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium border border-emerald-500/40">GA4</span>
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-medium border border-emerald-500/40">GA4</span>
               </h3>
-              <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+              <p className="text-xs text-slate-300 leading-relaxed font-sans">
                 We use privacy-friendly analytics to optimize standee review conversion telemetry. No third-party ad tracking.
               </p>
             </div>

@@ -760,7 +760,7 @@ export default function ReviewAssistantTab({
 
             <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col justify-between">
               <span className="text-[10px] font-mono uppercase text-zinc-500 font-bold">Month Drafts</span>
-              <span className="font-headline font-black text-2xl text-indigo-600 my-1">
+              <span className="font-headline font-black text-2xl text-zinc-900 my-1">
                 {usageStats.monthGenerations} / {config.monthly_generation_cap || 300}
               </span>
               <span className="text-[10px] text-zinc-400">Monthly cap quota</span>

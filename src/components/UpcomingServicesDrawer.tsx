@@ -99,7 +99,7 @@ export default function UpcomingServicesDrawer({ isOpen, onClose, onOpen }: Upco
       >
         <div className="relative">
           <Sparkles className="w-4 h-4 text-secondary-container animate-spin duration-3000" />
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
         </div>
         <span className="[writing-mode:vertical-rl] text-xs font-bold tracking-wider uppercase rotate-180 py-1 font-headline">
           Upcoming Tech Services

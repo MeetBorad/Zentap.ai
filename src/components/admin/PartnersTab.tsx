@@ -215,7 +215,7 @@ export default function PartnersTab({ tags, onTagsUpdated, showToast }: Partners
           <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
             Cards Distributed
           </span>
-          <span className="font-headline font-black text-2xl text-indigo-600 my-1">
+          <span className="font-headline font-black text-2xl text-zinc-900 my-1">
             {totalCardsOwned}
           </span>
           <span className="text-[10px] text-zinc-400">Assigned across partners</span>

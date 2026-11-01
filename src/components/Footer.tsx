@@ -65,7 +65,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
               Precision-crafted NFC &amp; Dynamic QR acrylic standees. Engineered for physical hospitality, clinical, and retail environments.
             </p>
             <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span>NTAG216 · 13.56 MHz · ISO 14443A</span>
             </div>
 
@@ -100,7 +100,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
                 <span>WhatsApp Instant Support</span>
               </a>
 
-              <div className="flex items-start gap-2 text-slate-300 text-[11px] pt-1">
+              <div className="flex items-start gap-2 text-slate-300 text-xs pt-1">
                 <MapPin className="w-3.5 h-3.5 text-[#ff7a00] flex-shrink-0 mt-0.5" />
                 <span>Sindhu Bhavan Marg, Bodakdev, Ahmedabad, Gujarat 380054</span>
               </div>

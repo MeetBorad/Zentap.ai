@@ -16,16 +16,13 @@ export default function SentimentSimulator() {
   };
 
   return (
-    <div className="bg-[#141720] rounded-3xl p-6 sm:p-8 border border-[#232734] shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#232734] mb-6">
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#232734] mb-8">
         <div>
-          <span className="text-[11px] font-mono font-semibold tracking-wider uppercase text-[#ff7a00]">
-            Interactive Review Engine
-          </span>
-          <h3 className="font-headline font-bold text-xl text-white mt-0.5">
+          <h3 className="font-headline font-bold text-xl sm:text-2xl text-white tracking-tight text-balance">
             Dual-Channel Sentiment Interceptor
           </h3>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs sm:text-sm text-slate-300 mt-1">
             Test how guest star ratings dynamically route to Google Business Profiles or private management resolution.
           </p>
         </div>
@@ -34,7 +31,7 @@ export default function SentimentSimulator() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {isPositive ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-950/60 text-emerald-300 text-xs font-semibold border border-emerald-800/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Public Google Maps Route
             </span>
           ) : (
@@ -46,9 +43,9 @@ export default function SentimentSimulator() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Star Selector Box */}
-        <div className="lg:col-span-5 flex flex-col p-6 rounded-2xl bg-[#0e1015] border border-[#232734]">
+        <div className="lg:col-span-5 flex flex-col p-6 rounded-2xl bg-[#141720] border border-[#232734] shadow-sm">
           <p className="text-xs font-semibold text-white mb-3">
             Select Customer Rating:
           </p>
@@ -83,45 +80,44 @@ export default function SentimentSimulator() {
         </div>
 
         {/* Dynamic Live Result Display */}
-        <div className="lg:col-span-7">
-          {isPositive ? (
-            <div className="p-6 rounded-2xl bg-emerald-950/40 border border-emerald-800/40 animate-in fade-in duration-200">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-emerald-200 font-headline">
-                    Direct Public Google Review Acceleration
-                  </h4>
-                  <p className="text-xs text-emerald-100 mt-1 leading-relaxed">
-                    Customer taps the standee, selects 4 or 5 stars, and is instantly directed to your pre-filled 5-star Google Maps review sheet with photo upload shortcuts.
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold">
-                      <span>Google Profile Boosted</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-400 font-medium">
-                      Latency: &lt; 0.6 seconds
-                    </span>
-                  </div>
+        {isPositive ? (
+          <div className="lg:col-span-7 p-6 rounded-2xl bg-[#141720] border border-[#232734] shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-emerald-200 font-headline">
+                  Direct Public Google Review Acceleration
+                </h3>
+                <p className="text-xs text-emerald-100 mt-1 leading-relaxed">
+                  Customer taps the standee, selects 4 or 5 stars, and is instantly directed to your pre-filled 5-star Google Maps review sheet with photo upload shortcuts.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold">
+                    <span>Google Profile Boosted</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-xs font-mono text-emerald-400 font-medium">
+                    Latency: &lt; 0.6 seconds
+                  </span>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="p-6 rounded-2xl bg-amber-950/40 border border-amber-800/40 animate-in fade-in duration-200">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-600 text-black flex items-center justify-center flex-shrink-0 shadow-sm font-bold">
-                  <ShieldAlert className="w-5 h-5 text-black" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-amber-200 font-headline">
-                    Private Resolution Channel (Anti-Gating Compliant)
-                  </h4>
-                  <p className="text-xs text-amber-100 mt-1 leading-relaxed">
-                    Customer is offered an immediate direct line to the manager to fix the grievance internally before it hits Google. In full compliance with Google policies, public review access remains accessible.
-                  </p>
+          </div>
+        ) : (
+          <div className="lg:col-span-7 p-6 rounded-2xl bg-[#141720] border border-[#232734] shadow-sm animate-in fade-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-600 text-black flex items-center justify-center flex-shrink-0 shadow-sm font-bold">
+                <ShieldAlert className="w-5 h-5 text-black" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-amber-200 font-headline">
+                  Private Resolution Channel (Anti-Gating Compliant)
+                </h3>
+                <p className="text-xs text-amber-100 mt-1 leading-relaxed">
+                  Customer is offered an immediate direct line to the manager to fix the grievance internally before it hits Google. In full compliance with Google policies, public review access remains accessible.
+                </p>
                   
                   {!ticketSubmitted ? (
                     <div className="mt-4 space-y-2.5">
@@ -149,7 +145,6 @@ export default function SentimentSimulator() {
               </div>
             </div>
           )}
-        </div>
       </div>
     </div>
   );

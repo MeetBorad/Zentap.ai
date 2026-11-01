@@ -192,7 +192,7 @@ export default function ZenTapHubPage({
       className={`min-h-screen ${isDark ? "text-white" : "text-zinc-900"} transition-colors`}
       style={{ 
         backgroundColor: bgColor,
-        fontFamily: design.font ? `'${design.font}', sans-serif` : "sans-serif"
+        fontFamily: design.font && design.font !== "Inter" ? `'${design.font}', sans-serif` : "'Outfit', sans-serif"
       }}
     >
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative pb-12">
@@ -207,7 +207,7 @@ export default function ZenTapHubPage({
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-[#ff7a00]/30 via-zinc-900 to-black flex items-center justify-center">
-              <span className="text-zinc-600 font-bold uppercase tracking-widest text-xs">
+              <span className="text-zinc-200 font-bold uppercase tracking-widest text-xs drop-shadow">
                 {business.name}
               </span>
             </div>
@@ -380,10 +380,10 @@ export default function ZenTapHubPage({
               case "about":
                 return (
                   <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: accentColor }}>
+                    <h2 className="text-xs font-bold uppercase tracking-wider mb-2 text-balance" style={{ color: accentColor }}>
                       {design.texts.about_heading}
-                    </h3>
-                    <p className={`text-xs leading-relaxed ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
+                    </h2>
+                    <p className={`text-xs leading-relaxed text-pretty ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>
                       {section.content?.text || ""}
                     </p>
                   </div>
@@ -393,9 +393,9 @@ export default function ZenTapHubPage({
                 if (photos.length === 0) return null;
                 return (
                   <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: accentColor }}>
+                    <h2 className="text-xs font-bold uppercase tracking-wider mb-3 text-balance" style={{ color: accentColor }}>
                       {design.texts.photos_heading}
-                    </h3>
+                    </h2>
                     <div className="grid grid-cols-3 gap-2">
                       {photos.map((photo) => (
                         <div
@@ -418,17 +418,17 @@ export default function ZenTapHubPage({
                 return (
                   <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: accentColor }}>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-balance" style={{ color: accentColor }}>
                         {design.texts.hours_heading}
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      </h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                         Open Now
                       </span>
                     </div>
                     <div className="space-y-1.5 text-xs">
                       {Array.isArray(section.content?.schedule) && section.content.schedule.map((item: any, i: number) => (
                         <div key={i} className="flex justify-between items-center py-1 border-b border-white/5 last:border-0">
-                          <span className={isDark ? "text-zinc-400" : "text-zinc-600"}>{item.days}</span>
+                          <span className={isDark ? "text-zinc-300" : "text-zinc-700"}>{item.days}</span>
                           <span className="font-semibold font-mono">{item.hours}</span>
                         </div>
                       ))}
@@ -440,9 +440,9 @@ export default function ZenTapHubPage({
                 if (!Array.isArray(section.content?.offers) || section.content.offers.length === 0) return null;
                 return (
                   <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass} space-y-3`}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: accentColor }}>
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-balance" style={{ color: accentColor }}>
                       {design.texts.offers_heading}
-                    </h3>
+                    </h2>
                     {section.content.offers.map((offer: any, i: number) => (
                       <div key={i} className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
                         <div className="flex items-center gap-2 mb-1">
@@ -541,13 +541,13 @@ export default function ZenTapHubPage({
         {/* 8. FOOTER: POWERED BY & OWNER ACCESS */}
         <footer className="mt-8 px-5 text-center space-y-2">
           {design.show_powered_by && (
-            <div className="flex items-center justify-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-300 font-medium">
               <span>Powered by</span>
               <a 
                 href="https://zentap.in" 
                 target="_blank" 
                 rel="noreferrer" 
-                className="font-bold text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
+                className="font-bold text-zinc-200 hover:text-white transition-colors flex items-center gap-1"
               >
                 <span>ZenTap</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00]" />
@@ -560,7 +560,7 @@ export default function ZenTapHubPage({
             <button
               type="button"
               onClick={() => setOwnerModalOpen(true)}
-              className="text-[10px] text-zinc-500 hover:text-zinc-400 transition-colors cursor-pointer"
+              className="text-xs text-zinc-300 hover:text-white transition-colors cursor-pointer"
             >
               Business owner? Manage this card
             </button>
