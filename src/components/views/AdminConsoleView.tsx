@@ -55,7 +55,8 @@ import {
   Menu,
   Bell,
   MessageSquare,
-  Palette
+  Palette,
+  Share2
 } from "lucide-react";
 import { 
   BusinessRecord, 
@@ -100,7 +101,9 @@ import {
   getAllResetRequests,
   purgeBusinessRecord,
   batchAssignTags,
-  getPurgedBusinessIds
+  getPurgedBusinessIds,
+  generateNextBusinessIdCode,
+  getBusinessIdCode
 } from "@/lib/businessStore";
 import JSZip from "jszip";
 import PartnersTab from "@/components/admin/PartnersTab";
@@ -112,8 +115,8 @@ import PrivateFeedbackTab from "@/components/admin/PrivateFeedbackTab";
 import QrNfcDirectoryTab from "@/components/admin/QrNfcDirectoryTab";
 import ManualPaymentsTab from "@/components/admin/ManualPaymentsTab";
 import LinksAndQrSettingsTab from "@/components/admin/LinksAndQrSettingsTab";
+import SocialLinksAndQrSettingsTab from "@/components/admin/SocialLinksAndQrSettingsTab";
 import { getManualPaymentStats, saveManualPayment, getAllManualPayments } from "@/lib/manualPaymentStore";
-import QuickTagSetupModal from "@/components/admin/QuickTagSetupModal";
 import BulkAssignCardsModal from "@/components/admin/BulkAssignCardsModal";
 import QuickSocialEditModal from "@/components/admin/QuickSocialEditModal";
 import { useAuth } from "@/context/AuthContext";
@@ -146,14 +149,15 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     | "overview"
     | "clients"
     | "manual_payments"
+    | "tags"
+    | "review_links"
+    | "social_links"
     | "page_designer"
     | "review_assistant"
     | "qr_nfc"
-    | "tags"
     | "partners"
     | "requests"
     | "orders"
-    | "review_links"
     | "analytics"
     | "feedback"
     | "settings";
@@ -181,7 +185,6 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const pendingRequestsCount = resetRequests.filter((r) => r.status === "pending").length;
 
   // New Modals State
-  const [quickTagModalOpen, setQuickTagModalOpen] = useState(false);
   const [bulkAssignModalOpen, setBulkAssignModalOpen] = useState(false);
   const [quickSocialBiz, setQuickSocialBiz] = useState<BusinessRecord | null>(null);
   const [permDeleteConfirmInput, setPermDeleteConfirmInput] = useState("");
@@ -358,6 +361,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             .filter((b) => !purgedIds.includes(b.id))
             .map((b) => ({
               id: b.id,
+              business_id_code: b.business_id_code || undefined,
               owner_user_id: b.owner_user_id,
               name: b.name,
               owner_name: b.owner_name || "",
@@ -626,7 +630,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     e.preventDefault();
     if (!newBizName.trim()) return;
 
-    // Auto-generate unique permanent slug from business name
+    // Auto-generate unique permanent slug and sequential Business ID
+    const nextBizIdCode = generateNextBusinessIdCode();
     const baseSlug = generatePermanentSlug(newBizName.trim());
     let cleanSlug = baseSlug.toLowerCase();
     if (businesses.some((b) => b.slug.toLowerCase() === cleanSlug)) {
@@ -637,6 +642,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     let dbId: string | null = null;
     try {
       const dbRecord = await adminCreateDbBusiness({
+        business_id_code: nextBizIdCode,
         name: newBizName.trim(),
         owner_name: newOwnerName.trim(),
         email: newBizEmail.trim() || "admin@zentapdigitalsolutions.com",
@@ -665,6 +671,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     // 2. Add to isomorphic businessStore
     const newRecord = addBusinessRecord({
       ...(dbId ? { id: dbId } : {}),
+      business_id_code: nextBizIdCode,
       name: newBizName.trim(),
       owner_name: newOwnerName.trim(),
       email: newBizEmail.trim() || "admin@zentapdigitalsolutions.com",
@@ -1212,6 +1219,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     const matchesQuery = 
       !q ||
       b.name.toLowerCase().includes(q) ||
+      (b.business_id_code && b.business_id_code.toLowerCase().includes(q)) ||
+      getBusinessIdCode(b).toLowerCase().includes(q) ||
       (b.city && b.city.toLowerCase().includes(q)) ||
       (b.email && b.email.toLowerCase().includes(q)) ||
       (b.phone && b.phone.includes(q)) ||
@@ -1482,7 +1491,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               <span>Payments</span>
             </button>
 
-            {/* 4. Standees & Cards (Generate Batch) */}
+            {/* 4. QR/NFC Generator */}
             <button
               onClick={() => { 
                 setAdminMenu("tags"); 
@@ -1495,7 +1504,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }`}
             >
               <Radio className="w-4 h-4 flex-shrink-0" />
-              <span>Standees &amp; Cards</span>
+              <span>QR/NFC Generator</span>
               <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 adminMenu === "tags" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
               }`}>
@@ -1503,7 +1512,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </span>
             </button>
 
-            {/* 5. Links & QR Settings */}
+            {/* 5. Google Links & QR Setting */}
             <button
               onClick={() => { 
                 setAdminMenu("review_links"); 
@@ -1516,7 +1525,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }`}
             >
               <ExternalLink className="w-4 h-4 flex-shrink-0" />
-              <span>Links &amp; QR Settings</span>
+              <span>Google Links &amp; QR Setting</span>
               {pendingLinksCount > 0 && (
                 <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   adminMenu === "review_links" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800"
@@ -1524,6 +1533,22 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   {pendingLinksCount}
                 </span>
               )}
+            </button>
+
+            {/* 6. Social Links & QR Setting */}
+            <button
+              onClick={() => { 
+                setAdminMenu("social_links"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "social_links"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Share2 className="w-4 h-4 flex-shrink-0 text-pink-500" />
+              <span>Social Links &amp; QR Setting</span>
             </button>
 
             {/* 6. Page Editor */}
@@ -1679,9 +1704,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 {adminMenu === "manual_payments"
                   ? "Payments (Manual Payments)"
                   : adminMenu === "review_links" 
-                  ? "Links & QR Settings" 
+                  ? "Google Links & QR Setting" 
+                  : adminMenu === "social_links"
+                  ? "Social Links & QR Setting"
                   : adminMenu === "tags"
-                  ? "Standees & Cards"
+                  ? "QR/NFC Generator"
                   : adminMenu === "page_designer"
                   ? "Page Editor"
                   : adminMenu === "qr_nfc"
@@ -1899,9 +1926,30 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }}
               onOpenTagSetup={(biz) => {
                 setSelectedBizForEdit(biz);
-                setQuickTagModalOpen(true);
+                setSingleTagBusinessId(biz.id);
+                setSingleTagModalOpen(true);
               }}
               onShowToast={showToast}
+              onTagsUpdated={(t) => setTags(t)}
+            />
+          )}
+
+          {/* Social Links & QR Setting Section (when adminMenu === 'social_links') */}
+          {adminMenu === "social_links" && (
+            <SocialLinksAndQrSettingsTab
+              businesses={businesses}
+              tags={tags}
+              onUpdateBusiness={(id, updates) => {
+                adminUpdateBusinessRecord(id, updates);
+                adminUpdateDbBusiness(id, updates).catch((e) => console.warn(e));
+                setBusinesses(getAllBusinesses());
+              }}
+              onUpdateTag={(tagId, updates) => {
+                updateTagDetails(tagId, updates);
+                setTags(getAllTags());
+              }}
+              onShowToast={showToast}
+              onTagsUpdated={(t) => setTags(t)}
             />
           )}
 
@@ -2414,7 +2462,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                           {/* 1. Business Name */}
                           <td className="py-4 px-4 sm:px-6">
                             <div className="flex flex-col gap-1 max-w-[260px]">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-900 border border-zinc-200 shadow-2xs whitespace-nowrap">
+                                  {b.business_id_code || getBusinessIdCode(b)}
+                                </span>
                                 <span className="font-bold text-sm text-zinc-900 truncate block" title={b.name}>
                                   {b.name}
                                 </span>
@@ -2583,22 +2634,14 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-headline font-bold text-zinc-900">
-                Standees &amp; Cards
+                QR/NFC Generator
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Standees and cards you have made. Free ones can be given to any business.
+                Generate hardware batches of standees and cards, configure products, and assign directly to clients.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setQuickTagModalOpen(true)}
-                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
-              >
-                <Sparkles className="w-4 h-4 text-black" />
-                <span>Quick Setup</span>
-              </button>
-
               <button
                 onClick={() => setBulkAssignModalOpen(true)}
                 className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
@@ -3814,6 +3857,14 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
 
             <form onSubmit={handleAddNewBusiness} className="space-y-4">
+              {/* Auto-Assigned Unique Business ID */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                <span className="font-semibold text-emerald-800">Assigned Unique Business ID:</span>
+                <span className="font-mono font-bold text-emerald-700 bg-white px-2.5 py-0.5 rounded border border-emerald-300 shadow-2xs">
+                  {generateNextBusinessIdCode()}
+                </span>
+              </div>
+
               {/* Business Name */}
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
@@ -4162,15 +4213,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         </div>
       )}
 
-      {/* Quick Tag Setup Modal */}
-      <QuickTagSetupModal
-        isOpen={quickTagModalOpen}
-        onClose={() => setQuickTagModalOpen(false)}
-        businesses={businesses}
-        onTagsUpdated={(t) => setTags(t)}
-        onBusinessesUpdated={(b) => setBusinesses(b)}
-        showToast={showToast}
-      />
+
 
       {/* Bulk Assign Cards Modal */}
       <BulkAssignCardsModal
@@ -4501,7 +4544,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                     .filter((b) => !b.is_deleted)
                     .map((b) => (
                       <option key={b.id} value={b.id}>
-                        {b.name} ({b.city || "India"}) — /r/{b.slug}
+                        [{b.business_id_code || getBusinessIdCode(b)}] {b.name} ({b.city || "India"})
                       </option>
                     ))}
                 </select>

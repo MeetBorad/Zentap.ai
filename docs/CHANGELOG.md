@@ -1,5 +1,31 @@
 # ZenTap — Changelog
 
+## [1.26.0] — 2026-11-01
+### Added & Enhanced (Unique Business IDs, Google & Social Links Tabs, Live Preview Fix, and Hardware Routing)
+- **Live Preview Fix on `/r/[slug]?preview=1`**:
+  - Removed server-side gating `if (design.hub_enabled)` on preview mode in [`src/app/r/[slug]/page.tsx`](file:///d:/Projects/Zentap.ai/src/app/r/[slug]/page.tsx) so live previews always render `<ZenTapHubPage isPreview={true} />`.
+  - Added client-side hydration `useEffect` in [`ZenTapHubPage.tsx`](file:///d:/Projects/Zentap.ai/src/components/customer/ZenTapHubPage.tsx) to mount and reflect real-time changes saved in `localStorage` from Page Designer immediately upon visiting or previewing.
+- **Unique Business ID Fleet System**:
+  - Sequential, unique Business ID format (e.g. `ZT-0001`, `ZT-0002`, `ZT-0003`...) generated and assigned upon business registration.
+  - Added `business_id_code` to `BusinessRecord` in [`businessStore.ts`](file:///d:/Projects/Zentap.ai/src/lib/businessStore.ts) and `DbBusinessRecord` in [`service.ts`](file:///d:/Projects/Zentap.ai/src/lib/supabase/service.ts).
+  - Search filters and Clients directory match and display Business ID badges.
+- **Google Links & QR Setting Tab**:
+  - Renamed and streamlined tab with a font-mono **Business ID** column.
+  - Added **+ Add Manual Entry** modal to configure Google review URLs, review slugs, QR/NFC destinations, and assign hardware tags.
+  - Upgraded **Destination of QR/NFC** to a multi-state dropdown featuring:
+    - 🟢 Direct Google Review
+    - 🟠 ZenTap Google Review
+    - 🔴 Not Assigned
+- **Social Links & QR Setting Tab (`SocialLinksAndQrSettingsTab.tsx`)**:
+  - Dedicated operational workspace for smart business cards and social NFC/QR routing.
+  - Supported platforms: WhatsApp, Instagram, Facebook.
+  - Columns: `Business ID`, `Name`, `Social Platform`, `Code`, `Link`, `Assigned Status`, `Status of the link`, `Scans / Taps`, `Download QR`, `Copy NFC Link`.
+  - Includes **+ Add Manual Social Link** modal and platform filter pills (`All`, `WhatsApp`, `Instagram`, `Facebook`).
+- **QR/NFC Generator (Standees & Cards)**:
+  - Renamed tab from "Standees & Cards" to **QR/NFC Generator** and purged the legacy "Quick Setup" modal.
+  - Direct connection to Google Links & QR Setting and Social Links & QR Setting tabs.
+  - Supports batch generation (1 to 100 units) and individual tag creation with sequential `zt-XXXX` codes.
+
 ## [1.25.0] — 2026-11-01
 ### Fixed & Improved (Admin Fleet Directory Deletion & Permanent Purge Workflow)
 - **Fleet Filter Logic Fix**:

@@ -2,6 +2,10 @@
 
 | Feature | Status | Notes |
 |---|---|---|
+| **Unique Business ID Fleet System** | Done | Sequential unique IDs (`ZT-0001`, `ZT-0002`...) assigned upon registration, integrated across Clients table, search filters, and routing tags. |
+| **Google Links & QR Setting Tab** | Done | Dedicated administrative table with Business ID, destination dropdown (Direct Google Review, ZenTap Google Review, Not Assigned), manual entry modal, and tag assignment. |
+| **Social Links & QR Setting Tab** | Done | Dedicated table for social NFC/QR routing (WhatsApp, Instagram, Facebook), manual social link setup, platform filter pills, and quick NFC/QR generation. |
+| **Live Preview Real-Time Sync** | Done | Removed server-side gating on `/r/[slug]?preview=1` and implemented client-side localStorage hydration in `ZenTapHubPage.tsx` for immediate preview updates. |
 | **WhatsApp-First Business Model & Direct Ordering** | Done | Removed online shopping cart, automated checkout, and customer payment processing from public routes. Every product card and CTA links directly to WhatsApp (`919274560880`) with dedicated pre-filled product enquiry messages. Preserved underlying database & payment architecture modularly for future automation. |
 | **Strict Single Admin Login Restriction** | Done | Guaranteed strictly ONLY ONE admin login option on the entire website, located exclusively at the top-left corner of the homepage header (`currentView === 'home'`). Purged all admin login links from the footer, product pages, right action bar, and mobile drawer. |
 | **The 4 Core Product Categories** | Done | Clear public taxonomy: 1. Business Review Standee (Direct Google Review redirection), 2. ZenTap Smart Review Standee (Customized Review Assistant), 3. ZenTap Smart Business Card (QR/NFC Digital Business Card), 4. ZenTap Custom Solutions (Bespoke QR/NFC Standees & Displays). |

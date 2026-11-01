@@ -64,23 +64,21 @@ export default async function Page({
   const rawBiz = getBusinessBySlug(cleanCode) || (await fetchPublicBusinessBySlug(cleanCode));
   const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
 
-  // If preview mode, check if hub preview requested
+  // If preview mode, always render the Hub Page for live simulation of saved design
   if (isPreview) {
     if (biz) {
       const design = getPageDesign(biz.id);
-      if (design.hub_enabled) {
-        return (
-          <ZenTapHubPage
-            business={biz}
-            design={design}
-            buttons={getPageButtons(biz.id)}
-            sections={getPageSections(biz.id)}
-            photos={getPagePhotos(biz.id)}
-            source={source}
-            isPreview={true}
-          />
-        );
-      }
+      return (
+        <ZenTapHubPage
+          business={biz}
+          design={design}
+          buttons={getPageButtons(biz.id)}
+          sections={getPageSections(biz.id)}
+          photos={getPagePhotos(biz.id)}
+          source={source}
+          isPreview={true}
+        />
+      );
     }
     return <ReviewAssistantClient />;
   }

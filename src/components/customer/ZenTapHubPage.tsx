@@ -1,7 +1,7 @@
 // src/components/customer/ZenTapHubPage.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Star, 
@@ -30,7 +30,11 @@ import {
   PageButtonRecord, 
   PageSectionRecord, 
   PagePhotoRecord,
-  THEME_PRESET_CONFIGS
+  THEME_PRESET_CONFIGS,
+  getPageDesign,
+  getPageButtons,
+  getPageSections,
+  getPagePhotos
 } from "@/lib/hubDesignStore";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
@@ -46,13 +50,35 @@ interface ZenTapHubPageProps {
 
 export default function ZenTapHubPage({
   business,
-  design,
-  buttons,
-  sections,
-  photos,
+  design: initialDesign,
+  buttons: initialButtons,
+  sections: initialSections,
+  photos: initialPhotos,
   source = "web",
   isPreview = false,
 }: ZenTapHubPageProps) {
+  const [design, setDesign] = useState<PageDesignRecord>(initialDesign);
+  const [buttons, setButtons] = useState<PageButtonRecord[]>(initialButtons);
+  const [sections, setSections] = useState<PageSectionRecord[]>(initialSections);
+  const [photos, setPhotos] = useState<PagePhotoRecord[]>(initialPhotos);
+
+  // Client hydration to fetch latest saved design from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined" && business?.id) {
+      try {
+        const localDesign = getPageDesign(business.id);
+        const localButtons = getPageButtons(business.id);
+        const localSections = getPageSections(business.id);
+        const localPhotos = getPagePhotos(business.id);
+        if (localDesign) setDesign(localDesign);
+        if (localButtons && localButtons.length > 0) setButtons(localButtons);
+        if (localSections && localSections.length > 0) setSections(localSections);
+        if (localPhotos) setPhotos(localPhotos);
+      } catch (e) {
+        console.warn("Hydrating hub design error:", e);
+      }
+    }
+  }, [business?.id]);
   // Lightbox state for gallery photos
   const [activePhoto, setActivePhoto] = useState<PagePhotoRecord | null>(null);
 

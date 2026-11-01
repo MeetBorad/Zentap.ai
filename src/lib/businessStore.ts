@@ -128,6 +128,7 @@ export interface TagAssignmentRecord {
 
 export interface BusinessRecord {
   id: string;
+  business_id_code?: string; // unique short identifier e.g. ZT-0001
   owner_user_id: string;
   name: string;
   owner_name?: string;
@@ -328,6 +329,7 @@ export function calculateCourierCharge(pincode: string): { amount: number; zone:
 // Sample Demonstration Business (ZenTap Official Google Review Assistant Showcase)
 export const SAMPLE_DEMO_BUSINESS: BusinessRecord = {
   id: "sample-demo-biz-01",
+  business_id_code: "ZT-0001",
   owner_user_id: "demo-owner",
   name: "ZenTap Digital Solutions",
   email: "contact@zentapdigitalsolutions.com",
@@ -374,6 +376,7 @@ const INITIAL_FLEET: BusinessRecord[] = [
   SAMPLE_DEMO_BUSINESS,
   {
     id: "biz-102",
+    business_id_code: "ZT-0002",
     owner_user_id: "user-102",
     name: "The Urban Bistro & Lounge",
     email: "hello@urbanbistro.in",
@@ -394,6 +397,7 @@ const INITIAL_FLEET: BusinessRecord[] = [
   },
   {
     id: "biz-103",
+    business_id_code: "ZT-0003",
     owner_user_id: "user-103",
     name: "Iron Works Fitness Arena",
     email: "admin@ironworksgym.in",
@@ -590,10 +594,38 @@ export function getAllBusinesses(): BusinessRecord[] {
   }
 }
 
+// Generate next sequential unique Business ID Code e.g. ZT-0001, ZT-0002
+export function generateNextBusinessIdCode(): string {
+  if (typeof window === "undefined") return "ZT-0001";
+  try {
+    const businesses = getAllBusinesses();
+    let maxNum = 0;
+    businesses.forEach((b) => {
+      const code = b.business_id_code;
+      if (code && code.startsWith("ZT-")) {
+        const numPart = parseInt(code.replace("ZT-", ""), 10);
+        if (!isNaN(numPart) && numPart > maxNum) {
+          maxNum = numPart;
+        }
+      }
+    });
+    return `ZT-${String(maxNum + 1).padStart(4, "0")}`;
+  } catch {
+    return `ZT-${String(Date.now()).slice(-4)}`;
+  }
+}
+
+export function getBusinessIdCode(biz: BusinessRecord): string {
+  if (biz.business_id_code) return biz.business_id_code;
+  const clean = biz.id.replace(/[^a-zA-Z0-9]/g, "");
+  return `ZT-${clean.slice(-4).toUpperCase()}`;
+}
+
 // Admin Add Business (Supreme Fleet Creation)
 export function addBusinessRecord(bizData: Omit<BusinessRecord, "id" | "created_at"> & { id?: string }): BusinessRecord {
   const newBiz: BusinessRecord = {
     id: bizData.id || `biz-${Date.now()}`,
+    business_id_code: bizData.business_id_code || generateNextBusinessIdCode(),
     owner_user_id: bizData.owner_user_id || `owner-${Date.now()}`,
     name: bizData.name.trim(),
     owner_name: bizData.owner_name?.trim() || "",

@@ -4,6 +4,7 @@ import { ProductPlan, CustomCardDesign } from "@/lib/businessStore";
 
 export interface DbBusinessRecord {
   id: string;
+  business_id_code?: string | null;
   owner_user_id: string;
   name: string;
   owner_name?: string | null;
