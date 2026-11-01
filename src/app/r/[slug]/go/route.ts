@@ -11,6 +11,7 @@ export async function GET(
 
   let reviewUrl: string | null = null;
   let isActive = true;
+  let isDeleted = false;
   let businessId: string | null = null;
 
   // 1. Try fetching from Supabase database
@@ -19,7 +20,7 @@ export async function GET(
     try {
       const { data, error } = await supabase
         .from("businesses")
-        .select("id, slug, review_url, active")
+        .select("id, slug, review_url, active, is_deleted")
         .eq("slug", cleanSlug)
         .maybeSingle();
 
@@ -27,6 +28,7 @@ export async function GET(
         businessId = data.id;
         reviewUrl = data.review_url;
         isActive = data.active;
+        isDeleted = !!data.is_deleted;
       }
     } catch (err) {
       console.warn("Supabase lookup in /go route notice:", err);
@@ -40,11 +42,12 @@ export async function GET(
       businessId = fallbackBiz.id;
       reviewUrl = fallbackBiz.review_url;
       isActive = fallbackBiz.active;
+      isDeleted = !!fallbackBiz.is_deleted;
     }
   }
 
-  // 3. If business not found or inactive, show unavailable
-  if (!businessId || !isActive) {
+  // 3. If business not found or inactive/deleted, show unavailable
+  if (!businessId || !isActive || isDeleted) {
     return NextResponse.redirect(new URL(`/r/${slug}?unavailable=1`, request.url), 302);
   }
 

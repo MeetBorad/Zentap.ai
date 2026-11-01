@@ -13,6 +13,7 @@ import {
   Check, 
   Cpu, 
   RefreshCw,
+  RotateCcw,
   Search,
   Filter,
   Layers,
@@ -28,6 +29,8 @@ import {
   Truck,
   Sparkles,
   Save,
+  Tag,
+  Plus,
   X,
   AlertTriangle,
   CheckCircle2,
@@ -50,12 +53,20 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Bell
+  Bell,
+  MessageSquare,
+  Palette
 } from "lucide-react";
 import { 
   BusinessRecord, 
   getAllBusinesses, 
   adminUpdateBusinessRecord, 
+  addBusinessRecord,
+  softDeleteBusiness,
+  restoreBusiness,
+  permanentlyDeleteBusiness,
+  generatePermanentSlug,
+  updateBusinessRedirectMode,
   validateGoogleReviewUrl,
   getBusinessAnalytics,
   generateRandomSlug,
@@ -67,14 +78,52 @@ import {
   QuotationRecord,
   getAllQuotations,
   adminUpdateQuotationStatus,
-  ProductPlan
+  ProductPlan,
+  TagRecord,
+  TagType,
+  TagForm,
+  TagDestination,
+  getAllTags,
+  generateTagBatch,
+  createSingleTag,
+  toggleTagChipWritten,
+  ensureLegacyTagForSlug,
+  assignTag,
+  releaseTag,
+  toggleTagActive,
+  updateTagDestination,
+  updateTagDetails,
+  softDeleteBusinessWithTags,
+  PartnerRecord,
+  ResetRequestRecord,
+  getAllPartners,
+  getAllResetRequests,
+  purgeBusinessRecord,
+  batchAssignTags
 } from "@/lib/businessStore";
+import JSZip from "jszip";
+import PartnersTab from "@/components/admin/PartnersTab";
+import RequestsTab from "@/components/admin/RequestsTab";
+import PlatformSettingsTab from "@/components/admin/PlatformSettingsTab";
+import ReviewAssistantTab from "@/components/admin/ReviewAssistantTab";
+import PageDesignerTab from "@/components/admin/PageDesignerTab";
+import PrivateFeedbackTab from "@/components/admin/PrivateFeedbackTab";
+import QrNfcDirectoryTab from "@/components/admin/QrNfcDirectoryTab";
+import ManualPaymentsTab from "@/components/admin/ManualPaymentsTab";
+import { getManualPaymentStats, saveManualPayment, getAllManualPayments } from "@/lib/manualPaymentStore";
+import QuickTagSetupModal from "@/components/admin/QuickTagSetupModal";
+import BulkAssignCardsModal from "@/components/admin/BulkAssignCardsModal";
+import QuickSocialEditModal from "@/components/admin/QuickSocialEditModal";
 import { useAuth } from "@/context/AuthContext";
 import { 
   fetchDbAdminBusinesses, 
   updateDbReviewUrl, 
   upsertUserBusinessInDb, 
   adminUpdateDbBusiness,
+  adminCreateDbBusiness,
+  adminSoftDeleteDbBusiness,
+  adminRestoreDbBusiness,
+  adminPermanentDeleteDbBusiness,
   fetchDbAdminOrders,
   adminUpdateDbOrder,
   DbBusinessRecord,
@@ -94,12 +143,22 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   type AdminMenuItem = 
     | "overview"
     | "clients"
+    | "manual_payments"
+    | "page_designer"
+    | "review_assistant"
+    | "qr_nfc"
+    | "tags"
+    | "partners"
+    | "requests"
     | "orders"
     | "review_links"
     | "analytics"
+    | "feedback"
     | "settings";
 
   const [adminMenu, setAdminMenu] = useState<AdminMenuItem>("overview");
+  const [reviewAssistantTargetBizId, setReviewAssistantTargetBizId] = useState<string>("");
+  const [pageDesignerTargetBizId, setPageDesignerTargetBizId] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [adminNotificationOpen, setAdminNotificationOpen] = useState(false);
@@ -107,13 +166,54 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans" | "quotations">("analytics");
 
   const [businesses, setBusinesses] = useState<BusinessRecord[]>([]);
+  const [partners, setPartners] = useState<PartnerRecord[]>(() => getAllPartners());
+  const [resetRequests, setResetRequests] = useState<ResetRequestRecord[]>(() => getAllResetRequests());
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [quotations, setQuotations] = useState<QuotationRecord[]>([]);
   const [quoteSearchQuery, setQuoteSearchQuery] = useState("");
   const [quoteStatusFilter, setQuoteStatusFilter] = useState<"all" | "pending_review" | "contacted" | "quote_sent" | "approved">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "name_pending" | "paid" | "pending">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "name_pending" | "paid" | "pending" | "deleted" | "direct_mode">("all");
   const [toastMsg, setToastMsg] = useState("");
+
+  const pendingRequestsCount = resetRequests.filter((r) => r.status === "pending").length;
+
+  // New Modals State
+  const [quickTagModalOpen, setQuickTagModalOpen] = useState(false);
+  const [bulkAssignModalOpen, setBulkAssignModalOpen] = useState(false);
+  const [quickSocialBiz, setQuickSocialBiz] = useState<BusinessRecord | null>(null);
+  const [permDeleteConfirmInput, setPermDeleteConfirmInput] = useState("");
+
+  // Physical Tags Layer State (Standees & Cards)
+  const [tags, setTags] = useState<TagRecord[]>([]);
+  const [tagSearchQuery, setTagSearchQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<"all" | "ready_to_give_out" | "standee" | "card" | "assigned" | "unassigned">("all");
+  const [singleTagModalOpen, setSingleTagModalOpen] = useState(false);
+  const [singleTagCode, setSingleTagCode] = useState("");
+  const [singleTagForm, setSingleTagForm] = useState<TagForm>("standee");
+  const [singleTagChipWritten, setSingleTagChipWritten] = useState(false);
+  const [singleTagBusinessId, setSingleTagBusinessId] = useState("");
+  const [singleTagType, setSingleTagType] = useState<TagType>("review");
+  const [singleTagDestination, setSingleTagDestination] = useState<TagDestination>("zentap_page");
+  const [singleTagLabel, setSingleTagLabel] = useState("");
+  const [singleTagWhatsappNumber, setSingleTagWhatsappNumber] = useState("");
+  const [singleTagWhatsappMessage, setSingleTagWhatsappMessage] = useState("");
+  const [singleTagInstagramHandle, setSingleTagInstagramHandle] = useState("");
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchCount, setBatchCount] = useState<number>(50);
+  const [batchForm, setBatchForm] = useState<TagForm>("standee");
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedTagForAssign, setSelectedTagForAssign] = useState<TagRecord | null>(null);
+  const [assignBusinessId, setAssignBusinessId] = useState<string>("");
+  const [assignType, setAssignType] = useState<TagType>("review");
+  const [assignLabel, setAssignLabel] = useState<string>("");
+  const [assignWhatsappNumber, setAssignWhatsappNumber] = useState<string>("");
+  const [assignWhatsappMessage, setAssignWhatsappMessage] = useState<string>("");
+  const [assignInstagramHandle, setAssignInstagramHandle] = useState<string>("");
+  const [takeBackModalTag, setTakeBackModalTag] = useState<TagRecord | null>(null);
+  const [tagQrModalTag, setTagQrModalTag] = useState<TagRecord | null>(null);
+  const [tagQrPng, setTagQrPng] = useState<string>("");
+  const [tagQrSvg, setTagQrSvg] = useState<string>("");
 
   // Direct Review Link Edit State
   const [editingBizId, setEditingBizId] = useState<string | null>(null);
@@ -148,16 +248,40 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   // New Business Onboarding Modal State
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newBizName, setNewBizName] = useState("");
+  const [newBizSlug, setNewBizSlug] = useState("");
+  const [newOwnerName, setNewOwnerName] = useState("");
   const [newBizEmail, setNewBizEmail] = useState("");
   const [newBizPhone, setNewBizPhone] = useState("");
-  const [newBizCity, setNewBizCity] = useState("");
+  const [newBizCity, setNewBizCity] = useState("Ahmedabad");
   const [newBizPlan, setNewBizPlan] = useState<ProductPlan>("standee_1500");
+  const [newBizPaymentStatus, setNewBizPaymentStatus] = useState<"paid" | "pending" | "failed">("pending");
   const [newBizReviewUrl, setNewBizReviewUrl] = useState("");
+  const [newBizWhatsapp, setNewBizWhatsapp] = useState("");
+  const [newBizInstagram, setNewBizInstagram] = useState("");
+  const [newBizRedirectMode, setNewBizRedirectMode] = useState<"interactive_profile" | "direct_review">("interactive_profile");
+  const [newBizActive, setNewBizActive] = useState(true);
+  const [newBizValidUntil, setNewBizValidUntil] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return d.toISOString().split("T")[0];
+  });
 
-  // High-Res QR Modal State
+  // Soft Delete & Permanent Delete Confirmation Modals
+  const [softDeleteModalBiz, setSoftDeleteModalBiz] = useState<BusinessRecord | null>(null);
+  const [permDeleteModalBiz, setPermDeleteModalBiz] = useState<BusinessRecord | null>(null);
+
+  // Multi-Asset QR Modal State (Review, WhatsApp, Instagram)
   const [qrModalBiz, setQrModalBiz] = useState<BusinessRecord | null>(null);
-  const [qrPngUrl, setQrPngUrl] = useState<string>("");
-  const [qrSvgString, setQrSvgString] = useState<string>("");
+  const [qrActiveTab, setQrActiveTab] = useState<"review" | "whatsapp" | "instagram">("review");
+  const [qrAssets, setQrAssets] = useState<{
+    review: { png: string; svg: string; url: string };
+    whatsapp: { png: string; svg: string; url: string };
+    instagram: { png: string; svg: string; url: string };
+  }>({
+    review: { png: "", svg: "", url: "" },
+    whatsapp: { png: "", svg: "", url: "" },
+    instagram: { png: "", svg: "", url: "" },
+  });
 
   // Custom Review Categories ("What did you like most?") Modal State
   const [chipsModalOpen, setChipsModalOpen] = useState(false);
@@ -178,7 +302,26 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab === "overview" || tab === "clients" || tab === "orders" || tab === "review_links" || tab === "analytics" || tab === "settings") {
+      const bizParam = params.get("biz");
+      if (bizParam) {
+        setReviewAssistantTargetBizId(bizParam);
+        setPageDesignerTargetBizId(bizParam);
+      }
+      if (
+        tab === "overview" || 
+        tab === "clients" || 
+        tab === "page_designer" ||
+        tab === "review_assistant" || 
+        tab === "qr_nfc" || 
+        tab === "tags" || 
+        tab === "partners" || 
+        tab === "requests" || 
+        tab === "orders" || 
+        tab === "review_links" || 
+        tab === "analytics" || 
+        tab === "feedback" || 
+        tab === "settings"
+      ) {
         setAdminMenu(tab as any);
         if (tab === "clients") setAdminTab("fleet");
         if (tab === "orders") setAdminTab("orders");
@@ -191,7 +334,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     }
   }, []);
 
-  // Load All Businesses & Orders
+  // Load All Businesses, Orders & Physical Tags
   useEffect(() => {
     async function loadAdminData() {
       // 1. Initial local load
@@ -201,6 +344,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       setOrders(localOrders);
       const localQuotes = getAllQuotations();
       setQuotations(localQuotes);
+      const localTags = getAllTags();
+      setTags(localTags);
 
       // 2. Fetch all merchant records from Supabase
       try {
@@ -398,7 +543,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   };
 
   const handleDeletePlan = (bizId: string) => {
-    if (confirm("Supreme Authority Confirmation: Reset plan to trial and mark pending?")) {
+    if (confirm("Supreme Authority Confirmation: Reset plan and mark payment pending?")) {
       const updates = {
         plan: "card_500" as const,
         payment_status: "pending" as const,
@@ -407,7 +552,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       adminUpdateDbBusiness(bizId, updates).catch((err) => console.warn(err));
       setBusinesses(updated);
       setPlanModalOpen(false);
-      showToast("✓ Plan subscription reset to pending trial.");
+      showToast("✓ Plan subscription reset to pending status.");
     }
   };
 
@@ -460,120 +605,490 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   };
 
   // -------------------------------------------------------------
-  // ACTION: Onboard New Business
+  // ACTION: Add Business (Supreme Admin Creation)
   // -------------------------------------------------------------
-  const handleAddNewBusiness = (e: React.FormEvent) => {
+  const handleAddNewBusiness = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBizName.trim()) return;
 
-    const cleanSlug = generateRandomSlug(newBizName.trim());
-    const newRecord: BusinessRecord = {
-      id: `biz_${Date.now()}`,
-      owner_user_id: newBizEmail || "admin-managed",
+    const baseSlug = newBizSlug.trim() ? generatePermanentSlug(newBizSlug) : generatePermanentSlug(newBizName);
+    const cleanSlug = baseSlug.toLowerCase();
+
+    // Check slug collision
+    const slugExists = businesses.some((b) => b.slug.toLowerCase() === cleanSlug);
+    if (slugExists) {
+      showToast("⚠️ Slug already in use! Please adjust the slug name.");
+      return;
+    }
+
+    // 1. Create in Supabase Database first to acquire real backend UUID
+    let dbId: string | null = null;
+    try {
+      const dbRecord = await adminCreateDbBusiness({
+        name: newBizName.trim(),
+        owner_name: newOwnerName.trim(),
+        email: newBizEmail.trim() || "admin@zentapdigitalsolutions.com",
+        phone: newBizPhone.trim(),
+        city: newBizCity.trim() || "Ahmedabad",
+        state: "Gujarat",
+        country: "India",
+        pincode: "380001",
+        slug: cleanSlug,
+        plan: newBizPlan,
+        payment_status: newBizPaymentStatus,
+        review_url: newBizReviewUrl.trim() || null,
+        whatsapp_number: newBizWhatsapp.trim(),
+        instagram_url: newBizInstagram.trim(),
+        redirect_mode: newBizRedirectMode,
+        active: newBizActive && newBizPaymentStatus === "paid",
+        service_valid_until: newBizValidUntil,
+      });
+      if (dbRecord && dbRecord.id) {
+        dbId = dbRecord.id;
+      }
+    } catch (err) {
+      console.warn("Database creation error:", err);
+    }
+
+    // 2. Add to isomorphic businessStore
+    const newRecord = addBusinessRecord({
+      ...(dbId ? { id: dbId } : {}),
       name: newBizName.trim(),
+      owner_name: newOwnerName.trim(),
       email: newBizEmail.trim() || "admin@zentapdigitalsolutions.com",
       phone: newBizPhone.trim(),
-      city: newBizCity.trim() || "India",
+      city: newBizCity.trim() || "Ahmedabad",
       state: "Gujarat",
       country: "India",
       pincode: "380001",
       gbp_link: "",
       slug: cleanSlug,
       plan: newBizPlan,
-      payment_status: "paid",
+      payment_status: newBizPaymentStatus,
       review_url: newBizReviewUrl.trim() || null,
-      active: true,
-      category: "Commercial Client",
-      created_at: new Date().toISOString(),
+      whatsapp_number: newBizWhatsapp.trim(),
+      instagram_url: newBizInstagram.trim(),
+      redirect_mode: newBizRedirectMode,
+      active: newBizActive && newBizPaymentStatus === "paid",
+      service_valid_until: newBizValidUntil,
+      owner_user_id: dbId || `admin-managed-${Date.now()}`,
+    });
+
+    // 3. Automatically record entry in Manual Payments ledger
+    const planPrices: Record<string, number> = {
+      business_review_standee: 999,
+      zentap_smart_review_standee: 1499,
+      zentap_smart_business_card: 699,
+      custom_solution: 2499,
+      card_500: 500,
+      standee_1500: 1500,
+      standee_auto_2000: 2000,
+      franchise_custom: 2500,
     };
+    const agreedAmount = planPrices[newBizPlan] || 999;
+    saveManualPayment({
+      business_id: newRecord.id,
+      business_name: newRecord.name,
+      product_purchased: newBizPlan,
+      total_agreed_amount: agreedAmount,
+      amount_received: newBizPaymentStatus === "paid" ? agreedAmount : 0,
+      payment_date: new Date().toISOString().split("T")[0],
+      payment_method: "upi",
+      payment_status: newBizPaymentStatus === "paid" ? "completed" : "pending",
+      admin_notes: newBizPaymentStatus === "paid" 
+        ? "Initial registration (Payment Verified)" 
+        : "Initial registration (Awaiting payment confirmation to activate hardware)",
+    });
 
-    const updated = [newRecord, ...businesses];
+    const updated = [newRecord, ...businesses.filter((b) => b.id !== newRecord.id && b.slug !== newRecord.slug)];
     setBusinesses(updated);
-
-    adminUpdateBusinessRecord(newRecord.id, newRecord);
-    upsertUserBusinessInDb({
-      id: newRecord.id,
-      owner_user_id: newRecord.owner_user_id,
-      name: newRecord.name,
-      email: newRecord.email,
-      phone: newRecord.phone,
-      city: newRecord.city,
-      slug: newRecord.slug,
-      plan: newRecord.plan,
-      payment_status: newRecord.payment_status,
-      review_url: newRecord.review_url,
-      active: true,
-    }).catch((err) => console.warn(err));
 
     setAddModalOpen(false);
     setNewBizName("");
+    setNewBizSlug("");
+    setNewOwnerName("");
     setNewBizEmail("");
     setNewBizPhone("");
-    setNewBizCity("");
+    setNewBizCity("Ahmedabad");
     setNewBizReviewUrl("");
-    showToast("✓ New Client Business onboarded to Fleet!");
+    setNewBizWhatsapp("");
+    setNewBizInstagram("");
+    setNewBizRedirectMode("interactive_profile");
+    setNewBizActive(true);
+    setNewBizPaymentStatus("pending");
+    showToast(
+      newBizPaymentStatus === "paid"
+        ? `✓ Business "${newRecord.name}" created and payment verified!`
+        : `✓ Business "${newRecord.name}" registered! Awaiting payment confirmation before standee activation.`
+    );
   };
 
-  const handleDeleteBusiness = (bizId: string, name: string) => {
-    if (confirm(`Supreme Authority Confirmation: Remove "${name}" from Fleet directory?`)) {
-      const filtered = businesses.filter((b) => b.id !== bizId);
-      setBusinesses(filtered);
-      showToast(`✓ Removed "${name}" from Active Directory.`);
+  // -------------------------------------------------------------
+  // ACTION: Confirm Payment & Unlock Hardware Activation Gate
+  // -------------------------------------------------------------
+  const handleConfirmPayment = (biz: BusinessRecord) => {
+    // 1. Update business payment status to paid & turn link ON
+    adminUpdateBusinessRecord(biz.id, { payment_status: "paid", active: true });
+    adminUpdateDbBusiness(biz.id, { payment_status: "paid", active: true }).catch((e) => console.warn(e));
+
+    // 2. Synchronize with manual payment ledger
+    const payments = getAllManualPayments();
+    const existing = payments.find((p) => p.business_id === biz.id || p.business_name === biz.name);
+    if (existing) {
+      saveManualPayment({
+        ...existing,
+        amount_received: existing.total_agreed_amount,
+        payment_status: "completed",
+        admin_notes: (existing.admin_notes ? existing.admin_notes + " • " : "") + "Payment confirmed via 1-click admin action.",
+      });
+    }
+
+    setBusinesses(getAllBusinesses());
+    showToast(`✓ Payment confirmed for "${biz.name}"! Standee routing and features unlocked.`);
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Soft Delete / Restore / Permanent Delete
+  // -------------------------------------------------------------
+  const handleExecuteSoftDelete = (biz: BusinessRecord) => {
+    const { releasedTagsCount, businesses: updated } = softDeleteBusinessWithTags(biz.id);
+    adminSoftDeleteDbBusiness(biz.id).catch((e) => console.warn(e));
+    setBusinesses(updated);
+    setTags(getAllTags());
+    setSoftDeleteModalBiz(null);
+    showToast(
+      releasedTagsCount > 0
+        ? `✓ "${biz.name}" soft-deleted. ${releasedTagsCount} standee/card(s) freed up.`
+        : `✓ "${biz.name}" soft-deleted. Scans will show neutral 'Page Unavailable' screen.`
+    );
+  };
+
+  const handleRestoreBusiness = (biz: BusinessRecord) => {
+    // Check if slug or email clashes with an active business
+    const clash = businesses.find(
+      (b) => !b.is_deleted && (b.slug.toLowerCase() === biz.slug.toLowerCase() || (biz.email && b.email.toLowerCase() === biz.email.toLowerCase()))
+    );
+    if (clash) {
+      showToast(`⚠️ Cannot restore: Active business "${clash.name}" already uses slug "/r/${biz.slug}". Rename or change slug first.`);
+      return;
+    }
+    const updated = restoreBusiness(biz.id);
+    adminRestoreDbBusiness(biz.id).catch((e) => console.warn(e));
+    setBusinesses(updated);
+    showToast(`✓ "${biz.name}" restored & activated!`);
+  };
+
+  const handleExecutePermanentDelete = (biz: BusinessRecord) => {
+    const res = purgeBusinessRecord(biz.id);
+    if (!res.success) {
+      showToast(`❌ ${res.error}`);
+      return;
+    }
+    adminPermanentDeleteDbBusiness(biz.id).catch((e) => console.warn(e));
+    setBusinesses(getAllBusinesses());
+    setPermDeleteModalBiz(null);
+    setPermDeleteConfirmInput("");
+    showToast(`✓ "${biz.name}" permanently deleted.`);
+  };
+
+  const handleExportNfcCsv = () => {
+    const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || "https://zentap.in";
+    const rows = [
+      ["Tag Code", "Item Form", "NFC Link", "QR Link", "Assigned Business", "Status"],
+      ...tags.map((t) => [
+        t.code,
+        t.form,
+        `${domain}/t/${t.code}?s=nfc`,
+        `${domain}/t/${t.code}?s=qr`,
+        t.business_name || "Unassigned",
+        t.active ? "Active" : "Inactive"
+      ])
+    ];
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `zentap_tags_nfc_manifest_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("✓ Exported NFC Links CSV!");
+  };
+
+  const handleDownloadQrZip = async () => {
+    try {
+      showToast("Generating QR codes ZIP bundle...");
+      const domain = (typeof window !== "undefined" && localStorage.getItem("zentap_site_domain")) || "https://zentap.in";
+      const zip = new JSZip();
+      const folder = zip.folder("zentap_qr_codes");
+      for (const t of tags) {
+        const url = `${domain}/t/${t.code}?s=qr`;
+        const pngData = await QRCode.toDataURL(url, { width: 1000, margin: 2, errorCorrectionLevel: "Q" });
+        const svgData = await QRCode.toString(url, { type: "svg", margin: 2, errorCorrectionLevel: "Q" });
+        const base64Png = pngData.replace(/^data:image\/png;base64,/, "");
+        folder?.file(`${t.code}.png`, base64Png, { base64: true });
+        folder?.file(`${t.code}.svg`, svgData);
+      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `zentap_qr_codes_all_${new Date().toISOString().split("T")[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast("✓ Downloaded all QR codes as ZIP!");
+    } catch (err) {
+      console.warn("QR ZIP error:", err);
+      showToast("Failed to generate QR zip");
     }
   };
 
   // -------------------------------------------------------------
-  // ACTION: High-Resolution Standee QR Generator
+  // PHYSICAL TAG ACTIONS (STANDYES & CARDS LAYER)
+  // -------------------------------------------------------------
+  const handleGenerateBatch = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const updated = generateTagBatch(batchCount, batchForm);
+      setTags(updated);
+      setBatchModalOpen(false);
+      showToast(`✓ Generated ${batchCount} new ${batchForm} codes (e.g. ${updated[0]?.code})!`);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to generate batch.");
+    }
+  };
+
+  const handleCreateSingleTag = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const updated = createSingleTag({
+        code: singleTagCode.trim() || undefined,
+        form: singleTagForm,
+        chip_written: singleTagChipWritten,
+        business_id: singleTagBusinessId || null,
+        type: singleTagBusinessId ? singleTagType : null,
+        destination: singleTagDestination,
+        label: singleTagLabel.trim() || undefined,
+        whatsapp_number: singleTagWhatsappNumber.trim() || undefined,
+        whatsapp_message: singleTagWhatsappMessage.trim() || undefined,
+        instagram_handle: singleTagInstagramHandle.trim() || undefined,
+      });
+      setTags(updated);
+      setSingleTagModalOpen(false);
+      // Reset form
+      setSingleTagCode("");
+      setSingleTagForm("standee");
+      setSingleTagChipWritten(false);
+      setSingleTagBusinessId("");
+      setSingleTagType("review");
+      setSingleTagDestination("zentap_page");
+      setSingleTagLabel("");
+      setSingleTagWhatsappNumber("");
+      setSingleTagWhatsappMessage("");
+      setSingleTagInstagramHandle("");
+      showToast(`✓ Added single tag ${updated[0]?.code.toUpperCase()}!`);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to create single tag.");
+    }
+  };
+
+  const handleToggleChipWritten = (tag: TagRecord) => {
+    const updated = toggleTagChipWritten(tag.id);
+    setTags(updated);
+    const updatedTag = updated.find((t) => t.id === tag.id);
+    showToast(
+      updatedTag?.chip_written
+        ? `✓ ${tag.code.toUpperCase()} marked as Chip Written & Tested! Ready to give out.`
+        : `✓ ${tag.code.toUpperCase()} marked as Needs Writing.`
+    );
+  };
+
+  const handleLinkLegacyStandee = (biz: BusinessRecord) => {
+    try {
+      const tag = ensureLegacyTagForSlug(biz.slug, biz.id);
+      setTags(getAllTags());
+      showToast(`✓ Standee tag created for /r/${biz.slug}! Destination can now be remotely switched.`);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to link legacy standee.");
+    }
+  };
+
+  const handleOpenAssignModal = (tag: TagRecord) => {
+    setSelectedTagForAssign(tag);
+    const initialBizId = tag.business_id || (businesses[0]?.id || "");
+    setAssignBusinessId(initialBizId);
+    setAssignType(tag.type || "review");
+    setAssignLabel(tag.label || "");
+    const biz = businesses.find((b) => b.id === initialBizId);
+    setAssignWhatsappNumber(tag.whatsapp_number || biz?.whatsapp_number || biz?.whatsapp || "");
+    setAssignWhatsappMessage(tag.whatsapp_message || biz?.whatsapp_message || `Hello ${biz?.name || "there"}! I tapped your card.`);
+    setAssignInstagramHandle(tag.instagram_handle || biz?.instagram_url || biz?.instagram || "");
+    setAssignModalOpen(true);
+  };
+
+  const handleExecuteAssign = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTagForAssign || !assignBusinessId) return;
+
+    const updated = assignTag(selectedTagForAssign.id, assignBusinessId, assignType, {
+      label: assignLabel.trim() || undefined,
+      whatsapp_number: assignWhatsappNumber.trim() || undefined,
+      whatsapp_message: assignWhatsappMessage.trim() || undefined,
+      instagram_handle: assignInstagramHandle.trim() || undefined,
+    });
+    setTags(updated);
+    setAssignModalOpen(false);
+    const biz = businesses.find((b) => b.id === assignBusinessId);
+    showToast(`✓ Given ${selectedTagForAssign.code.toUpperCase()} to "${biz?.name || "Business"}"!`);
+  };
+
+  const handleExecuteTakeBack = (tag: TagRecord) => {
+    const updated = releaseTag(tag.id);
+    setTags(updated);
+    setTakeBackModalTag(null);
+    showToast(`✓ ${tag.code.toUpperCase()} taken back and freed up. Previous analytics preserved.`);
+  };
+
+  const handleToggleTagActive = (tag: TagRecord) => {
+    const updated = toggleTagActive(tag.id);
+    setTags(updated);
+    showToast(`✓ ${tag.code.toUpperCase()} turned ${tag.active ? "OFF" : "ON"}.`);
+  };
+
+  const handleToggleTagDestination = (tag: TagRecord, dest: TagDestination) => {
+    const updated = updateTagDestination(tag.id, dest);
+    setTags(updated);
+    showToast(`✓ ${tag.code.toUpperCase()} scan now opens: ${dest === "direct" ? "Direct Google" : "ZenTap Page"}`);
+  };
+
+  const handleCopyNfcLink = (code: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+    const url = `${origin}/t/${code.toLowerCase()}?s=nfc`;
+    navigator.clipboard.writeText(url);
+    showToast(`✓ Copied NFC Link: ${url}`);
+  };
+
+  const handleOpenTagQrModal = async (tag: TagRecord) => {
+    setTagQrModalTag(tag);
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+    const url = `${origin}/t/${tag.code.toLowerCase()}?s=qr`;
+    try {
+      const [png, svg] = await Promise.all([
+        QRCode.toDataURL(url, { width: 1200, margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toString(url, { type: "svg", margin: 2, errorCorrectionLevel: "Q" }),
+      ]);
+      setTagQrPng(png);
+      setTagQrSvg(svg);
+    } catch (err) {
+      console.warn("Tag QR generation error:", err);
+    }
+  };
+
+  const handleDownloadTagQrPng = () => {
+    if (!tagQrModalTag || !tagQrPng) return;
+    const a = document.createElement("a");
+    a.href = tagQrPng;
+    a.download = `${tagQrModalTag.code}-qr-1200px.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast(`✓ ${tagQrModalTag.code.toUpperCase()} PNG QR downloaded!`);
+  };
+
+  const handleDownloadTagQrSvg = () => {
+    if (!tagQrModalTag || !tagQrSvg) return;
+    const blob = new Blob([tagQrSvg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${tagQrModalTag.code}-qr-vector.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`✓ ${tagQrModalTag.code.toUpperCase()} Vector SVG downloaded!`);
+  };
+
+  const handleToggleRedirectMode = (biz: BusinessRecord) => {
+    const nextMode = biz.redirect_mode === "direct_review" ? "interactive_profile" : "direct_review";
+    const updated = updateBusinessRedirectMode(biz.id, nextMode);
+    adminUpdateDbBusiness(biz.id, { redirect_mode: nextMode }).catch((e) => console.warn(e));
+    setBusinesses(updated);
+    showToast(
+      nextMode === "interactive_profile"
+        ? "✓ Redirect Mode: ZenTap Customised Page (ON)"
+        : "✓ Redirect Mode: Direct Google Review Page (OFF)"
+    );
+  };
+
+  const handleToggleActive = (biz: BusinessRecord) => {
+    const next = !biz.active;
+    const updated = adminUpdateBusinessRecord(biz.id, { active: next });
+    adminUpdateDbBusiness(biz.id, { active: next }).catch((e) => console.warn(e));
+    setBusinesses(updated);
+    showToast(`✓ Status set to: ${next ? "ACTIVE" : "INACTIVE"}`);
+  };
+
+  // -------------------------------------------------------------
+  // ACTION: Multi-Asset QR Generator (Review, WhatsApp, Instagram)
   // -------------------------------------------------------------
   const handleOpenQRModal = async (b: BusinessRecord) => {
     setQrModalBiz(b);
+    setQrActiveTab("review");
     const origin = typeof window !== "undefined" ? window.location.origin : "https://www.zentapdigitalsolutions.com";
-    const targetUrl = `${origin}/r/${b.slug}?s=qr`;
+    const reviewUrl = `${origin}/r/${b.slug}?s=qr`;
+    const whatsappUrl = `${origin}/w/${b.slug}`;
+    const instagramUrl = `${origin}/i/${b.slug}`;
 
     try {
-      const png = await QRCode.toDataURL(targetUrl, {
-        width: 1200,
-        margin: 2,
-        errorCorrectionLevel: "Q",
-        color: { dark: "#000000", light: "#FFFFFF" },
-      });
-      setQrPngUrl(png);
+      const [reviewPng, reviewSvg, waPng, waSvg, instaPng, instaSvg] = await Promise.all([
+        QRCode.toDataURL(reviewUrl, { width: 1200, margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toString(reviewUrl, { type: "svg", margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toDataURL(whatsappUrl, { width: 1200, margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toString(whatsappUrl, { type: "svg", margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toDataURL(instagramUrl, { width: 1200, margin: 2, errorCorrectionLevel: "Q" }),
+        QRCode.toString(instagramUrl, { type: "svg", margin: 2, errorCorrectionLevel: "Q" }),
+      ]);
 
-      const svg = await QRCode.toString(targetUrl, {
-        type: "svg",
-        margin: 2,
-        errorCorrectionLevel: "Q",
-        color: { dark: "#000000", light: "#FFFFFF" },
+      setQrAssets({
+        review: { png: reviewPng, svg: reviewSvg, url: reviewUrl },
+        whatsapp: { png: waPng, svg: waSvg, url: whatsappUrl },
+        instagram: { png: instaPng, svg: instaSvg, url: instagramUrl },
       });
-      setQrSvgString(svg);
     } catch (err) {
       console.warn("QR generation error:", err);
     }
   };
 
-  const handleDownloadPng = () => {
-    if (!qrPngUrl || !qrModalBiz) return;
+  const handleDownloadActivePng = () => {
+    if (!qrModalBiz) return;
+    const current = qrAssets[qrActiveTab];
+    if (!current?.png) return;
     const a = document.createElement("a");
-    a.href = qrPngUrl;
-    a.download = `${qrModalBiz.slug}-standee-qr-1200px.png`;
+    a.href = current.png;
+    a.download = `${qrModalBiz.slug}-${qrActiveTab}-qr-1200px.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast("✓ High-Resolution 1200px PNG downloaded!");
+    showToast(`✓ ${qrActiveTab.toUpperCase()} High-Resolution 1200px PNG downloaded!`);
   };
 
-  const handleDownloadSvg = () => {
-    if (!qrSvgString || !qrModalBiz) return;
-    const blob = new Blob([qrSvgString], { type: "image/svg+xml" });
+  const handleDownloadActiveSvg = () => {
+    if (!qrModalBiz) return;
+    const current = qrAssets[qrActiveTab];
+    if (!current?.svg) return;
+    const blob = new Blob([current.svg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${qrModalBiz.slug}-standee-qr-vector.svg`;
+    a.download = `${qrModalBiz.slug}-${qrActiveTab}-qr-vector.svg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast("✓ Vector SVG downloaded for standee laser engraving!");
+    showToast(`✓ ${qrActiveTab.toUpperCase()} Vector SVG downloaded!`);
   };
 
   // -------------------------------------------------------------
@@ -689,8 +1204,9 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
   // Filtered list
   const filtered = businesses.filter((b) => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     const matchesQuery = 
+      !q ||
       b.name.toLowerCase().includes(q) ||
       (b.city && b.city.toLowerCase().includes(q)) ||
       (b.email && b.email.toLowerCase().includes(q)) ||
@@ -699,11 +1215,34 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
     if (!matchesQuery) return false;
 
-    if (statusFilter === "active") return b.active;
-    if (statusFilter === "awaiting_link") return !b.review_url;
-    if (statusFilter === "name_pending") return isNamePending(b);
-    if (statusFilter === "paid") return b.payment_status === "paid";
-    if (statusFilter === "pending") return b.payment_status === "pending";
+    if (statusFilter === "deleted") return !!b.is_deleted;
+    if (b.is_deleted && statusFilter !== "all") return false;
+    if (statusFilter === "active") return b.active && !b.is_deleted;
+    if (statusFilter === "awaiting_link") return !b.review_url && !b.is_deleted;
+    if (statusFilter === "name_pending") return isNamePending(b) && !b.is_deleted;
+    if (statusFilter === "paid") return b.payment_status === "paid" && !b.is_deleted;
+    if (statusFilter === "pending") return b.payment_status === "pending" && !b.is_deleted;
+    if ((statusFilter as any) === "direct_mode") return b.redirect_mode === "direct_review" && !b.is_deleted;
+
+    return true;
+  });
+
+  // Filtered physical tags
+  const filteredTags = tags.filter((t) => {
+    const q = tagSearchQuery.toLowerCase().trim();
+    const matchesQuery =
+      !q ||
+      t.code.toLowerCase().includes(q) ||
+      (t.business_name && t.business_name.toLowerCase().includes(q)) ||
+      (t.label && t.label.toLowerCase().includes(q));
+
+    if (!matchesQuery) return false;
+
+    if (tagFilter === "ready_to_give_out") return !t.business_id && !!t.chip_written;
+    if (tagFilter === "standee") return t.form === "standee";
+    if (tagFilter === "card") return t.form === "card";
+    if (tagFilter === "assigned") return !!t.business_id;
+    if (tagFilter === "unassigned") return !t.business_id;
 
     return true;
   });
@@ -915,28 +1454,137 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </span>
             </button>
 
-            {/* 3. Orders & Payments */}
+            {/* Page Designer */}
             <button
               onClick={() => { 
-                setAdminMenu("orders"); 
-                setAdminTab("orders"); 
+                setAdminMenu("page_designer"); 
                 setMobileMenuOpen(false); 
               }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                adminMenu === "orders"
+                adminMenu === "page_designer"
                   ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
                   : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >
-              <Truck className="w-4 h-4 flex-shrink-0" />
-              <span>Orders &amp; Payments</span>
-              {orders.length > 0 && (
+              <Palette className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+              <span>Page Designer</span>
+            </button>
+
+            {/* Review Assistant */}
+            <button
+              onClick={() => { 
+                setAdminMenu("review_assistant"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "review_assistant"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Sparkles className="w-4 h-4 flex-shrink-0 text-amber-500" />
+              <span>Review Assistant</span>
+            </button>
+
+            {/* QR & NFC Directory */}
+            <button
+              onClick={() => { 
+                setAdminMenu("qr_nfc"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "qr_nfc"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <QrCode className="w-4 h-4 flex-shrink-0" />
+              <span>QR &amp; NFC</span>
+            </button>
+
+            {/* Standees & Cards (Physical Tags) */}
+            <button
+              onClick={() => { 
+                setAdminMenu("tags"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "tags"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <QrCode className="w-4 h-4 flex-shrink-0" />
+              <span>Standees &amp; Cards</span>
+              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                adminMenu === "tags" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
+              }`}>
+                {tags.length}
+              </span>
+            </button>
+
+            {/* Partners & Distributors */}
+            <button
+              onClick={() => { 
+                setAdminMenu("partners"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "partners"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <Users className="w-4 h-4 flex-shrink-0" />
+              <span>Partners</span>
+              <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                adminMenu === "partners" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
+              }`}>
+                {partners.length}
+              </span>
+            </button>
+
+            {/* Reset Requests (with alert badge) */}
+            <button
+              onClick={() => { 
+                setAdminMenu("requests"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "requests"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <RotateCcw className="w-4 h-4 flex-shrink-0" />
+              <span>Requests</span>
+              {pendingRequestsCount > 0 ? (
+                <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-600 text-white animate-pulse">
+                  {pendingRequestsCount}
+                </span>
+              ) : (
                 <span className={`ml-auto text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  adminMenu === "orders" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"
+                  adminMenu === "requests" ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-700"
                 }`}>
-                  {orders.length}
+                  {resetRequests.length}
                 </span>
               )}
+            </button>
+
+            {/* Manual Payments & Ledger */}
+            <button
+              onClick={() => { 
+                setAdminMenu("manual_payments"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "manual_payments"
+                  ? "bg-emerald-600 text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <DollarSign className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+              <span>Manual Payments</span>
             </button>
 
             {/* 4. Review Links */}
@@ -978,7 +1626,23 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               }`}
             >
               <BarChart3 className="w-4 h-4 flex-shrink-0" />
-              <span>Analytics</span>
+              <span>Usage &amp; Analytics</span>
+            </button>
+
+            {/* Private Customer Feedback */}
+            <button
+              onClick={() => { 
+                setAdminMenu("feedback"); 
+                setMobileMenuOpen(false); 
+              }}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                adminMenu === "feedback"
+                  ? "bg-[#B91C1C] text-white shadow-sm font-semibold"
+                  : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 flex-shrink-0" />
+              <span>Feedback</span>
             </button>
 
             {/* 6. Settings */}
@@ -1039,7 +1703,23 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#B91C1C]" />
               <h2 className="font-headline font-bold text-sm sm:text-base text-zinc-900 capitalize">
-                {adminMenu === "review_links" ? "Review Links Hub" : adminMenu === "orders" ? "Orders & Payments" : adminMenu}
+                {adminMenu === "manual_payments"
+                  ? "Manual Payments & Ledger"
+                  : adminMenu === "review_links" 
+                  ? "Review Links Hub" 
+                  : adminMenu === "orders" 
+                  ? "Orders & Payments" 
+                  : adminMenu === "tags"
+                  ? "Standees & Cards"
+                  : adminMenu === "page_designer"
+                  ? "Hub Page Designer"
+                  : adminMenu === "review_assistant"
+                  ? "Review Assistant"
+                  : adminMenu === "qr_nfc"
+                  ? "QR & NFC Hub"
+                  : adminMenu === "feedback"
+                  ? "Private Feedback"
+                  : adminMenu}
               </h2>
               <span className="hidden sm:inline-block text-xs text-zinc-400 font-normal">|</span>
               <span className="hidden sm:inline-block text-xs font-semibold text-zinc-500">
@@ -1051,13 +1731,13 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
           {/* Right Action Icons: Notification Bell & Admin Avatar */}
           <div className="flex items-center gap-3 relative">
             
-            {/* Quick Action: Onboard Business */}
+            {/* Quick Action: Add Business */}
             <button
               onClick={() => setAddModalOpen(true)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#B91C1C] hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Onboard Business</span>
+              <span>Add Business</span>
             </button>
 
             {/* Notification Bell */}
@@ -1105,24 +1785,25 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                       </div>
                     )}
 
-                    {pendingOrdersCount > 0 && (
+                    {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount > 0 && (
                       <div 
                         onClick={() => {
-                          setAdminMenu("orders");
-                          setAdminTab("orders");
+                          setAdminMenu("manual_payments");
                           setAdminNotificationOpen(false);
                         }}
-                        className="p-2.5 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-2 cursor-pointer hover:bg-blue-100/70"
+                        className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
                       >
-                        <Truck className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <DollarSign className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="font-bold text-zinc-900">{pendingOrdersCount} Standee Orders</p>
-                          <p className="text-[11px] text-zinc-500">Orders in processing or production.</p>
+                          <p className="font-bold text-zinc-900">
+                            {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount} Pending / Partial Payments
+                          </p>
+                          <p className="text-[11px] text-zinc-500">Click to open Manual Payments ledger.</p>
                         </div>
                       </div>
                     )}
 
-                    {pendingLinksCount === 0 && pendingOrdersCount === 0 && (
+                    {pendingLinksCount === 0 && getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount === 0 && (
                       <p className="text-center text-zinc-400 py-3">All clear! Fleet operating smoothly.</p>
                     )}
                   </div>
@@ -1208,52 +1889,79 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
         {/* Scrollable Content Body */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F8F9FA] space-y-6">
           
+          {/* Manual Payments Section (when adminMenu === 'manual_payments') */}
+          {adminMenu === "manual_payments" && (
+            <ManualPaymentsTab
+              businesses={businesses}
+              onShowToast={showToast}
+            />
+          )}
+
           {/* Settings Section (when adminMenu === 'settings') */}
           {adminMenu === "settings" && (
-            <div className="p-8 rounded-3xl bg-white border border-zinc-200/80 shadow-xs space-y-6 animate-in fade-in duration-200 max-w-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center">
-                  <Lock className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="font-headline font-bold text-xl text-zinc-900">
-                    Root Superadmin Security Settings
-                  </h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    Update master administrator credentials and monitor system diagnostics.
-                  </p>
-                </div>
-              </div>
+            <PlatformSettingsTab
+              showToast={showToast}
+              onOpenPasswordModal={() => setPasswordModalOpen(true)}
+            />
+          )}
 
-              <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-zinc-600">Admin Authority:</span>
-                  <span className="font-bold text-emerald-600">Supreme Root Administrator</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-zinc-600">Database Engine:</span>
-                  <span className="font-mono text-zinc-800">Supabase PostgreSQL (RLS Enabled)</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-zinc-600">Admin Account Email:</span>
-                  <span className="font-mono text-zinc-800">{user?.email || "admin@zentapdigitalsolutions.com"}</span>
-                </div>
-              </div>
+          {/* Partners Section (when adminMenu === 'partners') */}
+          {adminMenu === "partners" && (
+            <PartnersTab
+              tags={tags}
+              onTagsUpdated={(t) => setTags(t)}
+              showToast={showToast}
+            />
+          )}
 
-              <div className="pt-2">
-                <button
-                  onClick={() => setPasswordModalOpen(true)}
-                  className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-2"
-                >
-                  <Lock className="w-4 h-4 text-emerald-400" />
-                  <span>Update Admin Master Password</span>
-                </button>
-              </div>
-            </div>
+          {/* Reset Requests Section (when adminMenu === 'requests') */}
+          {adminMenu === "requests" && (
+            <RequestsTab
+              onTagsUpdated={(t) => setTags(t)}
+              showToast={showToast}
+            />
+          )}
+
+          {/* Page Designer Section (when adminMenu === 'page_designer') */}
+          {adminMenu === "page_designer" && (
+            <PageDesignerTab
+              businesses={businesses}
+              initialBusinessId={pageDesignerTargetBizId}
+              showToast={showToast}
+              onNavigateToReviews={(bizId) => {
+                setReviewAssistantTargetBizId(bizId);
+                setAdminMenu("review_assistant");
+              }}
+            />
+          )}
+
+          {/* Review Assistant Section (when adminMenu === 'review_assistant') */}
+          {adminMenu === "review_assistant" && (
+            <ReviewAssistantTab
+              businesses={businesses}
+              initialBusinessId={reviewAssistantTargetBizId}
+              showToast={showToast}
+            />
+          )}
+
+          {/* QR & NFC Hub Section (when adminMenu === 'qr_nfc') */}
+          {adminMenu === "qr_nfc" && (
+            <QrNfcDirectoryTab
+              businesses={businesses}
+              tags={tags}
+              showToast={showToast}
+            />
+          )}
+
+          {/* Private Feedback Section (when adminMenu === 'feedback') */}
+          {adminMenu === "feedback" && (
+            <PrivateFeedbackTab
+              businesses={businesses}
+            />
           )}
 
           {/* Existing Tab Blocks (Analytics, Fleet, Orders, Plans, Quotations) */}
-                {adminTab === "analytics" && (
+          {adminTab === "analytics" && (adminMenu === "overview" || adminMenu === "analytics") && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
           {/* Top Stat Cards */}
@@ -1412,38 +2120,38 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </button>
             </div>
 
-            {/* 3. Hardware Standee Order Status */}
+            {/* 3. Manual Payment Ledger & Receivables */}
             <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <PackageCheck className="w-5 h-5 text-primary" />
+                  <DollarSign className="w-5 h-5 text-emerald-500" />
                   <h4 className="font-headline font-bold text-sm text-on-surface">
-                    Standee Order Status
+                    Payment Ledger
                   </h4>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                  {orders.length} Total Orders
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
+                  Offline Records
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5 my-1 text-center">
-                <div className="p-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25">
-                  <span className="font-bold text-xs text-amber-700 block">{ordersProcessing}</span>
-                  <span className="text-[9px] text-on-surface-variant">Production</span>
+              <div className="grid grid-cols-2 gap-2 my-1">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                  <span className="text-[10px] text-zinc-500 block">Collected</span>
+                  <span className="font-bold text-xs text-emerald-600 font-mono">
+                    ₹{getManualPaymentStats().totalReceived.toLocaleString("en-IN")}
+                  </span>
                 </div>
-                <div className="p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/25">
-                  <span className="font-bold text-xs text-blue-700 block">{ordersDispatched}</span>
-                  <span className="text-[9px] text-on-surface-variant">In Transit</span>
-                </div>
-                <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
-                  <span className="font-bold text-xs text-emerald-700 block">{ordersDelivered}</span>
-                  <span className="text-[9px] text-on-surface-variant">Delivered</span>
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+                  <span className="text-[10px] text-zinc-500 block">Pending</span>
+                  <span className="font-bold text-xs text-amber-500 font-mono">
+                    ₹{getManualPaymentStats().totalPending.toLocaleString("en-IN")}
+                  </span>
                 </div>
               </div>
               <button
-                onClick={() => setAdminTab("orders")}
+                onClick={() => setAdminMenu("manual_payments")}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer mt-2"
               >
-                <span>Manage Dispatch</span>
+                <span>Open Payments Ledger</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1594,11 +2302,31 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: FLEET MASTER DIRECTORY / ADMIN TABLE                               */}
+      {/* TAB 2: CLIENTS DIRECTORY / ADMIN TABLE                                    */}
       {/* ========================================================================= */}
-      {adminTab === "fleet" && (
+      {adminTab === "fleet" && (adminMenu === "clients" || adminMenu === "review_links") && (
         <div className="space-y-4 animate-in fade-in duration-300">
           
+          {/* Page Title & Help Text */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-headline font-bold text-zinc-900">
+                Clients
+              </h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Manage onboarded businesses, links, and hardware assignments.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className="tactile-btn self-start sm:self-auto flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
+            >
+              <PlusCircle className="w-4 h-4 text-black" />
+              <span>Add Business</span>
+            </button>
+          </div>
+
           {/* Search & Filter Bar */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
@@ -1620,15 +2348,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   statusFilter === "all" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >
-                All ({businesses.length})
-              </button>
-              <button
-                onClick={() => setStatusFilter("name_pending")}
-                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
-                  statusFilter === "name_pending" ? "bg-amber-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
-                }`}
-              >
-                Name Pending ({pendingNamesCount})
+                All ({businesses.filter((b) => !b.is_deleted).length})
               </button>
               <button
                 onClick={() => setStatusFilter("awaiting_link")}
@@ -1636,7 +2356,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   statusFilter === "awaiting_link" ? "bg-red-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
                 }`}
               >
-                Awaiting Link ({awaitingLinks})
+                Google Link Missing ({awaitingLinks})
               </button>
               <button
                 onClick={() => setStatusFilter("paid")}
@@ -1654,31 +2374,46 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               >
                 Active ({activeBusinesses})
               </button>
+              <button
+                onClick={() => setStatusFilter("direct_mode" as any)}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  (statusFilter as any) === "direct_mode" ? "bg-blue-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Direct Mode ({businesses.filter((b) => !b.is_deleted && b.redirect_mode === "direct_review").length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("deleted")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  statusFilter === "deleted" ? "bg-rose-700 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Deleted ({businesses.filter((b) => b.is_deleted).length})
+              </button>
             </div>
           </div>
 
-          {/* The 10-Column Admin Master Table */}
+          {/* The Enhanced Admin Master Table */}
           <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
-                    <th className="py-3.5 px-4 sm:px-6">Business &amp; Slug</th>
-                    <th className="py-3.5 px-4">Contact</th>
-                    <th className="py-3.5 px-4">City</th>
-                    <th className="py-3.5 px-4">Customer Page</th>
-                    <th className="py-3.5 px-4">Plan</th>
-                    <th className="py-3.5 px-4">Billing</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Scans</th>
-                    <th className="py-3.5 px-4">Google Review Destination</th>
-                    <th className="py-3.5 px-4 sm:px-6 text-right">Supreme Actions</th>
+                    <th className="py-3.5 px-4 sm:px-6">Business Name &amp; Link Name</th>
+                    <th className="py-3.5 px-4">Owner Phone &amp; Email</th>
+                    <th className="py-3.5 px-4">Open Review Page</th>
+                    <th className="py-3.5 px-4">Package</th>
+                    <th className="py-3.5 px-4">Payment</th>
+                    <th className="py-3.5 px-4">Link On/Off</th>
+                    <th className="py-3.5 px-4">Total Scans</th>
+                    <th className="py-3.5 px-4">Google Review Link</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-variant/30">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-on-surface-variant">
+                      <td colSpan={9} className="py-8 text-center text-on-surface-variant">
                         No businesses matched your search filters.
                       </td>
                     </tr>
@@ -1689,127 +2424,154 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                       const isEditingThisReview = editingBizId === b.id;
 
                       return (
-                        <tr key={b.id} className="hover:bg-surface-container-low/50 transition-colors">
+                        <tr key={b.id} className={`hover:bg-surface-container-low/50 transition-colors ${b.is_deleted ? "opacity-60 bg-rose-500/5" : ""}`}>
                           
-                          {/* 1. Business & Slug (with customized name editor) */}
+                          {/* 1. Business Name & Link Name */}
                           <td className="py-4 px-4 sm:px-6">
-                            <div className="flex flex-col gap-1 max-w-[200px]">
+                            <div className="flex flex-col gap-1 max-w-[210px]">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-bold text-on-surface truncate block" title={b.name}>
                                   {b.name}
                                 </span>
-                                {isPendingName && (
-                                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-700 text-[9px] font-bold whitespace-nowrap">
-                                    Name Pending
+                                {b.is_deleted && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-700 text-[9px] font-bold whitespace-nowrap">
+                                    Deleted
                                   </span>
                                 )}
                               </div>
-                              <span className="font-mono text-[11px] text-secondary truncate">
-                                /r/{b.slug}
-                              </span>
-                              <button
-                                onClick={() => handleOpenNameModal(b)}
-                                className="text-[10px] font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
-                              >
-                                <Edit2 className="w-2.5 h-2.5" />
-                                <span>Edit Name &amp; Slug</span>
-                              </button>
+                              <div className="flex items-center gap-1 font-mono text-[11px] text-secondary truncate">
+                                <span>/r/{b.slug}</span>
+                                {b.slug_locked && (
+                                  <span title="Slug is permanently locked"><Lock className="w-2.5 h-2.5 text-zinc-400" /></span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <button
+                                  onClick={() => {
+                                    setAdminMenu("tags");
+                                    setTagSearchQuery(b.name);
+                                  }}
+                                  className="px-2 py-0.5 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                                  title={`Click to view tags assigned to ${b.name}`}
+                                >
+                                  <Tag className="w-2.5 h-2.5 text-zinc-500" />
+                                  <span>Cards: {tags.filter((t) => t.business_id === b.id).length}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleOpenNameModal(b)}
+                                  className="text-[10px] font-bold text-zinc-500 hover:text-zinc-900 inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Edit2 className="w-2.5 h-2.5" />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
                             </div>
                           </td>
 
-                          {/* 2. Contact */}
+                          {/* 2. Owner Phone & Email */}
                           <td className="py-4 px-4">
                             <div className="flex flex-col text-[11px] text-on-surface-variant max-w-[150px]">
-                              <span className="text-on-surface font-semibold truncate">{b.phone || "No phone"}</span>
-                              <span className="truncate" title={b.email}>{b.email}</span>
+                              <span className="text-on-surface font-semibold truncate">{b.owner_name || "Owner"}</span>
+                              <span className="truncate">{b.phone || "No phone"}</span>
+                              <span className="text-[10px] text-zinc-400 truncate" title={b.email}>{b.email}</span>
+                              <span className="text-[10px] text-zinc-500">{b.city || "Ahmedabad"}</span>
                             </div>
                           </td>
 
-                          {/* 3. City */}
-                          <td className="py-4 px-4">
-                            <span className="text-on-surface font-medium whitespace-nowrap">
-                              {b.city || "Gujarat"}
-                            </span>
-                          </td>
-
-                          {/* 4. Customer Page */}
+                          {/* 3. Open Review Page */}
                           <td className="py-4 px-4">
                             <a
                               href={`${originUrl}/r/${b.slug}?preview=1`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-secondary/30 text-[11px] font-semibold text-secondary hover:border-secondary cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-zinc-200 hover:bg-zinc-50 text-[11px] font-bold text-zinc-800 shadow-2xs transition-colors cursor-pointer whitespace-nowrap"
                             >
-                              <span>/r/{b.slug.slice(0, 8)}...</span>
-                              <ExternalLink className="w-3 h-3" />
+                              <span>Open Review Page</span>
+                              <ExternalLink className="w-3 h-3 text-zinc-400" />
                             </a>
                           </td>
 
-                          {/* 5. Plan */}
+                          {/* 4. Package */}
                           <td className="py-4 px-4">
-                            <button
-                              onClick={() => handleOpenPlanModal(b)}
-                              className="px-2.5 py-1 rounded-full bg-surface-container font-bold text-[10px] text-on-surface border border-surface-variant/40 hover:border-primary cursor-pointer flex items-center gap-1 whitespace-nowrap"
-                              title="Click to change plan"
-                            >
-                              <span>
-                                {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : b.plan === "standee_auto_2000" ? "Auto Reply ₹2,000" : "Franchise Custom"}
+                            <div className="flex flex-col gap-1 items-start">
+                              <button
+                                onClick={() => handleOpenPlanModal(b)}
+                                className="px-2.5 py-1 rounded-full bg-surface-container font-semibold text-[11px] text-on-surface border border-surface-variant/40 hover:border-primary cursor-pointer flex items-center gap-1 whitespace-nowrap"
+                                title="Click to change package"
+                              >
+                                <span>
+                                  {b.plan === "card_500" ? "Card ₹500" : b.plan === "standee_1500" ? "Standee ₹1,500" : b.plan === "standee_auto_2000" ? "Standee + AI ₹2,000" : "Corporate Fleet"}
+                                </span>
+                                <ChevronDown className="w-2.5 h-2.5 text-on-surface-variant" />
+                              </button>
+                              {b.service_valid_until && (
+                                <span className="text-[9px] text-zinc-400 font-mono" title="Service valid until">
+                                  Valid: {b.service_valid_until.slice(0, 10)}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 5. Payment Status & Confirmation Gate */}
+                          <td className="py-4 px-4">
+                            {b.payment_status === "paid" ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Paid (Verified)</span>
                               </span>
-                              <ChevronDown className="w-2.5 h-2.5 text-on-surface-variant" />
-                            </button>
+                            ) : (
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500/15 text-amber-700 border border-amber-500/30">
+                                  <Clock className="w-3 h-3 text-amber-600 animate-pulse" />
+                                  <span>Awaiting Payment</span>
+                                </span>
+                                <button
+                                  onClick={() => handleConfirmPayment(b)}
+                                  className="tactile-btn px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer transition-colors shadow-sm whitespace-nowrap"
+                                  title="Confirm payment received to activate hardware routing"
+                                >
+                                  ✓ Confirm Payment
+                                </button>
+                              </div>
+                            )}
                           </td>
 
-                          {/* 6. Billing */}
+                          {/* 6. Link On/Off (Gated by Payment Confirmation) */}
                           <td className="py-4 px-4">
-                            <button
-                              onClick={() => {
-                                const next = b.payment_status === "paid" ? "pending" : "paid";
-                                const updated = adminUpdateBusinessRecord(b.id, { payment_status: next });
-                                adminUpdateDbBusiness(b.id, { payment_status: next }).catch((e) => console.warn(e));
-                                setBusinesses(updated);
-                                showToast(`✓ Billing set to ${next.toUpperCase()}`);
-                              }}
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors border ${
-                                b.payment_status === "paid"
-                                  ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25"
-                                  : "bg-amber-500/15 text-amber-700 border-amber-500/30 hover:bg-amber-500/25"
-                              }`}
-                            >
-                              {b.payment_status.toUpperCase()}
-                            </button>
+                            {b.payment_status === "pending" ? (
+                              <div className="flex items-center gap-1 text-[11px] text-zinc-400" title="Locked until payment confirmation">
+                                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                                <span className="text-[10px] font-semibold text-amber-600">Locked</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleActive(b)}
+                                className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                  b.active ? "bg-emerald-600" : "bg-zinc-300"
+                                }`}
+                                title={b.active ? "Link is ON" : "Link is OFF"}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    b.active ? "translate-x-4" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                            )}
                           </td>
 
-                          {/* 7. Status */}
-                          <td className="py-4 px-4">
-                            <button
-                              onClick={() => {
-                                const next = !b.active;
-                                const updated = adminUpdateBusinessRecord(b.id, { active: next });
-                                adminUpdateDbBusiness(b.id, { active: next }).catch((e) => console.warn(e));
-                                setBusinesses(updated);
-                                showToast(`✓ Business status: ${next ? "ACTIVE" : "INACTIVE"}`);
-                              }}
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors border ${
-                                b.active
-                                  ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25"
-                                  : "bg-zinc-500/15 text-zinc-600 border-zinc-500/30 hover:bg-zinc-500/25"
-                              }`}
-                            >
-                              {b.active ? "ACTIVE" : "INACTIVE"}
-                            </button>
+                          {/* 7. Total Scans */}
+                          <td className="py-4 px-4 font-mono">
+                            <div className="flex flex-col gap-0.5 text-[11px]">
+                              <span className="font-bold text-zinc-900 text-xs">{a.totalScans}</span>
+                              <span className="text-[10px] text-zinc-400">NFC: {a.nfcScans} • QR: {a.qrScans}</span>
+                            </div>
                           </td>
 
-                          {/* 8. Scans */}
-                          <td className="py-4 px-4 font-mono font-bold text-on-surface">
-                            <span title={`NFC: ${a.nfcScans} • QR: ${a.qrScans} • Clicks: ${a.reviewClicks}`}>
-                              {a.totalScans}
-                            </span>
-                          </td>
-
-                          {/* 9. Google Review Destination */}
+                          {/* 8. Google Review Link */}
                           <td className="py-4 px-4">
                             {isEditingThisReview ? (
-                              <div className="flex flex-col gap-1 min-w-[220px]">
+                              <div className="flex flex-col gap-1 min-w-[200px]">
                                 <input
                                   type="url"
                                   value={editReviewUrl}
@@ -1817,15 +2579,18 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                                   placeholder="https://g.page/r/.../review"
                                   className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-surface-variant text-[11px] font-mono text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
                                 />
+                                {validationWarning && (
+                                  <span className="text-[10px] text-amber-600 font-semibold">{validationWarning}</span>
+                                )}
                                 {validationError && (
-                                  <span className="text-[10px] text-red-600">{validationError}</span>
+                                  <span className="text-[10px] text-red-600 font-semibold">{validationError}</span>
                                 )}
                                 <div className="flex items-center gap-1.5 pt-0.5">
                                   <button
                                     onClick={() => handleSaveReviewUrl(b.id)}
                                     className="px-2.5 py-1 rounded bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
                                   >
-                                    Save Link
+                                    Save
                                   </button>
                                   <button
                                     onClick={() => setEditingBizId(null)}
@@ -1836,64 +2601,150 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 max-w-[220px]">
+                              <div className="flex flex-col gap-1 max-w-[200px]">
                                 {b.review_url ? (
-                                  <div className="flex items-center gap-1.5 truncate">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                                    <span className="text-[11px] font-mono text-on-surface-variant truncate" title={b.review_url}>
-                                      {b.review_url.replace(/^https?:\/\//, "")}
-                                    </span>
-                                  </div>
+                                  <>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                                      <span className="text-[11px] font-mono text-zinc-700 truncate" title={b.review_url}>
+                                        {b.review_url.replace(/^https?:\/\//, "")}
+                                      </span>
+                                      <button
+                                        onClick={() => handleStartEditReview(b)}
+                                        className="p-1 rounded hover:bg-zinc-100 text-zinc-500 cursor-pointer"
+                                        title="Edit Google Review Link"
+                                      >
+                                        <Edit2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                    {b.review_url.includes("maps.app.goo.gl") && (
+                                      <span className="text-[9px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 font-bold block" title="Warning: Maps app share link opens profile, not write review directly">
+                                        ⚠️ Maps link (Not write-review)
+                                      </span>
+                                    )}
+                                  </>
                                 ) : (
-                                  <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 font-bold text-[10px]">
-                                    Awaiting Link
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 font-bold text-[10px]">
+                                      Google Link Missing
+                                    </span>
+                                    <button
+                                      onClick={() => handleStartEditReview(b)}
+                                      className="text-[10px] font-bold text-primary hover:underline cursor-pointer"
+                                    >
+                                      + Add
+                                    </button>
+                                  </div>
                                 )}
-                                <button
-                                  onClick={() => handleStartEditReview(b)}
-                                  className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface cursor-pointer flex-shrink-0"
-                                  title="Edit Google Review Link"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
                               </div>
                             )}
                           </td>
 
-                          {/* 10. Supreme Actions */}
+                          {/* 9. Actions */}
                           <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1.5">
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              {/* Redirect Mode Toggle */}
                               <button
-                                onClick={() => handleOpenQRModal(b)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-on-surface cursor-pointer"
-                                title="Download 1200px PNG / SVG Laser QR"
+                                onClick={() => handleToggleRedirectMode(b)}
+                                className={`px-2 py-1 rounded-md text-[10px] font-bold border cursor-pointer ${
+                                  b.redirect_mode === "direct_review"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                }`}
+                                title="Toggle: ON = ZenTap Page, OFF = Direct Google"
                               >
-                                <QrCode className="w-3.5 h-3.5 text-secondary" />
+                                {b.redirect_mode === "direct_review" ? "Direct Google" : "ZenTap Page"}
                               </button>
 
+                              {/* QR Assets */}
+                              <button
+                                onClick={() => handleOpenQRModal(b)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-zinc-700 cursor-pointer"
+                                title="QR Codes (Review, WhatsApp, Instagram)"
+                              >
+                                <QrCode className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Quick WhatsApp & Instagram Edit */}
+                              <button
+                                onClick={() => setQuickSocialBiz(b)}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-emerald-50 text-emerald-600 cursor-pointer"
+                                title="Quick Edit WhatsApp & Instagram buttons"
+                              >
+                                <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                              </button>
+
+                              {/* Chips categories */}
                               <button
                                 onClick={() => handleOpenChipsModal(b)}
                                 className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-amber-600 cursor-pointer"
-                                title="Customize Review Categories ('What did you like most?')"
+                                title="Customize Review Chips"
                               >
-                                <Sliders className="w-3.5 h-3.5 text-amber-600" />
+                                <Sliders className="w-3.5 h-3.5" />
                               </button>
 
+                              {/* Page Designer */}
                               <button
-                                onClick={() => handleOpenOrderModal(b.id)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-surface-container text-on-surface cursor-pointer"
-                                title="Order Hardware Standee for this Business"
+                                onClick={() => {
+                                  setPageDesignerTargetBizId(b.id);
+                                  setAdminMenu("page_designer");
+                                }}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-indigo-50 text-indigo-600 cursor-pointer"
+                                title="Page Designer (Hub Page & Theme)"
                               >
-                                <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+                                <Palette className="w-3.5 h-3.5 text-indigo-500" />
                               </button>
 
+                              {/* Review Assistant */}
                               <button
-                                onClick={() => handleDeleteBusiness(b.id, b.name)}
-                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-rose-50 text-rose-600 cursor-pointer"
-                                title="Delete from Fleet"
+                                onClick={() => {
+                                  setReviewAssistantTargetBizId(b.id);
+                                  setAdminMenu("review_assistant");
+                                }}
+                                className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-amber-50 text-amber-600 cursor-pointer"
+                                title="Review Assistant Settings"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                               </button>
+
+                              {/* Link Legacy Standee Tag (if not already linked) */}
+                              {!b.is_deleted && !tags.some((t) => t.code.toLowerCase() === b.slug.toLowerCase()) && (
+                                <button
+                                  onClick={() => handleLinkLegacyStandee(b)}
+                                  className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-600 cursor-pointer"
+                                  title={`Create legacy hardware tag for /r/${b.slug} to switch destination remotely`}
+                                >
+                                  <Radio className="w-3.5 h-3.5 text-zinc-600" />
+                                </button>
+                              )}
+
+                              {/* Soft Delete or Restore */}
+                              {b.is_deleted ? (
+                                <div className="inline-flex items-center gap-1">
+                                  <button
+                                    onClick={() => handleRestoreBusiness(b)}
+                                    className="px-2 py-1 rounded-md bg-emerald-600 text-white font-bold text-[10px] hover:bg-emerald-700 cursor-pointer"
+                                    title="Restore Business"
+                                  >
+                                    Restore
+                                  </button>
+                                  <button
+                                    onClick={() => setPermDeleteModalBiz(b)}
+                                    className="px-2 py-1 rounded-md bg-rose-600 text-white font-bold text-[10px] hover:bg-rose-700 cursor-pointer"
+                                    title="Permanently Delete"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setSoftDeleteModalBiz(b)}
+                                  className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-rose-50 text-rose-600 cursor-pointer"
+                                  title="Soft Delete Business"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </td>
 
@@ -1910,9 +2761,370 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
+      {/* TAB 2b: STANDEES & CARDS (PHYSICAL HARDWARE TAGS LAYER)                    */}
+      {/* ========================================================================= */}
+      {adminMenu === "tags" && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          
+          {/* Page Title & Help Text */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-headline font-bold text-zinc-900">
+                Standees &amp; Cards
+              </h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Standees and cards you have made. Free ones can be given to any business.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setQuickTagModalOpen(true)}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
+              >
+                <Sparkles className="w-4 h-4 text-black" />
+                <span>Quick Setup</span>
+              </button>
+
+              <button
+                onClick={() => setBulkAssignModalOpen(true)}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
+              >
+                <Layers className="w-4 h-4 text-white" />
+                <span>Bulk Assign</span>
+              </button>
+
+              <button
+                onClick={() => setSingleTagModalOpen(true)}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4 text-white" />
+                <span>Add Single Tag</span>
+              </button>
+
+              <button
+                onClick={() => setBatchModalOpen(true)}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200 text-xs font-bold cursor-pointer shadow-2xs transition-transform active:scale-[0.978] whitespace-nowrap"
+              >
+                <PlusCircle className="w-4 h-4 text-zinc-600" />
+                <span>Generate Batch</span>
+              </button>
+
+              <button
+                onClick={handleDownloadQrZip}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 text-xs font-bold cursor-pointer shadow-2xs whitespace-nowrap"
+                title="Download high-res PNG & vector SVG QR codes for all tags as ZIP"
+              >
+                <Download className="w-3.5 h-3.5 text-zinc-500" />
+                <span>QR ZIP</span>
+              </button>
+
+              <button
+                onClick={handleExportNfcCsv}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-zinc-50 text-zinc-700 border border-zinc-300 text-xs font-bold cursor-pointer shadow-2xs whitespace-nowrap"
+                title="Export CSV manifest of all NFC links"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-zinc-500" />
+                <span>NFC CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                type="text"
+                placeholder="Search by code (e.g. zt-0042), business, or employee..."
+                value={tagSearchQuery}
+                onChange={(e) => setTagSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-surface-container p-1 rounded-xl border border-surface-variant/40 text-xs">
+              <button
+                onClick={() => setTagFilter("all")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "all" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                All ({tags.length})
+              </button>
+              <button
+                onClick={() => setTagFilter("ready_to_give_out")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "ready_to_give_out" ? "bg-emerald-700 text-white font-semibold shadow-xs" : "text-emerald-700 hover:text-emerald-900 bg-emerald-50/60"
+                }`}
+                title="Free in inventory AND physical NFC chip written & verified"
+              >
+                ✓ Ready to give out ({tags.filter((t) => !t.business_id && !!t.chip_written).length})
+              </button>
+              <button
+                onClick={() => setTagFilter("standee")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "standee" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Standees ({tags.filter((t) => t.form === "standee").length})
+              </button>
+              <button
+                onClick={() => setTagFilter("card")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "card" ? "bg-[#1C1B1A] text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Cards ({tags.filter((t) => t.form === "card").length})
+              </button>
+              <button
+                onClick={() => setTagFilter("assigned")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "assigned" ? "bg-emerald-700 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Assigned ({tags.filter((t) => !!t.business_id).length})
+              </button>
+              <button
+                onClick={() => setTagFilter("unassigned")}
+                className={`px-3 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  tagFilter === "unassigned" ? "bg-amber-600 text-white font-semibold" : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Free to Give Out ({tags.filter((t) => !t.business_id).length})
+              </button>
+            </div>
+          </div>
+
+          {/* The Tags Table */}
+          <div className="rounded-2xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-low border-b border-surface-variant/40 text-on-surface-variant uppercase text-[10px] font-mono tracking-wider font-semibold">
+                    <th className="py-3.5 px-4 sm:px-6">Code</th>
+                    <th className="py-3.5 px-4">Item</th>
+                    <th className="py-3.5 px-4">Chip Written</th>
+                    <th className="py-3.5 px-4">Owner (Partner)</th>
+                    <th className="py-3.5 px-4">Purpose</th>
+                    <th className="py-3.5 px-4">Assigned To</th>
+                    <th className="py-3.5 px-4">Employee / Note</th>
+                    <th className="py-3.5 px-4">Scan Goes To</th>
+                    <th className="py-3.5 px-4">On/Off</th>
+                    <th className="py-3.5 px-4">Scans</th>
+                    <th className="py-3.5 px-4 sm:px-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-variant/30">
+                  {filteredTags.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-on-surface-variant">
+                        No standees or cards match your search criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTags.map((tag) => (
+                      <tr key={tag.id} className="hover:bg-surface-container-low/50 transition-colors">
+                        {/* 1. Code */}
+                        <td className="py-4 px-4 sm:px-6">
+                          <div className="flex flex-col">
+                            <span className="font-mono font-bold text-sm text-zinc-900 uppercase">
+                              {tag.code}
+                            </span>
+                            <span className="font-mono text-[10px] text-zinc-400">
+                              zentap.in/t/{tag.code}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 2. Item */}
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            tag.form === "standee"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {tag.form === "standee" ? "Standee" : "Card"}
+                          </span>
+                        </td>
+
+                        {/* 2b. Chip Written Checkbox / Toggle */}
+                        <td className="py-4 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleChipWritten(tag)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-all active:scale-[0.97] ${
+                              tag.chip_written
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                            }`}
+                            title={
+                              tag.chip_written
+                                ? "NFC chip written & verified. Click to toggle."
+                                : "NFC chip not written yet. Click to mark written after NFC Tools write."
+                            }
+                          >
+                            {tag.chip_written ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+                                <span>Written</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                <span>Needs Writing</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
+
+                        {/* 2c. Owner (Partner) */}
+                        <td className="py-4 px-4 font-mono text-[11px] text-zinc-700">
+                          <span className="font-semibold text-zinc-800">
+                            {tag.partner_name || "ZenTap Master"}
+                          </span>
+                        </td>
+
+                        {/* 3. Purpose */}
+                        <td className="py-4 px-4">
+                          {tag.type ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              tag.type === "review"
+                                ? "bg-amber-100 text-amber-800"
+                                : tag.type === "whatsapp"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-pink-100 text-pink-800"
+                            }`}>
+                              {tag.type === "review" ? "Google Review" : tag.type === "whatsapp" ? "WhatsApp" : "Instagram"}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400 text-xs italic">Unassigned</span>
+                          )}
+                        </td>
+
+                        {/* 4. Assigned To */}
+                        <td className="py-4 px-4">
+                          {tag.business_name ? (
+                            <div className="flex flex-col max-w-[160px]">
+                              <span className="font-bold text-zinc-900 truncate">
+                                {tag.business_name}
+                              </span>
+                              <span className="font-mono text-[10px] text-zinc-400 truncate">
+                                /r/{tag.business_slug}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                              Free to Give Out
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 5. Employee / Note */}
+                        <td className="py-4 px-4">
+                          <span className="text-xs text-zinc-600 truncate max-w-[120px] block">
+                            {tag.label || "—"}
+                          </span>
+                        </td>
+
+                        {/* 6. Scan Goes To */}
+                        <td className="py-4 px-4">
+                          {tag.type === "review" ? (
+                            <select
+                              value={tag.destination}
+                              onChange={(e) => handleToggleTagDestination(tag, e.target.value as TagDestination)}
+                              className="px-2 py-1 rounded-lg bg-surface border border-surface-variant text-[11px] font-semibold text-on-surface cursor-pointer focus:outline-none"
+                            >
+                              <option value="zentap_page">ZenTap Page</option>
+                              <option value="direct">Direct Google</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs text-zinc-500 font-medium">
+                              Direct {tag.type === "whatsapp" ? "WhatsApp" : tag.type === "instagram" ? "Instagram" : "Link"}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 7. On/Off */}
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => handleToggleTagActive(tag)}
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              tag.active ? "bg-emerald-600" : "bg-zinc-300"
+                            }`}
+                            title={tag.active ? "Item is On (Active)" : "Item is Off (Inactive)"}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                tag.active ? "translate-x-4" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </td>
+
+                        {/* 8. Scans */}
+                        <td className="py-4 px-4">
+                          <span className="font-mono font-bold text-xs text-zinc-900">
+                            {tag.scan_count || 0}
+                          </span>
+                        </td>
+
+                        {/* 9. Actions */}
+                        <td className="py-4 px-4 sm:px-6 text-right">
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            {/* Give to Business or Take Back */}
+                            {tag.business_id ? (
+                              <button
+                                onClick={() => setTakeBackModalTag(tag)}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold cursor-pointer transition-colors"
+                                title="Free up this standee/card for someone new"
+                              >
+                                Take Back
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenAssignModal(tag)}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
+                                title="Assign this standee/card to a business"
+                              >
+                                Give to Business
+                              </button>
+                            )}
+
+                            {/* Download QR */}
+                            <button
+                              onClick={() => handleOpenTagQrModal(tag)}
+                              className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-700 cursor-pointer"
+                              title="Download QR code"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Copy NFC Link */}
+                            <button
+                              onClick={() => handleCopyNfcLink(tag.code)}
+                              className="p-1.5 rounded-lg bg-surface border border-surface-variant/50 hover:bg-zinc-100 text-zinc-700 cursor-pointer"
+                              title="Copy NFC writing link (URL for NTAG)"
+                            >
+                              <Radio className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 3: STANDEE ORDERS & DISPATCH HUB                                      */}
       {/* ========================================================================= */}
-      {adminTab === "orders" && (
+      {adminTab === "orders" && adminMenu === "orders" && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm">
@@ -2461,27 +3673,44 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-on-surface">
-                    Standee Customer URL Slug *
+                  <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                    <span>Standee Customer URL Slug *</span>
+                    {selectedBizForEdit.slug_locked && (
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-700 text-[10px] font-bold inline-flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Locked
+                      </span>
+                    )}
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleGenerateSlug}
-                    className="text-[10px] font-bold text-secondary hover:underline cursor-pointer"
-                  >
-                    Auto-Generate from Name
-                  </button>
+                  {!selectedBizForEdit.slug_locked && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateSlug}
+                      className="text-[10px] font-bold text-secondary hover:underline cursor-pointer"
+                    >
+                      Auto-Generate from Name
+                    </button>
+                  )}
                 </div>
-                <div className="flex items-center rounded-xl bg-surface-container border border-surface-variant px-3 py-2">
+                <div className={`flex items-center rounded-xl bg-surface-container border border-surface-variant px-3 py-2 ${
+                  selectedBizForEdit.slug_locked ? "opacity-60 bg-zinc-100 cursor-not-allowed" : ""
+                }`}>
                   <span className="text-xs text-on-surface-variant font-mono mr-1">/r/</span>
                   <input
                     type="text"
                     required
+                    disabled={selectedBizForEdit.slug_locked}
                     value={customBizSlug}
                     onChange={(e) => setCustomBizSlug(e.target.value.toLowerCase().replace(/[\s_]+/g, "-"))}
-                    className="w-full bg-transparent text-xs font-mono text-on-surface focus:outline-none"
+                    className={`w-full bg-transparent text-xs font-mono text-on-surface focus:outline-none ${
+                      selectedBizForEdit.slug_locked ? "cursor-not-allowed text-zinc-500" : ""
+                    }`}
                   />
                 </div>
+                <span className="text-[10px] text-zinc-500 block mt-1">
+                  {selectedBizForEdit.slug_locked
+                    ? "Slug is locked because it is physically encoded on hardware."
+                    : "You can edit this slug once after onboarding. Once saved, it will lock permanently."}
+                </span>
               </div>
 
               <div>
@@ -2495,6 +3724,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   placeholder="https://g.page/r/your-code/review"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
                 />
+                {customReviewUrl.includes("maps.app.goo.gl") && (
+                  <span className="text-[10px] text-amber-700 font-bold block mt-1 p-2 rounded-lg bg-amber-50 border border-amber-200">
+                    ⚠️ Warning: maps.app.goo.gl links open the business Maps profile instead of the direct review dialog. We recommend using a g.page/r/ or placeid link.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -2750,8 +3984,8 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                 >
                   <option value="paid">PAID (Subscribed &amp; Verified)</option>
-                  <option value="pending">PENDING (Awaiting Checkout / Trial)</option>
-                  <option value="failed">FAILED (Payment Failed / Grace Period)</option>
+                  <option value="pending">PENDING (Awaiting Activation)</option>
+                  <option value="failed">FAILED (Payment Failed / Overdue)</option>
                 </select>
               </div>
 
@@ -2776,17 +4010,22 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: ONBOARD NEW CLIENT BUSINESS                                      */}
+      {/* MODAL 4: ADD NEW BUSINESS (PERMANENT NFC/QR LINK CREATION)               */}
       {/* ========================================================================= */}
       {addModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200 my-8">
             <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
               <div className="flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-[#D94826]" />
-                <h3 className="font-headline font-bold text-lg text-on-surface">
-                  Onboard Client Business to Fleet
-                </h3>
+                <PlusCircle className="w-5 h-5 text-secondary" />
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Add New Business
+                  </h3>
+                  <p className="text-[11px] text-on-surface-variant">
+                    Creates permanent standee slug, review flow &amp; NFC/QR credentials
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setAddModalOpen(false)}
@@ -2797,33 +4036,73 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
 
             <form onSubmit={handleAddNewBusiness} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-on-surface mb-1">
-                  Business Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newBizName}
-                  onChange={(e) => setNewBizName(e.target.value)}
-                  placeholder="e.g. Royal Bakers & Sweets"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+              {/* Business Name & Permanent Slug */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Business Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newBizName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewBizName(val);
+                      if (!newBizSlug || newBizSlug === generatePermanentSlug(newBizName)) {
+                        setNewBizSlug(generatePermanentSlug(val));
+                      }
+                    }}
+                    placeholder="e.g. Blue Tokai Coffee"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Permanent Link Slug *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newBizSlug}
+                    onChange={(e) => setNewBizSlug(generatePermanentSlug(e.target.value))}
+                    placeholder="e.g. blue-tokai-coffee"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-secondary focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                  <span className="text-[10px] text-zinc-400 block mt-0.5">
+                    Link: /r/{newBizSlug || "slug"} (Permanently encoded on standee)
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Owner Name, Email, Phone, City */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Email</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Owner Name</label>
                   <input
-                    type="email"
-                    value={newBizEmail}
-                    onChange={(e) => setNewBizEmail(e.target.value)}
-                    placeholder="merchant@example.com"
+                    type="text"
+                    value={newOwnerName}
+                    onChange={(e) => setNewOwnerName(e.target.value)}
+                    placeholder="e.g. Rohit Sharma"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Phone</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Owner Email</label>
+                  <input
+                    type="email"
+                    value={newBizEmail}
+                    onChange={(e) => setNewBizEmail(e.target.value)}
+                    placeholder="owner@example.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Owner Phone / Contact</label>
                   <input
                     type="tel"
                     value={newBizPhone}
@@ -2832,9 +4111,6 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-on-surface mb-1">City</label>
                   <input
@@ -2845,47 +4121,158 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Plan & Payment Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface mb-1">Plan</label>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Selected Plan</label>
                   <select
                     value={newBizPlan}
                     onChange={(e: any) => setNewBizPlan(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
                   >
-                    <option value="card_500">NFC Card (₹500)</option>
-                    <option value="standee_1500">Auto Standee (₹1,500)</option>
-                    <option value="standee_auto_2000">Auto Reply Standee (₹2,000)</option>
-                    <option value="franchise_custom">Franchise Multi-Outlet Fleet (Custom Quote)</option>
+                    <option value="business_review_standee">1. Business Review Standee (₹999 - Direct Google Review)</option>
+                    <option value="zentap_smart_review_standee">2. ZenTap Smart Review Standee (₹1,499 - Review Assistant)</option>
+                    <option value="zentap_smart_business_card">3. ZenTap Smart Business Card (₹699 - Digital Card)</option>
+                    <option value="custom_solution">4. ZenTap Custom Solutions (Bespoke / Multi-Branch)</option>
+                    <option value="card_500">Legacy: NFC Smart Card (₹500)</option>
+                    <option value="standee_1500">Legacy: Smart Review Standee (₹1,500)</option>
+                    <option value="standee_auto_2000">Legacy: Auto Standee + AI Replies (₹2,000)</option>
+                    <option value="franchise_custom">Legacy: Corporate Fleet (Custom)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">Payment Status</label>
+                  <select
+                    value={newBizPaymentStatus}
+                    onChange={(e: any) => setNewBizPaymentStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  >
+                    <option value="pending">PENDING (Wait for payment confirmation)</option>
+                    <option value="paid">PAID (Verified &amp; Confirmed)</option>
+                    <option value="failed">FAILED / CANCELLED</option>
                   </select>
                 </div>
               </div>
 
+              {/* Google Review URL */}
               <div>
                 <label className="block text-xs font-bold text-on-surface mb-1">
-                  Google Review URL (Optional - can be linked later)
+                  Google Review URL (Pasted manually)
                 </label>
                 <input
                   type="url"
                   value={newBizReviewUrl}
                   onChange={(e) => setNewBizReviewUrl(e.target.value)}
-                  placeholder="https://g.page/r/.../review"
+                  placeholder="https://g.page/r/.../review or https://search.google.com/local/writereview?placeid=..."
                   className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs font-mono text-on-surface focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+              {/* WhatsApp Number & Instagram Link */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    WhatsApp Number (Shown as button on review page)
+                  </label>
+                  <input
+                    type="tel"
+                    value={newBizWhatsapp}
+                    onChange={(e) => setNewBizWhatsapp(e.target.value)}
+                    placeholder="919876543210"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Instagram Handle / URL (Shown as button on review page)
+                  </label>
+                  <input
+                    type="text"
+                    value={newBizInstagram}
+                    onChange={(e) => setNewBizInstagram(e.target.value)}
+                    placeholder="@bluetokaicoffee or full URL"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Redirect Mode & Active Toggles */}
+              <div className="p-4 rounded-2xl bg-surface-container-low border border-surface-variant/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-on-surface block">Redirect Mode</span>
+                    <span className="text-[11px] text-on-surface-variant">
+                      {newBizRedirectMode === "interactive_profile"
+                        ? "ON = Customised ZenTap review assistant (stars, AI draft, WhatsApp, Instagram)"
+                        : "OFF = Redirect straight to Google review page"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewBizRedirectMode(
+                        newBizRedirectMode === "interactive_profile" ? "direct_review" : "interactive_profile"
+                      )
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                      newBizRedirectMode === "interactive_profile"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-blue-600 text-white"
+                    }`}
+                  >
+                    {newBizRedirectMode === "interactive_profile" ? "ON (ZenTap Page)" : "OFF (Direct Google)"}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-surface-variant/30">
+                  <div>
+                    <span className="text-xs font-bold text-on-surface block">Active Status</span>
+                    <span className="text-[11px] text-on-surface-variant">
+                      Switches the whole standee link on or off
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewBizActive(!newBizActive)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                      newBizActive ? "bg-emerald-600 text-white" : "bg-zinc-600 text-white"
+                    }`}
+                  >
+                    {newBizActive ? "ACTIVE" : "INACTIVE"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Service Valid Until (Internal Date) */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Internal Service Valid Until (Tracks 6-Month Period)
+                </label>
+                <input
+                  type="date"
+                  value={newBizValidUntil}
+                  onChange={(e) => setNewBizValidUntil(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-surface-variant/30">
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#D94826] text-white text-xs font-bold hover:bg-[#C23C1D] cursor-pointer shadow-sm"
+                  className="tactile-btn px-6 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
                 >
-                  Onboard Business
+                  Create Business &amp; Link
                 </button>
               </div>
             </form>
@@ -2894,15 +4281,20 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 5: LASER PRINTABLE QR CODE (LEVEL Q PNG & SVG)                      */}
+      {/* MODAL 5: 3-IN-1 QR DOWNLOADS (REVIEW, WHATSAPP, INSTAGRAM)                */}
       {/* ========================================================================= */}
       {qrModalBiz && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-2 border-b border-surface-variant/30">
-              <h3 className="font-headline font-bold text-base text-on-surface">
-                Standee Laser QR (Level Q)
-              </h3>
+              <div className="text-left">
+                <h3 className="font-headline font-bold text-base text-on-surface">
+                  Standee QR Asset Hub
+                </h3>
+                <span className="text-[11px] text-on-surface-variant">
+                  {qrModalBiz.name} (/r/{qrModalBiz.slug})
+                </span>
+              </div>
               <button
                 onClick={() => setQrModalBiz(null)}
                 className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
@@ -2911,34 +4303,224 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </button>
             </div>
 
-            <p className="text-xs text-on-surface-variant">
-              High-resolution vector assets for <strong>{qrModalBiz.name}</strong>.
-            </p>
-
-            <div className="p-3 bg-white rounded-2xl shadow-inner border border-surface-variant/30 inline-block">
-              {qrPngUrl && <img src={qrPngUrl} alt="QR" className="w-44 h-44 rounded" />}
+            {/* 3 Tabs: Review QR vs WhatsApp QR vs Instagram QR */}
+            <div className="grid grid-cols-3 gap-1 bg-surface-container p-1 rounded-xl text-xs font-bold">
+              <button
+                onClick={() => setQrActiveTab("review")}
+                className={`py-2 rounded-lg transition-colors cursor-pointer ${
+                  qrActiveTab === "review"
+                    ? "bg-[#ff7a00] text-black font-extrabold shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Review QR
+              </button>
+              <button
+                onClick={() => setQrActiveTab("whatsapp")}
+                className={`py-2 rounded-lg transition-colors cursor-pointer ${
+                  qrActiveTab === "whatsapp"
+                    ? "bg-[#25D366] text-black font-extrabold shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                WhatsApp QR
+              </button>
+              <button
+                onClick={() => setQrActiveTab("instagram")}
+                className={`py-2 rounded-lg transition-colors cursor-pointer ${
+                  qrActiveTab === "instagram"
+                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-extrabold shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                Instagram QR
+              </button>
             </div>
 
-            <div className="flex flex-col gap-2 pt-2">
+            {/* Encoded URL banner */}
+            <div className="p-2.5 rounded-xl bg-surface-container-low border border-surface-variant/30 text-[11px] font-mono text-secondary break-all flex items-center justify-between gap-2">
+              <span className="truncate">{qrAssets[qrActiveTab]?.url}</span>
               <button
-                onClick={handleDownloadPng}
-                className="w-full py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(qrAssets[qrActiveTab]?.url || "");
+                  showToast("✓ Link copied to clipboard!");
+                }}
+                className="p-1 rounded hover:bg-surface text-on-surface-variant"
+                title="Copy link"
               >
-                <Download className="w-4 h-4" />
-                <span>Download High-Res 1200px PNG</span>
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* QR Image preview */}
+            <div className="p-3 bg-white rounded-2xl shadow-inner border border-surface-variant/30 inline-block">
+              {qrAssets[qrActiveTab]?.png && (
+                <img src={qrAssets[qrActiveTab].png} alt="QR Code" className="w-48 h-48 rounded mx-auto" />
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={handleDownloadActivePng}
+                className="tactile-btn py-2.5 px-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PNG (1200px)</span>
               </button>
 
               <button
-                onClick={handleDownloadSvg}
-                className="w-full py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center gap-2 cursor-pointer border border-surface-variant/40"
+                onClick={handleDownloadActiveSvg}
+                className="tactile-btn-subtle py-2.5 px-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-surface-variant/40"
               >
-                <Download className="w-4 h-4" />
-                <span>Download Vector SVG for CNC Laser</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Vector SVG</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5b: SOFT DELETE CONFIRMATION DIALOG                                 */}
+      {/* ========================================================================= */}
+      {softDeleteModalBiz && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <h3 className="font-headline font-bold text-lg text-on-surface">
+              Soft Delete Business?
+            </h3>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Are you sure you want to soft delete <strong>{softDeleteModalBiz.name}</strong>?
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-left text-xs text-on-surface space-y-2">
+              <div className="flex items-center gap-2 text-rose-700 font-bold">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This will free {tags.filter((t) => t.business_id === softDeleteModalBiz.id).length} standee/card(s) currently assigned.</span>
+              </div>
+              <div className="flex items-center gap-2 text-amber-700">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>The permanent slug <code className="font-mono font-bold">/r/{softDeleteModalBiz.slug}</code> is preserved.</span>
+              </div>
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Scans on printed standees / NFC cards will show a neutral <strong>"Page Unavailable"</strong> screen.</span>
+              </div>
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>You can restore this business anytime from the fleet directory.</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSoftDeleteModalBiz(null)}
+                className="px-4 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteSoftDelete(softDeleteModalBiz)}
+                className="tactile-btn px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer shadow-sm"
+              >
+                Confirm Soft Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5c: PERMANENT DELETE WARNING DIALOG                                 */}
+      {/* ========================================================================= */}
+      {permDeleteModalBiz && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-rose-500/40 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="font-headline font-bold text-lg text-rose-700">
+              Permanently Delete Record?
+            </h3>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              This action <strong>cannot be undone</strong>. All records, scan logs, and configurations for <strong>{permDeleteModalBiz.name}</strong> will be permanently purged.
+            </p>
+
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-left text-xs space-y-2">
+              <p className="font-bold text-rose-900">
+                Type "{permDeleteModalBiz.name}" to confirm:
+              </p>
+              <input
+                type="text"
+                placeholder={permDeleteModalBiz.name}
+                value={permDeleteConfirmInput}
+                onChange={(e) => setPermDeleteConfirmInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-rose-300 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-600"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPermDeleteModalBiz(null);
+                  setPermDeleteConfirmInput("");
+                }}
+                className="px-4 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={permDeleteConfirmInput.trim() !== permDeleteModalBiz.name.trim()}
+                onClick={() => handleExecutePermanentDelete(permDeleteModalBiz)}
+                className="tactile-btn px-5 py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Tag Setup Modal */}
+      <QuickTagSetupModal
+        isOpen={quickTagModalOpen}
+        onClose={() => setQuickTagModalOpen(false)}
+        businesses={businesses}
+        onTagsUpdated={(t) => setTags(t)}
+        onBusinessesUpdated={(b) => setBusinesses(b)}
+        showToast={showToast}
+      />
+
+      {/* Bulk Assign Cards Modal */}
+      <BulkAssignCardsModal
+        isOpen={bulkAssignModalOpen}
+        onClose={() => setBulkAssignModalOpen(false)}
+        businesses={businesses}
+        tags={tags}
+        onTagsUpdated={(t) => setTags(t)}
+        showToast={showToast}
+      />
+
+      {/* Quick Social Edit Modal */}
+      <QuickSocialEditModal
+        business={quickSocialBiz}
+        onClose={() => setQuickSocialBiz(null)}
+        onBusinessUpdated={(updatedBiz) => {
+          setBusinesses(businesses.map((b) => (b.id === updatedBiz.id ? updatedBiz : b)));
+        }}
+        showToast={showToast}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL 6: ADMIN SECURITY & PASSWORD SETTINGS                               */}
@@ -3123,6 +4705,665 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 className="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 cursor-pointer shadow-sm"
               >
                 Save Categories
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAG MODAL 0: ADD SINGLE TAG                                               */}
+      {/* ========================================================================= */}
+      {singleTagModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Plus className="w-5 h-5 text-zinc-900" />
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Add Single Tag
+                  </h3>
+                  <span className="text-[11px] text-on-surface-variant">
+                    Create an individual standee or card with optional custom code
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSingleTagModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSingleTag} className="space-y-4">
+              {/* Optional Custom Code */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Tag Code <span className="text-zinc-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. zt-0105 or business slug (leave blank to auto-generate)"
+                  value={singleTagCode}
+                  onChange={(e) => setSingleTagCode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface font-mono placeholder:text-zinc-400 focus:outline-none"
+                />
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  Lowercase letters, numbers, and hyphens. Matches the physical URL printed/written on the item.
+                </p>
+              </div>
+
+              {/* Physical Item Format */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Physical Hardware Item *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSingleTagForm("standee")}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      singleTagForm === "standee"
+                        ? "border-[#ff7a00] bg-[#ff7a00]/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">Counter Standee</span>
+                    <span className="text-[10px] text-zinc-500">Tabletop acrylic / metal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSingleTagForm("card")}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      singleTagForm === "card"
+                        ? "border-blue-500 bg-blue-500/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">NFC Card</span>
+                    <span className="text-[10px] text-zinc-500">Wallet / pocket card</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Chip Written Verification Checkbox */}
+              <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={singleTagChipWritten}
+                    onChange={(e) => setSingleTagChipWritten(e.target.checked)}
+                    className="mt-0.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-emerald-950">
+                      NFC Chip written &amp; tested
+                    </span>
+                    <span className="text-[11px] text-emerald-800">
+                      Tick this if you already programmed the NFC tag using NFC Tools and tested it with another phone.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Optional Assign to Business right away */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Give to Business right away? <span className="text-zinc-400 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={singleTagBusinessId}
+                  onChange={(e) => {
+                    const bId = e.target.value;
+                    setSingleTagBusinessId(bId);
+                    const b = businesses.find((x) => x.id === bId);
+                    if (b) {
+                      setSingleTagWhatsappNumber(b.whatsapp_number || b.whatsapp || "");
+                      setSingleTagInstagramHandle(b.instagram_url || b.instagram || "");
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                >
+                  <option value="">-- Keep free in inventory (unassigned) --</option>
+                  {businesses
+                    .filter((b) => !b.is_deleted)
+                    .map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.city || "India"}) — /r/{b.slug}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* If assigned to business: purpose & options */}
+              {singleTagBusinessId && (
+                <div className="space-y-3 p-3.5 rounded-xl bg-surface-container-low border border-surface-variant/40">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Hardware Purpose *
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSingleTagType("review")}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer text-xs ${
+                          singleTagType === "review"
+                            ? "border-amber-500 bg-amber-500/10 font-bold text-zinc-900"
+                            : "border-surface-variant/40 bg-surface text-zinc-600"
+                        }`}
+                      >
+                        Google Review
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSingleTagType("whatsapp")}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer text-xs ${
+                          singleTagType === "whatsapp"
+                            ? "border-[#25D366] bg-[#25D366]/10 font-bold text-zinc-900"
+                            : "border-surface-variant/40 bg-surface text-zinc-600"
+                        }`}
+                      >
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSingleTagType("instagram")}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer text-xs ${
+                          singleTagType === "instagram"
+                            ? "border-pink-500 bg-pink-500/10 font-bold text-zinc-900"
+                            : "border-surface-variant/40 bg-surface text-zinc-600"
+                        }`}
+                      >
+                        Instagram
+                      </button>
+                    </div>
+                  </div>
+
+                  {singleTagType === "review" && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Scan Destination
+                      </label>
+                      <select
+                        value={singleTagDestination}
+                        onChange={(e) => setSingleTagDestination(e.target.value as TagDestination)}
+                        className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant text-xs text-on-surface focus:outline-none"
+                      >
+                        <option value="zentap_page">ZenTap Page (Smart Review Flow)</option>
+                        <option value="direct">Direct Google Review</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Employee / Location Note <span className="text-zinc-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Front Reception Counter or Meet (Founder)"
+                      value={singleTagLabel}
+                      onChange={(e) => setSingleTagLabel(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-surface border border-surface-variant text-xs text-on-surface focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setSingleTagModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
+                >
+                  Create Single Tag
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAG MODAL 1: GENERATE BATCH OF STANDEES & CARDS                           */}
+      {/* ========================================================================= */}
+      {batchModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-secondary" />
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Generate Batch of Codes
+                  </h3>
+                  <span className="text-[11px] text-on-surface-variant">
+                    Creates blank hardware codes ready for NFC writing and QR printing
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setBatchModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleGenerateBatch} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Physical Hardware Item *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBatchForm("standee")}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      batchForm === "standee"
+                        ? "border-[#ff7a00] bg-[#ff7a00]/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">Counter Standee</span>
+                    <span className="text-[10px] text-zinc-500">Tabletop acrylic / metal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatchForm("card")}
+                    className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                      batchForm === "card"
+                        ? "border-blue-500 bg-blue-500/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">NFC Smart Card</span>
+                    <span className="text-[10px] text-zinc-500">Pocket PVC / employee card</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Batch Quantity (1 - 500) *
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  required
+                  value={batchCount}
+                  onChange={(e) => setBatchCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-sm font-bold text-on-surface focus:outline-none"
+                />
+                <div className="flex gap-1.5 mt-2">
+                  {[10, 25, 50, 100].map((qty) => (
+                    <button
+                      key={qty}
+                      type="button"
+                      onClick={() => setBatchCount(qty)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer border ${
+                        batchCount === qty ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-700 border-zinc-200"
+                      }`}
+                    >
+                      {qty} units
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-surface-container-low border border-surface-variant/40 text-xs text-on-surface space-y-1">
+                <p className="font-semibold text-zinc-900">Format Preview:</p>
+                <p className="font-mono text-[11px] text-zinc-600">
+                  Codes will be formatted sequentially as <code className="bg-white px-1.5 py-0.5 rounded border">zt-XXXX</code>
+                </p>
+                <p className="text-[10px] text-zinc-500">
+                  NFC URL format: <code className="font-mono">https://zentap.in/t/zt-XXXX?s=nfc</code>
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setBatchModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
+                >
+                  Generate {batchCount} {batchForm === "standee" ? "Standees" : "Cards"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAG MODAL 2: GIVE TO BUSINESS (ASSIGN HARDWARE)                            */}
+      {/* ========================================================================= */}
+      {assignModalOpen && selectedTagForAssign && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-surface-variant/40 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/30">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-600" />
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-on-surface">
+                    Give to Business
+                  </h3>
+                  <span className="font-mono text-xs text-zinc-500 font-bold uppercase">
+                    Hardware Item: {selectedTagForAssign.code} ({selectedTagForAssign.form})
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteAssign} className="space-y-4">
+              {/* Business Select */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Select Business *
+                </label>
+                <select
+                  value={assignBusinessId}
+                  onChange={(e) => {
+                    const bId = e.target.value;
+                    setAssignBusinessId(bId);
+                    const b = businesses.find((x) => x.id === bId);
+                    if (b) {
+                      setAssignWhatsappNumber(b.whatsapp_number || b.whatsapp || "");
+                      setAssignInstagramHandle(b.instagram_url || b.instagram || "");
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                >
+                  {businesses
+                    .filter((b) => !b.is_deleted)
+                    .map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.city || "India"}) — /r/{b.slug}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Purpose Selector */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Hardware Purpose *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAssignType("review")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      assignType === "review"
+                        ? "border-amber-500 bg-amber-500/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">Google Review</span>
+                    <span className="text-[10px] text-zinc-500">Standee / review</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAssignType("whatsapp")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      assignType === "whatsapp"
+                        ? "border-[#25D366] bg-[#25D366]/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">WhatsApp</span>
+                    <span className="text-[10px] text-zinc-500">Direct chat card</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAssignType("instagram")}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      assignType === "instagram"
+                        ? "border-pink-500 bg-pink-500/10 font-bold text-zinc-900"
+                        : "border-surface-variant/40 bg-surface-container text-zinc-600"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold">Instagram</span>
+                    <span className="text-[10px] text-zinc-500">Direct profile card</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Employee / Note */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Employee Name / Counter Location Note
+                </label>
+                <input
+                  type="text"
+                  value={assignLabel}
+                  onChange={(e) => setAssignLabel(e.target.value)}
+                  placeholder="e.g. Counter 1, Rahul (Sales), Front Desk..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container border border-surface-variant text-xs text-on-surface focus:outline-none"
+                />
+              </div>
+
+              {/* WhatsApp details if WhatsApp selected */}
+              {assignType === "whatsapp" && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-[#25D366]/5 border border-[#25D366]/20">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Direct WhatsApp Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={assignWhatsappNumber}
+                      onChange={(e) => setAssignWhatsappNumber(e.target.value)}
+                      placeholder="919876543210 (with country code)"
+                      className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant text-xs text-on-surface focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Prefilled Message
+                    </label>
+                    <input
+                      type="text"
+                      value={assignWhatsappMessage}
+                      onChange={(e) => setAssignWhatsappMessage(e.target.value)}
+                      placeholder="Hi! I tapped your card."
+                      className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant text-xs text-on-surface focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Instagram details if Instagram selected */}
+              {assignType === "instagram" && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-pink-500/5 border border-pink-500/20">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Instagram Handle or Profile Link *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={assignInstagramHandle}
+                      onChange={(e) => setAssignInstagramHandle(e.target.value)}
+                      placeholder="@yourbrand or https://instagram.com/yourbrand"
+                      className="w-full px-3.5 py-2 rounded-xl bg-surface border border-surface-variant text-xs text-on-surface focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-surface-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setAssignModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer shadow-sm"
+                >
+                  Give to Business
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAG MODAL 3: TAKE BACK CONFIRMATION DIALOG                                */}
+      {/* ========================================================================= */}
+      {takeBackModalTag && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <h3 className="font-headline font-bold text-lg text-on-surface">
+              Take Back Standee / Card?
+            </h3>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Are you sure you want to take back <strong>{takeBackModalTag.code.toUpperCase()}</strong> from <strong>{takeBackModalTag.business_name || "Business"}</strong>?
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-left text-xs text-on-surface space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>The item will be freed up and ready to assign to any new business.</span>
+              </div>
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Old scan history and telemetry remain safely recorded in database history.</span>
+              </div>
+              <div className="flex items-center gap-2 text-on-surface-variant">
+                <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Until reassigned, tapping this physical item will show a neutral "Page Unavailable" screen.</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setTakeBackModalTag(null)}
+                className="px-4 py-2.5 rounded-xl bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecuteTakeBack(takeBackModalTag)}
+                className="tactile-btn px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer shadow-sm"
+              >
+                Take Back (Free it up)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAG MODAL 4: DOWNLOAD TAG QR CODE                                         */}
+      {/* ========================================================================= */}
+      {tagQrModalTag && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-surface-variant/40 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-surface-variant/30">
+              <div className="text-left">
+                <h3 className="font-headline font-bold text-base text-on-surface">
+                  Hardware QR Code: {tagQrModalTag.code.toUpperCase()}
+                </h3>
+                <span className="text-[11px] text-on-surface-variant">
+                  {tagQrModalTag.form === "standee" ? "Counter Standee" : "Smart Card"} • {tagQrModalTag.business_name || "Unassigned"}
+                </span>
+              </div>
+              <button
+                onClick={() => setTagQrModalTag(null)}
+                className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Encoded URL */}
+            <div className="p-2.5 rounded-xl bg-surface-container-low border border-surface-variant/30 text-[11px] font-mono text-secondary break-all flex items-center justify-between gap-2">
+              <span className="truncate">{typeof window !== "undefined" ? window.location.origin : "https://zentap.in"}/t/{tagQrModalTag.code}?s=qr</span>
+              <button
+                onClick={() => {
+                  const origin = typeof window !== "undefined" ? window.location.origin : "https://zentap.in";
+                  navigator.clipboard.writeText(`${origin}/t/${tagQrModalTag.code}?s=qr`);
+                  showToast("✓ QR URL copied to clipboard!");
+                }}
+                className="p-1 rounded hover:bg-surface text-on-surface-variant cursor-pointer"
+                title="Copy QR URL"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* QR Image Preview */}
+            <div className="p-4 bg-white rounded-2xl shadow-inner border border-surface-variant/30 inline-block">
+              {tagQrPng ? (
+                <img src={tagQrPng} alt={`QR Code ${tagQrModalTag.code}`} className="w-48 h-48 rounded mx-auto" />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-xs text-zinc-400">
+                  Generating QR...
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={handleDownloadTagQrPng}
+                className="tactile-btn py-2.5 px-3 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PNG (1200px)</span>
+              </button>
+
+              <button
+                onClick={handleDownloadTagQrSvg}
+                className="tactile-btn-subtle py-2.5 px-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-surface-variant/40"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Vector SVG</span>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-surface-variant/30">
+              <button
+                onClick={() => handleCopyNfcLink(tagQrModalTag.code)}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold hover:bg-emerald-100 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                <Radio className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Copy NFC Writing Link (zentap.in/t/{tagQrModalTag.code}?s=nfc)</span>
               </button>
             </div>
           </div>

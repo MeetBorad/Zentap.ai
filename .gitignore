@@ -46,5 +46,7 @@ Photos of standee/
 .claude/
 .gemini/
 .impeccable/
+*.sql.bak
+backup_*.sql
 
 

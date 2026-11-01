@@ -6,6 +6,7 @@ export interface DbBusinessRecord {
   id: string;
   owner_user_id: string;
   name: string;
+  owner_name?: string | null;
   email: string;
   phone: string | null;
   city: string | null;
@@ -16,15 +17,23 @@ export interface DbBusinessRecord {
   category: string | null;
   gbp_link: string | null;
   slug: string;
+  slug_locked?: boolean | null;
   plan: ProductPlan | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
+  google_review_link?: string | null;
   active: boolean;
+  is_deleted?: boolean | null;
+  deleted_at?: string | null;
+  valid_until?: string | null;
+  service_valid_until?: string | null;
   custom_chips?: string[] | null;
+  whatsapp?: string | null;
   whatsapp_number?: string | null;
   whatsapp_message?: string | null;
   booking_url?: string | null;
   portfolio_url?: string | null;
+  instagram?: string | null;
   instagram_url?: string | null;
   website_url?: string | null;
   redirect_mode?: "direct_review" | "interactive_profile" | null;
@@ -43,6 +52,10 @@ export interface DbPublicBusiness {
   city: string | null;
   address: string | null;
   custom_chips?: string[] | null;
+  whatsapp_number?: string | null;
+  instagram_url?: string | null;
+  redirect_mode?: "direct_review" | "interactive_profile" | null;
+  is_deleted?: boolean | null;
 }
 
 export interface DbScanRecord {
@@ -185,7 +198,7 @@ export async function fetchPublicBusinessBySlug(slug: string): Promise<DbPublicB
     // Try public_businesses view first (safe), fallback to businesses if view not created
     const { data, error } = await supabase
       .from("public_businesses")
-      .select("id, name, slug, review_url, active, category, city, address")
+      .select("id, name, slug, review_url, active, category, city, address, custom_chips, whatsapp_number, instagram_url, redirect_mode, is_deleted")
       .eq("slug", slug.toLowerCase())
       .maybeSingle();
 
@@ -196,7 +209,7 @@ export async function fetchPublicBusinessBySlug(slug: string): Promise<DbPublicB
     // Fallback directly to businesses table
     const { data: directData, error: directErr } = await supabase
       .from("businesses")
-      .select("id, name, slug, review_url, active, category, city, address")
+      .select("id, name, slug, review_url, active, category, city, address, custom_chips, whatsapp_number, instagram_url, redirect_mode, is_deleted")
       .eq("slug", slug.toLowerCase())
       .maybeSingle();
 
@@ -396,6 +409,126 @@ export async function adminUpdateDbBusiness(businessId: string, updates: Partial
       return false;
     }
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 11b. Create New Business from Super Admin Console
+ */
+export async function adminCreateDbBusiness(record: Partial<DbBusinessRecord>): Promise<DbBusinessRecord | null> {
+  try {
+    const supabase = getSupabase(true);
+    const safePlan = record.plan || "standee_1500";
+    
+    // Attempt 1: Full payload with extended columns
+    const fullPayload: Record<string, any> = {
+      name: record.name,
+      owner_name: record.owner_name,
+      email: record.email,
+      phone: record.phone,
+      city: record.city,
+      state: record.state || "Gujarat",
+      country: record.country || "India",
+      pincode: record.pincode,
+      slug: record.slug?.toLowerCase().trim(),
+      plan: safePlan,
+      payment_status: record.payment_status || "pending",
+      review_url: record.review_url,
+      whatsapp_number: record.whatsapp_number,
+      instagram_url: record.instagram_url,
+      redirect_mode: record.redirect_mode || "interactive_profile",
+      service_valid_until: record.service_valid_until,
+      active: record.active !== undefined ? record.active : true,
+      is_deleted: false,
+    };
+
+    const { data, error } = await supabase
+      .from("businesses")
+      .insert([fullPayload])
+      .select()
+      .maybeSingle();
+
+    if (!error && data) {
+      return data;
+    }
+
+    if (error) {
+      console.warn("adminCreateDbBusiness full insert failed, attempting safe core fallback:", error.message);
+      
+      // Attempt 2: Resilient fallback with only core schema columns
+      const corePayload: Record<string, any> = {
+        name: record.name,
+        email: record.email,
+        phone: record.phone,
+        city: record.city,
+        state: record.state || "Gujarat",
+        country: record.country || "India",
+        pincode: record.pincode,
+        slug: record.slug?.toLowerCase().trim(),
+        plan: ["card_500", "standee_1500", "standee_auto_2000"].includes(safePlan) ? safePlan : "standee_1500",
+        payment_status: ["pending", "paid", "failed"].includes(record.payment_status || "") ? record.payment_status : "pending",
+        review_url: record.review_url,
+        active: record.active !== undefined ? record.active : true,
+      };
+
+      const fallbackRes = await supabase
+        .from("businesses")
+        .insert([corePayload])
+        .select()
+        .maybeSingle();
+
+      if (fallbackRes.error) {
+        console.error("adminCreateDbBusiness fallback error:", fallbackRes.error.message);
+        return null;
+      }
+      return fallbackRes.data;
+    }
+
+    return null;
+  } catch (err: any) {
+    console.error("adminCreateDbBusiness exception:", err);
+    return null;
+  }
+}
+
+/**
+ * 11c. Soft delete business (sets inactive & deleted flag)
+ */
+export async function adminSoftDeleteDbBusiness(businessId: string): Promise<boolean> {
+  return adminUpdateDbBusiness(businessId, {
+    active: false,
+    is_deleted: true,
+    deleted_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * 11d. Restore soft-deleted business
+ */
+export async function adminRestoreDbBusiness(businessId: string): Promise<boolean> {
+  return adminUpdateDbBusiness(businessId, {
+    active: true,
+    is_deleted: false,
+    deleted_at: null,
+  });
+}
+
+/**
+ * 11e. Permanently delete business
+ */
+export async function adminPermanentDeleteDbBusiness(businessId: string): Promise<boolean> {
+  try {
+    const supabase = getSupabase(true);
+    if (!isValidUuid(businessId)) return false;
+
+    const { error } = await supabase
+      .from("businesses")
+      .delete()
+      .eq("id", businessId);
+
+    return !error;
   } catch {
     return false;
   }

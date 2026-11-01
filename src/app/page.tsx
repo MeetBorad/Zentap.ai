@@ -52,7 +52,10 @@ export default function Page() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const v = params.get("view");
-      if (v === "portal" || v === "admin" || v === "pricing" || v === "sample-dashboard") {
+      if (v === "admin") {
+        return "admin";
+      }
+      if (v === "pricing" || v === "how-it-works" || v === "features") {
         return v as ActiveView;
       }
     }
@@ -73,31 +76,30 @@ export default function Page() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const v = params.get("view");
-      if (v === "portal" || v === "admin" || v === "pricing" || v === "sample-dashboard" || v === "how-it-works" || v === "features") {
+      if (v === "admin") {
+        setCurrentView("admin");
+        hasInitializedAuth.current = true;
+      } else if (v === "pricing" || v === "how-it-works" || v === "features") {
         setCurrentView(v as ActiveView);
         hasInitializedAuth.current = true;
       }
     }
   }, []);
 
-  // Auto-route to user's dedicated dashboard on initial load
+  // Auto-route to admin console on initial load if admin is authenticated
   useEffect(() => {
-    if (!loading && (user || isAdmin) && !hasInitializedAuth.current) {
+    if (!loading && isAdmin && !hasInitializedAuth.current) {
       hasInitializedAuth.current = true;
-      if (isAdmin) {
-        setCurrentView("admin");
-      } else {
-        setCurrentView("portal");
-      }
+      setCurrentView("admin");
     }
-  }, [user, isAdmin, loading]);
+  }, [isAdmin, loading]);
 
-  // Security Guard: Prevent non-admins from accessing or viewing the admin console
+  // Security Guard: Prevent non-admins from accessing or viewing the admin console or portal
   useEffect(() => {
-    if (!loading && currentView === "admin" && !isAdmin) {
-      setCurrentView(user ? "portal" : "home");
+    if (!loading && (currentView === "admin" && !isAdmin || currentView === "portal" || currentView === "sample-dashboard")) {
+      setCurrentView("home");
     }
-  }, [currentView, isAdmin, user, loading]);
+  }, [currentView, isAdmin, loading]);
 
   // Sync Document Title, Browser History, and GA4 Page Views on View Change
   useEffect(() => {

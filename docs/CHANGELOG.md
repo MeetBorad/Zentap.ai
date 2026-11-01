@@ -1,6 +1,199 @@
 # ZenTap — Changelog
 
-## [1.17.0] — 2026-11-01
+## [1.24.0] — 2026-11-01
+### Added & Streamlined (Direct WhatsApp Ordering & Founder Manual Dashboard Operations)
+- **Customer-Facing Pivot to Direct WhatsApp-First Business Model**:
+  - Brand identity standardized to **ZenTap**; official domain configured to `https://www.zentapdigitalsolutions.com/`.
+  - Centralized official WhatsApp communication number: `919274560880`.
+  - Replaced online checkout, cart, and client payment processing across customer-facing routes with direct 1-tap WhatsApp enquiry and ordering buttons.
+  - Kept underlying payment gateway infrastructure (`razorpay.ts`, checkout endpoints) modular and preserved so automated checkout can be plugged back in at any time.
+- **Strict Single Admin Login Restriction**:
+  - Enforced that there is **strictly ONLY ONE** admin login option across the entire website, located exclusively at the **top-left corner of the homepage header** (`currentView === 'home'`).
+  - Completely purged all admin login links from the website footer, product pages, right-hand header action bar, and mobile drawer.
+- **The 4 Official Product Categories**:
+  - **1. Business Review Standee** (₹999 Standee • ₹499 Card): Direct 1-tap Google Review redirection without intermediate pages. Pre-filled WhatsApp message: `"Hello ZenTap, I am interested in your QR/NFC Business Review Standee with direct Google Review integration. Please share the details."`
+  - **2. ZenTap Smart Review Standee** (₹1,499 Standee + Assistant): Powered by the ZenTap Review Assistant with AI drafting, multilingual support, and 1-2★ private sentiment shield. Pre-filled WhatsApp message: `"Hello ZenTap, I am interested in the ZenTap Smart Review Standee with the ZenTap Review Assistant. Please share the details."`
+  - **3. ZenTap Smart Business Card** (₹699 PVC • ₹1,499 Metal): NFC & QR digital business card with contact vCard save, socials hub (Instagram, Facebook, LinkedIn, YouTube), and direct WhatsApp chat. Pre-filled WhatsApp message: `"Hello ZenTap, I am interested in the ZenTap Smart Business Card with QR/NFC functionality. Please share the details."`
+  - **4. ZenTap Custom Solutions** (Custom Quote / Bulk): Tailored QR/NFC standees, acrylic/metal branding, multi-branch fleet networks, and bespoke event/display hardware. Pre-filled WhatsApp message: `"Hello ZenTap, I would like to discuss a customized QR/NFC solution for my business."`
+- **Database Migration (`supabase/migrations/007_manual_payments.sql`)**:
+  - `public.manual_payments`: Full transaction ledger storing `id`, `business_id`, `business_name`, `product_purchased`, `total_agreed_amount`, `amount_received`, `pending_balance` (auto-calculated stored generated column), `payment_date`, `payment_method`, `payment_status`, and `admin_notes`.
+  - RLS policies restricting access to verified root admins.
+  - Extended `public.businesses` with `selected_product` and `whatsapp_support_number`.
+- **Founder Dashboard Manual Operations Suite**:
+  - Removed "Orders & Payments" navigation option and notification triggers from the admin console UI to align with manual offline entries. Preserved underlying order models and API endpoints for future automated website purchases.
+  - Dedicated **Manual Payments** tab in the admin console sidebar (`ManualPaymentsTab.tsx`).
+  - Overview screen upgraded with a live **Manual Payment Ledger & Receivables** widget showing real-time amounts collected vs pending balances with a 1-click shortcut.
+  - Financial metric cards: Total Revenue Agreed, Total Amount Collected, Pending Balance / Receivables, Settlement Breakdown.
+  - Live search and filter controls by business, status (`completed`, `partial`, `pending`), and product category.
+  - Record & Edit Payment Modal with live auto-calculating pending balance preview (`Total Agreed - Amount Received`).
+  - Updated Business Onboarding modal to select from the 4 official product categories.
+  - Dedicated API endpoint at `/api/admin/payments` (GET, POST, DELETE) with graceful Supabase sync and local fallback cache.
+
+## [1.23.0] — 2026-11-01
+### Added (AI Model Manager + Auto-Failover Resilience Suite)
+- **Non-Destructive Database Migration (`supabase/migrations/006_ai_models_and_failover.sql`)**:
+  - `public.ai_models`: Multi-provider catalog storing `label`, `provider` (`anthropic`, `openai`, `google`, `openrouter`, `openai_compatible`), `model_id`, `base_url`, `api_key_encrypted`, `priority`, `enabled`, `status` (`active`, `standby`, `exhausted`, `cooldown`, `disabled`), `cooldown_until`, `monthly_budget_usd`, token pricing, and error logs.
+  - `public.ai_settings`: Single-row global configuration for `failover_enabled`, `manual_primary_id`, `exhausted_retry_hours` (default 6h), `cooldown_seconds` (default 60s), `alert_email`, and `last_failover_at`/`last_failover_info`.
+  - `public.ai_model_usage`: High-granularity audit log tracking token usage, estimated USD costs, latencies, success rates, and categorized error types.
+  - Added nullable column `model_id` to `review_generations` and `model_override_id` to `business_review_config`.
+- **Cryptographic Security Layer (`src/lib/ai/crypto.ts`)**:
+  - AES-256-GCM encryption with 96-bit random IV and 128-bit authentication tags using secret key derived from `APP_ENC_KEY`.
+  - API keys are decrypted strictly server-side; client UI displays only masked credentials (`sk-...ab12`).
+- **Universal Provider Adapter Layer (`src/lib/ai/adapters.ts`)**:
+  - Unified `generate({ system, prompt, maxTokens })` interface.
+  - Native adapters for Anthropic (`/v1/messages`), OpenAI (`/v1/chat/completions`), Google Gemini (`/v1beta/models/...:generateContent`), and OpenAI-compatible providers (OpenRouter, Groq, local inference, custom `base_url`).
+  - Strict error classification categorizing HTTP 401/402/403/quota errors as `credit_exhausted`, 429/500/502/503/timeouts as `rate_limited`, and malformed payloads as `invalid_response`.
+- **Dynamic Auto-Failover Execution Engine (`src/lib/ai/modelManager.ts` & `/api/review/generate`)**:
+  - Priority queue selection: Client `model_override_id` $\rightarrow$ Global `manual_primary_id` $\rightarrow$ Active priority order.
+  - Automatic filtering: skips disabled models, models cooling down, and models whose monthly budget has been reached.
+  - Automatic cooldown handling for rate-limited models and scheduled retries for exhausted providers once `exhausted_retry_hours` elapses.
+  - 1-retry self-healing on invalid JSON responses before triggering failover.
+  - Seamless fallback to environment `ANTHROPIC_API_KEY` (with `claude-haiku-5-5`) and deterministic synthesizer if no database models are configured or if all fail.
+- **Admin AI Models Management Workbench (`AiModelManagerTab.tsx`)**:
+  - Integrated into Settings > **AI Models & Failover** tab.
+  - Top status banner displaying active primary model, status indicator, and last failover timestamp.
+  - Full model fleet table with order controls, priority swapping, real-time status badges, masked keys, and error diagnostics.
+  - Actions: Register/Edit model, Delete, Toggle Enable/Disable, "Set Primary", and "Reset Status" (clearing cooldown/exhausted state).
+  - Rate-limited "Test Model" ping utility displaying live network latency in milliseconds.
+  - Global auto-failover policy editor (failover toggle, cooldown seconds, exhausted retry hours, alert email).
+  - Business-level "Model Override" selector added to Review Assistant > Language & Tone settings.
+  - Per-generation model attribution display in Review Assistant > Usage telemetry.
+
+## [1.22.0] — 2026-11-01
+### Added (ZenTap Hub Page + Dedicated AI Review Page + Page Designer)
+- **Non-Destructive Database Migration (`supabase/migrations/005_zentap_hub_and_page_designer.sql`)**:
+  - `public.page_design`: Table storing theme styling tokens, presets, typography, button/card styles, dark mode setting, cover/logo URLs, and editable text labels behind per-business `hub_enabled` flag (default `false`).
+  - `public.page_buttons`: Touchpoint actions (review, call, directions, whatsapp, instagram, facebook, youtube, website, menu, booking, custom links) with ordering and visibility toggles.
+  - `public.page_sections`: Ordered content sections (about, photos, hours, offers, faqs, testimonials, video) with visibility switches and JSON content.
+  - `public.page_photos`: Photo gallery repository with captions and ordering.
+  - `public.click_events`: Telemetry tracking button taps on Hub pages with visitor source (`qr` | `nfc` | `web`).
+- **Mobile Hub Page (`ZenTapHubPage.tsx`)**:
+  - Mobile-first glassmorphism design: cover banner, round overlapping logo, verified badge, tagline, address pill with Google Maps link.
+  - Quick action row: "Call" and "Directions" buttons.
+  - Primary "Write a review" hero button linking to `/r/[slug]/review`.
+  - Circular social row (WhatsApp, Instagram, Facebook, YouTube, Website, Email).
+  - Dynamic interactive sections: About text, Photo gallery with full-screen lightbox modal, Opening hours with "Open Now" badge, FAQs accordion, Testimonials, and Video embeds.
+  - Footer with "Powered by ZenTap" badge and owner management modal.
+- **Short Links & Click Telemetry**:
+  - `/f/[slug]`: 302 redirect to business Facebook profile with click logging.
+  - `/y/[slug]`: 302 redirect to business YouTube channel with click logging.
+  - `POST /api/hub/click`: Server API recording button interactions with source tracking.
+- **Dedicated AI Review Page (`/r/[slug]/review`)**:
+  - Standalone route at `/r/[slug]/review` implementing the AI Review flow.
+  - 5 empty stars, multi-select product and aspect chips.
+  - Swipeable suggestion carousel (`1/3` with `<` and `>` arrow navigation) labeled "Your draft, edit freely".
+  - Voice dictation microphone button powered by browser `SpeechRecognition` API.
+  - "Submit review" button copying text within tap handler and opening Google Reviews.
+  - "Generate another set" regeneration button and "Suggestions are a starting point" disclaimer.
+  - Discreet "Tell the owner privately" modal for 1-3 star ratings without gating Google access.
+- **Admin Page Designer Workbench (`PageDesignerTab.tsx`)**:
+  - Added **Page Designer** sidebar item (`Palette` icon) and table row icon on Clients table.
+  - 7 configuration tabs: Branding, Theme (with 5 one-click presets + custom pickers), Buttons (reorder, toggle, custom links), Sections, Texts, Behaviour, and Analytics.
+  - Interactive iPhone phone frame live preview updating in real-time as settings are tweaked.
+  - "Duplicate from..." another business and "Save Changes" functionality.
+  - Seamless zero-regression: businesses with `hub_enabled = false` retain their existing review page without any modifications.
+
+## [1.21.0] — 2026-11-01
+### Added (AI Review Assistant Suite & Admin Console Deep Linking)
+- **Non-Destructive Database Migration (`supabase/migrations/004_ai_review_assistant.sql`)**:
+  - `public.business_review_config`: Per-business configurations including `ai_review_enabled` flag (default `false`), `language` (english, hinglish, gujarati_roman, hindi_roman, mixed), `tone` (friendly, professional, casual, warm), `default_length` (short, medium, long), `highlights`, `facebook_url`, `website_url`, `address`, and `show_icons`.
+  - `public.review_options`: Products & Aspects table with sorting, active flags, and seeded 12 preset aspects (Cleanliness, Nice Staff, Fast Service, Hygiene, etc.).
+  - `public.review_generations`: Generation logs tracking prompt parameters, length, language, options selected, and hashed visitor IPs.
+  - `public.review_events`: Telemetry tracking for `'copied'` and `'opened_google'` conversion actions.
+  - `public.private_feedback`: Private 1-3 star feedback table with rating, customer message, optional contact details, and tag identifiers.
+- **AI Generation Engine & Rate Limiter (`/api/review/generate`)**:
+  - Dual-mode generation: Anthropic Claude Haiku (`claude-haiku-5-5`) API with strict contextual instructions (Roman script for Hinglish/Gujarati, natural human sentiment, length boundaries) paired with deterministic multi-language synthesizer fallback.
+  - Deduplication against recent 20 generations for the business.
+  - IP & business-level rate-limiting (max 10 requests per 10 minutes per IP).
+  - Telemetry routes: `POST /api/review/event` and `POST /api/review/feedback`.
+- **Customer Review Page Flow (`/r/[slug]`)**:
+  - Gated behind `ai_review_enabled === true`:
+    - 5 empty stars (no default selection).
+    - Multi-select chips for products and aspects (minimum 1 required).
+    - Length selector: Short (1-2 sentences), Medium (2-3 sentences), Long (3-4 sentences).
+    - "Write my review" generator returning 3 editable draft cards.
+    - "Write 3 more" regeneration button.
+    - Direct clipboard copy on tap with telemetry logging and Google Review URL dispatch for all 1-5 star ratings.
+    - Discreet "Tell the owner privately" modal for 1-3 star ratings without gating Google access.
+  - When `ai_review_enabled === false`: Completely preserves the original existing review page without any modifications.
+- **Admin Console Expansion (`src/components/views/AdminConsoleView.tsx`)**:
+  - Added sidebar navigation items: **Review Assistant** (`Sparkles`), **QR & NFC** (`QrCode`), and **Feedback** (`MessageSquare`).
+  - Added dedicated **Review Assistant** icon on each row of the Clients table for 1-click deep navigation.
+  - Rendered `ReviewAssistantTab`, `QrNfcDirectoryTab`, and `PrivateFeedbackTab`.
+  - Added deep-link URL parameter support (`?tab=review_assistant&biz={id}`).
+
+## [1.20.0] — 2026-11-01
+### Added (Owner Card Management from Review Page & Fallback Activation Hub)
+- **Review Page Owner Entry Point**:
+  - Added subtle grey footer link `"Business owner? Manage this card"` exclusively on review pages ([`src/app/r/[slug]/ReviewAssistantClient.tsx`](file:///d:/Projects/Zentap.ai/src/app/r/[slug]/ReviewAssistantClient.tsx)).
+  - Strictly excluded from homepage, navigation headers, and all public landing views.
+- **PIN Authentication & Security Hardening**:
+  - Built verification engine ([`src/lib/ownerAccess.ts`](file:///d:/Projects/Zentap.ai/src/lib/ownerAccess.ts)) with SHA-256 hashed PIN comparisons.
+  - Added 30-minute lockout enforced automatically after 5 failed attempts, rate-limited by IP and tag code.
+  - Generic uniform error message (`"PIN is incorrect"`) prevents account/tag enumeration.
+  - Added secondary optional business password field for double-secret support.
+  - Audit logging for every verification attempt, lockout, update, and reset to `public.partner_actions`.
+- **15-Minute Scoped Owner Panel ([`src/components/modals/OwnerAccessModal.tsx`](file:///d:/Projects/Zentap.ai/src/components/modals/OwnerAccessModal.tsx))**:
+  - Issues cryptographic 15-minute session token with real-time ticking countdown badge.
+  - Live scan telemetry breakdown: Total scans, NFC taps, QR scans.
+  - Update Details form: Business Name, Google Review link (with live test link button and `maps.app.goo.gl` warning banner), WhatsApp number & message, and Instagram handle.
+  - Card Reset action with confirmation dialog following reset levels:
+    - **Off**: Turns card off, scans display neutral "Page Unavailable".
+    - **Direct**: Sets destination directly to Google Reviews.
+    - **Needs Approval**: Marks card for administrator re-verification.
+- **Fallback Portal for Direct Google Cards (`/activate`)**:
+  - Implemented standalone route at [`src/app/activate/page.tsx`](file:///d:/Projects/Zentap.ai/src/app/activate/page.tsx) with `?card={code}` auto-population for owners whose physical cards bypass the ZenTap page straight to Google.
+  - Allows full PIN verification and 15-minute management access without needing the review page.
+- **API Endpoints**:
+  - `POST /api/card/verify` ([`src/app/api/card/verify/route.ts`](file:///d:/Projects/Zentap.ai/src/app/api/card/verify/route.ts))
+  - `POST /api/card/update` ([`src/app/api/card/update/route.ts`](file:///d:/Projects/Zentap.ai/src/app/api/card/update/route.ts))
+  - `POST /api/card/reset` ([`src/app/api/card/reset/route.ts`](file:///d:/Projects/Zentap.ai/src/app/api/card/reset/route.ts))
+
+## [1.19.0] — 2026-11-01
+### Added & Overhauled (Physical Hardware Tag Layer & Existing Standees Remote Switch)
+- **Physical Tag Architecture & Routing (`/t/[code]`)**:
+  - Implemented dynamic route handler at `src/app/t/[code]/route.ts` with HTTP 302 redirects and `Cache-Control: no-store, no-cache, must-revalidate, max-age=0`.
+  - Resolution engine (`src/lib/resolveTag.ts`) handles Google Review standees (`zentap_page` vs `direct`), WhatsApp cards, and Instagram cards.
+  - Automatically deduplicates and records single scan telemetry in both Supabase and local store.
+- **Single Tag Management ("Add Single Tag")**:
+  - Added "Add Single Tag" modal in Admin Console supporting custom hardware codes (e.g. `zt-0105` or client slug `urban-bistro`) with automatic fallback to sequential `zt-XXXX`.
+  - Supports item selection (Counter Standee or NFC Card) and optional immediate assignment to a business.
+- **"Chip Written" Verification & "Ready to Give Out" Filter**:
+  - Added `chip_written` boolean tracking whether an NFC tag has been physically written and verified with NFC Tools.
+  - Added interactive per-tag "Written" / "Needs Writing" toggle badge in the Standees & Cards table.
+  - Added **"Ready to give out"** filter pill showing tags that are both free (unassigned) and verified chip-written.
+- **Legacy Standee Routing Integration (`/r/[slug]`)**:
+  - Converted `src/app/r/[slug]/page.tsx` into a Server Component using `resolveScan` for instant 302 redirection.
+  - Existing physical standees printed with `/r/{slug}` can now be mapped to a legacy tag with `code = slug`, enabling instant remote switching between Direct Google and ZenTap Assistant without touching physical hardware.
+  - Extracted client interactive interface to `ReviewAssistantClient.tsx`.
+- **Database & Schema Updates (`supabase/migrations/001_tags_migration.sql`)**:
+  - Added `chip_written` column to `public.tags`.
+  - Added `create_single_tag` stored procedure with optional custom code, form factor, chip_written state, and atomic assignment.
+
+## [1.18.0] — 2026-11-01
+### Added & Overhauled (WhatsApp Order Architecture, Super Admin Fleet Hub & Dynamic Short Links)
+- **Public Website & Navigation Transition**:
+  - Removed Sign In, Sign Up, Customer Dashboard ("My Dashboard"), and "Sample Dashboard" everywhere from public header, hero, footer, and pricing views.
+  - Placed side-by-side CTA buttons in header and hero: **Order on WhatsApp** (`wa.me/919274560880`) and **Super Admin Login** (`/admin/login`).
+  - Added dedicated `/login` and `/signup` routes redirecting to `/` (home).
+  - Built dedicated `/admin/login` page with superadmin authentication.
+  - Converted all pricing plan cards to "Order on WhatsApp" with prefilled plan names.
+  - Purged the word "trial" from all marketing copy and billing states.
+- **Admin Portal Overhaul**:
+  - Added prominent **"Add Business"** button above fleet table opening a complete business creation modal with permanent slug generation, owner details, WhatsApp, Instagram, Google link, redirect mode toggle, active toggle, and 6-month valid-until date.
+  - Implemented safe **Soft-Delete System** on every row (marks inactive, preserves permanent physically encoded slug, renders neutral "Page Unavailable" screen on standee scans) with confirmation dialog and separate permanent delete action.
+  - Integrated split scan analytics display (`NFC: X • QR: Y • Total: Z`).
+  - Added instant row toggles for **Redirect Mode** (Custom Review Page vs. Direct Google Review) and **Active Status**.
+  - Built 3-in-1 QR Asset Hub modal generating high-res PNG (1200px) and vector SVG for **Review QR** (`/r/{slug}?s=qr`), **WhatsApp QR** (`/w/{slug}`), and **Instagram QR** (`/i/{slug}`).
+- **Review Router (`/r/[slug]`) & Touchpoint Enhancements**:
+  - Built redirect-mode engine:
+    - If inactive or soft-deleted: neutral clean "Page Unavailable" screen.
+    - If Redirect Mode OFF: immediate 302 redirect directly to Google Reviews (or setup fallback if link not configured).
+    - If Redirect Mode ON: customized review assistant with AI drafting.
+  - Added prominent **Chat on WhatsApp** and **Follow on Instagram** buttons directly below Google Review flow.
+- **Dynamic Short Links Engine**:
+  - Created `/w/[slug]` route handler (logs scan telemetry $\rightarrow$ 302 redirects to business WhatsApp).
+  - Created `/i/[slug]` route handler (logs scan telemetry $\rightarrow$ 302 redirects to business Instagram profile).
 ### Enhanced (Stitch Design System & Content Alignment Across 3 Core Pages)
 - **Home View Alignment ([`src/components/views/HomeView.tsx`](file:///d:/Projects/Zentap.ai/src/components/views/HomeView.tsx))**:
   - Aligned hero badge with verified counter pill (`Over 45,382+ Verified Reviews Generated`).

@@ -2,6 +2,10 @@
 // Isomorphic store: Works on both server (route handlers/SSR) and browser (localStorage)
 
 export type ProductPlan =
+  | "business_review_standee"
+  | "zentap_smart_review_standee"
+  | "zentap_smart_business_card"
+  | "custom_solution"
   | "simple_direct"
   | "metal_reply"
   | "pvc_nfc"
@@ -34,10 +38,99 @@ export interface LeadRecord {
   at: string;
 }
 
+export type TagType = "review" | "whatsapp" | "instagram";
+export type TagForm = "standee" | "card";
+export type TagDestination = "zentap_page" | "direct";
+
+export interface TagRecord {
+  id: string;
+  code: string;
+  form: TagForm;
+  type?: TagType | null;
+  business_id?: string | null;
+  partner_id?: string | null; // owner partner who owns this card/standee
+  assignment_id?: string | null;
+  destination: TagDestination;
+  active: boolean;
+  chip_written?: boolean; // whether the NFC chip has been written and verified with NFC Tools
+  pin_hash?: string | null; // SHA-256 hashed owner card PIN (default "1234")
+  password_hash?: string | null; // optional second secret / business password
+  reset_level?: "off" | "needs_approval" | "direct" | null;
+  label?: string | null;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  instagram_handle?: string | null;
+  created_at: string;
+  // joined / derived UI helper fields
+  business_name?: string | null;
+  business_slug?: string | null;
+  partner_name?: string | null;
+  scan_count?: number;
+}
+
+export interface PartnerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  pin_hash: string;
+  plain_pin?: string; // shown once upon creation or reset
+  can_register: boolean;
+  can_edit: boolean;
+  reset_level: "off" | "needs_approval" | "direct";
+  status: "active" | "locked" | "disabled";
+  failed_attempts: number;
+  locked_until?: string | null;
+  created_at: string;
+  updated_at?: string;
+  // derived UI helper fields
+  cards_owned?: number;
+  cards_in_use?: number;
+  last_activity?: string | null;
+}
+
+export interface ResetRequestRecord {
+  id: string;
+  tag_id: string;
+  tag_code: string;
+  partner_id?: string | null;
+  partner_name?: string | null;
+  business_id?: string | null;
+  business_name?: string | null;
+  type: "card_reset" | "pin_reset";
+  status: "pending" | "approved" | "rejected";
+  notes?: string | null;
+  created_at: string;
+  decided_at?: string | null;
+  decided_by?: string | null;
+}
+
+export interface PartnerActionRecord {
+  id: string;
+  tag_code: string;
+  tag_id?: string | null;
+  partner_id?: string | null;
+  business_id?: string | null;
+  action: "pin_verify_success" | "pin_verify_fail" | "lockout" | "details_update" | "card_reset" | "partner_created" | "pin_reset";
+  ip_address?: string | null;
+  details?: Record<string, any>;
+  created_at: string;
+}
+
+export interface TagAssignmentRecord {
+  id: string;
+  tag_id: string;
+  business_id: string;
+  type: TagType;
+  label?: string | null;
+  assigned_at: string;
+  released_at?: string | null;
+}
+
 export interface BusinessRecord {
   id: string;
   owner_user_id: string;
   name: string;
+  owner_name?: string;
   email: string;
   phone: string;
   city: string;
@@ -45,22 +138,32 @@ export interface BusinessRecord {
   country: string;
   pincode: string;
   gbp_link: string;
-  slug: string; // unique slug e.g. cafe-aroma-x7k2
+  slug: string; // unique permanent slug e.g. cafe-aroma
+  slug_locked?: boolean;
   plan: ProductPlan | null;
   payment_status: "pending" | "paid" | "failed";
   review_url: string | null;
+  google_review_link?: string | null;
   active: boolean;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  valid_until?: string | null;
+  service_valid_until?: string | null;
   address?: string;
   category?: string;
   custom_chips?: string[];
   // Dynamic Profile (Interaction)
+  whatsapp?: string;
   whatsapp_number?: string;
   whatsapp_message?: string;
   booking_url?: string;
   portfolio_url?: string;
+  instagram?: string;
   instagram_url?: string;
   website_url?: string;
   redirect_mode?: "direct_review" | "interactive_profile";
+  pin_hash?: string | null;
+  password_hash?: string | null;
   custom_design?: CustomCardDesign;
   created_at: string;
 }
@@ -159,6 +262,17 @@ export function validateGoogleReviewUrl(url: string): { valid: boolean; isAppSha
       ? "Note: maps.app.goo.gl links open the business profile, not direct review form. Recommended to use g.page/r/ or placeid link."
       : "Valid Google Review Link",
   };
+}
+
+// Generate clean, permanent slug for physical NFC / QR encoding
+export function generatePermanentSlug(businessName: string): string {
+  const base = businessName
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "business";
+  return base;
 }
 
 // Generate unique slug with random suffix (e.g. virat-gold-palace-x7k2)
@@ -403,6 +517,16 @@ export function getBusinessBySlug(slug: string): BusinessRecord | null {
   return match || null;
 }
 
+// Find business by id
+export function getBusinessById(id: string): BusinessRecord | null {
+  if (!id) return null;
+  const all = getAllBusinesses();
+  const match = all.find((b) => b.id === id);
+  if (match) return match;
+  if (SAMPLE_DEMO_BUSINESS.id === id) return SAMPLE_DEMO_BUSINESS;
+  return null;
+}
+
 // Save or update to global directory index (used by Admin Dashboard)
 function saveToGlobalIndex(record: BusinessRecord) {
   if (typeof window === "undefined") return;
@@ -443,14 +567,118 @@ export function getAllBusinesses(): BusinessRecord[] {
   }
 }
 
-// Admin update (e.g. manual Google Review Link insertion, status)
+// Admin Add Business (Supreme Fleet Creation)
+export function addBusinessRecord(bizData: Omit<BusinessRecord, "id" | "created_at"> & { id?: string }): BusinessRecord {
+  const newBiz: BusinessRecord = {
+    id: bizData.id || `biz-${Date.now()}`,
+    owner_user_id: bizData.owner_user_id || `owner-${Date.now()}`,
+    name: bizData.name.trim(),
+    owner_name: bizData.owner_name?.trim() || "",
+    email: bizData.email.trim(),
+    phone: bizData.phone?.trim() || "",
+    city: bizData.city?.trim() || "Ahmedabad",
+    state: bizData.state?.trim() || "Gujarat",
+    country: bizData.country || "India",
+    pincode: bizData.pincode || "",
+    gbp_link: bizData.gbp_link || "",
+    slug: bizData.slug.toLowerCase().trim(),
+    plan: bizData.plan || "standee_1500",
+    payment_status: bizData.payment_status || "paid",
+    review_url: bizData.review_url || null,
+    active: bizData.active !== undefined ? bizData.active : true,
+    is_deleted: false,
+    deleted_at: null,
+    service_valid_until: bizData.service_valid_until || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // +6 months default
+    address: bizData.address || "",
+    category: bizData.category || "General",
+    custom_chips: bizData.custom_chips || [],
+    whatsapp_number: bizData.whatsapp_number?.trim() || "",
+    whatsapp_message: bizData.whatsapp_message || "Hello, I visited your store and would like to connect!",
+    instagram_url: bizData.instagram_url?.trim() || "",
+    redirect_mode: bizData.redirect_mode || "interactive_profile",
+    created_at: new Date().toISOString(),
+  };
+
+  saveToGlobalIndex(newBiz);
+  return newBiz;
+}
+
+// Soft Delete: marks business inactive & deleted, preserving physical standee slug
+export function softDeleteBusiness(bizId: string): BusinessRecord[] {
+  return adminUpdateBusinessRecord(bizId, {
+    active: false,
+    is_deleted: true,
+    deleted_at: new Date().toISOString(),
+  });
+}
+
+// Restore Soft-Deleted Business
+export function restoreBusiness(bizId: string): BusinessRecord[] {
+  return adminUpdateBusinessRecord(bizId, {
+    active: true,
+    is_deleted: false,
+    deleted_at: null,
+  });
+}
+
+// Permanent Delete: complete removal from system
+export function permanentlyDeleteBusiness(bizId: string): BusinessRecord[] {
+  if (typeof window === "undefined") return INITIAL_FLEET;
+  try {
+    let list = getAllBusinesses().filter((b) => b.id !== bizId);
+    localStorage.setItem(ALL_BIZ_INDEX_KEY, JSON.stringify(list));
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${bizId}`);
+    return list;
+  } catch {
+    return INITIAL_FLEET;
+  }
+}
+
+// Toggle Redirect Mode (ON = interactive_profile, OFF = direct_review)
+export function updateBusinessRedirectMode(bizId: string, mode: "direct_review" | "interactive_profile"): BusinessRecord[] {
+  return adminUpdateBusinessRecord(bizId, { redirect_mode: mode });
+}
+
+// Admin update (e.g. manual Google Review Link insertion, status, slug)
 export function adminUpdateBusinessRecord(bizId: string, updates: Partial<BusinessRecord>): BusinessRecord[] {
   if (typeof window === "undefined") return INITIAL_FLEET;
   try {
     let list = getAllBusinesses();
     const idx = list.findIndex((b) => b.id === bizId);
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...updates };
+      const current = list[idx];
+      const sanitizedUpdates = { ...updates };
+
+      // Slug lock rule: can be edited once after creation, then permanently locked
+      if (sanitizedUpdates.slug !== undefined && sanitizedUpdates.slug !== current.slug) {
+        if (current.slug_locked) {
+          // Locked: reject slug mutation
+          delete sanitizedUpdates.slug;
+        } else {
+          // Allow once, then lock
+          sanitizedUpdates.slug = sanitizedUpdates.slug.toLowerCase().trim();
+          sanitizedUpdates.slug_locked = true;
+        }
+      }
+
+      // Sync field aliases
+      if (sanitizedUpdates.google_review_link && !sanitizedUpdates.review_url) {
+        sanitizedUpdates.review_url = sanitizedUpdates.google_review_link;
+      } else if (sanitizedUpdates.review_url && !sanitizedUpdates.google_review_link) {
+        sanitizedUpdates.google_review_link = sanitizedUpdates.review_url;
+      }
+      if (sanitizedUpdates.whatsapp && !sanitizedUpdates.whatsapp_number) {
+        sanitizedUpdates.whatsapp_number = sanitizedUpdates.whatsapp;
+      } else if (sanitizedUpdates.whatsapp_number && !sanitizedUpdates.whatsapp) {
+        sanitizedUpdates.whatsapp = sanitizedUpdates.whatsapp_number;
+      }
+      if (sanitizedUpdates.instagram && !sanitizedUpdates.instagram_url) {
+        sanitizedUpdates.instagram_url = sanitizedUpdates.instagram;
+      } else if (sanitizedUpdates.instagram_url && !sanitizedUpdates.instagram) {
+        sanitizedUpdates.instagram = sanitizedUpdates.instagram_url;
+      }
+
+      list[idx] = { ...current, ...sanitizedUpdates };
       localStorage.setItem(ALL_BIZ_INDEX_KEY, JSON.stringify(list));
 
       if (list[idx].owner_user_id) {
@@ -458,7 +686,7 @@ export function adminUpdateBusinessRecord(bizId: string, updates: Partial<Busine
         const userRaw = localStorage.getItem(userKey);
         if (userRaw) {
           const parsed = JSON.parse(userRaw);
-          localStorage.setItem(userKey, JSON.stringify({ ...parsed, ...updates }));
+          localStorage.setItem(userKey, JSON.stringify({ ...parsed, ...sanitizedUpdates }));
         }
       }
     }
@@ -1117,3 +1345,917 @@ export function deleteLeadRecord(businessId: string, leadId: string): void {
     console.warn("deleteLeadRecord error:", err);
   }
 }
+
+// =========================================================================
+// PHYSICAL TAG LAYER (STANDYES & CARDS)
+// Permanent hardware codes (e.g. zt-0042) dynamically assigned to businesses
+// =========================================================================
+
+const TAGS_INDEX_KEY = "zentap_v2_tags";
+const TAG_ASSIGNMENTS_INDEX_KEY = "zentap_v2_tag_assignments";
+
+const INITIAL_TAGS: TagRecord[] = [
+  {
+    id: "tag-zt-0001",
+    code: "zt-0001",
+    form: "standee",
+    type: "review",
+    business_id: "sample-demo-biz-01",
+    partner_id: "partner-001",
+    assignment_id: "asg-0001",
+    destination: "zentap_page",
+    active: true,
+    chip_written: true,
+    created_at: "2026-09-01T10:00:00.000Z",
+  },
+  {
+    id: "tag-zt-0002",
+    code: "zt-0002",
+    form: "standee",
+    type: "review",
+    business_id: "biz-102",
+    partner_id: "partner-002",
+    assignment_id: "asg-0002",
+    destination: "zentap_page",
+    active: true,
+    chip_written: true,
+    created_at: "2026-09-12T10:00:00.000Z",
+  },
+  {
+    id: "tag-zt-0003",
+    code: "zt-0003",
+    form: "card",
+    type: "whatsapp",
+    business_id: "sample-demo-biz-01",
+    partner_id: "partner-001",
+    assignment_id: "asg-0003",
+    destination: "direct",
+    active: true,
+    chip_written: true,
+    label: "Meet (Founder)",
+    whatsapp_number: "919274560880",
+    whatsapp_message: "Hi Meet, tapped your ZenTap business card!",
+    created_at: "2026-10-01T10:00:00.000Z",
+  },
+  {
+    id: "tag-zt-0004",
+    code: "zt-0004",
+    form: "card",
+    type: "instagram",
+    business_id: "sample-demo-biz-01",
+    partner_id: "partner-001",
+    assignment_id: "asg-0004",
+    destination: "direct",
+    active: true,
+    chip_written: true,
+    label: "ZenTap Official",
+    instagram_handle: "zentapdigitalsolutions",
+    created_at: "2026-10-05T10:00:00.000Z",
+  },
+  {
+    id: "tag-zt-0005",
+    code: "zt-0005",
+    form: "standee",
+    type: null,
+    business_id: null,
+    partner_id: "partner-001",
+    assignment_id: null,
+    destination: "zentap_page",
+    active: true,
+    chip_written: true, // Free & written -> "Ready to give out" demo
+    created_at: "2026-10-10T10:00:00.000Z",
+  },
+  {
+    id: "tag-zt-0006",
+    code: "zt-0006",
+    form: "card",
+    type: null,
+    business_id: null,
+    partner_id: "partner-002",
+    assignment_id: null,
+    destination: "zentap_page",
+    active: true,
+    chip_written: false, // Free but needs writing -> demonstrates "Needs Writing"
+    created_at: "2026-10-15T10:00:00.000Z",
+  },
+];
+
+export function getAllTags(): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const raw = localStorage.getItem(TAGS_INDEX_KEY);
+    let list: TagRecord[] = raw ? JSON.parse(raw) : [];
+    INITIAL_TAGS.forEach((seed) => {
+      if (!list.some((t) => t.id === seed.id || t.code === seed.code)) {
+        list.push(seed);
+      }
+    });
+
+    // Populate business name, partner name and scan count helpers
+    const allBiz = getAllBusinesses();
+    const allPartners = typeof window !== "undefined" && localStorage.getItem(PARTNERS_INDEX_KEY)
+      ? JSON.parse(localStorage.getItem(PARTNERS_INDEX_KEY)!)
+      : INITIAL_PARTNERS;
+
+    return list.map((tag) => {
+      const biz = tag.business_id ? allBiz.find((b) => b.id === tag.business_id) : null;
+      const partner = tag.partner_id ? allPartners.find((p: any) => p.id === tag.partner_id) : null;
+      let scanCount = 0;
+      if (biz?.slug) {
+        const stats = getBusinessAnalytics(biz.slug);
+        scanCount = stats.totalScans;
+      }
+      return {
+        ...tag,
+        business_name: biz ? biz.name : null,
+        business_slug: biz ? biz.slug : null,
+        partner_name: partner ? partner.name : null,
+        scan_count: scanCount,
+      };
+    });
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+export function getTagByCode(rawCode: string): TagRecord | null {
+  if (!rawCode) return null;
+  const clean = rawCode.toLowerCase().trim();
+  const all = getAllTags();
+  return all.find((t) => t.code.toLowerCase() === clean) || null;
+}
+
+export function generateTagBatch(count: number, form: TagForm = "standee"): TagRecord[] {
+  if (count < 1 || count > 500) {
+    throw new Error("Count must be between 1 and 500");
+  }
+  const currentTags = getAllTags();
+
+  // Find max sequence number from existing codes formatted as zt-XXXX
+  let maxSeq = 0;
+  currentTags.forEach((t) => {
+    const match = t.code.match(/^zt-(\d+)$/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  });
+
+  const newTags: TagRecord[] = [];
+  const now = new Date().toISOString();
+
+  for (let i = 1; i <= count; i++) {
+    const nextNum = maxSeq + i;
+    const code = `zt-${String(nextNum).padStart(4, "0")}`;
+    newTags.push({
+      id: `tag-${code}-${Date.now()}`,
+      code,
+      form,
+      type: null, // free in inventory
+      business_id: null,
+      assignment_id: null,
+      destination: "zentap_page",
+      active: true,
+      chip_written: false,
+      created_at: now,
+    });
+  }
+
+  const updatedList = [...newTags, ...currentTags];
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(updatedList));
+  }
+  return updatedList;
+}
+
+export interface CreateSingleTagOptions {
+  code?: string;
+  form?: TagForm;
+  chip_written?: boolean;
+  business_id?: string | null;
+  type?: TagType | null;
+  destination?: TagDestination;
+  label?: string | null;
+  whatsapp_number?: string | null;
+  whatsapp_message?: string | null;
+  instagram_handle?: string | null;
+}
+
+export function createSingleTag(options: CreateSingleTagOptions = {}): TagRecord[] {
+  const currentTags = getAllTags();
+  const form = options.form || "standee";
+  const now = new Date().toISOString();
+
+  let code: string;
+  if (options.code && options.code.trim()) {
+    code = options.code.toLowerCase().trim();
+    if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(code)) {
+      throw new Error("Tag code must contain only lowercase letters, numbers, and hyphens (2-64 chars).");
+    }
+    const exists = currentTags.some((t) => t.code.toLowerCase() === code);
+    if (exists) {
+      throw new Error(`Tag code "${code}" already exists in the inventory.`);
+    }
+  } else {
+    // Auto-generate sequential zt-XXXX code
+    let maxSeq = 0;
+    currentTags.forEach((t) => {
+      const match = t.code.match(/^zt-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    });
+    code = `zt-${String(maxSeq + 1).padStart(4, "0")}`;
+  }
+
+  const newTagId = `tag-${code}-${Date.now()}`;
+  let assignmentId: string | null = null;
+
+  if (options.business_id) {
+    assignmentId = `asg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    if (typeof window !== "undefined") {
+      try {
+        const rawAsg = localStorage.getItem(TAG_ASSIGNMENTS_INDEX_KEY);
+        const assignments: TagAssignmentRecord[] = rawAsg ? JSON.parse(rawAsg) : [];
+        assignments.push({
+          id: assignmentId,
+          tag_id: newTagId,
+          business_id: options.business_id,
+          type: options.type || "review",
+          label: options.label || null,
+          assigned_at: now,
+          released_at: null,
+        });
+        localStorage.setItem(TAG_ASSIGNMENTS_INDEX_KEY, JSON.stringify(assignments));
+      } catch (err) {
+        console.warn("createSingleTag assignment error:", err);
+      }
+    }
+  }
+
+  const newTag: TagRecord = {
+    id: newTagId,
+    code,
+    form,
+    type: options.business_id ? (options.type || "review") : (options.type || null),
+    business_id: options.business_id || null,
+    assignment_id: assignmentId,
+    destination: options.destination || (options.type === "review" ? "zentap_page" : "direct"),
+    active: true,
+    chip_written: options.chip_written ?? false,
+    label: options.label || null,
+    whatsapp_number: options.whatsapp_number || null,
+    whatsapp_message: options.whatsapp_message || null,
+    instagram_handle: options.instagram_handle || null,
+    created_at: now,
+  };
+
+  const updatedList = [newTag, ...currentTags];
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(updatedList));
+  }
+  return updatedList;
+}
+
+export function toggleTagChipWritten(tagId: string, forced?: boolean): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx >= 0) {
+      const nextWritten = forced !== undefined ? forced : !tags[tagIdx].chip_written;
+      tags[tagIdx] = { ...tags[tagIdx], chip_written: nextWritten };
+      localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    }
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+/**
+ * Creates or retrieves a legacy tag whose code matches the business slug.
+ * Allows remote switching of old printed /r/{slug} standees without physical hardware modification.
+ */
+export function ensureLegacyTagForSlug(slug: string, businessId: string): TagRecord {
+  const clean = slug.toLowerCase().trim();
+  const existing = getTagByCode(clean);
+  if (existing) {
+    return existing;
+  }
+  const updated = createSingleTag({
+    code: clean,
+    form: "standee",
+    chip_written: true,
+    business_id: businessId,
+    type: "review",
+    destination: "zentap_page",
+    label: "Legacy Printed Standee",
+  });
+  return updated.find((t) => t.code.toLowerCase() === clean)!;
+}
+
+export function assignTag(
+  tagId: string,
+  businessId: string,
+  type: TagType,
+  options?: {
+    label?: string;
+    whatsapp_number?: string;
+    whatsapp_message?: string;
+    instagram_handle?: string;
+  }
+): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx < 0) return tags;
+
+    const currentTag = tags[tagIdx];
+
+    // Release existing assignment if present
+    const rawAsg = localStorage.getItem(TAG_ASSIGNMENTS_INDEX_KEY);
+    const assignments: TagAssignmentRecord[] = rawAsg ? JSON.parse(rawAsg) : [];
+
+    if (currentTag.assignment_id) {
+      const oldAsgIdx = assignments.findIndex((a) => a.id === currentTag.assignment_id && !a.released_at);
+      if (oldAsgIdx >= 0) {
+        assignments[oldAsgIdx].released_at = new Date().toISOString();
+      }
+    }
+
+    // Create new assignment
+    const newAsgId = `asg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    assignments.push({
+      id: newAsgId,
+      tag_id: currentTag.id,
+      business_id: businessId,
+      type,
+      label: options?.label || null,
+      assigned_at: new Date().toISOString(),
+      released_at: null,
+    });
+    localStorage.setItem(TAG_ASSIGNMENTS_INDEX_KEY, JSON.stringify(assignments));
+
+    // Update tag record
+    tags[tagIdx] = {
+      ...currentTag,
+      business_id: businessId,
+      assignment_id: newAsgId,
+      type,
+      label: options?.label || null,
+      whatsapp_number: options?.whatsapp_number || null,
+      whatsapp_message: options?.whatsapp_message || null,
+      instagram_handle: options?.instagram_handle || null,
+      destination: type === "review" ? (currentTag.destination || "zentap_page") : "direct",
+    };
+
+    localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+// "Take Back" (formerly Release): removes business from tag so it can be given to someone new
+export function releaseTag(tagId: string): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx < 0) return tags;
+
+    const currentTag = tags[tagIdx];
+
+    // Close assignment record in history
+    if (currentTag.assignment_id) {
+      const rawAsg = localStorage.getItem(TAG_ASSIGNMENTS_INDEX_KEY);
+      const assignments: TagAssignmentRecord[] = rawAsg ? JSON.parse(rawAsg) : [];
+      const oldAsgIdx = assignments.findIndex((a) => a.id === currentTag.assignment_id && !a.released_at);
+      if (oldAsgIdx >= 0) {
+        assignments[oldAsgIdx].released_at = new Date().toISOString();
+        localStorage.setItem(TAG_ASSIGNMENTS_INDEX_KEY, JSON.stringify(assignments));
+      }
+    }
+
+    // Reset tag to blank inventory state
+    tags[tagIdx] = {
+      ...currentTag,
+      business_id: null,
+      assignment_id: null,
+      type: null,
+      destination: "zentap_page",
+      active: true,
+      label: null,
+      whatsapp_number: null,
+      whatsapp_message: null,
+      instagram_handle: null,
+    };
+
+    localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+export function toggleTagActive(tagId: string, forcedActive?: boolean): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx >= 0) {
+      const nextActive = forcedActive !== undefined ? forcedActive : !tags[tagIdx].active;
+      tags[tagIdx] = { ...tags[tagIdx], active: nextActive };
+      localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    }
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+export function updateTagDestination(tagId: string, destination: TagDestination): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx >= 0) {
+      tags[tagIdx] = { ...tags[tagIdx], destination };
+      localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    }
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+export function updateTagDetails(tagId: string, updates: Partial<TagRecord>): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  try {
+    const tags = getAllTags();
+    const tagIdx = tags.findIndex((t) => t.id === tagId);
+    if (tagIdx >= 0) {
+      tags[tagIdx] = { ...tags[tagIdx], ...updates };
+      localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+    }
+    return getAllTags();
+  } catch {
+    return INITIAL_TAGS;
+  }
+}
+
+export function softDeleteBusinessWithTags(businessId: string): { releasedTagsCount: number; businesses: BusinessRecord[] } {
+  let releasedCount = 0;
+  if (typeof window !== "undefined") {
+    try {
+      const tags = getAllTags();
+      const attached = tags.filter((t) => t.business_id === businessId);
+      attached.forEach((t) => {
+        releaseTag(t.id);
+        releasedCount++;
+      });
+    } catch (err) {
+      console.warn("softDeleteBusinessWithTags release error:", err);
+    }
+  }
+  const updatedBusinesses = softDeleteBusiness(businessId);
+  return { releasedTagsCount: releasedCount, businesses: updatedBusinesses };
+}
+
+/**
+ * Update tag and business details from Owner Access Panel
+ */
+export function updateTagAndBusinessFromOwner(
+  code: string,
+  updates: {
+    name?: string;
+    review_url?: string;
+    whatsapp_number?: string;
+    whatsapp_message?: string;
+    instagram_handle?: string;
+  }
+): { success: boolean; tag: TagRecord | null; business: BusinessRecord | null } {
+  const cleanCode = code.toLowerCase().trim();
+  const allTags = getAllTags();
+  const allBiz = getAllBusinesses();
+
+  let tag = allTags.find((t) => t.code.toLowerCase() === cleanCode) || null;
+  let biz: BusinessRecord | null = null;
+
+  if (tag && tag.business_id) {
+    biz = allBiz.find((b) => b.id === tag!.business_id || b.slug === tag!.business_id) || null;
+  } else {
+    biz = allBiz.find((b) => b.slug.toLowerCase() === cleanCode || b.id === cleanCode) || null;
+    if (!tag && biz) {
+      tag = allTags.find((t) => t.business_id === biz!.id || t.code.toLowerCase() === biz!.slug.toLowerCase()) || null;
+    }
+  }
+
+  // Update business
+  if (biz) {
+    const bizUpdates: Partial<BusinessRecord> = {};
+    if (updates.name && updates.name.trim()) bizUpdates.name = updates.name.trim();
+    if (updates.review_url !== undefined) {
+      bizUpdates.review_url = updates.review_url.trim() || null;
+      bizUpdates.google_review_link = updates.review_url.trim() || null;
+    }
+    if (updates.whatsapp_number !== undefined) {
+      bizUpdates.whatsapp_number = updates.whatsapp_number.trim() || undefined;
+      bizUpdates.whatsapp = updates.whatsapp_number.trim() || undefined;
+    }
+    if (updates.whatsapp_message !== undefined) {
+      bizUpdates.whatsapp_message = updates.whatsapp_message.trim() || undefined;
+    }
+    if (updates.instagram_handle !== undefined) {
+      bizUpdates.instagram_url = updates.instagram_handle.trim() || undefined;
+      bizUpdates.instagram = updates.instagram_handle.trim() || undefined;
+    }
+    adminUpdateBusinessRecord(biz.id, bizUpdates);
+    biz = { ...biz, ...bizUpdates };
+  }
+
+  // Update tag
+  if (tag) {
+    const tagUpdates: Partial<TagRecord> = {};
+    if (updates.whatsapp_number !== undefined) tagUpdates.whatsapp_number = updates.whatsapp_number.trim() || null;
+    if (updates.whatsapp_message !== undefined) tagUpdates.whatsapp_message = updates.whatsapp_message.trim() || null;
+    if (updates.instagram_handle !== undefined) tagUpdates.instagram_handle = updates.instagram_handle.trim() || null;
+    updateTagDetails(tag.id, tagUpdates);
+    tag = { ...tag, ...tagUpdates };
+  }
+
+  return { success: true, tag, business: biz };
+}
+
+// =========================================================================
+// PARTNERS ARCHITECTURE & RESET REQUESTS LAYER
+// =========================================================================
+
+export const PARTNERS_INDEX_KEY = "zentap_v2_partners";
+export const RESET_REQUESTS_INDEX_KEY = "zentap_v2_reset_requests";
+export const PARTNER_ACTIONS_INDEX_KEY = "zentap_v2_partner_actions";
+
+export const INITIAL_PARTNERS: PartnerRecord[] = [
+  {
+    id: "partner-001",
+    name: "Meet B (Core Founder)",
+    phone: "919274560880",
+    pin_hash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", // 1234
+    can_register: true,
+    can_edit: true,
+    reset_level: "needs_approval",
+    status: "active",
+    failed_attempts: 0,
+    created_at: "2026-08-01T10:00:00.000Z",
+  },
+  {
+    id: "partner-002",
+    name: "Gujarat Hardware Agency",
+    phone: "919825000001",
+    pin_hash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", // 1234
+    can_register: false,
+    can_edit: true,
+    reset_level: "needs_approval",
+    status: "active",
+    failed_attempts: 0,
+    created_at: "2026-09-15T10:00:00.000Z",
+  },
+];
+
+export const INITIAL_REQUESTS: ResetRequestRecord[] = [
+  {
+    id: "req-001",
+    tag_id: "tag-zt-0002",
+    tag_code: "zt-0002",
+    partner_id: "partner-002",
+    partner_name: "Gujarat Hardware Agency",
+    business_id: "biz-102",
+    business_name: "Dr. Kirit Shah Dental Clinic",
+    type: "card_reset",
+    status: "pending",
+    notes: "Client relocated clinic; requesting standee reset for reassignment",
+    created_at: "2026-10-31T14:30:00.000Z",
+  },
+];
+
+export function generateRandomPin(): string {
+  while (true) {
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    if (/^(\d)\1{5}$/.test(pin)) continue;
+    if ("0123456789".includes(pin)) continue;
+    if ("9876543210".includes(pin)) continue;
+    return pin;
+  }
+}
+
+export function getAllPartners(): PartnerRecord[] {
+  if (typeof window === "undefined") return INITIAL_PARTNERS;
+  try {
+    const raw = localStorage.getItem(PARTNERS_INDEX_KEY);
+    let list: PartnerRecord[] = raw ? JSON.parse(raw) : [];
+    INITIAL_PARTNERS.forEach((seed) => {
+      if (!list.some((p) => p.id === seed.id || p.phone === seed.phone)) {
+        list.push(seed);
+      }
+    });
+
+    const tags = getAllTags();
+    return list.map((partner) => {
+      const ownedTags = tags.filter((t) => t.partner_id === partner.id);
+      const inUseTags = ownedTags.filter((t) => !!t.business_id);
+      return {
+        ...partner,
+        cards_owned: ownedTags.length,
+        cards_in_use: inUseTags.length,
+      };
+    });
+  } catch {
+    return INITIAL_PARTNERS;
+  }
+}
+
+export function addPartner(data: {
+  name: string;
+  phone: string;
+  can_register?: boolean;
+  can_edit?: boolean;
+  reset_level?: "off" | "needs_approval" | "direct";
+}): { partner: PartnerRecord; plainPin: string } {
+  const plainPin = generateRandomPin();
+  let pinHash = "";
+  try {
+    const crypto = require("crypto");
+    pinHash = crypto.createHash("sha256").update(plainPin).digest("hex");
+  } catch {
+    pinHash = plainPin;
+  }
+
+  const newPartner: PartnerRecord = {
+    id: `partner-${Date.now()}`,
+    name: data.name.trim(),
+    phone: data.phone.trim(),
+    pin_hash: pinHash,
+    plain_pin: plainPin,
+    can_register: data.can_register ?? false,
+    can_edit: data.can_edit ?? true,
+    reset_level: data.reset_level || "needs_approval",
+    status: "active",
+    failed_attempts: 0,
+    created_at: new Date().toISOString(),
+  };
+
+  if (typeof window !== "undefined") {
+    const current = getAllPartners();
+    current.unshift(newPartner);
+    localStorage.setItem(PARTNERS_INDEX_KEY, JSON.stringify(current));
+  }
+  return { partner: newPartner, plainPin };
+}
+
+export function resetPartnerPin(partnerId: string): { partner: PartnerRecord; plainPin: string } | null {
+  const plainPin = generateRandomPin();
+  let pinHash = "";
+  try {
+    const crypto = require("crypto");
+    pinHash = crypto.createHash("sha256").update(plainPin).digest("hex");
+  } catch {
+    pinHash = plainPin;
+  }
+
+  if (typeof window === "undefined") return null;
+  const list = getAllPartners();
+  const idx = list.findIndex((p) => p.id === partnerId);
+  if (idx < 0) return null;
+
+  list[idx] = {
+    ...list[idx],
+    pin_hash: pinHash,
+    plain_pin: plainPin,
+    failed_attempts: 0,
+    locked_until: null,
+    status: list[idx].status === "locked" ? "active" : list[idx].status,
+    updated_at: new Date().toISOString(),
+  };
+
+  localStorage.setItem(PARTNERS_INDEX_KEY, JSON.stringify(list));
+  return { partner: list[idx], plainPin };
+}
+
+export function unlockPartner(partnerId: string): PartnerRecord[] {
+  if (typeof window === "undefined") return INITIAL_PARTNERS;
+  const list = getAllPartners();
+  const idx = list.findIndex((p) => p.id === partnerId);
+  if (idx >= 0) {
+    list[idx] = {
+      ...list[idx],
+      status: "active",
+      failed_attempts: 0,
+      locked_until: null,
+      updated_at: new Date().toISOString(),
+    };
+    localStorage.setItem(PARTNERS_INDEX_KEY, JSON.stringify(list));
+  }
+  return getAllPartners();
+}
+
+export function togglePartnerStatus(partnerId: string, status: "active" | "disabled"): PartnerRecord[] {
+  if (typeof window === "undefined") return INITIAL_PARTNERS;
+  const list = getAllPartners();
+  const idx = list.findIndex((p) => p.id === partnerId);
+  if (idx >= 0) {
+    list[idx] = {
+      ...list[idx],
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    localStorage.setItem(PARTNERS_INDEX_KEY, JSON.stringify(list));
+  }
+  return getAllPartners();
+}
+
+export function sellCardsToPartner(partnerId: string, tagIds: string[]): TagRecord[] {
+  if (typeof window === "undefined") return INITIAL_TAGS;
+  const tags = getAllTags();
+  tags.forEach((t) => {
+    if (tagIds.includes(t.id)) {
+      t.partner_id = partnerId;
+    }
+  });
+  localStorage.setItem(TAGS_INDEX_KEY, JSON.stringify(tags));
+  return getAllTags();
+}
+
+// Reset Requests Management
+export function getAllResetRequests(): ResetRequestRecord[] {
+  if (typeof window === "undefined") return INITIAL_REQUESTS;
+  try {
+    const raw = localStorage.getItem(RESET_REQUESTS_INDEX_KEY);
+    let list: ResetRequestRecord[] = raw ? JSON.parse(raw) : [];
+    INITIAL_REQUESTS.forEach((seed) => {
+      if (!list.some((r) => r.id === seed.id)) {
+        list.push(seed);
+      }
+    });
+    return list;
+  } catch {
+    return INITIAL_REQUESTS;
+  }
+}
+
+export function createResetRequest(data: {
+  tag_id: string;
+  tag_code: string;
+  partner_id?: string | null;
+  business_id?: string | null;
+  type: "card_reset" | "pin_reset";
+  notes?: string;
+}): ResetRequestRecord {
+  const newReq: ResetRequestRecord = {
+    id: `req-${Date.now()}`,
+    tag_id: data.tag_id,
+    tag_code: data.tag_code,
+    partner_id: data.partner_id || null,
+    business_id: data.business_id || null,
+    type: data.type,
+    status: "pending",
+    notes: data.notes || null,
+    created_at: new Date().toISOString(),
+  };
+
+  if (typeof window !== "undefined") {
+    const list = getAllResetRequests();
+    list.unshift(newReq);
+    localStorage.setItem(RESET_REQUESTS_INDEX_KEY, JSON.stringify(list));
+  }
+  return newReq;
+}
+
+export function approveResetRequest(requestId: string): ResetRequestRecord[] {
+  if (typeof window === "undefined") return INITIAL_REQUESTS;
+  const list = getAllResetRequests();
+  const req = list.find((r) => r.id === requestId);
+  if (req) {
+    req.status = "approved";
+    req.decided_at = new Date().toISOString();
+    req.decided_by = "Super Admin";
+    // Execute release_tag on card reset
+    if (req.type === "card_reset" && req.tag_id) {
+      releaseTag(req.tag_id);
+    }
+    localStorage.setItem(RESET_REQUESTS_INDEX_KEY, JSON.stringify(list));
+  }
+  return getAllResetRequests();
+}
+
+export function rejectResetRequest(requestId: string): ResetRequestRecord[] {
+  if (typeof window === "undefined") return INITIAL_REQUESTS;
+  const list = getAllResetRequests();
+  const req = list.find((r) => r.id === requestId);
+  if (req) {
+    req.status = "rejected";
+    req.decided_at = new Date().toISOString();
+    req.decided_by = "Super Admin";
+    localStorage.setItem(RESET_REQUESTS_INDEX_KEY, JSON.stringify(list));
+  }
+  return getAllResetRequests();
+}
+
+// Business Permanent Purge (Refuses if any tag is still assigned)
+export function purgeBusinessRecord(businessId: string): { success: boolean; error?: string } {
+  if (typeof window === "undefined") return { success: true };
+  const allTags = getAllTags();
+  const assigned = allTags.filter((t) => t.business_id === businessId);
+  if (assigned.length > 0) {
+    return {
+      success: false,
+      error: `Cannot purge business: ${assigned.length} standee/card(s) are still assigned. Please Take Back (release) all tags first.`,
+    };
+  }
+
+  // Remove business
+  permanentlyDeleteBusiness(businessId);
+  return { success: true };
+}
+
+export function batchAssignTags(
+  tagIds: string[],
+  businessId: string,
+  type: TagType,
+  options?: {
+    labelPrefix?: string;
+    whatsapp_number?: string;
+    whatsapp_message?: string;
+    instagram_handle?: string;
+  }
+): TagRecord[] {
+  tagIds.forEach((id, idx) => {
+    assignTag(id, businessId, type, {
+      label: options?.labelPrefix ? `${options.labelPrefix} #${idx + 1}` : undefined,
+      whatsapp_number: options?.whatsapp_number,
+      whatsapp_message: options?.whatsapp_message,
+      instagram_handle: options?.instagram_handle,
+    });
+  });
+  return getAllTags();
+}
+
+/**
+ * Reset tag card following reset level:
+ * - off: deactivates card (scans show Page Unavailable)
+ * - needs_approval: marks reset_level as 'needs_approval'
+ * - direct: sets destination to 'direct' Google review
+ */
+export function resetTagCardFromOwner(
+  code: string,
+  resetLevel: "off" | "needs_approval" | "direct" = "off"
+): { success: boolean; tag: TagRecord | null; business: BusinessRecord | null } {
+  const cleanCode = code.toLowerCase().trim();
+  const allTags = getAllTags();
+  const allBiz = getAllBusinesses();
+
+  let tag = allTags.find((t) => t.code.toLowerCase() === cleanCode) || null;
+  let biz: BusinessRecord | null = null;
+
+  if (tag && tag.business_id) {
+    biz = allBiz.find((b) => b.id === tag!.business_id || b.slug === tag!.business_id) || null;
+  } else {
+    biz = allBiz.find((b) => b.slug.toLowerCase() === cleanCode || b.id === cleanCode) || null;
+    if (!tag && biz) {
+      tag = allTags.find((t) => t.business_id === biz!.id || t.code.toLowerCase() === biz!.slug.toLowerCase()) || null;
+    }
+  }
+
+  if (tag) {
+    const updates: Partial<TagRecord> = { reset_level: resetLevel };
+    if (resetLevel === "off") {
+      updates.active = false;
+    } else if (resetLevel === "direct") {
+      updates.destination = "direct";
+      updates.active = true;
+    } else if (resetLevel === "needs_approval") {
+      updates.active = false;
+    }
+    updateTagDetails(tag.id, updates);
+    tag = { ...tag, ...updates };
+  }
+
+  if (biz) {
+    if (resetLevel === "off") {
+      adminUpdateBusinessRecord(biz.id, { active: false });
+      biz = { ...biz, active: false };
+    } else if (resetLevel === "direct") {
+      adminUpdateBusinessRecord(biz.id, { redirect_mode: "direct_review", active: true });
+      biz = { ...biz, redirect_mode: "direct_review", active: true };
+    }
+  }
+
+  return { success: true, tag, business: biz };
+}
+

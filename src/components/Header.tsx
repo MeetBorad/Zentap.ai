@@ -12,7 +12,8 @@ import {
   ArrowLeft, 
   ArrowRight,
   LayoutDashboard,
-  ShieldAlert
+  ShieldAlert,
+  MessageCircle
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -145,16 +146,40 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0e1015]/95 backdrop-blur-md border-b border-[#232734]">
       <div className="max-w-7xl mx-auto h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <div 
-          onClick={() => handleNavClick("home")}
-          className="flex items-center gap-3 cursor-pointer select-none group flex-shrink-0"
-        >
-          <img 
-            src="/logo.png" 
-            alt="ZenTap" 
-            className="h-9 w-auto max-w-[140px] sm:max-w-[170px] object-contain transition-transform duration-200 group-hover:scale-[1.02]"
-          />
+        {/* Brand Logo & Strictly Homepage Top-Left Admin Login */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Admin Login Option: ONLY ONE on entire website, strictly top-left of homepage */}
+          {currentView === "home" && !isAdmin && (
+            <a
+              href="/admin/login"
+              title="Super Admin Portal Login"
+              className="tactile-btn-subtle flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] text-[11px] font-medium cursor-pointer shadow-sm transition-all"
+            >
+              <ShieldAlert className="w-3 h-3 text-[#ff7a00]" />
+              <span>Admin Login</span>
+            </a>
+          )}
+          {currentView === "home" && isAdmin && (
+            <button
+              onClick={() => handleNavClick("admin")}
+              title="Open Admin Console"
+              className="tactile-btn-subtle flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 text-[11px] font-semibold cursor-pointer shadow-sm"
+            >
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              <span>Admin Console</span>
+            </button>
+          )}
+
+          <div 
+            onClick={() => handleNavClick("home")}
+            className="flex items-center gap-3 cursor-pointer select-none group flex-shrink-0"
+          >
+            <img 
+              src="/logo.png" 
+              alt="ZenTap" 
+              className="h-9 w-auto max-w-[140px] sm:max-w-[170px] object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+            />
+          </div>
         </div>
 
         {/* Public Desktop Nav Items */}
@@ -200,81 +225,19 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             </>
           )}
 
-          {/* CASE B: LOGGED IN AS REGULAR MERCHANT */}
-          {!isAdmin && user && (
-            <>
-              <button
-                onClick={() => handleNavClick("portal")}
-                className="tactile-btn hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#ff7a00] text-black text-xs font-bold hover:bg-[#e56d00] cursor-pointer shadow-sm"
+          {/* CASE B: NOT LOGGED IN AS ADMIN (GUEST / PUBLIC) */}
+          {!isAdmin && (
+            <div className="flex items-center gap-2">
+              <a
+                href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
+                target="_blank"
+                rel="noreferrer"
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
               >
-                <Store className="w-3.5 h-3.5 text-black" />
-                <span>My Dashboard</span>
-                <ArrowRight className="w-3 h-3 text-black/70" />
-              </button>
-
-              <button
-                onClick={handleSignOut}
-                className="tactile-btn-subtle flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-xs font-medium cursor-pointer border border-rose-800/40"
-                title="Sign out of Merchant Session"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Sign Out</span>
-              </button>
-            </>
-          )}
-
-          {/* CASE C: NOT LOGGED IN (GUEST) */}
-          {!isAdmin && !user && (
-            <>
-              <button
-                onClick={() => onOpenAuth("signin")}
-                className="tactile-btn-subtle px-4 py-1.5 rounded-full bg-[#141720] hover:bg-[#1c212e] text-white border border-[#232734] text-xs font-semibold cursor-pointer"
-              >
-                Sign In
-              </button>
-
-              <button
-                onClick={() => onOpenAuth("signup")}
-                className="tactile-btn hidden sm:flex items-center gap-1 px-4 py-1.5 rounded-full bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm"
-              >
-                <span>Register Business</span>
-              </button>
-
-              {/* Discreet Superadmin Access Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="p-1.5 rounded-full bg-[#141720] hover:bg-[#232734] text-zinc-300 hover:text-white transition-colors cursor-pointer border border-[#232734]"
-                  title="Administrative Access"
-                >
-                  <ShieldAlert className="w-4 h-4" />
-                </button>
-
-                {dropdownOpen && (
-                  <div 
-                    className="absolute right-0 mt-2 w-56 rounded-xl bg-[#141720] border border-[#232734] shadow-2xl py-2 z-50 text-xs animate-in fade-in duration-150"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="px-3 py-1.5 border-b border-[#232734] text-[10px] font-mono text-zinc-300">
-                      Platform Operations
-                    </div>
-                    <button
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        onOpenAuth("admin");
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-white/10 text-white flex items-center justify-between font-medium cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <ShieldAlert className="w-3.5 h-3.5 text-[#ff7a00]" />
-                        <span>Superadmin Portal</span>
-                      </span>
-                      <ArrowRight className="w-3 h-3 text-zinc-400" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
+                <MessageCircle className="w-3.5 h-3.5 fill-black text-black" />
+                <span>Order on WhatsApp</span>
+              </a>
+            </div>
           )}
 
           {/* Mobile Hamburger Button */}
@@ -324,41 +287,17 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
                     Sign Out
                   </button>
                 </>
-              ) : user ? (
-                <>
-                  <button
-                    onClick={() => handleNavClick("portal")}
-                    className="w-full text-center py-2.5 rounded-lg bg-[#ff7a00] text-black font-bold text-xs"
-                  >
-                    Open Merchant Dashboard
-                  </button>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full text-center py-2 rounded-lg bg-rose-950/40 text-rose-300 font-semibold text-xs border border-rose-800/40"
-                  >
-                    Sign Out
-                  </button>
-                </>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenAuth("signin");
-                    }}
-                    className="py-2.5 rounded-lg bg-[#141720] border border-[#232734] font-semibold text-xs text-white"
+                <div className="flex flex-col gap-2">
+                  <a
+                    href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-2.5 rounded-xl bg-[#25D366] text-black font-bold text-xs shadow-sm flex items-center justify-center gap-2"
                   >
-                    Merchant Sign In
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenAuth("signup");
-                    }}
-                    className="py-2.5 rounded-lg bg-[#ff7a00] text-black font-bold text-xs shadow-sm"
-                  >
-                    Register Business
-                  </button>
+                    <MessageCircle className="w-4 h-4 fill-black text-black" />
+                    <span>Order on WhatsApp</span>
+                  </a>
                 </div>
               )}
             </div>

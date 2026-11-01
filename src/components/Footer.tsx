@@ -181,13 +181,13 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
             </ul>
           </div>
 
-          {/* Col 4: Role-Separated Access */}
+          {/* Col 4: Platform Access & Orders */}
           <div>
             <h4 className="text-[11px] font-mono uppercase tracking-wider text-white font-semibold mb-3">
-              {user ? (isAdmin ? "Fleet Operations" : "Merchant Account") : "Merchant Portals"}
+              {isAdmin ? "Fleet Operations" : "Instant Orders"}
             </h4>
             <ul className="space-y-2 text-xs">
-              {user && isAdmin && (
+              {isAdmin ? (
                 <>
                   <li>
                     <button
@@ -209,59 +209,18 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
                     </button>
                   </li>
                 </>
-              )}
-
-              {user && !isAdmin && (
-                <>
-                  <li>
-                    <button
-                      onClick={() => onNavigate("portal")}
-                      className="hover:text-white transition-colors cursor-pointer font-bold text-[#ff7a00]"
-                    >
-                      My Merchant Dashboard
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={async () => {
-                        await signOut();
-                        onNavigate("home");
-                      }}
-                      className="hover:text-rose-400 transition-colors cursor-pointer"
-                    >
-                      Sign Out
-                    </button>
-                  </li>
-                </>
-              )}
-
-              {!user && (
-                <>
-                  <li>
-                    <button
-                      onClick={() => onOpenAuth("signin")}
-                      className="hover:text-white transition-colors cursor-pointer font-medium"
-                    >
-                      Merchant Sign In
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => onOpenAuth("signup")}
-                      className="hover:text-white transition-colors cursor-pointer"
-                    >
-                      Register Business
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => onOpenAuth("admin")}
-                      className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-                    >
-                      Admin Staff Login
-                    </button>
-                  </li>
-                </>
+              ) : (
+                <li>
+                  <a
+                    href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#25D366] hover:underline font-semibold flex items-center gap-1.5"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>Order on WhatsApp</span>
+                  </a>
+                </li>
               )}
             </ul>
           </div>
