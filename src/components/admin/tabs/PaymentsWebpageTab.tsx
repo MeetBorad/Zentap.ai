@@ -46,8 +46,8 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
   const [selectedProduct, setSelectedProduct] = useState("Counter Standee");
-  const [productPrice, setProductPrice] = useState<number>(1499);
-  const [sellingRate, setSellingRate] = useState<number>(1499);
+  const [productPrice, setProductPrice] = useState<number>(0);
+  const [sellingRate, setSellingRate] = useState<number>(0);
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [paymentMethod, setPaymentMethod] = useState<"UPI" | "Cash">("UPI");
   const [paymentStatus, setPaymentStatus] = useState<"Completed paid" | "Partial Advance" | "Pending Unpaid">("Completed paid");
@@ -59,8 +59,8 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
   const [editBusinessId, setEditBusinessId] = useState("");
   const [editBusinessName, setEditBusinessName] = useState("");
   const [editProduct, setEditProduct] = useState("Counter Standee");
-  const [editProductPrice, setEditProductPrice] = useState<number>(1499);
-  const [editSellingRate, setEditSellingRate] = useState<number>(1499);
+  const [editProductPrice, setEditProductPrice] = useState<number>(0);
+  const [editSellingRate, setEditSellingRate] = useState<number>(0);
   const [editPaymentDate, setEditPaymentDate] = useState<string>("");
   const [editPaymentMethod, setEditPaymentMethod] = useState<"UPI" | "Cash">("UPI");
   const [editPaymentStatus, setEditPaymentStatus] = useState<"Completed paid" | "Partial Advance" | "Pending Unpaid">("Completed paid");
@@ -120,16 +120,6 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
 
   const handleProductChange = (prod: string) => {
     setSelectedProduct(prod);
-    if (prod === "Counter Standee") {
-      setProductPrice(1499);
-      setSellingRate(1499);
-    } else if (prod === "Business NFC Card") {
-      setProductPrice(699);
-      setSellingRate(699);
-    } else {
-      setProductPrice(2499);
-      setSellingRate(2499);
-    }
   };
 
   const handleRecordSubmit = async (e: React.FormEvent) => {
@@ -170,7 +160,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
     setEditBusinessId(p.business_id);
     setEditBusinessName(p.business_name);
     setEditProduct(p.product);
-    setEditProductPrice(p.product_price);
+    setEditProductPrice(p.product_price ?? p.selling_rate ?? 0);
     setEditSellingRate(p.selling_rate);
     setEditPaymentDate(p.payment_date);
     setEditPaymentMethod(p.payment_method);
@@ -334,10 +324,10 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
           </div>
           <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
             <span className="block text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-              Total Product Value
+              Paid In Full
             </span>
-            <span className="text-xl font-extrabold text-zinc-900">
-              ₹{totalAgreed.toLocaleString("en-IN")}
+            <span className="text-xl font-extrabold text-emerald-700">
+              {payments.filter(p => p.payment_status.toLowerCase().includes("paid")).length} Orders
             </span>
           </div>
           <div className="col-span-2 sm:col-span-1 p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/60">
@@ -416,8 +406,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
-                  <th className="py-3.5 px-4">Product Price</th>
-                  <th className="py-3.5 px-4">Selling Rate / Received</th>
+                  <th className="py-3.5 px-4">Amount Received</th>
                   <th className="py-3.5 px-4">Date &amp; Method</th>
                   <th className="py-3.5 px-4">Status of Payment</th>
                   <th className="py-3.5 px-4">Notes</th>
@@ -427,7 +416,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
               <tbody className="divide-y divide-zinc-100">
                 {displayedPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={7} className="py-12 text-center text-zinc-500 font-medium">
                       No payment records found. Click &ldquo;Record Payment&rdquo; to add one.
                     </td>
                   </tr>
@@ -449,10 +438,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                         </span>
                       </td>
 
-                      {/* Product Price */}
-                      <td className="py-3 px-4 text-zinc-700 whitespace-nowrap font-medium">
-                        ₹{(p.product_price || 0).toLocaleString("en-IN")}
-                      </td>
+
 
                       {/* Selling Rate / Amount received */}
                       <td className="py-3 px-4 whitespace-nowrap font-bold text-emerald-700">
@@ -546,7 +532,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
               <tbody className="divide-y divide-zinc-100">
                 {displayedDeleted.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={7} className="py-12 text-center text-zinc-500 font-medium">
                       No deleted payment records.
                     </td>
                   </tr>
@@ -645,35 +631,28 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                   onChange={(e) => handleProductChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium"
                 >
-                  <option value="Counter Standee">Counter Standee (Standard ₹1,499)</option>
-                  <option value="Business NFC Card">Business NFC Card (Standard ₹699)</option>
-                  <option value="Dual Combo (Standee + Card)">Dual Combo (Standee + Card) (₹2,499)</option>
+                  <option value="Counter Standee">Counter Standee</option>
+                  <option value="Business NFC Card">Business NFC Card</option>
+                  <option value="Dual Combo (Standee + Card)">Dual Combo (Standee + Card)</option>
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Product Price (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={productPrice}
-                    onChange={(e) => setProductPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">
-                    Selling Rate / Amount Received (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={sellingRate}
-                    onChange={(e) => setSellingRate(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">
+                  Amount Received (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={sellingRate}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setSellingRate(val);
+                    setProductPrice(val);
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
+                  placeholder="Enter amount collected..."
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -837,29 +816,21 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Product Price (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editProductPrice}
-                    onChange={(e) => setEditProductPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">
-                    Selling Rate / Received (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editSellingRate}
-                    onChange={(e) => setEditSellingRate(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">
+                  Amount Received (₹)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editSellingRate}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setEditSellingRate(val);
+                    setEditProductPrice(val);
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import TapAnimationLoop from "@/components/TapAnimationLoop";
 import Image from "next/image";
 import { 
   ArrowRight, 
@@ -42,6 +43,7 @@ interface HomeViewProps {
 
 export default function HomeView({ onNavigate }: HomeViewProps) {
   const homeContainerRef = useRef<HTMLDivElement>(null);
+  const [heroVisualMode, setHeroVisualMode] = useState<"demo" | "photo">("demo");
 
   // GSAP ScrollTrigger Animations for smooth section entries
   useGSAP(() => {
@@ -164,24 +166,69 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
               </div>
             </div>
 
-            {/* Right: Authentic Product Photo Showcase (Replacing 3D customizer) */}
+            {/* Right: Looping Tap Demonstration & Authentic Standee Visual */}
             <div className="lg:col-span-5 flex flex-col justify-center">
-              <div className="relative rounded-3xl overflow-hidden border border-[#2d3345] bg-[#141720] shadow-2xl p-4 sm:p-6 group">
-                <div className="relative aspect-4/3 w-full rounded-2xl overflow-hidden border border-[#232734]">
-                  <Image
-                    src="/standees/Gold.webp"
-                    alt="ZenTap Google Review Stand on Counter"
-                    fill
-                    priority
-                    sizes="(max-width: 768px) 100vw, 500px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
+              <div className="relative rounded-3xl overflow-hidden border border-[#2d3345] bg-[#141720] shadow-2xl p-4 sm:p-6">
+                
+                {/* Visual Mode Selector Tabs */}
+                <div className="flex items-center justify-between gap-2 mb-3.5 pb-3 border-b border-[#232734]">
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0e1015] border border-[#232734]">
+                    <button
+                      onClick={() => setHeroVisualMode("demo")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        heroVisualMode === "demo"
+                          ? "bg-[#ff7a00] text-black shadow-sm"
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Live Tap Demo</span>
+                    </button>
+                    <button
+                      onClick={() => setHeroVisualMode("photo")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        heroVisualMode === "photo"
+                          ? "bg-[#ff7a00] text-black shadow-sm"
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      <span>Real Standee</span>
+                    </button>
+                  </div>
+
+                  <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Instant Review</span>
+                  </span>
                 </div>
 
+                {/* Visual Frame */}
+                {heroVisualMode === "demo" ? (
+                  <TapAnimationLoop className="w-full border border-[#232734]" />
+                ) : (
+                  <div className="relative aspect-4/3 w-full rounded-2xl overflow-hidden border border-[#232734] group">
+                    <Image
+                      src="/standees/Gold.webp"
+                      alt="ZenTap Google Review Stand on Counter"
+                      fill
+                      priority
+                      sizes="(max-width: 768px) 100vw, 500px"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                )}
+
+                {/* Caption Footer */}
                 <div className="mt-4 flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-white text-base">Champagne Gold Standee</h3>
-                    <p className="text-xs text-slate-300 mt-0.5">Placed directly on your billing counter</p>
+                    <h3 className="font-bold text-white text-base">
+                      {heroVisualMode === "demo" ? "One Tap to Google Reviews" : "Champagne Gold Standee"}
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      {heroVisualMode === "demo"
+                        ? "Phone taps standee → 5-star Google review opens"
+                        : "Placed directly on your customer billing counter"}
+                    </p>
                   </div>
                   <div className="flex items-center gap-1 text-amber-400">
                     {[...Array(5)].map((_, i) => (

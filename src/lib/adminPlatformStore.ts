@@ -39,7 +39,7 @@ export interface PaymentItemRecord {
   business_id: string; // e.g. ZT-0001
   business_name: string;
   product: string;
-  product_price: number;
+  product_price?: number;
   selling_rate: number; // amount received / selling rate
   payment_date: string;
   payment_method: "UPI" | "Cash";
@@ -733,7 +733,7 @@ export async function addPaymentServer(params: {
   business_id: string;
   business_name: string;
   product: string;
-  product_price: number;
+  product_price?: number;
   selling_rate: number;
   payment_date: string;
   payment_method: "UPI" | "Cash";
@@ -745,7 +745,7 @@ export async function addPaymentServer(params: {
       business_id: params.business_id,
       business_name: params.business_name,
       product: params.product,
-      product_price: params.product_price,
+      product_price: params.product_price ?? params.selling_rate,
       selling_rate: params.selling_rate,
       payment_date: params.payment_date,
       payment_method: params.payment_method,

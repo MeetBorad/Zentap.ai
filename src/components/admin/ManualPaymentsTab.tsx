@@ -553,7 +553,7 @@ export default function ManualPaymentsTab({ businesses, onShowToast, onPaymentCo
                 >
                   {PRODUCT_CATEGORIES.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} (Default: ₹{p.defaultPrice})
+                      {p.name}
                     </option>
                   ))}
                 </select>

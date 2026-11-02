@@ -1,5 +1,16 @@
 # ZenTap — Changelog
 
+## [1.45.0] — 2026-11-03
+### Updated (Looping Tap SVG Animation on Homepage & Admin Payments Cleanup)
+- **Implemented Looping Tap Animation**:
+  - Created `TapAnimationLoop.tsx` utilizing the full 6-second synchronized SVG animation cycle: phone lowering, contactless NFC ripple emission, review sheet slide-up with Google "G" branding, sequential 5-star lighting, and positive service feedback confirmation.
+  - Featured this animated demonstration directly in the homepage hero section with an instant toggle between "Live Tap Demo" and "Real Standee".
+- **Admin Portal Payments Ledger Cleanup**:
+  - Deleted the static "Product Price" column from the Payments webpage tab table and ledger (`PaymentsWebpageTab.tsx`).
+  - Removed fixed price defaults (`1499`, `699`, `2499`, etc.) from all payment recording and editing modals.
+  - Standardized payment tracking strictly on actual variable "Amount Received" without hardcoded price assumptions.
+  - Updated backend stores and types (`adminPlatformStore.ts` and `manualPaymentStore.ts`) to make product price optional and eliminate fixed price locks.
+
 ## [1.44.0] — 2026-11-03
 ### Simplified & Streamlined (Audience-First Content & Admin Popover Fixes)
 - **Top-Right Exclusive WhatsApp Order & Admin Login**:
