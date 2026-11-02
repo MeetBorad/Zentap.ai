@@ -63,6 +63,24 @@ interface PageEditorWebpageTabProps {
   onShowToast: (msg: string) => void;
 }
 
+const PRESET_CATEGORIES = [
+  "Restaurant & Cafe",
+  "Salon & Spa",
+  "Retail Store",
+  "Healthcare & Clinic",
+  "Service",
+  "Jewellery & Luxury",
+  "Customer Satisfaction Hub",
+];
+
+const parseCategoriesList = (raw: string): string[] => {
+  if (!raw || typeof raw !== "string") return [];
+  return raw
+    .split(/[,/|•]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
+
 export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageTabProps) {
   const [editorConfigs, setEditorConfigs] = useState<PageEditorConfigItemRecord[]>([]);
   const [deletedConfigs, setDeletedConfigs] = useState<DeletedPageEditorConfigRecord[]>([]);
@@ -185,8 +203,78 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editWholeBusinessId, setEditWholeBusinessId] = useState("");
   const [editWholeBusinessName, setEditWholeBusinessName] = useState("");
   const [editWholeCategory, setEditWholeCategory] = useState("Customer Satisfaction Hub");
+  const [categoryInputText, setCategoryInputText] = useState("");
+  const [designerCatInputText, setDesignerCatInputText] = useState("");
   const [editWholeLinkUrl, setEditWholeLinkUrl] = useState("");
   const [editWholeSetupStatus, setEditWholeSetupStatus] = useState<"pending" | "completed">("pending");
+
+  // Category Tag Helpers for Edit Whole Entry Modal
+  const currentWholeCategories = parseCategoriesList(editWholeCategory);
+
+  const handleAddWholeCategory = (catToAdd: string) => {
+    const trimmed = catToAdd.trim();
+    if (!trimmed) return;
+    const exists = currentWholeCategories.some(
+      (c) => c.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (!exists) {
+      const updated = [...currentWholeCategories, trimmed];
+      setEditWholeCategory(updated.join(", "));
+    }
+    setCategoryInputText("");
+  };
+
+  const handleRemoveWholeCategory = (catToRemove: string) => {
+    const updated = currentWholeCategories.filter(
+      (c) => c.toLowerCase() !== catToRemove.toLowerCase()
+    );
+    setEditWholeCategory(updated.join(", "));
+  };
+
+  const handleToggleWholeCategory = (cat: string) => {
+    const exists = currentWholeCategories.some(
+      (c) => c.toLowerCase() === cat.toLowerCase()
+    );
+    if (exists) {
+      handleRemoveWholeCategory(cat);
+    } else {
+      handleAddWholeCategory(cat);
+    }
+  };
+
+  // Category Tag Helpers for Visual Page Designer Modal
+  const currentDesignerCategories = parseCategoriesList(editSubtitle);
+
+  const handleAddDesignerCategory = (catToAdd: string) => {
+    const trimmed = catToAdd.trim();
+    if (!trimmed) return;
+    const exists = currentDesignerCategories.some(
+      (c) => c.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (!exists) {
+      const updated = [...currentDesignerCategories, trimmed];
+      setEditSubtitle(updated.join(", "));
+    }
+    setDesignerCatInputText("");
+  };
+
+  const handleRemoveDesignerCategory = (catToRemove: string) => {
+    const updated = currentDesignerCategories.filter(
+      (c) => c.toLowerCase() !== catToRemove.toLowerCase()
+    );
+    setEditSubtitle(updated.join(", "));
+  };
+
+  const handleToggleDesignerCategory = (cat: string) => {
+    const exists = currentDesignerCategories.some(
+      (c) => c.toLowerCase() === cat.toLowerCase()
+    );
+    if (exists) {
+      handleRemoveDesignerCategory(cat);
+    } else {
+      handleAddDesignerCategory(cat);
+    }
+  };
 
   // Delete Target Modal (Soft delete)
   const [deleteTarget, setDeleteTarget] = useState<PageEditorConfigItemRecord | null>(null);
@@ -396,6 +484,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeBusinessId(item.business_id);
     setEditWholeBusinessName(item.business_name);
     setEditWholeCategory(item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub");
+    setCategoryInputText("");
     setEditWholeLinkUrl(item.link_url);
     setEditWholeSetupStatus(item.setup_status);
   };
@@ -1007,27 +1096,110 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Category / Categories</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Restaurant & Cafe, Salon & Spa, Retail Store, Customer Satisfaction Hub"
-                  value={editWholeCategory}
-                  onChange={(e) => setEditWholeCategory(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {["Restaurant & Cafe", "Salon & Spa", "Retail Store", "Healthcare & Clinic", "Customer Satisfaction Hub"].map((cat) => (
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Category / Categories
+                  </label>
+                  {currentWholeCategories.length > 0 && (
                     <button
-                      key={cat}
                       type="button"
-                      onClick={() => setEditWholeCategory(cat)}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-colors ${
-                        editWholeCategory === cat ? "bg-purple-600 text-white border-purple-600" : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
-                      }`}
+                      onClick={() => setEditWholeCategory("")}
+                      className="text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
                     >
-                      {cat}
+                      Clear all
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {/* Active Category Badges (Removable with ×) */}
+                <div className="min-h-[42px] p-2 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-wrap items-center gap-1.5 mb-2">
+                  {currentWholeCategories.length === 0 ? (
+                    <span className="text-xs text-zinc-400 italic px-1">
+                      No categories selected. Type below to add or click a preset chip.
+                    </span>
+                  ) : (
+                    currentWholeCategories.map((cat) => (
+                      <span
+                        key={cat}
+                        className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold shadow-2xs group animate-in zoom-in-95 duration-150"
+                      >
+                        <Tag className="w-3 h-3 text-purple-600 shrink-0" />
+                        <span>{cat}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWholeCategory(cat)}
+                          title={`Remove ${cat}`}
+                          className="w-4 h-4 rounded-md hover:bg-purple-200 text-purple-700 flex items-center justify-center cursor-pointer transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Custom Category Input with + Add button */}
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Type category (e.g. Service, Cafe, Salon) and press Enter..."
+                    value={categoryInputText}
+                    onChange={(e) => setCategoryInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        handleAddWholeCategory(categoryInputText);
+                      }
+                    }}
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddWholeCategory(categoryInputText)}
+                    disabled={!categoryInputText.trim()}
+                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
+                  >
+                    <span>+ Add</span>
+                  </button>
+                </div>
+
+                {/* Preset Categories (Click to Add / Remove toggle) */}
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block mb-1.5">
+                    Click preset to add or remove:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_CATEGORIES.map((preset) => {
+                      const isSelected = currentWholeCategories.some(
+                        (c) => c.toLowerCase() === preset.toLowerCase()
+                      );
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => handleToggleWholeCategory(preset)}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
+                            isSelected
+                              ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
+                              : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <Check className="w-3 h-3 text-white" />
+                              <span>{preset}</span>
+                              <X className="w-3 h-3 text-white/70 hover:text-white ml-0.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-zinc-400 font-bold">+</span>
+                              <span>{preset}</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1305,26 +1477,108 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-zinc-900 mb-1">Category / Subtitle</label>
-                      <input
-                        type="text"
-                        value={editSubtitle}
-                        onChange={(e) => setEditSubtitle(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                      />
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {["Restaurant & Cafe", "Salon & Spa", "Retail Store", "Healthcare & Clinic", "Customer Satisfaction Hub"].map((cat) => (
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-bold text-zinc-900">Category / Subtitle</label>
+                        {currentDesignerCategories.length > 0 && (
                           <button
-                            key={cat}
                             type="button"
-                            onClick={() => setEditSubtitle(cat)}
-                            className={`text-[9px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-colors ${
-                              editSubtitle === cat ? "bg-purple-600 text-white border-purple-600" : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
-                            }`}
+                            onClick={() => setEditSubtitle("")}
+                            className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
                           >
-                            {cat}
+                            Clear all
                           </button>
-                        ))}
+                        )}
+                      </div>
+
+                      {/* Active Category Badges (Removable with ×) */}
+                      <div className="min-h-[38px] p-1.5 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-wrap items-center gap-1.5 mb-1.5">
+                        {currentDesignerCategories.length === 0 ? (
+                          <span className="text-[11px] text-zinc-400 italic px-1">
+                            No categories selected. Type to add or click a preset below.
+                          </span>
+                        ) : (
+                          currentDesignerCategories.map((cat) => (
+                            <span
+                              key={cat}
+                              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-[11px] font-bold shadow-2xs group"
+                            >
+                              <Tag className="w-2.5 h-2.5 text-purple-600 shrink-0" />
+                              <span>{cat}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDesignerCategory(cat)}
+                                title={`Remove ${cat}`}
+                                className="w-3.5 h-3.5 rounded hover:bg-purple-200 text-purple-700 flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Add Custom Category Input with + Add button */}
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <input
+                          type="text"
+                          placeholder="Type category & press Enter..."
+                          value={designerCatInputText}
+                          onChange={(e) => setDesignerCatInputText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === ",") {
+                              e.preventDefault();
+                              handleAddDesignerCategory(designerCatInputText);
+                            }
+                          }}
+                          className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddDesignerCategory(designerCatInputText)}
+                          disabled={!designerCatInputText.trim()}
+                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
+                        >
+                          <span>+ Add</span>
+                        </button>
+                      </div>
+
+                      {/* Preset Categories (Click to Add / Remove toggle) */}
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block mb-1">
+                          Click preset to add or remove:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {PRESET_CATEGORIES.map((preset) => {
+                            const isSelected = currentDesignerCategories.some(
+                              (c) => c.toLowerCase() === preset.toLowerCase()
+                            );
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => handleToggleDesignerCategory(preset)}
+                                className={`text-[10px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
+                                  isSelected
+                                    ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
+                                    : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
+                                }`}
+                              >
+                                {isSelected ? (
+                                  <>
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                    <span>{preset}</span>
+                                    <X className="w-2.5 h-2.5 text-white/70 hover:text-white ml-0.5" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-zinc-400 font-bold">+</span>
+                                    <span>{preset}</span>
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>

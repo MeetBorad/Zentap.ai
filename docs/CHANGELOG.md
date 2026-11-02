@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.37.0] — 2026-11-02
+### Fixed & Enhanced (Interactive Category Tag Addition & Removal Architecture)
+- **Removable Category Badges with `×` Delete Triggers**:
+  - Transformed the plain text category input in both the **Edit Whole Entry** modal and **Visual Page Designer** modal into an interactive Multi-Tag Manager.
+  - Active categories (e.g. `Service`, `Restaurant & Cafe`, `Retail Store`) now render as individual purple badge chips with an explicit `×` removal button.
+  - Clicking `×` instantly removes the category from the active list.
+  - Added a 1-click **Clear all** button to wipe out all categories with a single tap.
+- **Custom Category Addition with Enter / Comma / `+ Add` Button**:
+  - Store admins can type any custom category name (e.g. `Service`, `Dental Care`, `Bakery`, `Jewellery Store`) and press **Enter**, `,` (comma), or click **+ Add**.
+  - Form submission on Enter is cleanly intercepted via `e.preventDefault()`, adding the category chip immediately instead of accidentally submitting the modal.
+- **Bidirectional Preset Chip Toggle**:
+  - The preset category chips (`Restaurant & Cafe`, `Salon & Spa`, `Retail Store`, `Healthcare & Clinic`, `Service`, `Jewellery & Luxury`, `Customer Satisfaction Hub`) now function as toggleable switches:
+    - If a preset is already active, it shows purple with `✓` and an `×` icon; clicking it **removes/unselects** it.
+    - If a preset is not active, clicking it **adds** it to the active category list.
+  - Synchronized across both the **Edit Whole Entry** modal and the **Visual Page Designer** modal.
+
 ## [1.36.0] — 2026-11-02
 ### Compliance & Authenticity (Review Gating Policy Compliance & Realistic Startup Metrics)
 - **Purged Contradictory Review Gating Claims Across the Website**:
