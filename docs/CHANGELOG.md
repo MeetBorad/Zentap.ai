@@ -1,6 +1,36 @@
 # ZenTap — Changelog
 
-## [1.27.1] — 2026-11-02
+## [1.28.0] — 2026-11-02
+### Enhanced (Full Entry Editing, Database Deletion Audit Tables, Business ID Search & Table Enhancements)
+- **Database Schema Migration (`010_admin_tables_enhancements.sql`)**:
+  - `public.deleted_payments`: Dedicated audit table for deleted payments with timestamps and operator tags.
+  - `public.deleted_google_review_links`: Audit table for deleted Google Review standee configurations.
+  - `public.deleted_social_links`: Audit table for deleted Social Link smart card configurations.
+  - `public.deleted_qr_nfc_tags`: Audit table for deleted hardware QR/NFC tags.
+  - `public.deleted_page_editor_configs`: Audit table for deleted showcase page configurations.
+  - Full Row Level Security (RLS) policies and B-tree indexes across all deletion tables.
+- **Clients Tab**:
+  - Added full entry editing modal under Actions column allowing updates to `business_id`, `business_name`, `owner_name`, `owner_phone`, `owner_email`, `whatsapp`, `instagram_link`, `facebook_link`, and `city`.
+- **Payments Tab**:
+  - Added full entry editing modal under Actions column (updates business, product, price, selling rate, date, method, status, notes).
+  - Removed admin password requirement on delete. Deleted payments are cleanly archived into `deleted_payments`.
+  - Added top filter tabs: **All**, **Paid**, **Unpaid**, and **Deleted** with 1-click restore.
+- **QR/NFC Generator Tab**:
+  - In "Create Single Tag" modal: Added live search input for Business ID / Name to easily assign to any registered merchant.
+  - In "Assign Business" modal & column: Added live search filter for Business ID / Name / City.
+  - In Actions column: Added Option to edit the whole entry (Tag ID, Product Type, Assigned Business with search, Generated Link, Scans).
+- **Google Links & QR Sharing Tab**:
+  - Added dedicated **Google Review Link** column with direct quick-edit modal.
+  - Added Actions column at the end with **Edit Whole Entry** and **Delete Entry** (moves to `deleted_google_review_links`).
+  - Added **Deleted** section tab filter with 1-click restore.
+- **Social Links & QR Sharing Tab**:
+  - Added dedicated **Social Link** column with direct quick-edit modal.
+  - Added Actions column at the end with **Edit Whole Entry** and **Delete Entry** (moves to `deleted_social_links`).
+  - Added **Deleted** section tab filter with 1-click restore.
+- **Page Editor Tab**:
+  - Added Actions column at the end with **Edit Whole Entry** and **Delete Entry** (moves to `deleted_page_editor_configs`).
+  - Added **Deleted** section tab filter with 1-click restore.
+
 ### Production Deployment & Canonical Domain Consolidation
 - **Canonical Production Domain**: Standardized live production deployment strictly to `https://zentapdigitalsolutions.com` and `https://www.zentapdigitalsolutions.com`.
 - **Legacy Domain Removal**: Completely removed unconfigured and legacy deployment aliases (`zentap.app`) from Vercel alias mappings and project domain configurations.

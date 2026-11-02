@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   X,
   CheckCircle2,
+  Edit2,
 } from "lucide-react";
 import {
   ClientRecord,
@@ -23,6 +24,7 @@ import {
   getAllClients,
   getAllDeletedBusinesses,
   addClient,
+  updateClient,
   deleteClientPermanently,
   restoreDeletedBusiness,
   generateNextBusinessIdCode,
@@ -49,6 +51,19 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   const [newFacebook, setNewFacebook] = useState("");
   const [newCity, setNewCity] = useState("Ahmedabad");
 
+  // Edit Business Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ClientRecord | null>(null);
+  const [editBusinessId, setEditBusinessId] = useState("");
+  const [editBizName, setEditBizName] = useState("");
+  const [editOwnerName, setEditOwnerName] = useState("");
+  const [editOwnerPhone, setEditOwnerPhone] = useState("");
+  const [editOwnerEmail, setEditOwnerEmail] = useState("");
+  const [editWhatsapp, setEditWhatsapp] = useState("");
+  const [editInstagram, setEditInstagram] = useState("");
+  const [editFacebook, setEditFacebook] = useState("");
+  const [editCity, setEditCity] = useState("Ahmedabad");
+
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ClientRecord | null>(null);
 
@@ -62,6 +77,50 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   };
 
   const nextIdPreview = generateNextBusinessIdCode(clients);
+
+  const openEditModal = (client: ClientRecord) => {
+    setEditTarget(client);
+    setEditBusinessId(client.business_id);
+    setEditBizName(client.business_name || "");
+    setEditOwnerName(client.owner_name || "");
+    setEditOwnerPhone(client.owner_phone || "");
+    setEditOwnerEmail(client.owner_email || "");
+    setEditWhatsapp(client.whatsapp || "");
+    setEditInstagram(client.instagram_link || "");
+    setEditFacebook(client.facebook_link || "");
+    setEditCity(client.city || "Ahmedabad");
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    if (!editBizName.trim()) {
+      onShowToast("Please enter a business name");
+      return;
+    }
+
+    const updated = updateClient(editTarget.business_id, {
+      business_id: editBusinessId.trim() || editTarget.business_id,
+      business_name: editBizName.trim(),
+      owner_name: editOwnerName.trim() || undefined,
+      owner_phone: editOwnerPhone.trim() || undefined,
+      owner_email: editOwnerEmail.trim() || undefined,
+      whatsapp: editWhatsapp.trim() || undefined,
+      instagram_link: editInstagram.trim() || undefined,
+      facebook_link: editFacebook.trim() || undefined,
+      city: editCity.trim() || "India",
+    });
+
+    if (updated) {
+      onShowToast(`✓ Updated "${updated.business_name}" (${updated.business_id}) successfully!`);
+      setIsEditModalOpen(false);
+      setEditTarget(null);
+      refreshData();
+    } else {
+      onShowToast("Failed to update business");
+    }
+  };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,13 +400,22 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => setDeleteTarget(client)}
-                          title="Delete Business Permanently"
-                          className="tactile-btn p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditModal(client)}
+                            title="Edit Whole Entry"
+                            className="tactile-btn p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(client)}
+                            title="Delete Business Permanently"
+                            className="tactile-btn p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -569,6 +637,150 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                   className="tactile-btn px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
                 >
                   Save Business
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: EDIT BUSINESS (WHOLE ENTRY)                                        */}
+      {/* ========================================================================= */}
+      {isEditModalOpen && editTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-5 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <Edit2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-zinc-900">Edit Business Entry</h3>
+                  <p className="text-[11px] text-zinc-500">Update business details, contacts, and social channels</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Business ID
+                  </label>
+                  <input
+                    type="text"
+                    value={editBusinessId}
+                    onChange={(e) => setEditBusinessId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Business Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editBizName}
+                    onChange={(e) => setEditBizName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Name</label>
+                  <input
+                    type="text"
+                    value={editOwnerName}
+                    onChange={(e) => setEditOwnerName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Phone</label>
+                  <input
+                    type="tel"
+                    value={editOwnerPhone}
+                    onChange={(e) => setEditOwnerPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Email</label>
+                  <input
+                    type="email"
+                    value={editOwnerEmail}
+                    onChange={(e) => setEditOwnerEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">WhatsApp Number</label>
+                  <input
+                    type="tel"
+                    value={editWhatsapp}
+                    onChange={(e) => setEditWhatsapp(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Instagram Link</label>
+                  <input
+                    type="url"
+                    value={editInstagram}
+                    onChange={(e) => setEditInstagram(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Facebook Link</label>
+                  <input
+                    type="url"
+                    value={editFacebook}
+                    onChange={(e) => setEditFacebook(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
+                <input
+                  type="text"
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

@@ -6,20 +6,25 @@ import {
   Search,
   Plus,
   Trash2,
-  Lock,
   Calendar,
   X,
   Banknote,
   QrCode,
-  AlertTriangle,
+  Edit2,
+  RotateCcw,
+  ShieldAlert,
 } from "lucide-react";
 import {
   PaymentItemRecord,
+  DeletedPaymentRecord,
   ClientRecord,
   getAllPayments,
+  getAllDeletedPayments,
   getAllClients,
   addPayment,
-  deletePaymentWithPassword,
+  updatePayment,
+  deletePayment,
+  restoreDeletedPayment,
 } from "@/lib/adminPlatformStore";
 
 interface PaymentsWebpageTabProps {
@@ -28,8 +33,10 @@ interface PaymentsWebpageTabProps {
 
 export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabProps) {
   const [payments, setPayments] = useState<PaymentItemRecord[]>([]);
+  const [deletedPayments, setDeletedPayments] = useState<DeletedPaymentRecord[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterTab, setFilterTab] = useState<"all" | "paid" | "unpaid" | "deleted">("all");
 
   // Record Payment Modal
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -42,10 +49,21 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
   const [paymentStatus, setPaymentStatus] = useState<"Completed paid" | "Partial Advance" | "Pending Unpaid">("Completed paid");
   const [paymentNotes, setPaymentNotes] = useState("");
 
-  // Delete with Password Modal
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [adminPasswordInput, setAdminPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  // Edit Payment Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [editBusinessId, setEditBusinessId] = useState("");
+  const [editBusinessName, setEditBusinessName] = useState("");
+  const [editProduct, setEditProduct] = useState("Counter Standee");
+  const [editProductPrice, setEditProductPrice] = useState<number>(1499);
+  const [editSellingRate, setEditSellingRate] = useState<number>(1499);
+  const [editPaymentDate, setEditPaymentDate] = useState<string>("");
+  const [editPaymentMethod, setEditPaymentMethod] = useState<"UPI" | "Cash">("UPI");
+  const [editPaymentStatus, setEditPaymentStatus] = useState<"Completed paid" | "Partial Advance" | "Pending Unpaid">("Completed paid");
+  const [editPaymentNotes, setEditPaymentNotes] = useState("");
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<PaymentItemRecord | null>(null);
 
   useEffect(() => {
     refreshData();
@@ -53,6 +71,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
 
   const refreshData = () => {
     setPayments(getAllPayments());
+    setDeletedPayments(getAllDeletedPayments());
     setClients(getAllClients());
   };
 
@@ -104,39 +123,104 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
     refreshData();
   };
 
-  const handleDeleteWithPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!deleteTargetId) return;
+  // Open Edit Modal with full entry prefilled
+  const openEditModal = (p: PaymentItemRecord) => {
+    setEditTargetId(p.id);
+    setEditBusinessId(p.business_id);
+    setEditBusinessName(p.business_name);
+    setEditProduct(p.product);
+    setEditProductPrice(p.product_price);
+    setEditSellingRate(p.selling_rate);
+    setEditPaymentDate(p.payment_date);
+    setEditPaymentMethod(p.payment_method);
+    setEditPaymentStatus(p.payment_status);
+    setEditPaymentNotes(p.notes || "");
+    setIsEditModalOpen(true);
+  };
 
-    const res = deletePaymentWithPassword(deleteTargetId, adminPasswordInput);
-    if (res.success) {
-      onShowToast(`✓ ${res.message}`);
-      setDeleteTargetId(null);
-      setAdminPasswordInput("");
-      setPasswordError("");
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTargetId) return;
+
+    const updated = updatePayment(editTargetId, {
+      business_id: editBusinessId.trim(),
+      business_name: editBusinessName.trim(),
+      product: editProduct,
+      product_price: Number(editProductPrice) || 0,
+      selling_rate: Number(editSellingRate) || 0,
+      payment_date: editPaymentDate,
+      payment_method: editPaymentMethod,
+      payment_status: editPaymentStatus,
+      notes: editPaymentNotes.trim() || undefined,
+    });
+
+    if (updated) {
+      onShowToast(`✓ Payment record for "${updated.business_name}" updated!`);
+      setIsEditModalOpen(false);
+      setEditTargetId(null);
       refreshData();
     } else {
-      setPasswordError(res.message);
+      onShowToast("Failed to update payment record");
+    }
+  };
+
+  // Delete without admin password (moves to deleted_payments)
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    const res = deletePayment(deleteTarget.id);
+    if (res.success) {
+      onShowToast(`✓ Payment for "${deleteTarget.business_name}" moved to Deleted section`);
+      setDeleteTarget(null);
+      refreshData();
+    }
+  };
+
+  // Restore deleted payment
+  const handleRestore = (item: DeletedPaymentRecord) => {
+    const success = restoreDeletedPayment(item.id);
+    if (success) {
+      onShowToast(`✓ Restored payment for "${item.business_name}"!`);
+      refreshData();
     }
   };
 
   // Search filter
   const q = searchQuery.toLowerCase().trim();
-  const filteredPayments = payments.filter((p) => {
-    if (!q) return true;
-    return (
-      (p.business_id && p.business_id.toLowerCase().includes(q)) ||
-      (p.business_name && p.business_name.toLowerCase().includes(q)) ||
-      (p.product && p.product.toLowerCase().includes(q)) ||
-      (p.payment_method && p.payment_method.toLowerCase().includes(q)) ||
-      (p.payment_status && p.payment_status.toLowerCase().includes(q)) ||
-      (p.notes && p.notes.toLowerCase().includes(q))
-    );
-  });
+  const filterList = <T extends PaymentItemRecord>(items: T[]): T[] => {
+    return items.filter((p) => {
+      if (!q) return true;
+      return (
+        (p.business_id && p.business_id.toLowerCase().includes(q)) ||
+        (p.business_name && p.business_name.toLowerCase().includes(q)) ||
+        (p.product && p.product.toLowerCase().includes(q)) ||
+        (p.payment_method && p.payment_method.toLowerCase().includes(q)) ||
+        (p.payment_status && p.payment_status.toLowerCase().includes(q)) ||
+        (p.notes && p.notes.toLowerCase().includes(q))
+      );
+    });
+  };
 
-  // Calculate totals
+  // Category filter
+  let displayedPayments = filterList(payments);
+  if (filterTab === "paid") {
+    displayedPayments = displayedPayments.filter((p) => p.payment_status === "Completed paid");
+  } else if (filterTab === "unpaid") {
+    displayedPayments = displayedPayments.filter(
+      (p) => p.payment_status === "Pending Unpaid" || p.payment_status === "Partial Advance"
+    );
+  }
+
+  const displayedDeleted = filterList(deletedPayments);
+
+  // Calculate totals for active payments
   const totalReceived = payments.reduce((acc, p) => acc + (p.selling_rate || 0), 0);
   const totalAgreed = payments.reduce((acc, p) => acc + (p.product_price || 0), 0);
+
+  const statusColors = {
+    "Completed paid": "bg-emerald-50 text-emerald-800 border-emerald-300",
+    "Partial Advance": "bg-amber-50 text-amber-800 border-amber-300",
+    "Pending Unpaid": "bg-rose-50 text-rose-800 border-rose-300",
+  };
 
   return (
     <div className="space-y-6">
@@ -150,7 +234,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
             <div>
               <h1 className="text-xl font-bold text-zinc-900 tracking-tight">Payments Ledger</h1>
               <p className="text-xs text-zinc-500">
-                Track payments, selling rates, and collection modes. Protected with admin credentials.
+                Track payments, selling rates, and collection modes with full edit and audit history.
               </p>
             </div>
           </div>
@@ -192,13 +276,57 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mt-4 pt-4 border-t border-zinc-100">
+        {/* Filter Pills & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-100">
+          {/* 4 Tabs: All, Paid, Unpaid, Deleted */}
+          <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-xl w-fit">
+            <button
+              onClick={() => setFilterTab("all")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterTab === "all"
+                  ? "bg-white text-zinc-900 shadow-2xs"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              All ({payments.length})
+            </button>
+            <button
+              onClick={() => setFilterTab("paid")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterTab === "paid"
+                  ? "bg-white text-emerald-700 shadow-2xs"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              Paid ({payments.filter((p) => p.payment_status === "Completed paid").length})
+            </button>
+            <button
+              onClick={() => setFilterTab("unpaid")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterTab === "unpaid"
+                  ? "bg-white text-amber-700 shadow-2xs"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              Unpaid ({payments.filter((p) => p.payment_status !== "Completed paid").length})
+            </button>
+            <button
+              onClick={() => setFilterTab("deleted")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterTab === "deleted"
+                  ? "bg-white text-rose-700 shadow-2xs"
+                  : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              Deleted ({deletedPayments.length})
+            </button>
+          </div>
+
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by ID, name, method, status..."
+              placeholder="Search by ID, name, method, notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium"
@@ -207,38 +335,32 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
         </div>
       </div>
 
-      {/* PAYMENTS TABLE */}
-      <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
-                <th className="py-3.5 px-4">Business ID</th>
-                <th className="py-3.5 px-4">Business Name</th>
-                <th className="py-3.5 px-4">Product Price</th>
-                <th className="py-3.5 px-4">Selling Rate / Received</th>
-                <th className="py-3.5 px-4">Date &amp; Method</th>
-                <th className="py-3.5 px-4">Status of Payment</th>
-                <th className="py-3.5 px-4">Notes</th>
-                <th className="py-3.5 px-4 text-right">Delete</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {filteredPayments.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-zinc-500 font-medium">
-                    No payment records found. Click &ldquo;Record Payment&rdquo; to add one.
-                  </td>
+      {/* ACTIVE PAYMENTS TABLE (All / Paid / Unpaid) */}
+      {filterTab !== "deleted" && (
+        <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
+                  <th className="py-3.5 px-4">Business ID</th>
+                  <th className="py-3.5 px-4">Business Name</th>
+                  <th className="py-3.5 px-4">Product Price</th>
+                  <th className="py-3.5 px-4">Selling Rate / Received</th>
+                  <th className="py-3.5 px-4">Date &amp; Method</th>
+                  <th className="py-3.5 px-4">Status of Payment</th>
+                  <th className="py-3.5 px-4">Notes</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
-              ) : (
-                filteredPayments.map((p) => {
-                  const statusColors = {
-                    "Completed paid": "bg-emerald-50 text-emerald-800 border-emerald-300",
-                    "Partial Advance": "bg-amber-50 text-amber-800 border-amber-300",
-                    "Pending Unpaid": "bg-rose-50 text-rose-800 border-rose-300",
-                  };
-
-                  return (
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {displayedPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-zinc-500 font-medium">
+                      No payment records found. Click &ldquo;Record Payment&rdquo; to add one.
+                    </td>
+                  </tr>
+                ) : (
+                  displayedPayments.map((p) => (
                     <tr key={p.id} className="hover:bg-zinc-50/70 transition-colors">
                       {/* Business ID */}
                       <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
@@ -294,29 +416,107 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                         {p.notes || <span className="text-zinc-400">—</span>}
                       </td>
 
-                      {/* Delete with Password */}
+                      {/* Actions: Edit & Delete */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditModal(p)}
+                            title="Edit Whole Entry"
+                            className="tactile-btn p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(p)}
+                            title="Delete Payment"
+                            className="tactile-btn p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* DELETED PAYMENTS TABLE */}
+      {filterTab === "deleted" && (
+        <div className="bg-white rounded-2xl border border-zinc-200/80 shadow-sm overflow-hidden">
+          <div className="p-4 bg-rose-50/50 border-b border-rose-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-rose-900">
+              <ShieldAlert className="w-4 h-4 text-rose-600" />
+              <span className="text-xs font-bold">Deleted Payments Registry</span>
+            </div>
+            <span className="text-[11px] text-rose-700">
+              Archived payment details. Can be restored back to active ledger at any time.
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
+                  <th className="py-3.5 px-4">Business ID</th>
+                  <th className="py-3.5 px-4">Business Name</th>
+                  <th className="py-3.5 px-4">Product</th>
+                  <th className="py-3.5 px-4">Amount</th>
+                  <th className="py-3.5 px-4">Date &amp; Method</th>
+                  <th className="py-3.5 px-4">Deleted At</th>
+                  <th className="py-3.5 px-4">Notes</th>
+                  <th className="py-3.5 px-4 text-right">Restore</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {displayedDeleted.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-zinc-500 font-medium">
+                      No deleted payment records.
+                    </td>
+                  </tr>
+                ) : (
+                  displayedDeleted.map((item) => (
+                    <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-zinc-900">
+                        <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px]">
+                          {item.business_id}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-bold text-zinc-900">{item.business_name}</td>
+                      <td className="py-3 px-4 text-zinc-700">{item.product}</td>
+                      <td className="py-3 px-4 font-bold text-emerald-700">
+                        ₹{(item.selling_rate || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-700">
+                        {item.payment_date} ({item.payment_method})
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 text-[11px]">
+                        {new Date(item.deleted_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 text-[11px] max-w-xs truncate">
+                        {item.notes || "—"}
+                      </td>
+                      <td className="py-3 px-4 text-right">
                         <button
-                          onClick={() => {
-                            setDeleteTargetId(p.id);
-                            setPasswordError("");
-                            setAdminPasswordInput("");
-                          }}
-                          title="Delete requires Admin Password"
-                          className="tactile-btn inline-flex items-center gap-1 p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                          onClick={() => handleRestore(item)}
+                          className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
                         >
-                          <Lock className="w-3 h-3 text-rose-400" />
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restore</span>
                         </button>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL: RECORD PAYMENT                                                     */}
@@ -343,79 +543,75 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
             </div>
 
             <form onSubmit={handleRecordSubmit} className="space-y-4">
-              {/* Select Business from Clients */}
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Select Registered Business *
+                  Select Registered Business <span className="text-rose-500">*</span>
                 </label>
                 <select
+                  required
                   value={selectedBusinessId}
                   onChange={(e) => setSelectedBusinessId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium"
                 >
                   {clients.map((c) => (
-                    <option key={c.id} value={c.business_id}>
-                      [{c.business_id}] {c.business_name} ({c.city || "India"})
+                    <option key={c.business_id} value={c.business_id}>
+                      {c.business_id} — {c.business_name} ({c.owner_name || "No Owner"})
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Product */}
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Product *</label>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Product</label>
                 <select
                   value={selectedProduct}
                   onChange={(e) => handleProductChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium"
                 >
-                  <option value="Counter Standee">Counter Standee (₹1,499 standard)</option>
-                  <option value="Business NFC Card">Business NFC Card (₹699 standard)</option>
-                  <option value="ZenTap Custom Solutions">ZenTap Custom Solutions (₹2,499+)</option>
+                  <option value="Counter Standee">Counter Standee (Standard ₹1,499)</option>
+                  <option value="Business NFC Card">Business NFC Card (Standard ₹699)</option>
+                  <option value="Dual Combo (Standee + Card)">Dual Combo (Standee + Card) (₹2,499)</option>
                 </select>
               </div>
 
-              {/* Price & Selling Rate */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Product Price (₹) *</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Product Price (₹)</label>
                   <input
                     type="number"
-                    required
-                    min={0}
+                    min="0"
                     value={productPrice}
                     onChange={(e) => setProductPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 font-bold focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Selling Rate / Received (₹) *</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Selling Rate / Amount Received (₹)
+                  </label>
                   <input
                     type="number"
-                    required
-                    min={0}
+                    min="0"
                     value={sellingRate}
                     onChange={(e) => setSellingRate(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 font-bold focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
                   />
                 </div>
               </div>
 
-              {/* Date and Mode */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Date *</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Date</label>
                   <input
                     type="date"
-                    required
                     value={paymentDate}
                     onChange={(e) => setPaymentDate(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Method *</label>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Method</label>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("UPI")}
@@ -425,7 +621,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                           : "bg-zinc-50 border-zinc-200 text-zinc-600"
                       }`}
                     >
-                      UPI / GPay
+                      UPI
                     </button>
                     <button
                       type="button"
@@ -442,9 +638,8 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                 </div>
               </div>
 
-              {/* Status */}
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Status *</label>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Status</label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
@@ -482,7 +677,6 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">Notes / Remarks</label>
                 <textarea
@@ -515,67 +709,228 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE CONFIRMATION WITH ADMIN PASSWORD                            */}
+      {/* MODAL: EDIT PAYMENT (WHOLE ENTRY)                                         */}
       {/* ========================================================================= */}
-      {deleteTargetId && (
+      {isEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
-              <Lock className="w-6 h-6" />
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 space-y-5 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                  <Edit2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-zinc-900">Edit Payment Entry</h3>
+                  <p className="text-[11px] text-zinc-500">Modify payment amount, method, status, or notes</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1 rounded-full hover:bg-zinc-100 text-zinc-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div>
-              <h3 className="font-bold text-lg text-zinc-900">Admin Authentication Required</h3>
-              <p className="text-xs text-zinc-500 mt-1">
-                Payment records cannot be deleted without entering the Super Admin password.
-              </p>
-            </div>
-
-            <form onSubmit={handleDeleteWithPassword} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Enter Admin Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  autoFocus
-                  placeholder="••••••••"
-                  value={adminPasswordInput}
-                  onChange={(e) => {
-                    setAdminPasswordInput(e.target.value);
-                    setPasswordError("");
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
-                {passwordError && (
-                  <p className="text-xs font-bold text-rose-600 mt-1.5 flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>{passwordError}</span>
-                  </p>
-                )}
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business ID</label>
+                  <input
+                    type="text"
+                    value={editBusinessId}
+                    onChange={(e) => setEditBusinessId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={editBusinessName}
+                    onChange={(e) => setEditBusinessName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Product</label>
+                <input
+                  type="text"
+                  value={editProduct}
+                  onChange={(e) => setEditProduct(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Product Price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editProductPrice}
+                    onChange={(e) => setEditProductPrice(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Selling Rate / Received (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editSellingRate}
+                    onChange={(e) => setEditSellingRate(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-emerald-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Date</label>
+                  <input
+                    type="date"
+                    value={editPaymentDate}
+                    onChange={(e) => setEditPaymentDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditPaymentMethod("UPI")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                        editPaymentMethod === "UPI"
+                          ? "bg-blue-50 border-blue-400 text-blue-900"
+                          : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                      }`}
+                    >
+                      UPI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPaymentMethod("Cash")}
+                      className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                        editPaymentMethod === "Cash"
+                          ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                          : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                      }`}
+                    >
+                      Cash
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Payment Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditPaymentStatus("Completed paid")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      editPaymentStatus === "Completed paid"
+                        ? "bg-emerald-50 border-emerald-400 text-emerald-900"
+                        : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                    }`}
+                  >
+                    Completed Paid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPaymentStatus("Partial Advance")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      editPaymentStatus === "Partial Advance"
+                        ? "bg-amber-50 border-amber-400 text-amber-900"
+                        : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                    }`}
+                  >
+                    Partial Advance
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPaymentStatus("Pending Unpaid")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all ${
+                      editPaymentStatus === "Pending Unpaid"
+                        ? "bg-rose-50 border-rose-400 text-rose-900"
+                        : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                    }`}
+                  >
+                    Pending Unpaid
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Notes / Remarks</label>
+                <textarea
+                  rows={2}
+                  value={editPaymentNotes}
+                  onChange={(e) => setEditPaymentNotes(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
                 <button
                   type="button"
-                  onClick={() => {
-                    setDeleteTargetId(null);
-                    setAdminPasswordInput("");
-                    setPasswordError("");
-                  }}
-                  className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
                 >
-                  Verify &amp; Delete
+                  Save Changes
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: DELETE CONFIRMATION (NO PASSWORD REQUIRED)                          */}
+      {/* ========================================================================= */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-zinc-900">Delete Payment Record?</h3>
+              <p className="text-xs text-zinc-500 mt-1">
+                Are you sure you want to delete payment for <strong className="text-zinc-900">{deleteTarget.business_name}</strong> (₹{deleteTarget.selling_rate})?
+                This record will be moved to the Deleted section and can be restored at any time.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+              >
+                Yes, Delete Record
+              </button>
+            </div>
           </div>
         </div>
       )}

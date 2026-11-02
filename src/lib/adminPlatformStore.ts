@@ -97,14 +97,44 @@ export interface PageEditorConfigItemRecord {
   updated_at: string;
 }
 
+export interface DeletedPaymentRecord extends PaymentItemRecord {
+  deleted_at: string;
+  deleted_by: string;
+}
+
+export interface DeletedGoogleReviewLinkRecord extends GoogleReviewLinkItemRecord {
+  deleted_at: string;
+  deleted_by: string;
+}
+
+export interface DeletedSocialLinkRecord extends SocialLinkItemRecord {
+  deleted_at: string;
+  deleted_by: string;
+}
+
+export interface DeletedQrNfcTagRecord extends QrNfcTagItemRecord {
+  deleted_at: string;
+  deleted_by: string;
+}
+
+export interface DeletedPageEditorConfigRecord extends PageEditorConfigItemRecord {
+  deleted_at: string;
+  deleted_by: string;
+}
+
 // Storage Keys
 const KEY_CLIENTS = "zentap_clients_v2";
 const KEY_DELETED_BUSINESSES = "zentap_deleted_businesses_v2";
 const KEY_PAYMENTS = "zentap_payments_records_v2";
+const KEY_DELETED_PAYMENTS = "zentap_deleted_payments_v2";
 const KEY_QR_NFC_TAGS = "zentap_qr_nfc_tags_v2";
+const KEY_DELETED_QR_NFC_TAGS = "zentap_deleted_qr_nfc_tags_v2";
 const KEY_GOOGLE_LINKS = "zentap_google_review_links_v2";
+const KEY_DELETED_GOOGLE_LINKS = "zentap_deleted_google_links_v2";
 const KEY_SOCIAL_LINKS = "zentap_social_links_v2";
+const KEY_DELETED_SOCIAL_LINKS = "zentap_deleted_social_links_v2";
 const KEY_PAGE_EDITOR = "zentap_page_editor_configs_v2";
+const KEY_DELETED_PAGE_EDITOR = "zentap_deleted_page_editor_v2";
 
 export const DOMAIN_BASE = "https://www.zentapdigitalsolutions.com";
 
@@ -447,6 +477,88 @@ export function restoreDeletedBusiness(businessId: string): boolean {
   return true;
 }
 
+export function updateClient(businessId: string, updates: Partial<ClientRecord>): ClientRecord | null {
+  const clients = getAllClients();
+  const index = clients.findIndex((c) => c.business_id === businessId || c.id === businessId);
+  if (index === -1) return null;
+
+  const oldBusinessId = clients[index].business_id;
+  const updatedClient: ClientRecord = {
+    ...clients[index],
+    ...updates,
+  };
+  clients[index] = updatedClient;
+  setStored(KEY_CLIENTS, clients);
+
+  // If business_id or business_name changed, cascade to other tables
+  if ((updates.business_id && updates.business_id !== oldBusinessId) || updates.business_name) {
+    const newBid = updatedClient.business_id;
+    const newName = updatedClient.business_name;
+
+    // Payments
+    const payments = getAllPayments();
+    let payUpdated = false;
+    for (const p of payments) {
+      if (p.business_id === oldBusinessId) {
+        p.business_id = newBid;
+        if (newName) p.business_name = newName;
+        payUpdated = true;
+      }
+    }
+    if (payUpdated) setStored(KEY_PAYMENTS, payments);
+
+    // Tags
+    const tags = getAllQrNfcTags();
+    let tagUpdated = false;
+    for (const t of tags) {
+      if (t.business_id === oldBusinessId) {
+        t.business_id = newBid;
+        if (newName) t.business_name = newName;
+        tagUpdated = true;
+      }
+    }
+    if (tagUpdated) setStored(KEY_QR_NFC_TAGS, tags);
+
+    // Google Links
+    const gLinks = getAllGoogleReviewLinks();
+    let gUpdated = false;
+    for (const g of gLinks) {
+      if (g.business_id === oldBusinessId) {
+        g.business_id = newBid;
+        if (newName) g.business_name = newName;
+        gUpdated = true;
+      }
+    }
+    if (gUpdated) setStored(KEY_GOOGLE_LINKS, gLinks);
+
+    // Social Links
+    const sLinks = getAllSocialLinks();
+    let sUpdated = false;
+    for (const s of sLinks) {
+      if (s.business_id === oldBusinessId) {
+        s.business_id = newBid;
+        if (newName) s.business_name = newName;
+        sUpdated = true;
+      }
+    }
+    if (sUpdated) setStored(KEY_SOCIAL_LINKS, sLinks);
+
+    // Page Editor
+    const pConfigs = getAllPageEditorConfigs();
+    let pUpdated = false;
+    for (const pe of pConfigs) {
+      if (pe.business_id === oldBusinessId) {
+        pe.business_id = newBid;
+        if (newName) pe.business_name = newName;
+        pUpdated = true;
+      }
+    }
+    if (pUpdated) setStored(KEY_PAGE_EDITOR, pConfigs);
+  }
+
+  return updatedClient;
+}
+
 // ============================================================================
 // 2. PAYMENTS STORE
 // ============================================================================
@@ -477,16 +589,62 @@ export function updatePayment(id: string, updates: Partial<PaymentItemRecord>): 
   return updatedItem;
 }
 
-export function deletePaymentWithPassword(id: string, adminPasswordInput: string): { success: boolean; message: string } {
-  // Validate against admin passwords
-  const validPasswords = ["admin123", "admin", "zentap2026", "zentap"];
-  if (!adminPasswordInput || !validPasswords.includes(adminPasswordInput.trim())) {
-    return { success: false, message: "Incorrect admin password. Payment record deletion denied." };
-  }
+export function getAllDeletedPayments(): DeletedPaymentRecord[] {
+  return getStored<DeletedPaymentRecord[]>(KEY_DELETED_PAYMENTS, []);
+}
+
+export function deletePayment(id: string, notes?: string): { success: boolean; deleted?: DeletedPaymentRecord } {
   const current = getAllPayments();
+  const target = current.find((p) => p.id === id);
+  if (!target) return { success: false };
+
+  // Remove from active payments
   const remaining = current.filter((p) => p.id !== id);
   setStored(KEY_PAYMENTS, remaining);
-  return { success: true, message: "Payment record successfully deleted." };
+
+  // Add to deleted_payments
+  const deletedRecords = getAllDeletedPayments();
+  const deletedItem: DeletedPaymentRecord = {
+    ...target,
+    deleted_at: new Date().toISOString(),
+    deleted_by: "admin",
+    notes: notes || target.notes,
+  };
+  setStored(KEY_DELETED_PAYMENTS, [deletedItem, ...deletedRecords]);
+  return { success: true, deleted: deletedItem };
+}
+
+export function restoreDeletedPayment(id: string): boolean {
+  const deletedList = getAllDeletedPayments();
+  const target = deletedList.find((p) => p.id === id);
+  if (!target) return false;
+
+  // Remove from deleted
+  const remaining = deletedList.filter((p) => p.id !== id);
+  setStored(KEY_DELETED_PAYMENTS, remaining);
+
+  // Restore to active payments
+  const current = getAllPayments();
+  const restored: PaymentItemRecord = {
+    id: target.id,
+    business_id: target.business_id,
+    business_name: target.business_name,
+    product: target.product,
+    product_price: target.product_price,
+    selling_rate: target.selling_rate,
+    payment_date: target.payment_date,
+    payment_method: target.payment_method,
+    payment_status: target.payment_status,
+    notes: target.notes,
+    created_at: target.created_at,
+  };
+  setStored(KEY_PAYMENTS, [restored, ...current]);
+  return true;
+}
+
+export function deletePaymentWithPassword(id: string, adminPasswordInput?: string): { success: boolean; message: string } {
+  const res = deletePayment(id);
+  return { success: res.success, message: res.success ? "Payment record deleted." : "Record not found." };
 }
 
 // ============================================================================
@@ -597,6 +755,75 @@ export function assignTagBusiness(tagId: string, businessId: string, businessNam
   syncTagAssignmentDownstream(updatedTag);
 
   return updatedTag;
+}
+
+export function updateQrNfcTag(tagId: string, updates: Partial<QrNfcTagItemRecord>): QrNfcTagItemRecord | null {
+  const current = getAllQrNfcTags();
+  const index = current.findIndex((t) => t.tag_id === tagId);
+  if (index === -1) return null;
+
+  const original = current[index];
+  const newTagId = updates.tag_id || original.tag_id;
+  const updatedTag: QrNfcTagItemRecord = {
+    ...original,
+    ...updates,
+    tag_id: newTagId,
+    link: updates.link || `${DOMAIN_BASE}/t/${newTagId}`,
+  };
+
+  current[index] = updatedTag;
+  setStored(KEY_QR_NFC_TAGS, current);
+
+  if (updatedTag.business_id) {
+    syncTagAssignmentDownstream(updatedTag);
+  }
+
+  return updatedTag;
+}
+
+export function getAllDeletedQrNfcTags(): DeletedQrNfcTagRecord[] {
+  return getStored<DeletedQrNfcTagRecord[]>(KEY_DELETED_QR_NFC_TAGS, []);
+}
+
+export function deleteQrNfcTag(tagId: string): { success: boolean; deleted?: DeletedQrNfcTagRecord } {
+  const current = getAllQrNfcTags();
+  const target = current.find((t) => t.tag_id === tagId);
+  if (!target) return { success: false };
+
+  const remaining = current.filter((t) => t.tag_id !== tagId);
+  setStored(KEY_QR_NFC_TAGS, remaining);
+
+  const deletedRecords = getAllDeletedQrNfcTags();
+  const deletedItem: DeletedQrNfcTagRecord = {
+    ...target,
+    deleted_at: new Date().toISOString(),
+    deleted_by: "admin",
+  };
+  setStored(KEY_DELETED_QR_NFC_TAGS, [deletedItem, ...deletedRecords]);
+  return { success: true, deleted: deletedItem };
+}
+
+export function restoreDeletedQrNfcTag(tagId: string): boolean {
+  const deletedList = getAllDeletedQrNfcTags();
+  const target = deletedList.find((t) => t.tag_id === tagId);
+  if (!target) return false;
+
+  const remaining = deletedList.filter((t) => t.tag_id !== tagId);
+  setStored(KEY_DELETED_QR_NFC_TAGS, remaining);
+
+  const current = getAllQrNfcTags();
+  const restored: QrNfcTagItemRecord = {
+    id: target.id,
+    tag_id: target.tag_id,
+    product_type: target.product_type,
+    business_id: target.business_id,
+    business_name: target.business_name,
+    link: target.link,
+    scans_count: target.scans_count,
+    created_at: target.created_at,
+  };
+  setStored(KEY_QR_NFC_TAGS, [restored, ...current]);
+  return true;
 }
 
 // ============================================================================
@@ -714,6 +941,54 @@ export function addManualGoogleReviewLink(link: Omit<GoogleReviewLinkItemRecord,
   return newLink;
 }
 
+export function getAllDeletedGoogleReviewLinks(): DeletedGoogleReviewLinkRecord[] {
+  return getStored<DeletedGoogleReviewLinkRecord[]>(KEY_DELETED_GOOGLE_LINKS, []);
+}
+
+export function deleteGoogleReviewLink(tagId: string): { success: boolean; deleted?: DeletedGoogleReviewLinkRecord } {
+  const current = getAllGoogleReviewLinks();
+  const target = current.find((g) => g.tag_id === tagId);
+  if (!target) return { success: false };
+
+  const remaining = current.filter((g) => g.tag_id !== tagId);
+  setStored(KEY_GOOGLE_LINKS, remaining);
+
+  const deletedRecords = getAllDeletedGoogleReviewLinks();
+  const deletedItem: DeletedGoogleReviewLinkRecord = {
+    ...target,
+    deleted_at: new Date().toISOString(),
+    deleted_by: "admin",
+  };
+  setStored(KEY_DELETED_GOOGLE_LINKS, [deletedItem, ...deletedRecords]);
+  return { success: true, deleted: deletedItem };
+}
+
+export function restoreDeletedGoogleReviewLink(tagId: string): boolean {
+  const deletedList = getAllDeletedGoogleReviewLinks();
+  const target = deletedList.find((g) => g.tag_id === tagId);
+  if (!target) return false;
+
+  const remaining = deletedList.filter((g) => g.tag_id !== tagId);
+  setStored(KEY_DELETED_GOOGLE_LINKS, remaining);
+
+  const current = getAllGoogleReviewLinks();
+  const restored: GoogleReviewLinkItemRecord = {
+    id: target.id,
+    tag_id: target.tag_id,
+    business_id: target.business_id,
+    business_name: target.business_name,
+    link_of_tag_id: target.link_of_tag_id,
+    business_google_review_link: target.business_google_review_link,
+    destination: target.destination,
+    setup_status: target.setup_status,
+    total_scans: target.total_scans,
+    created_at: target.created_at,
+    updated_at: target.updated_at,
+  };
+  setStored(KEY_GOOGLE_LINKS, [restored, ...current]);
+  return true;
+}
+
 // ============================================================================
 // 5. SOCIAL LINKS STORE
 // ============================================================================
@@ -760,12 +1035,122 @@ export function addManualSocialLink(link: Omit<SocialLinkItemRecord, "id" | "cre
   return newLink;
 }
 
+export function getAllDeletedSocialLinks(): DeletedSocialLinkRecord[] {
+  return getStored<DeletedSocialLinkRecord[]>(KEY_DELETED_SOCIAL_LINKS, []);
+}
+
+export function deleteSocialLink(tagId: string): { success: boolean; deleted?: DeletedSocialLinkRecord } {
+  const current = getAllSocialLinks();
+  const target = current.find((s) => s.tag_id === tagId);
+  if (!target) return { success: false };
+
+  const remaining = current.filter((s) => s.tag_id !== tagId);
+  setStored(KEY_SOCIAL_LINKS, remaining);
+
+  const deletedRecords = getAllDeletedSocialLinks();
+  const deletedItem: DeletedSocialLinkRecord = {
+    ...target,
+    deleted_at: new Date().toISOString(),
+    deleted_by: "admin",
+  };
+  setStored(KEY_DELETED_SOCIAL_LINKS, [deletedItem, ...deletedRecords]);
+  return { success: true, deleted: deletedItem };
+}
+
+export function restoreDeletedSocialLink(tagId: string): boolean {
+  const deletedList = getAllDeletedSocialLinks();
+  const target = deletedList.find((s) => s.tag_id === tagId);
+  if (!target) return false;
+
+  const remaining = deletedList.filter((s) => s.tag_id !== tagId);
+  setStored(KEY_DELETED_SOCIAL_LINKS, remaining);
+
+  const current = getAllSocialLinks();
+  const restored: SocialLinkItemRecord = {
+    id: target.id,
+    tag_id: target.tag_id,
+    business_id: target.business_id,
+    business_name: target.business_name,
+    social_platform: target.social_platform,
+    link_of_tag_id: target.link_of_tag_id,
+    social_link: target.social_link,
+    destination: target.destination,
+    setup_status: target.setup_status,
+    total_scans: target.total_scans,
+    created_at: target.created_at,
+    updated_at: target.updated_at,
+  };
+  setStored(KEY_SOCIAL_LINKS, [restored, ...current]);
+  return true;
+}
+
 // ============================================================================
 // 6. PAGE EDITOR CONFIGS STORE
 // ============================================================================
 
 export function getAllPageEditorConfigs(): PageEditorConfigItemRecord[] {
   return getStored<PageEditorConfigItemRecord[]>(KEY_PAGE_EDITOR, INITIAL_PAGE_EDITORS);
+}
+
+export function updatePageEditorConfig(tagId: string, updates: Partial<PageEditorConfigItemRecord>): PageEditorConfigItemRecord | null {
+  const current = getAllPageEditorConfigs();
+  const index = current.findIndex((p) => p.tag_id === tagId);
+  if (index === -1) return null;
+
+  const updatedItem: PageEditorConfigItemRecord = {
+    ...current[index],
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+
+  current[index] = updatedItem;
+  setStored(KEY_PAGE_EDITOR, current);
+  return updatedItem;
+}
+
+export function getAllDeletedPageEditorConfigs(): DeletedPageEditorConfigRecord[] {
+  return getStored<DeletedPageEditorConfigRecord[]>(KEY_DELETED_PAGE_EDITOR, []);
+}
+
+export function deletePageEditorConfig(tagId: string): { success: boolean; deleted?: DeletedPageEditorConfigRecord } {
+  const current = getAllPageEditorConfigs();
+  const target = current.find((p) => p.tag_id === tagId);
+  if (!target) return { success: false };
+
+  const remaining = current.filter((p) => p.tag_id !== tagId);
+  setStored(KEY_PAGE_EDITOR, remaining);
+
+  const deletedRecords = getAllDeletedPageEditorConfigs();
+  const deletedItem: DeletedPageEditorConfigRecord = {
+    ...target,
+    deleted_at: new Date().toISOString(),
+    deleted_by: "admin",
+  };
+  setStored(KEY_DELETED_PAGE_EDITOR, [deletedItem, ...deletedRecords]);
+  return { success: true, deleted: deletedItem };
+}
+
+export function restoreDeletedPageEditorConfig(tagId: string): boolean {
+  const deletedList = getAllDeletedPageEditorConfigs();
+  const target = deletedList.find((p) => p.tag_id === tagId);
+  if (!target) return false;
+
+  const remaining = deletedList.filter((p) => p.tag_id !== tagId);
+  setStored(KEY_DELETED_PAGE_EDITOR, remaining);
+
+  const current = getAllPageEditorConfigs();
+  const restored: PageEditorConfigItemRecord = {
+    id: target.id,
+    tag_id: target.tag_id,
+    business_id: target.business_id,
+    business_name: target.business_name,
+    link_url: target.link_url,
+    setup_status: target.setup_status,
+    config_data: target.config_data,
+    updated_at: target.updated_at,
+  };
+  setStored(KEY_PAGE_EDITOR, [restored, ...current]);
+  return true;
 }
 
 export function savePageEditorConfig(tagId: string, configData: Record<string, any>): PageEditorConfigItemRecord | null {
