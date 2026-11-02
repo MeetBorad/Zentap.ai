@@ -26,71 +26,44 @@ export async function GET(req: Request) {
     const [
       activeClientsRes,
       deletedClientsRes,
-      legacyDeletedBizRes,
       activePaymentsRes,
       deletedPaymentsRes,
-      legacyDeletedPaymentsRes,
       activeTagsRes,
       deletedTagsRes,
-      legacyDeletedTagsRes,
       activeGoogleLinksRes,
       deletedGoogleLinksRes,
-      legacyDeletedGoogleLinksRes,
       activeSocialLinksRes,
       deletedSocialLinksRes,
-      legacyDeletedSocialLinksRes,
       activePageEditorRes,
       deletedPageEditorRes,
-      legacyDeletedPageEditorRes,
     ] = await Promise.all([
       supabase.from("clients").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("clients").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_businesses").select("*").order("deleted_at", { ascending: false }),
 
       supabase.from("payments").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("payments").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_payments").select("*").order("deleted_at", { ascending: false }),
 
       supabase.from("qr_nfc_tags").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("qr_nfc_tags").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_qr_nfc_tags").select("*").order("deleted_at", { ascending: false }),
 
       supabase.from("google_review_links").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("google_review_links").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_google_review_links").select("*").order("deleted_at", { ascending: false }),
 
       supabase.from("social_links").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("social_links").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_social_links").select("*").order("deleted_at", { ascending: false }),
 
       supabase.from("page_editor_configs").select("*").is("deleted_at", null).order("updated_at", { ascending: false }),
       supabase.from("page_editor_configs").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
-      supabase.from("deleted_page_editor_configs").select("*").order("deleted_at", { ascending: false }),
     ]);
 
-    // Merge deleted items seamlessly with legacy audit rows if any exist
-    const mergeDeleted = <T extends { business_id?: string; tag_id?: string; id?: string }>(
-      primary: T[] | null,
-      legacy: T[] | null,
-      idProp: "business_id" | "tag_id" | "id"
-    ): T[] => {
-      const merged = [...(primary || [])];
-      (legacy || []).forEach((item) => {
-        if (!merged.some((m) => m[idProp] === item[idProp])) {
-          merged.push(item);
-        }
-      });
-      return merged;
-    };
-
     const clients = activeClientsRes.data || [];
-    const deletedBusinesses = mergeDeleted(deletedClientsRes.data, legacyDeletedBizRes.data, "business_id");
+    const deletedBusinesses = deletedClientsRes.data || [];
 
     const payments = activePaymentsRes.data || [];
-    const deletedPayments = mergeDeleted(deletedPaymentsRes.data, legacyDeletedPaymentsRes.data, "id");
+    const deletedPayments = deletedPaymentsRes.data || [];
 
     const tags = activeTagsRes.data || [];
-    const deletedTags = mergeDeleted(deletedTagsRes.data, legacyDeletedTagsRes.data, "tag_id");
+    const deletedTags = deletedTagsRes.data || [];
 
     // =========================================================================
     // SINGLE SOURCE OF TRUTH (qr_nfc_tags):
@@ -184,11 +157,11 @@ export async function GET(req: Request) {
       }
     });
 
-    const deletedGoogleLinks = mergeDeleted(deletedGoogleLinksRes.data, legacyDeletedGoogleLinksRes.data, "tag_id");
-    const deletedSocialLinks = mergeDeleted(deletedSocialLinksRes.data, legacyDeletedSocialLinksRes.data, "tag_id");
+    const deletedGoogleLinks = deletedGoogleLinksRes.data || [];
+    const deletedSocialLinks = deletedSocialLinksRes.data || [];
 
     const pageEditorConfigs = activePageEditorRes.data || [];
-    const deletedPageEditorConfigs = mergeDeleted(deletedPageEditorRes.data, legacyDeletedPageEditorRes.data, "tag_id");
+    const deletedPageEditorConfigs = deletedPageEditorRes.data || [];
 
     const counts = {
       clients: {
@@ -484,19 +457,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing table or idValue" }, { status: 400 });
       }
 
-      // Legacy audit table mapping
-      const legacyAuditMap: Record<string, string> = {
-        clients: "deleted_businesses",
-        payments: "deleted_payments",
-        qr_nfc_tags: "deleted_qr_nfc_tags",
-        google_review_links: "deleted_google_review_links",
-        social_links: "deleted_social_links",
-        page_editor_configs: "deleted_page_editor_configs",
-      };
-      const legacyTable = legacyAuditMap[table];
-
       // Step 1: Verify row is currently deleted in primary table
-      const { data: primaryRow, error: findErr } = await (supabase as any)
+      const { data: targetRow, error: findErr } = await (supabase as any)
         .from(table)
         .select("*")
         .eq(idField, idValue)
@@ -506,28 +468,6 @@ export async function POST(req: Request) {
       if (findErr) {
         console.error(`Error querying deleted record in ${table}:`, findErr);
         throw findErr;
-      }
-
-      let targetRow = primaryRow;
-      let isLegacyOnly = false;
-
-      // If not in primary table, check legacy audit table
-      if (!targetRow && legacyTable) {
-        const legacyKey = (idField === "business_id" || idField === "tag_id") ? idField : "id";
-        const { data: legacyRow, error: legErr } = await (supabase as any)
-          .from(legacyTable)
-          .select("*")
-          .eq(legacyKey, idValue)
-          .maybeSingle();
-
-        if (legErr) {
-          console.error(`Error querying legacy deleted record in ${legacyTable}:`, legErr);
-          throw legErr;
-        }
-        if (legacyRow) {
-          targetRow = legacyRow;
-          isLegacyOnly = true;
-        }
       }
 
       if (!targetRow) {
@@ -561,44 +501,28 @@ export async function POST(req: Request) {
         }
       }
 
-      // Step 3: Transactional cleanup of dependent / audit records first
-      if (legacyTable) {
-        const legacyKey = (idField === "business_id" || idField === "tag_id") ? idField : "id";
-        const { error: legDelErr } = await (supabase as any)
-          .from(legacyTable)
-          .delete()
-          .eq(legacyKey, idValue);
+      // Step 3: Delete the row from the primary table (guaranteeing it had deleted_at IS NOT NULL)
+      const { data: deletedRows, error: delErr } = await (supabase as any)
+        .from(table)
+        .delete()
+        .eq(idField, idValue)
+        .not("deleted_at", "is", null)
+        .select();
 
-        if (legDelErr) {
-          console.warn(`Notice: Failed to purge from ${legacyTable}:`, legDelErr);
-        }
+      if (delErr) {
+        console.error(`DELETE error on ${table}:`, delErr);
+        return NextResponse.json({
+          error: `Database delete failed on ${table}: ${delErr.message || delErr.details || "Constraint violation"}`
+        }, { status: 500 });
       }
 
-      // Step 4: Delete the row from the primary table (guaranteeing it had deleted_at IS NOT NULL)
-      let deletedRow = targetRow;
-      if (!isLegacyOnly) {
-        const { data: deletedRows, error: delErr } = await (supabase as any)
-          .from(table)
-          .delete()
-          .eq(idField, idValue)
-          .not("deleted_at", "is", null)
-          .select();
-
-        if (delErr) {
-          console.error(`DELETE error on ${table}:`, delErr);
-          return NextResponse.json({
-            error: `Database delete failed on ${table}: ${delErr.message || delErr.details || "Constraint violation"}`
-          }, { status: 500 });
-        }
-
-        if (!deletedRows || deletedRows.length !== 1) {
-          return NextResponse.json({
-            error: `Expected exactly 1 row to be permanently deleted from ${table}, but deleted ${deletedRows?.length || 0}.`
-          }, { status: 409 });
-        }
-        deletedRow = deletedRows[0];
+      if (!deletedRows || deletedRows.length !== 1) {
+        return NextResponse.json({
+          error: `Expected exactly 1 row to be permanently deleted from ${table}, but deleted ${deletedRows?.length || 0}.`
+        }, { status: 409 });
       }
 
+      const deletedRow = deletedRows[0];
       return NextResponse.json({ success: true, deleted: deletedRow });
     }
 

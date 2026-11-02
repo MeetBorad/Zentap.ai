@@ -846,6 +846,86 @@ export async function permanentDeleteGoogleLinkServer(tagId: string, confirmatio
   return serverPermanentDelete("google_review_links", "tag_id", tagId, confirmationName);
 }
 
+export async function updateGoogleReviewLinkServer(
+  tagId: string,
+  updates: Partial<GoogleReviewLinkItemRecord>
+): Promise<{ success: boolean; data?: GoogleReviewLinkItemRecord; error?: string }> {
+  try {
+    // 1. Single source of truth update against qr_nfc_tags
+    const tagPayload: any = {
+      tag_id: tagId,
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.business_google_review_link !== undefined) {
+      tagPayload.google_review_link = updates.business_google_review_link ? updates.business_google_review_link.trim() : null;
+    }
+    if (updates.destination !== undefined) {
+      tagPayload.destination = updates.destination;
+    }
+    if (updates.business_id !== undefined) {
+      tagPayload.business_id = updates.business_id;
+    }
+    if (updates.business_name !== undefined) {
+      tagPayload.business_name = updates.business_name;
+    }
+
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "qr_nfc_tags",
+        data: tagPayload,
+        onConflict: "tag_id",
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to update link in database" };
+    }
+
+    // 2. Also keep google_review_links in sync
+    await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "google_review_links",
+        data: {
+          tag_id: tagId,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        },
+        onConflict: "tag_id",
+      }),
+    }).catch(() => {});
+
+    // 3. If business_id is known and review link is updated, update clients table
+    if (updates.business_id && updates.business_google_review_link !== undefined) {
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "clients",
+          data: {
+            business_id: updates.business_id,
+            google_review_link: updates.business_google_review_link ? updates.business_google_review_link.trim() : null,
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "business_id",
+        }),
+      }).catch(() => {});
+    }
+
+    await serverFetchPlatformData();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while updating link" };
+  }
+}
+
 // Social Link helpers
 export async function softDeleteSocialLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
   return serverSoftDelete("social_links", "tag_id", tagId);

@@ -29,7 +29,7 @@ import {
   getAllGoogleReviewLinks,
   getAllDeletedGoogleReviewLinks,
   getAllClients,
-  updateGoogleReviewLink,
+  updateGoogleReviewLinkServer,
   softDeleteGoogleLinkServer,
   restoreGoogleLinkServer,
   permanentDeleteGoogleLinkServer,
@@ -135,45 +135,97 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
     setEditTotalScans(item.total_scans || 0);
   };
 
-  const handleSaveWholeEdit = (e: React.FormEvent) => {
+  const handleSaveWholeEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editWholeTarget) return;
 
-    const updated = updateGoogleReviewLink(editWholeTarget.tag_id, {
+    let cleanUrl = editGoogleUrl.trim();
+    if (cleanUrl && !cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    setIsSubmitting(true);
+    const res = await updateGoogleReviewLinkServer(editWholeTarget.tag_id, {
       business_id: editBusinessId.trim(),
       business_name: editBusinessName.trim(),
       link_of_tag_id: editLinkOfTagId.trim(),
-      business_google_review_link: editGoogleUrl.trim(),
+      business_google_review_link: cleanUrl,
       destination: editDestination,
       setup_status: editSetupStatus,
       total_scans: Number(editTotalScans) || 0,
     });
+    setIsSubmitting(false);
 
-    if (updated) {
-      onShowToast(`✓ Updated whole entry for ${updated.business_name} (${updated.tag_id})!`);
+    if (res.success) {
+      onShowToast(`✓ Updated whole entry for ${editBusinessName.trim()} (${editWholeTarget.tag_id})!`);
       setEditWholeTarget(null);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update entry in database");
     }
   };
 
-  // Quick edit Google Review link
+  // Quick edit Page Linked to Tag ID (Option to enter any link here)
   const openQuickEdit = (item: GoogleReviewLinkItemRecord) => {
     setQuickEditTarget(item);
     setQuickGoogleUrl(item.business_google_review_link || "");
   };
 
-  const handleSaveQuickEdit = (e: React.FormEvent) => {
+  const handleSaveQuickEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickEditTarget) return;
 
-    const updated = updateGoogleReviewLink(quickEditTarget.tag_id, {
-      business_google_review_link: quickGoogleUrl.trim(),
+    let cleanUrl = quickGoogleUrl.trim();
+    if (cleanUrl && !cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    setIsSubmitting(true);
+    const res = await updateGoogleReviewLinkServer(quickEditTarget.tag_id, {
+      business_google_review_link: cleanUrl,
+      business_id: quickEditTarget.business_id,
+      business_name: quickEditTarget.business_name,
+    });
+    setIsSubmitting(false);
+
+    if (res.success) {
+      onShowToast(`✓ Updated linked page URL for ${quickEditTarget.business_name} (${quickEditTarget.tag_id})!`);
+      setQuickEditTarget(null);
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update page link in database");
+    }
+  };
+
+  // Change destination directly from the table dropdown
+  const handleDestinationChange = async (
+    item: GoogleReviewLinkItemRecord,
+    newDest: "not_assigned" | "direct_google" | "zentap_google"
+  ) => {
+    // Optimistic UI state update
+    setLinks((prev) =>
+      prev.map((l) => (l.tag_id === item.tag_id ? { ...l, destination: newDest } : l))
+    );
+
+    const res = await updateGoogleReviewLinkServer(item.tag_id, {
+      destination: newDest,
+      business_id: item.business_id,
+      business_name: item.business_name,
+      business_google_review_link: item.business_google_review_link,
     });
 
-    if (updated) {
-      onShowToast(`✓ Updated Google Review link for ${updated.business_name}!`);
-      setQuickEditTarget(null);
-      refreshData();
+    if (res.success) {
+      const destLabel =
+        newDest === "direct_google"
+          ? "Direct Google Review"
+          : newDest === "zentap_google"
+          ? "ZenTap Google Review"
+          : "Not Assigned";
+      onShowToast(`✓ Destination for ${item.tag_id} updated to "${destLabel}"`);
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update destination in database");
+      await refreshData();
     }
   };
 
@@ -404,7 +456,7 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                   <th className="py-3.5 px-4">Business Name</th>
                   <th className="py-3.5 px-4">Tag ID</th>
                   <th className="py-3.5 px-4">Link of Tag ID</th>
-                  <th className="py-3.5 px-4">Google Review Link</th>
+                  <th className="py-3.5 px-4">Page Linked to Tag ID</th>
                   <th className="py-3.5 px-4 text-center">QR Code</th>
                   <th className="py-3.5 px-4 text-center">NFC Link</th>
                   <th className="py-3.5 px-4">Setup Status</th>
@@ -461,23 +513,27 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           </a>
                         </td>
 
-                        {/* Column: Google Review Link with Edit */}
+                        {/* Column: Page Linked to Tag ID (Option to enter any link here) */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {item.business_google_review_link ? (
                             <div className="flex items-center gap-1.5">
                               <a
-                                href={item.business_google_review_link}
+                                href={
+                                  item.business_google_review_link.startsWith("http://") || item.business_google_review_link.startsWith("https://")
+                                    ? item.business_google_review_link
+                                    : `https://${item.business_google_review_link}`
+                                }
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-mono text-[11px] text-blue-600 hover:underline max-w-[130px] truncate block"
+                                className="font-mono text-[11px] text-blue-600 hover:underline max-w-[150px] truncate block"
                                 title={item.business_google_review_link}
                               >
                                 {item.business_google_review_link}
                               </a>
                               <button
                                 onClick={() => openQuickEdit(item)}
-                                title="Edit Google Link"
-                                className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100"
+                                title="Edit Link"
+                                className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
                               >
                                 <Edit className="w-3 h-3" />
                               </button>
@@ -485,9 +541,10 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           ) : (
                             <button
                               onClick={() => openQuickEdit(item)}
-                              className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                              className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shadow-2xs active:scale-[0.978]"
                             >
-                              + Add Link
+                              <Plus className="w-3 h-3 text-amber-700" />
+                              <span>Enter Link</span>
                             </button>
                           )}
                         </td>
@@ -543,23 +600,34 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           {item.total_scans || 0}
                         </td>
 
-                        {/* Destination of QR/NFC */}
+                        {/* Destination of QR/NFC - Editable via Dropdown directly from table */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          {item.destination === "direct_google" && (
-                            <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-bold bg-orange-50 text-orange-800 border border-orange-300">
-                              Direct Google Review
-                            </span>
-                          )}
-                          {item.destination === "zentap_google" && (
-                            <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                              ZenTap Google Review
-                            </span>
-                          )}
-                          {item.destination === "not_assigned" && (
-                            <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-300">
-                              Not Assigned
-                            </span>
-                          )}
+                          <select
+                            value={item.destination || "not_assigned"}
+                            onChange={(e) =>
+                              handleDestinationChange(
+                                item,
+                                e.target.value as "not_assigned" | "direct_google" | "zentap_google"
+                              )
+                            }
+                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer outline-none focus:ring-2 focus:ring-offset-1 ${
+                              item.destination === "zentap_google"
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 focus:ring-emerald-500"
+                                : item.destination === "direct_google"
+                                ? "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100 focus:ring-orange-500"
+                                : "bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100 focus:ring-rose-500"
+                            }`}
+                          >
+                            <option value="not_assigned" className="bg-white text-rose-800 font-medium">
+                              Not Assigned (Red)
+                            </option>
+                            <option value="direct_google" className="bg-white text-orange-800 font-medium">
+                              Direct Google Review (Orange)
+                            </option>
+                            <option value="zentap_google" className="bg-white text-emerald-800 font-medium">
+                              ZenTap Google Review (Green)
+                            </option>
+                          </select>
                         </td>
 
                         {/* Actions: Edit Whole Entry & Delete */}
@@ -611,7 +679,7 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                   <th className="py-3.5 px-4">Tag ID</th>
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
-                  <th className="py-3.5 px-4">Google Review Link</th>
+                  <th className="py-3.5 px-4">Page Linked to Tag ID</th>
                   <th className="py-3.5 px-4">Destination</th>
                   <th className="py-3.5 px-4">Deleted At</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
@@ -737,14 +805,14 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Business Google Review Page Link
+                  Page Linked to Tag ID <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
                 </label>
                 <input
-                  type="url"
-                  placeholder="https://g.page/r/.../review or https://search.google.com/local/writereview?placeid=..."
+                  type="text"
+                  placeholder="https://... (Enter any web address, destination URL, or Google review link)"
                   value={editGoogleUrl}
                   onChange={(e) => setEditGoogleUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
               </div>
 
@@ -874,7 +942,7 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
               <div>
                 <h3 className="font-bold text-base text-zinc-900">
-                  Edit Google Review Link
+                  Edit Page Linked to Tag ID
                 </h3>
                 <p className="text-[11px] text-zinc-500">{quickEditTarget.business_name} ({quickEditTarget.tag_id})</p>
               </div>
@@ -889,16 +957,19 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
             <form onSubmit={handleSaveQuickEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Google Review Form URL
+                  Page Link URL <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   required
-                  placeholder="https://g.page/r/.../review"
+                  placeholder="https://... (Enter any web URL, custom page, or Google review link)"
                   value={quickGoogleUrl}
                   onChange={(e) => setQuickGoogleUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  Enter any destination link, Google review URL, portfolio, or landing page to connect to this tag.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
@@ -1071,14 +1142,14 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Business Google Review Page Link
+                  Page Linked to Tag ID <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
                 </label>
                 <input
-                  type="url"
-                  placeholder="https://g.page/r/.../review"
+                  type="text"
+                  placeholder="https://... (Enter any web URL or review link)"
                   value={manualGoogleUrl}
                   onChange={(e) => setManualGoogleUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
               </div>
 
