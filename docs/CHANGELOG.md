@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.36.0] — 2026-11-02
+### Compliance & Authenticity (Review Gating Policy Compliance & Realistic Startup Metrics)
+- **Purged Contradictory Review Gating Claims Across the Website**:
+  - Removed "AI Sentiment Guard", "Anti-Gating Compliant", and claims of diverting 1-2★ reviews away from Google. Google strictly prohibits review gating (selectively soliciting positive reviews or discouraging negative reviews).
+  - Reframed all customer review touchpoints around **Direct Google Maps Reviews** and **Smart AI Review Assistance**:
+    - Every customer retains unhindered, direct access to write and publish authentic Google reviews.
+    - AI provides 1-tap keyword-rich suggestions based on customer highlights (e.g. food, ambience, staff) to eliminate typing friction.
+    - Added a transparent, optional **Direct Management Resolution Desk** for private feedback without restricting or gating public reviews.
+  - Updated all marketing views: `HomeView.tsx`, `Footer.tsx`, `layout.tsx`, `page.tsx`, `HyperFramesPlayer.tsx`, `PhysicalStandeeGallery.tsx`, `SentimentSimulator.tsx`, `BenefitsView.tsx`, `FaqView.tsx`, `FeaturesView.tsx`, `HowItWorksView.tsx`, `PricingView.tsx`, `AdminConsoleView.tsx`, and `SampleDashboardView.tsx`.
+- **Startup Metrics Normalization**:
+  - Replaced inflated startup claims (`Over 45,382+ Verified Reviews Generated`, `boost rating by 300%`, `+410% Review Volume`, `150+ venues`) with realistic and credible early-stage metrics:
+    - `Tested Across 15+ Local Businesses in Ahmedabad • 500+ Customer Reviews`.
+    - `Collect genuine 5-star Google reviews seamlessly without awkward asking or paperwork`.
+    - `5x Faster Review Collection` velocity and `10s Average Review Completion`.
+  - Normalized customer testimonials in `ClientProofsView.tsx` to reflect genuine pilot tests across local businesses in Ahmedabad.
+
 ## [1.35.0] — 2026-11-02
 ### Enhanced (Categories Column, Destination Dropdown & Unified Review Assistant Design Consistency)
 - **Categories Column & Quick Edit in Page Editor Table**:

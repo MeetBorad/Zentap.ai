@@ -221,7 +221,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-on-surface">Google Policy Safe</h4>
-                  <p className="text-[11px] text-on-surface-variant mt-0.5">Anti-gating compliant with transparent direct posting.</p>
+                  <p className="text-[11px] text-on-surface-variant mt-0.5">Direct Google Maps integration with transparent posting.</p>
                 </div>
               </div>
 

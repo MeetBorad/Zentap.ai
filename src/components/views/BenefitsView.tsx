@@ -28,7 +28,7 @@ export default function BenefitsView({ onNavigateToPricing, onNavigateToSample }
       title: "Dominating Google Maps & Local 3-Pack Rankings",
       description:
         "Review recency, volume, and keyword density represent over 43% of Google's local pack algorithm. ZenTap consistently feeds fresh 5-star reviews to your profile, pushing your listing above competitors in local search results.",
-      impact: "+300% to +500% more monthly Google Maps discovery views",
+      impact: "Substantial surge in monthly Google Maps discovery views",
     },
     {
       icon: <Clock className="w-6 h-6 text-amber-500" />,

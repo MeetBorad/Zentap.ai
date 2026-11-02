@@ -37,7 +37,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
           <div className="flex items-start sm:items-center gap-3">
             <Radio className="w-4 h-4 text-[#ff7a00] flex-shrink-0 mt-0.5 sm:mt-0" />
             <p className="text-xs text-white leading-relaxed">
-              <strong className="text-[#ff7a00]">Google Anti-Gating Compliant:</strong> ZenTap preserves public Google review access across all ratings, offering an expedited private resolution channel for sub-4 star experiences.
+              <strong className="text-[#ff7a00]">Google Review Transparency:</strong> ZenTap provides direct, frictionless access to your official Google Maps listing, empowering customers to share genuine feedback and build honest local reputation.
             </p>
           </div>
 

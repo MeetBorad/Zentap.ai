@@ -87,7 +87,7 @@ export const STANDEE_PHOTOS: StandeePhotoItem[] = [
     tag: "Studio Angle 03",
     src: "/standees/3.png",
     description: "Full frontal portrait showing balanced visual hierarchy: business logo, clear call-to-action, NFC chip zone, and dynamic QR code.",
-    spec: "Level-Q Error Correction · Anti-Gating Architecture",
+    spec: "Level-Q Error Correction · Dynamic Cloud Routing",
   },
   {
     id: "angle-4",

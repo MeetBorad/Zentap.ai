@@ -51,8 +51,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
       a: "No app, download, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and Android automatically detect the NTAG216 chip instantly when held within 4cm of the standee or smart card.",
     },
     {
-      q: "How does the Sentiment Protection Shield protect my Google rating?",
-      a: "When a guest selects 3, 4, or 5 stars on their phone, they are greeted by a pre-crafted review draft and guided directly to post on your live Google Business Profile. If they select 1 or 2 stars, it displays a confidential private feedback form that delivers directly to store management with ZERO public Google redirect.",
+      q: "How does the AI Review Assistant help increase Google reviews?",
+      a: "When a customer taps your standee, they can pick aspects they loved (e.g. Cleanliness, Fast Service, Great Ambience) and instantly generate a helpful, high-quality review draft. With a single tap, the draft opens directly in Google Maps for immediate posting—eliminating typing hassle while keeping reviews 100% authentic.",
     },
     {
       q: "How does ZenTap boost my Google reach and SEO?",

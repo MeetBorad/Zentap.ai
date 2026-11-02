@@ -20,10 +20,10 @@ export default function SentimentSimulator() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#232734] mb-8">
         <div>
           <h3 className="font-headline font-bold text-xl sm:text-2xl text-white tracking-tight text-balance">
-            Dual-Channel Sentiment Interceptor
+            Interactive Customer Review &amp; Feedback Experience
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
-            Test how guest star ratings dynamically route to Google Business Profiles or private management resolution.
+            Experience how customers receive instant AI review drafts or can reach store management directly with full transparency.
           </p>
         </div>
 
@@ -113,10 +113,10 @@ export default function SentimentSimulator() {
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-bold text-amber-200 font-headline">
-                  Private Resolution Channel (Anti-Gating Compliant)
+                  Direct Manager Resolution Desk
                 </h3>
                 <p className="text-xs text-amber-100 mt-1 leading-relaxed">
-                  Customer is offered an immediate direct line to the manager to fix the grievance internally before it hits Google. In full compliance with Google policies, public review access remains accessible.
+                  Customer has the option to alert the store manager directly to resolve any concerns on the spot, while always retaining full direct access to Google Maps.
                 </p>
                   
                   {!ticketSubmitted ? (

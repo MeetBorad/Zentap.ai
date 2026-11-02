@@ -115,7 +115,7 @@ export default function HomeView({
                 <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
                 <CheckCircle2 className="w-4 h-4 text-[#ff7a00]" />
                 <span className="text-xs font-semibold text-white tracking-tight">
-                  Over <span className="font-bold text-[#ff7a00]">45,382</span>+ Verified Reviews Generated
+                  Tested Across <span className="font-bold text-[#ff7a00]">15+</span> Local Businesses in Ahmedabad • 500+ Customer Reviews
                 </span>
               </div>
 
@@ -130,7 +130,7 @@ export default function HomeView({
 
               {/* Stitch Subtitle */}
               <p className="text-base sm:text-lg text-slate-200 mb-6 leading-relaxed max-w-2xl font-sans">
-                Smart NFC &amp; Dynamic QR standees that boost your local business rating by 300% without awkward asking or paperwork.
+                Smart NFC &amp; Dynamic QR standees to collect genuine 5-star Google reviews seamlessly without awkward asking or paperwork.
               </p>
 
               {/* Local SEO Callout Bar */}
@@ -253,24 +253,24 @@ export default function HomeView({
               </div>
             </OpenDesignCard>
 
-            {/* Stitch Card 2: AI Sentiment Guard */}
+            {/* Stitch Card 2: Smart AI Review Assistant */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
                 <div className="flex items-center gap-3.5 mb-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
-                    <ShieldCheck className="w-5 h-5 text-amber-400" />
+                    <Sparkles className="w-5 h-5 text-amber-400" />
                   </div>
                   <h3 className="font-headline font-bold text-lg text-white">
-                    AI Sentiment Guard
+                    Smart AI Review Assistant
                   </h3>
                 </div>
                 <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
-                  Routes happy customers to Google and negative feedback to private management tickets, safeguarding your public reputation.
+                  Suggests personalized, keyword-rich drafts based on customer highlights in 1 tap, removing typing fatigue so real reviews get posted faster.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-amber-400 font-semibold">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Anti-Gating Compliant Shield</span>
+                <Check className="w-3.5 h-3.5 text-amber-400" />
+                <span>Zero Typing Friction</span>
               </div>
             </OpenDesignCard>
 
@@ -402,7 +402,7 @@ export default function HomeView({
                 ZenTap Smart Review Standee
               </h3>
               <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
-                Advanced review standee with customized Review Assistant page, AI draft suggestions, and negative feedback sentiment protection.
+                Advanced review standee with customized Review Assistant page, 1-tap AI drafts, and direct customer feedback inbox.
               </p>
               <div className="mt-4 pt-3 border-t border-white/20">
                 <span className="font-headline font-extrabold text-2xl text-white">₹1,499</span>
@@ -419,7 +419,7 @@ export default function HomeView({
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-                  <span>Negative review shield (1-2★ private feedback)</span>
+                  <span>Direct Google Maps review access + private feedback desk</span>
                 </li>
               </ul>
             </div>

@@ -21,8 +21,8 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
       a: "Google's local search algorithms heavily prioritize review velocity (how frequently new reviews appear), verified local customer check-in signals, and relevant keywords in review text. ZenTap prompts guests right after a positive transaction and generates keyword-rich drafts, signaling immense local popularity to Google Search and Maps algorithms, boosting your impressions, direction requests, and phone calls.",
     },
     {
-      q: "How does the rating flow comply with Google review policies?",
-      a: "ZenTap is 100% compliant with Google's strict anti-gating policies. Every customer selecting 1 to 5 stars has full access to the 'Post Google Review' button. The review draft is merely a helpful suggestion, and the customer submits the review themselves on their own Google account. For 1-2 stars, ZenTap additionally provides an extra option to send private confidential feedback directly to store management so the owner can resolve issues immediately.",
+      q: "How does the rating and review flow work on Google?",
+      a: "ZenTap provides an unhindered direct link to your official Google Business Profile review listing for every customer. The AI review assistant suggests thoughtful, keyword-rich drafts based on what the customer enjoyed, eliminating typing friction. Customers always submit reviews directly through their personal Google account, ensuring 100% authentic public reviews.",
     },
     {
       q: "What is the difference between the ₹500 Smart Card and the Standees?",

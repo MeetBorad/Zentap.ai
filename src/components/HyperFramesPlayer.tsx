@@ -70,15 +70,15 @@ const FRAMES: HyperFrame[] = [
   },
   {
     id: 4,
-    tagline: "FRAME 04 / 06 · ANTI-GATING SENTIMENT",
-    headline: "Protect your reputation with",
-    highlightText: "Smart Sentiment Routing.",
-    subtext: "Happy guests (4-5★) post directly to Google Maps. Constructive critiques (1-2★) route to store management privately to prevent public rating damage.",
-    badge: "Google Policy Compliant",
+    tagline: "FRAME 04 / 06 · AI REVIEW DRAFTS",
+    headline: "Zero typing friction with",
+    highlightText: "Instant AI Suggestions.",
+    subtext: "Customers tap the standee and get thoughtful, customized review drafts highlighting food, ambience, and service in seconds—posted directly to Google Maps.",
+    badge: "1-Tap Review Drafts",
     duration: 4500,
     accentColor: "#3B82F6",
-    icon: <ShieldCheck className="w-6 h-6 text-blue-500" />,
-    metric: { value: "100%", label: "Defused Negative Ratings" }
+    icon: <Sparkles className="w-6 h-6 text-blue-500" />,
+    metric: { value: "10s", label: "Average Review Completion" }
   },
   {
     id: 5,
@@ -102,7 +102,7 @@ const FRAMES: HyperFrame[] = [
     duration: 4500,
     accentColor: "#D94826",
     icon: <Layers className="w-6 h-6 text-[#D94826]" />,
-    metric: { value: "+410%", label: "Documented Review Growth" }
+    metric: { value: "5x", label: "Faster Review Collection" }
   }
 ];
 

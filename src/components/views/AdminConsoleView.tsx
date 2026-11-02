@@ -2046,14 +2046,14 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                     </span>
                   </div>
 
-                  {/* 4. Sub-4★ Private Feedback Intercepted (Anti-Gating Compliant) */}
+                  {/* 4. Private Customer Feedback Received */}
                   <div className="p-5 rounded-3xl bg-white border border-zinc-200/80 shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-500 font-bold">
-                        Private Feedback Intercepted
+                        Private Feedback Received
                       </span>
                       <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 text-[10px] font-bold">
-                        Anti-Gating Active
+                        Resolution Active
                       </span>
                     </div>
                     <div className="my-3">

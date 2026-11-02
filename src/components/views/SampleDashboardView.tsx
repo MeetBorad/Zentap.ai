@@ -268,8 +268,8 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
                 <span className="font-semibold text-on-surface">1 Standee Deployed</span>
               </div>
               <div className="flex justify-between py-1">
-                <span>Google Anti-Gating:</span>
-                <span className="font-semibold text-emerald-600">100% Policy Compliant</span>
+                <span>Google Review Access:</span>
+                <span className="font-semibold text-emerald-600">Direct Public Access</span>
               </div>
             </div>
           </div>

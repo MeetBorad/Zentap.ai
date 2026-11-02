@@ -11,7 +11,7 @@ export const PRODUCT_CATEGORIES = [
   {
     id: "zentap_smart_review_standee",
     name: "ZenTap Smart Review Standee",
-    description: "Customized Review Assistant page with AI guidance & sentiment protection",
+    description: "Customized Review Assistant page with AI guidance & customer feedback inbox",
     defaultPrice: 1499,
   },
   {

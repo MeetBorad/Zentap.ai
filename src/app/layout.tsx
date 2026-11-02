@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     "NFC Review Standee Ahmedabad",
     "Smart Review Card India",
     "Tap to Review Standee",
-    "Google Anti-Gating Compliant Reviews",
+    "Smart NFC Google Reviews",
     "NTAG216 NFC Card",
     "Restaurant Google Reviews NFC",
     "Salon Google Reviews Standee",
@@ -175,10 +175,10 @@ const jsonLdData = {
         },
         {
           "@type": "Question",
-          "name": "Is ZenTap compliant with Google Anti-Gating policies?",
+          "name": "How does ZenTap assist customers in leaving reviews?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. ZenTap maintains 100% compliance with Google review policies by ensuring all visitors retain an unhindered direct pathway to public Google reviews across all star ratings, while offering a private feedback resolution channel for sub-4 star experiences.",
+            "text": "ZenTap eliminates typing friction by offering customers instant 1-tap review drafts and keyword tags directly aligned with their experience, opening straight into Google Maps for authentic review submission.",
           },
         },
         {

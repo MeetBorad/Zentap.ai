@@ -41,7 +41,7 @@ const VIEW_METADATA: Record<ActiveView, { title: string; path: string }> = {
   results: { title: "Verified Client Results | ZenTap", path: "/?view=results" },
   "sample-dashboard": { title: "Sample Showcase Dashboard | ZenTap", path: "/?view=sample-dashboard" },
   "client-proofs": { title: "Testimonials & Case Studies | ZenTap", path: "/?view=client-proofs" },
-  faq: { title: "FAQ & Google Anti-Gating Policy | ZenTap", path: "/?view=faq" },
+  faq: { title: "FAQ & Support | ZenTap", path: "/?view=faq" },
   portal: { title: "Merchant Dashboard | ZenTap", path: "/?view=portal" },
   admin: { title: "Fleet Superadmin Console | ZenTap", path: "/?view=admin" },
 };

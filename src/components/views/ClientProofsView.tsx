@@ -35,7 +35,7 @@ export default function ClientProofsView({ onNavigateToPricing }: ClientProofsVi
       rating: 5,
       avatar: "RD",
       content:
-        "We used to struggle getting our diners to leave reviews after their meal. With ZenTap standees on our tables, guests love the experience because they don't have to type anything—the assistant drafts it for them. We went from 180 reviews to nearly 1,000 reviews in 4 months!",
+        "We used to struggle getting our diners to leave reviews after their meal. With ZenTap standees on our tables, guests love the experience because they don't have to type anything—the assistant drafts it for them. We saw our Google reviews more than double within weeks!",
       verifiedBadge: "Verified Standee Deployed (Brushed Brass)",
     },
     {
@@ -45,7 +45,7 @@ export default function ClientProofsView({ onNavigateToPricing }: ClientProofsVi
       rating: 5,
       avatar: "SR",
       content:
-        "The compliance and rating rules are what made me choose ZenTap. When patients have a great visit, they post on Google immediately. And if anyone experienced minor pain or billing delay, the private feedback feature lets them alert me directly instead of posting angry rants on Google.",
+        "The seamless flow is what made me choose ZenTap. When patients have a great visit, they post on Google immediately. And if anyone experienced minor pain or billing delay, the direct feedback feature lets them alert me directly so we can resolve it.",
       verifiedBadge: "Verified Healthcare Standee",
     },
     {
@@ -69,10 +69,10 @@ export default function ClientProofsView({ onNavigateToPricing }: ClientProofsVi
           Social Proof &amp; Verification
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-5xl text-on-surface mt-2 tracking-tight">
-          Trusted by 150+ Ambitious Business Owners
+          Tested Across 15+ Local Businesses in Ahmedabad
         </h1>
         <p className="text-xs sm:text-sm text-on-surface-variant mt-3 leading-relaxed">
-          From bustling cafes and high-ticket luxury jewellery showrooms to busy clinics—read authentic feedback from business owners using ZenTap every single day.
+          From cafes and jewellery showrooms to dental clinics—read authentic feedback from local business owners who tested ZenTap standees.
         </p>
       </div>
 
@@ -147,7 +147,7 @@ export default function ClientProofsView({ onNavigateToPricing }: ClientProofsVi
       {/* Bottom CTA */}
       <div className="p-8 rounded-3xl bg-surface-container text-center max-w-3xl mx-auto">
         <h3 className="font-headline font-bold text-2xl text-on-surface">
-          Join Over 150+ Leading Local Businesses
+          Join Our Growing Network of Local Businesses
         </h3>
         <p className="text-xs text-on-surface-variant mt-2 max-w-lg mx-auto">
           Start collecting authentic 5-star Google reviews today with zero tech setup required.

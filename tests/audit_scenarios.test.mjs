@@ -81,7 +81,7 @@ async function runTests() {
   });
 
   // 7. Every star rating 1-5 has access to Google Review button
-  await test("Scenario 7: Google Review Anti-Gating compliance (ratings 1 to 5)", async () => {
+  await test("Scenario 7: Google Review direct access (ratings 1 to 5)", async () => {
     const res = await fetch(`${BASE_URL}/r/sample`);
     const text = await res.text();
     assert.strictEqual(res.status, 200);
