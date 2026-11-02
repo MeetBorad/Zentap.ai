@@ -28,6 +28,7 @@ import {
   permanentDeletePaymentServer,
   serverFetchPlatformData,
 } from "@/lib/adminPlatformStore";
+import BusinessSearchSelect from "../BusinessSearchSelect";
 
 interface PaymentsWebpageTabProps {
   onShowToast: (msg: string) => void;
@@ -620,23 +621,14 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
             </div>
 
             <form onSubmit={handleRecordSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Select Registered Business <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  required
-                  value={selectedBusinessId}
-                  onChange={(e) => setSelectedBusinessId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-medium"
-                >
-                  {clients.map((c) => (
-                    <option key={c.business_id} value={c.business_id}>
-                      {c.business_id} — {c.business_name} ({c.owner_name || "No Owner"})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={selectedBusinessId}
+                onSelect={(biz) => setSelectedBusinessId(biz ? biz.business_id : "")}
+                label="Select Registered Business"
+                required
+                placeholder="Search by ID or Name as you type..."
+              />
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">Product</label>
@@ -810,26 +802,22 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
             </div>
 
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business ID</label>
-                  <input
-                    type="text"
-                    value={editBusinessId}
-                    onChange={(e) => setEditBusinessId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business Name</label>
-                  <input
-                    type="text"
-                    value={editBusinessName}
-                    onChange={(e) => setEditBusinessName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-              </div>
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={editBusinessId}
+                onSelect={(biz) => {
+                  if (biz) {
+                    setEditBusinessId(biz.business_id);
+                    setEditBusinessName(biz.business_name);
+                  } else {
+                    setEditBusinessId("");
+                    setEditBusinessName("");
+                  }
+                }}
+                label="Registered Business"
+                required
+                placeholder="Search business to reassign..."
+              />
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">Product</label>

@@ -92,10 +92,99 @@ export async function GET(req: Request) {
     const tags = activeTagsRes.data || [];
     const deletedTags = mergeDeleted(deletedTagsRes.data, legacyDeletedTagsRes.data, "tag_id");
 
-    const googleLinks = activeGoogleLinksRes.data || [];
-    const deletedGoogleLinks = mergeDeleted(deletedGoogleLinksRes.data, legacyDeletedGoogleLinksRes.data, "tag_id");
+    // =========================================================================
+    // SINGLE SOURCE OF TRUTH (qr_nfc_tags):
+    // "Moved" is a VIEW, NOT a copy.
+    // - Standees with Business ID automatically appear on Google Links & QR Sharing
+    // - Cards with Business ID automatically appear on Social Links & QR Setting
+    // - Setup status is WORKED OUT dynamically, NOT stored:
+    //   * Standee is Completed (green) when business has a valid Google review link; else Pending (red).
+    //   * Card is Completed (green) when chosen what it opens (WhatsApp, Instagram, Facebook) and valid link; else Pending (red).
+    // =========================================================================
 
-    const socialLinks = activeSocialLinksRes.data || [];
+    const isValidGoogleUrl = (link?: string | null) => {
+      const s = (link || "").trim();
+      return s.length > 5 && (s.startsWith("http://") || s.startsWith("https://"));
+    };
+
+    const isValidSocialUrl = (platform?: string | null, link?: string | null) => {
+      const p = (platform || "").trim();
+      const l = (link || "").trim();
+      const hasPlat = ["WhatsApp", "Instagram", "Facebook"].includes(p);
+      return hasPlat && l.length > 3 && (l.startsWith("http://") || l.startsWith("https://") || l.startsWith("wa.me/"));
+    };
+
+    const clientMap = new Map<string, any>();
+    clients.forEach((c) => clientMap.set(c.business_id, c));
+
+    // Active Google Links View: derived purely from assigned standees
+    const googleLinksFromTags = tags
+      .filter((t) => t.product_type === "Counter Standee" && t.business_id)
+      .map((t) => {
+        const client = clientMap.get(t.business_id);
+        const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
+        const setup_status: "completed" | "pending" = isValidGoogleUrl(googleUrl) ? "completed" : "pending";
+        return {
+          id: t.id,
+          tag_id: t.tag_id,
+          business_id: t.business_id,
+          business_name: client?.business_name || t.business_name || "Assigned Business",
+          link_of_tag_id: t.link,
+          business_google_review_link: googleUrl,
+          destination: t.destination || (googleUrl ? "direct_google" : "not_assigned"),
+          setup_status,
+          total_scans: t.scans_count || 0,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          deleted_at: t.deleted_at,
+          deleted_by: t.deleted_by,
+        };
+      });
+
+    // Active Social Links View: derived purely from assigned cards
+    const socialLinksFromTags = tags
+      .filter((t) => t.product_type === "Business NFC Card" && t.business_id)
+      .map((t) => {
+        const client = clientMap.get(t.business_id);
+        const platform = t.social_platform || "N/A";
+        const socialUrl = (t.social_link || "").trim();
+        const setup_status: "completed" | "pending" = isValidSocialUrl(platform, socialUrl) ? "completed" : "pending";
+        return {
+          id: t.id,
+          tag_id: t.tag_id,
+          business_id: t.business_id,
+          business_name: client?.business_name || t.business_name || "Assigned Business",
+          social_platform: platform,
+          link_of_tag_id: t.link,
+          social_link: socialUrl,
+          destination: t.destination || (setup_status === "completed" ? "assigned" : "not_assigned"),
+          setup_status,
+          total_scans: t.scans_count || 0,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          deleted_at: t.deleted_at,
+          deleted_by: t.deleted_by,
+        };
+      });
+
+    // Merge view items with any existing standalone rows ensuring tag_id deduplication
+    const googleLinks = [...googleLinksFromTags];
+    (activeGoogleLinksRes.data || []).forEach((row) => {
+      if (!googleLinks.some((g) => g.tag_id === row.tag_id)) {
+        const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "completed" : "pending";
+        googleLinks.push({ ...row, setup_status });
+      }
+    });
+
+    const socialLinks = [...socialLinksFromTags];
+    (activeSocialLinksRes.data || []).forEach((row) => {
+      if (!socialLinks.some((s) => s.tag_id === row.tag_id)) {
+        const setup_status = isValidSocialUrl(row.social_platform, row.social_link) ? "completed" : "pending";
+        socialLinks.push({ ...row, setup_status });
+      }
+    });
+
+    const deletedGoogleLinks = mergeDeleted(deletedGoogleLinksRes.data, legacyDeletedGoogleLinksRes.data, "tag_id");
     const deletedSocialLinks = mergeDeleted(deletedSocialLinksRes.data, legacyDeletedSocialLinksRes.data, "tag_id");
 
     const pageEditorConfigs = activePageEditorRes.data || [];
@@ -508,6 +597,68 @@ export async function POST(req: Request) {
 
       if (error) throw error;
       return NextResponse.json({ success: true, data: res });
+    }
+
+    // 6. ATOMIC TAG GENERATION (Single or Batch - 1 to 100)
+    if (action === "generate_tags") {
+      const { product_type, quantity = 1, business_id = null, business_name = null } = body;
+
+      // Strict server-side verification: 1 to 100
+      const qty = parseInt(String(quantity), 10);
+      if (isNaN(qty) || qty < 1 || qty > 100) {
+        return NextResponse.json({ error: "Batch quantity must be a typed integer from 1 to 100" }, { status: 400 });
+      }
+
+      if (product_type !== "Counter Standee" && product_type !== "Business NFC Card") {
+        return NextResponse.json({ error: "Invalid product type. Must be 'Counter Standee' or 'Business NFC Card'" }, { status: 400 });
+      }
+
+      // Call database function: atomic, all-or-nothing, lock-protected
+      const { data: generated, error: genErr } = await (supabase as any).rpc("generate_tags_batch", {
+        p_product_type: product_type,
+        p_count: qty,
+        p_business_id: business_id || null,
+        p_business_name: business_name || null,
+      });
+
+      if (genErr) {
+        console.error("generate_tags_batch error:", genErr);
+        return NextResponse.json({ error: genErr.message || "Failed to generate tags" }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, count: generated?.length || 0, data: generated });
+    }
+
+    // 7. ASSIGN OR UNASSIGN TAG (Single Source of Truth)
+    if (action === "assign_tag") {
+      const { tag_id, business_id, business_name, google_review_link, social_platform, social_link } = body;
+      if (!tag_id) {
+        return NextResponse.json({ error: "Missing tag_id" }, { status: 400 });
+      }
+
+      const updates: any = {
+        business_id: business_id ? business_id.trim() : null,
+        business_name: business_id ? (business_name || null) : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (google_review_link !== undefined) updates.google_review_link = google_review_link;
+      if (social_platform !== undefined) updates.social_platform = social_platform;
+      if (social_link !== undefined) updates.social_link = social_link;
+
+      const { data: updatedTag, error: upErr } = await (supabase as any)
+        .from("qr_nfc_tags")
+        .update(updates)
+        .eq("tag_id", tag_id)
+        .select()
+        .single();
+
+      if (upErr) {
+        console.error("assign_tag error:", upErr);
+        return NextResponse.json({ error: upErr.message || "Failed to update tag assignment" }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, data: updatedTag });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

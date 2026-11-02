@@ -601,6 +601,71 @@ export async function permanentDeleteTagServer(tagId: string, confirmationName: 
   return serverPermanentDelete("qr_nfc_tags", "tag_id", tagId, confirmationName);
 }
 
+// Atomic Server-Side Tag Generation (Single or Batch - 1 to 100)
+export async function generateTagsServer(params: {
+  product_type: "Counter Standee" | "Business NFC Card";
+  quantity: number;
+  business_id?: string | null;
+  business_name?: string | null;
+}): Promise<{ success: boolean; data?: QrNfcTagItemRecord[]; error?: string }> {
+  const qty = Math.floor(Number(params.quantity) || 1);
+  if (qty < 1 || qty > 100) {
+    return { success: false, error: "Batch quantity must be a typed integer between 1 and 100" };
+  }
+
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "generate_tags",
+        product_type: params.product_type,
+        quantity: qty,
+        business_id: params.business_id || null,
+        business_name: params.business_name || null,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to generate tags on server" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while generating tags" };
+  }
+}
+
+// Server-Side Assign or Unassign Tag (Single Source of Truth)
+export async function assignTagServer(
+  tagId: string,
+  businessId: string | null,
+  businessName?: string | null
+): Promise<{ success: boolean; data?: QrNfcTagItemRecord; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "assign_tag",
+        tag_id: tagId,
+        business_id: businessId || null,
+        business_name: businessId ? (businessName || null) : null,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to update tag assignment on server" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while updating tag assignment" };
+  }
+}
+
 // Google Review Link helpers
 export async function softDeleteGoogleLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
   return serverSoftDelete("google_review_links", "tag_id", tagId);
@@ -1190,21 +1255,33 @@ export function updateGoogleReviewLink(tagId: string, updates: Partial<GoogleRev
 
   const item = current[index];
   const newDestination = updates.destination !== undefined ? updates.destination : item.destination;
+  const newReviewLink = updates.business_google_review_link !== undefined ? updates.business_google_review_link : item.business_google_review_link;
   
-  // Logic: when Destination of QR/NFC is anything EXCEPT Not Assigned, status is Completed (Green), default Pending (Red)
-  const autoStatus: "pending" | "completed" = newDestination !== "not_assigned" ? "completed" : "pending";
+  // Setup status is worked out, not stored:
+  // A standee is Completed (green) when its business has a valid Google review link. Otherwise it's Pending (red).
+  const isValid = (newReviewLink || "").trim().length > 5 && ((newReviewLink || "").startsWith("http://") || (newReviewLink || "").startsWith("https://"));
+  const autoStatus: "pending" | "completed" = isValid ? "completed" : "pending";
 
   const updatedItem: GoogleReviewLinkItemRecord = {
     ...item,
     ...updates,
+    business_google_review_link: newReviewLink,
     destination: newDestination,
-    setup_status: updates.setup_status || autoStatus,
+    setup_status: autoStatus,
     updated_at: new Date().toISOString(),
   };
 
   current[index] = updatedItem;
   setStored(KEY_GOOGLE_LINKS, current);
   asyncDbUpsert("google_review_links", updatedItem, "tag_id");
+
+  // Single Source of Truth: update qr_nfc_tags as well
+  asyncDbUpsert("qr_nfc_tags", {
+    tag_id: tagId,
+    google_review_link: newReviewLink,
+    destination: newDestination,
+  }, "tag_id");
+
   return updatedItem;
 }
 
@@ -1290,21 +1367,41 @@ export function updateSocialLink(tagId: string, updates: Partial<SocialLinkItemR
 
   const item = current[index];
   const newDestination = updates.destination !== undefined ? updates.destination : item.destination;
+  const newSocialLink = updates.social_link !== undefined ? updates.social_link : item.social_link;
+  const newPlatform = updates.social_platform !== undefined ? updates.social_platform : item.social_platform;
   
-  // Logic: when Destination is Assigned (or social link is set), status is Completed (Green), else Pending (Red)
-  const autoStatus: "pending" | "completed" = newDestination === "assigned" ? "completed" : "pending";
+  // Setup status is worked out, not stored:
+  // A card is Completed when you’ve chosen what it opens (WhatsApp, Instagram or Facebook) and that link is valid. Otherwise it's Pending (red).
+  const hasPlatform = ["WhatsApp", "Instagram", "Facebook"].includes(newPlatform || "");
+  const isValid = hasPlatform && (newSocialLink || "").trim().length > 3 && (
+    (newSocialLink || "").startsWith("http://") || 
+    (newSocialLink || "").startsWith("https://") || 
+    (newSocialLink || "").startsWith("wa.me/")
+  );
+  const autoStatus: "pending" | "completed" = isValid ? "completed" : "pending";
 
   const updatedItem: SocialLinkItemRecord = {
     ...item,
     ...updates,
+    social_platform: newPlatform,
+    social_link: newSocialLink,
     destination: newDestination,
-    setup_status: updates.setup_status || autoStatus,
+    setup_status: autoStatus,
     updated_at: new Date().toISOString(),
   };
 
   current[index] = updatedItem;
   setStored(KEY_SOCIAL_LINKS, current);
   asyncDbUpsert("social_links", updatedItem, "tag_id");
+
+  // Single Source of Truth: update qr_nfc_tags as well
+  asyncDbUpsert("qr_nfc_tags", {
+    tag_id: tagId,
+    social_platform: newPlatform,
+    social_link: newSocialLink,
+    destination: newDestination,
+  }, "tag_id");
+
   return updatedItem;
 }
 

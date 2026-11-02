@@ -9,7 +9,6 @@ import {
   Download,
   Copy,
   Check,
-  Edit,
   Edit2,
   Trash2,
   RotateCcw,
@@ -17,9 +16,9 @@ import {
   X,
   Radio,
   CheckCircle2,
-  SlidersHorizontal,
   Building2,
   ShieldAlert,
+  Ban,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -29,9 +28,8 @@ import {
   getAllQrNfcTags,
   getAllDeletedQrNfcTags,
   getAllClients,
-  createSingleTag,
-  generateBatchTags,
-  assignTagBusiness,
+  generateTagsServer,
+  assignTagServer,
   updateQrNfcTag,
   softDeleteTagServer,
   restoreTagServer,
@@ -39,6 +37,7 @@ import {
   serverFetchPlatformData,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
+import BusinessSearchSelect from "../BusinessSearchSelect";
 
 interface QrNfcGeneratorWebpageTabProps {
   onShowToast: (msg: string) => void;
@@ -49,8 +48,8 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   const [deletedTags, setDeletedTags] = useState<DeletedQrNfcTagRecord[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Default filter on this page: Unassigned as requested!
+
+  // Requirement: Default filter is "Not Assigned" (unassigned)
   const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "assigned" | "deleted">("unassigned");
   const [productFilter, setProductFilter] = useState<"all" | "Counter Standee" | "Business NFC Card">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,28 +57,25 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   // Modals: Create Single Tag
   const [isSingleModalOpen, setIsSingleModalOpen] = useState(false);
   const [singleProductType, setSingleProductType] = useState<"Counter Standee" | "Business NFC Card">("Counter Standee");
-  const [singleBusinessId, setSingleBusinessId] = useState("");
-  const [singleBizSearch, setSingleBizSearch] = useState("");
+  const [singleBusinessId, setSingleBusinessId] = useState<string | null>(null);
 
-  // Modals: Generate Batch
+  // Modals: Generate Batch (1 to 100)
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [batchProductType, setBatchProductType] = useState<"Counter Standee" | "Business NFC Card">("Counter Standee");
   const [batchQuantity, setBatchQuantity] = useState<number>(10);
 
-  // Modals: Assign Business ID
+  // Modals: Assign / Change Business ID (with Unassign option)
   const [editTargetTag, setEditTargetTag] = useState<QrNfcTagItemRecord | null>(null);
-  const [assignBizId, setAssignBizId] = useState("");
-  const [assignBizSearch, setAssignBizSearch] = useState("");
+  const [assignBizId, setAssignBizId] = useState<string | null>(null);
 
   // Modals: Edit Whole Entry
   const [isEditWholeOpen, setIsEditWholeOpen] = useState(false);
   const [editWholeTagId, setEditWholeTagId] = useState("");
   const [editWholeProductType, setEditWholeProductType] = useState<"Counter Standee" | "Business NFC Card">("Counter Standee");
-  const [editWholeBusinessId, setEditWholeBusinessId] = useState("");
+  const [editWholeBusinessId, setEditWholeBusinessId] = useState<string | null>(null);
   const [editWholeBusinessName, setEditWholeBusinessName] = useState("");
   const [editWholeLink, setEditWholeLink] = useState("");
   const [editWholeScans, setEditWholeScans] = useState<number>(0);
-  const [editWholeSearch, setEditWholeSearch] = useState("");
 
   // Delete target (Soft delete)
   const [deleteTarget, setDeleteTarget] = useState<QrNfcTagItemRecord | null>(null);
@@ -130,50 +126,82 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     }
   };
 
-  const handleCreateSingle = (e: React.FormEvent) => {
+  // Create Single Tag via Database
+  const handleCreateSingle = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     const targetBiz = singleBusinessId ? clients.find((c) => c.business_id === singleBusinessId) : null;
-    const created = createSingleTag({
+    const res = await generateTagsServer({
       product_type: singleProductType,
+      quantity: 1,
       business_id: targetBiz ? targetBiz.business_id : null,
       business_name: targetBiz ? targetBiz.business_name : null,
     });
+    setIsSubmitting(false);
 
-    onShowToast(`✓ Created ${created.product_type} with unique ID ${created.tag_id}!`);
-    setIsSingleModalOpen(false);
-    setSingleBusinessId("");
-    setSingleBizSearch("");
-    refreshData();
+    if (res.success && res.data && res.data[0]) {
+      const created = res.data[0];
+      onShowToast(`✓ Created ${created.product_type} with unique ID ${created.tag_id}!`);
+      setIsSingleModalOpen(false);
+      setSingleBusinessId(null);
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to create tag in database");
+    }
   };
 
-  const handleCreateBatch = (e: React.FormEvent) => {
+  // Generate Batch via Database (1 to 100 verified)
+  const handleCreateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = Math.max(1, Math.min(100, Number(batchQuantity) || 1));
-    const created = generateBatchTags({
-      product_type: batchProductType,
-      quantity: qty,
-    });
-
-    onShowToast(`✓ Generated batch of ${created.length} ${batchProductType} tags (${created[0]?.tag_id} - ${created[created.length - 1]?.tag_id})!`);
-    setIsBatchModalOpen(false);
-    refreshData();
-  };
-
-  const handleAssignBusiness = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editTargetTag) return;
-    const targetBiz = clients.find((c) => c.business_id === assignBizId);
-    if (!targetBiz) {
-      onShowToast("Please select a registered business");
+    const qty = Math.floor(Number(batchQuantity) || 1);
+    if (qty < 1 || qty > 100) {
+      onShowToast("Batch quantity must be a typed integer between 1 and 100");
       return;
     }
 
-    const updated = assignTagBusiness(editTargetTag.tag_id, targetBiz.business_id, targetBiz.business_name);
-    if (updated) {
-      onShowToast(`✓ Assigned ${targetBiz.business_name} (${targetBiz.business_id}) to ${updated.tag_id}!`);
+    setIsSubmitting(true);
+    const res = await generateTagsServer({
+      product_type: batchProductType,
+      quantity: qty,
+    });
+    setIsSubmitting(false);
+
+    if (res.success && res.data && res.data.length > 0) {
+      const created = res.data;
+      onShowToast(
+        `✓ Generated batch of ${created.length} ${batchProductType} tags (${created[0]?.tag_id} - ${created[created.length - 1]?.tag_id})!`
+      );
+      setIsBatchModalOpen(false);
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to generate batch on server");
+    }
+  };
+
+  // Assign or Unassign Business via Server Single Source of Truth
+  const handleAssignBusiness = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTargetTag) return;
+    setIsSubmitting(true);
+
+    const targetBiz = assignBizId ? clients.find((c) => c.business_id === assignBizId) : null;
+    const res = await assignTagServer(
+      editTargetTag.tag_id,
+      targetBiz ? targetBiz.business_id : null,
+      targetBiz ? targetBiz.business_name : null
+    );
+    setIsSubmitting(false);
+
+    if (res.success) {
+      if (targetBiz) {
+        onShowToast(`✓ Assigned ${targetBiz.business_name} (${targetBiz.business_id}) to ${editTargetTag.tag_id}!`);
+      } else {
+        onShowToast(`✓ Unassigned ${editTargetTag.tag_id} (Returned to inventory pool)`);
+      }
       setEditTargetTag(null);
-      setAssignBizSearch("");
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update tag assignment");
     }
   };
 
@@ -181,11 +209,10 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   const openEditWholeModal = (tag: QrNfcTagItemRecord) => {
     setEditWholeTagId(tag.tag_id);
     setEditWholeProductType(tag.product_type);
-    setEditWholeBusinessId(tag.business_id || "");
+    setEditWholeBusinessId(tag.business_id || null);
     setEditWholeBusinessName(tag.business_name || "");
     setEditWholeLink(tag.link);
     setEditWholeScans(tag.scans_count || 0);
-    setEditWholeSearch("");
     setIsEditWholeOpen(true);
   };
 
@@ -219,7 +246,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     const res = await softDeleteTagServer(deleteTarget.tag_id);
     setIsSubmitting(false);
     if (res.success) {
-      onShowToast(`✓ Tag ${deleteTarget.tag_id} moved to Deleted section`);
+      onShowToast(`✓ Tag ${deleteTarget.tag_id} moved to Deleted registry`);
       setDeleteTarget(null);
       await refreshData();
     } else {
@@ -227,13 +254,13 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     }
   };
 
-  // Restore deleted tag
+  // Restore tag
   const handleRestore = async (item: DeletedQrNfcTagRecord) => {
     setIsSubmitting(true);
     const res = await restoreTagServer(item.tag_id);
     setIsSubmitting(false);
     if (res.success) {
-      onShowToast(`✓ Restored tag ${item.tag_id}!`);
+      onShowToast(`✓ Tag ${item.tag_id} restored to inventory!`);
       await refreshData();
     } else {
       onShowToast(res.error || "Failed to restore tag");
@@ -260,10 +287,12 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     }
   };
 
+  // Dynamic QR: image holds /t/ST1 or full domain url
   const handleOpenQrModal = async (tag: QrNfcTagItemRecord) => {
     setQrModalTag(tag);
     try {
-      const url = await QRCode.toDataURL(tag.link, {
+      const dynamicUrl = `${DOMAIN_BASE}/t/${tag.tag_id}`;
+      const url = await QRCode.toDataURL(dynamicUrl, {
         width: 320,
         margin: 2,
         color: { dark: "#0f172a", light: "#ffffff" },
@@ -283,14 +312,14 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   };
 
   const handleCopyNfcLink = (tag: QrNfcTagItemRecord) => {
-    const nfcUrl = `${tag.link}?s=nfc`;
+    const nfcUrl = `${DOMAIN_BASE}/t/${tag.tag_id}?s=nfc`;
     navigator.clipboard.writeText(nfcUrl);
     setCopiedId(tag.tag_id);
-    onShowToast(`✓ Copied NFC writing link: ${nfcUrl}`);
+    onShowToast(`✓ Copied dynamic NFC link: ${nfcUrl}`);
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  // Filter Logic
+  // Filter Logic: Default Unassigned
   const q = searchQuery.toLowerCase().trim();
   const filteredTags = tags.filter((t) => {
     // 1. Status Filter (Default: unassigned)
@@ -322,45 +351,9 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     );
   });
 
-  // Filtered clients for single modal search
-  const filteredClientsForSingle = clients.filter((c) => {
-    const sq = singleBizSearch.toLowerCase().trim();
-    if (!sq) return true;
-    return (
-      c.business_id.toLowerCase().includes(sq) ||
-      c.business_name.toLowerCase().includes(sq) ||
-      (c.owner_name && c.owner_name.toLowerCase().includes(sq)) ||
-      (c.city && c.city.toLowerCase().includes(sq))
-    );
-  });
-
-  // Filtered clients for assign modal search
-  const filteredClientsForAssign = clients.filter((c) => {
-    const sq = assignBizSearch.toLowerCase().trim();
-    if (!sq) return true;
-    return (
-      c.business_id.toLowerCase().includes(sq) ||
-      c.business_name.toLowerCase().includes(sq) ||
-      (c.owner_name && c.owner_name.toLowerCase().includes(sq)) ||
-      (c.city && c.city.toLowerCase().includes(sq))
-    );
-  });
-
-  // Filtered clients for edit whole modal search
-  const filteredClientsForEdit = clients.filter((c) => {
-    const sq = editWholeSearch.toLowerCase().trim();
-    if (!sq) return true;
-    return (
-      c.business_id.toLowerCase().includes(sq) ||
-      c.business_name.toLowerCase().includes(sq) ||
-      (c.owner_name && c.owner_name.toLowerCase().includes(sq)) ||
-      (c.city && c.city.toLowerCase().includes(sq))
-    );
-  });
-
   return (
     <div className="space-y-6">
-      {/* Top Header Card */}
+      {/* Top Header Card: Shows ONLY the two buttons and two filters */}
       <div className="bg-white rounded-2xl border border-zinc-200/80 p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
@@ -370,16 +363,16 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             <div>
               <h1 className="text-xl font-bold text-zinc-900 tracking-tight">QR / NFC Generator</h1>
               <p className="text-xs text-zinc-500">
-                Generate single or batch QR &amp; NFC links for Counter Standees (ST) and Smart Cards (CRD)
+                Single source of truth: Standees (ST1, ST2...) &amp; Cards (CRD1, CRD2...). The database creates the IDs.
               </p>
             </div>
           </div>
 
+          {/* Requirement: ONLY the two buttons */}
           <div className="flex items-center gap-2.5 flex-wrap">
             <button
               onClick={() => {
-                setSingleBizSearch("");
-                setSingleBusinessId("");
+                setSingleBusinessId(null);
                 setIsSingleModalOpen(true);
               }}
               className="tactile-btn flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
@@ -397,10 +390,10 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
           </div>
         </div>
 
-        {/* Filter Bar: Default Unassigned */}
+        {/* Filter Bar: Two filters (Not Assigned by default, plus Product Type) + Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-6 pt-5 border-t border-zinc-100">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Status Pills */}
+            {/* Filter 1: Status Filter (Default: Not Assigned) */}
             <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl border border-zinc-200/60">
               <button
                 onClick={() => setStatusAndUrl("unassigned")}
@@ -410,7 +403,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                     : "text-zinc-600 hover:text-zinc-900"
                 }`}
               >
-                Unassigned ({tags.filter((t) => !t.business_id).length})
+                Not Assigned ({tags.filter((t) => !t.business_id).length})
               </button>
               <button
                 onClick={() => setStatusAndUrl("assigned")}
@@ -444,7 +437,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
               </button>
             </div>
 
-            {/* Product Type Filter */}
+            {/* Filter 2: Product Type Filter */}
             {statusFilter !== "deleted" && (
               <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl border border-zinc-200/60">
                 <button
@@ -479,15 +472,15 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             )}
           </div>
 
-          {/* Search Input */}
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          {/* Search Bar */}
+          <div className="relative min-w-[220px]">
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search Tag ID, Business ID, Name..."
+              placeholder="Search tag ID or business..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium"
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
             />
           </div>
         </div>
@@ -500,11 +493,11 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
-                  <th className="py-3.5 px-4">Business ID</th>
-                  <th className="py-3.5 px-4">Product Type</th>
                   <th className="py-3.5 px-4">Tag ID</th>
-                  <th className="py-3.5 px-4">Status of Standee/Card</th>
-                  <th className="py-3.5 px-4">Generated Link</th>
+                  <th className="py-3.5 px-4">Product Type</th>
+                  <th className="py-3.5 px-4">Business ID</th>
+                  <th className="py-3.5 px-4">Business Name</th>
+                  <th className="py-3.5 px-4">Dynamic Link / QR</th>
                   <th className="py-3.5 px-4 text-center">Download QR</th>
                   <th className="py-3.5 px-4 text-center">NFC Link</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
@@ -520,22 +513,11 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 ) : (
                   filteredTags.map((tag) => (
                     <tr key={tag.id} className="hover:bg-zinc-50/70 transition-colors">
-                      {/* Business ID */}
+                      {/* Tag ID (Sequential ST1, ST2... or CRD1, CRD2...) */}
                       <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
-                        {tag.business_id ? (
-                          <div>
-                            <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-[11px] font-bold">
-                              {tag.business_id}
-                            </span>
-                            <span className="block text-[11px] font-sans font-semibold text-zinc-800 mt-1">
-                              {tag.business_name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-zinc-100 text-zinc-500 border border-zinc-200">
-                            Unassigned
-                          </span>
-                        )}
+                        <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-xs tracking-wider">
+                          {tag.tag_id}
+                        </span>
                       </td>
 
                       {/* Product Type */}
@@ -551,37 +533,47 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                         </span>
                       </td>
 
-                      {/* Tag ID */}
-                      <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-xs tracking-wider">
-                          {tag.tag_id}
-                        </span>
+                      {/* Business ID with Pencil Icon for Assign/Change & Unassign option */}
+                      <td className="py-3 px-4 font-mono whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {tag.business_id ? (
+                            <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 font-bold border border-zinc-200 text-[11px]">
+                              {tag.business_id}
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                              Not Assigned
+                            </span>
+                          )}
+
+                          {/* Pencil icon on Business ID */}
+                          <button
+                            onClick={() => {
+                              setEditTargetTag(tag);
+                              setAssignBizId(tag.business_id || null);
+                            }}
+                            className="tactile-btn p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-all cursor-pointer"
+                            title={tag.business_id ? "Change or Unassign Business ID" : "Assign Business ID"}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {tag.business_id ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Assigned</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 text-[11px] font-bold">
-                            <X className="w-3 h-3 text-rose-600" />
-                            <span>Not Assigned</span>
-                          </span>
-                        )}
+                      {/* Business Name */}
+                      <td className="py-3 px-4 font-semibold text-zinc-900 whitespace-nowrap">
+                        {tag.business_name || <span className="text-zinc-400 font-normal">—</span>}
                       </td>
 
-                      {/* Link */}
+                      {/* Dynamic Link / QR */}
                       <td className="py-3 px-4 font-mono text-[11px] text-zinc-600 whitespace-nowrap">
                         <a
-                          href={tag.link}
+                          href={`${DOMAIN_BASE}/t/${tag.tag_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                         >
-                          <span>{tag.link}</span>
+                          <span>/t/{tag.tag_id}</span>
                           <ExternalLink className="w-3 h-3 opacity-60" />
                         </a>
                       </td>
@@ -620,20 +612,6 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                       {/* Actions */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Assign/Reassign button */}
-                          <button
-                            onClick={() => {
-                              setEditTargetTag(tag);
-                              setAssignBizId(tag.business_id || (clients[0]?.business_id || ""));
-                              setAssignBizSearch("");
-                            }}
-                            title="Assign Business ID"
-                            className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-zinc-700 hover:text-zinc-900 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-[11px] font-bold transition-all cursor-pointer"
-                          >
-                            <Edit className="w-3 h-3 text-zinc-500" />
-                            <span>{tag.business_id ? "Reassign" : "Assign"}</span>
-                          </button>
-
                           {/* Edit Whole Entry */}
                           <button
                             onClick={() => openEditWholeModal(tag)}
@@ -643,7 +621,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                             <Edit2 className="w-4 h-4" />
                           </button>
 
-                          {/* Delete */}
+                          {/* Soft Delete */}
                           <button
                             onClick={() => setDeleteTarget(tag)}
                             title="Delete Tag"
@@ -743,19 +721,17 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: CREATE SINGLE TAG WITH BUSINESS SEARCH                             */}
+      {/* MODAL: CREATE SINGLE TAG (Uses Shared BusinessSearchSelect)                 */}
       {/* ========================================================================= */}
       {isSingleModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-white" />
-                </div>
+              <div className="flex items-center gap-2">
+                <Plus className="w-5 h-5 text-zinc-900" />
                 <div>
                   <h3 className="font-bold text-lg text-zinc-900">Create Single Tag</h3>
-                  <p className="text-[11px] text-zinc-500">Auto-assigns next sequential Tag ID</p>
+                  <p className="text-[11px] text-zinc-500">Database assigns next sequential ID (ST or CRD)</p>
                 </div>
               </div>
               <button
@@ -768,8 +744,8 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
 
             <form onSubmit={handleCreateSingle} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Product Type *</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-bold text-zinc-800 mb-1.5">Product Type</label>
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setSingleProductType("Counter Standee")}
@@ -797,65 +773,16 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 </div>
               </div>
 
-              {/* Business Search & Selection */}
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Assign to Business? <span className="text-zinc-400 font-normal">(optional)</span>
-                </label>
-                
-                {/* Search Bar for Businesses */}
-                <div className="relative mb-2">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search by Business ID or Name..."
-                    value={singleBizSearch}
-                    onChange={(e) => setSingleBizSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-
-                <div className="border border-zinc-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-zinc-100">
-                  <div
-                    onClick={() => setSingleBusinessId("")}
-                    className={`p-2.5 text-xs font-medium cursor-pointer transition-colors flex items-center justify-between ${
-                      !singleBusinessId ? "bg-zinc-900 text-white font-bold" : "hover:bg-zinc-50 text-zinc-600"
-                    }`}
-                  >
-                    <span>-- Keep in inventory (Not Assigned) --</span>
-                    {!singleBusinessId && <Check className="w-4 h-4 text-emerald-400" />}
-                  </div>
-
-                  {filteredClientsForSingle.length === 0 ? (
-                    <div className="p-3 text-xs text-zinc-400 text-center">
-                      No businesses found matching &ldquo;{singleBizSearch}&rdquo;
-                    </div>
-                  ) : (
-                    filteredClientsForSingle.map((c) => (
-                      <div
-                        key={c.id}
-                        onClick={() => setSingleBusinessId(c.business_id)}
-                        className={`p-2.5 text-xs cursor-pointer transition-colors flex items-center justify-between ${
-                          singleBusinessId === c.business_id
-                            ? "bg-zinc-900 text-white font-bold"
-                            : "hover:bg-zinc-50 text-zinc-800"
-                        }`}
-                      >
-                        <div>
-                          <span className={`font-mono font-bold mr-2 ${singleBusinessId === c.business_id ? "text-orange-300" : "text-zinc-900"}`}>
-                            [{c.business_id}]
-                          </span>
-                          <span>{c.business_name}</span>
-                          <span className={`text-[10px] ml-2 ${singleBusinessId === c.business_id ? "text-zinc-300" : "text-zinc-400"}`}>
-                            ({c.city})
-                          </span>
-                        </div>
-                        {singleBusinessId === c.business_id && <Check className="w-4 h-4 text-emerald-400" />}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              {/* Shared Business Search Component */}
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={singleBusinessId}
+                onSelect={(biz) => setSingleBusinessId(biz ? biz.business_id : null)}
+                label="Assign Business (Optional)"
+                allowUnassign={true}
+                unassignLabel="Keep Unassigned (In inventory)"
+                placeholder="Search by Business ID or Name as you type..."
+              />
 
               <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
                 <button
@@ -867,9 +794,10 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 </button>
                 <button
                   type="submit"
-                  className="tactile-btn px-5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                  disabled={isSubmitting}
+                  className="tactile-btn px-5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
                 >
-                  Generate Tag
+                  {isSubmitting ? "Creating..." : "Create Tag"}
                 </button>
               </div>
             </form>
@@ -878,19 +806,19 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: GENERATE BATCH                                                     */}
+      {/* MODAL: GENERATE BATCH (Typed Quantity 1 to 100)                             */}
       {/* ========================================================================= */}
       {isBatchModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-orange-600 text-white flex items-center justify-center">
-                  <Layers className="w-5 h-5 text-white" />
-                </div>
+              <div className="flex items-center gap-2">
+                <Layers className="w-5 h-5 text-orange-600" />
                 <div>
-                  <h3 className="font-bold text-lg text-zinc-900">Generate Batch of QR &amp; NFC</h3>
-                  <p className="text-[11px] text-zinc-500">Only product type and quantity required</p>
+                  <h3 className="font-bold text-lg text-zinc-900">Generate Batch Tags</h3>
+                  <p className="text-[11px] text-zinc-500">
+                    All-or-nothing sequential creation. Database prevents duplicate IDs.
+                  </p>
                 </div>
               </div>
               <button
@@ -903,8 +831,8 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
 
             <form onSubmit={handleCreateBatch} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Product Type *</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-bold text-zinc-800 mb-1.5">Product Type</label>
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setBatchProductType("Counter Standee")}
@@ -934,7 +862,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Quantity (Minimum 1 to Maximum 100 units) *
+                  Batch Quantity (1 to 100 units) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -945,8 +873,8 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                   onChange={(e) => setBatchQuantity(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm font-extrabold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
-                <p className="text-[11px] text-zinc-400 mt-1">
-                  Enter number of hardware units to generate (1 - 100).
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Checked in browser &amp; server. Two people generating at once can never get the same ID.
                 </p>
               </div>
 
@@ -960,9 +888,10 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 </button>
                 <button
                   type="submit"
-                  className="tactile-btn px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                  disabled={isSubmitting}
+                  className="tactile-btn px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
                 >
-                  Generate Batch
+                  {isSubmitting ? "Generating..." : "Generate Batch"}
                 </button>
               </div>
             </form>
@@ -971,7 +900,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ASSIGN / REASSIGN BUSINESS ID WITH LIVE SEARCH                     */}
+      {/* MODAL: ASSIGN / REASSIGN BUSINESS ID (WITH UNASSIGN OPTION)                */}
       {/* ========================================================================= */}
       {editTargetTag && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -979,9 +908,14 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-zinc-900" />
-                <h3 className="font-bold text-lg text-zinc-900">
-                  Assign Business to {editTargetTag.tag_id}
-                </h3>
+                <div>
+                  <h3 className="font-bold text-lg text-zinc-900">
+                    Assign Business to {editTargetTag.tag_id}
+                  </h3>
+                  <p className="text-[11px] text-zinc-500">
+                    Assign or unassign so returned standees/cards can be reused
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setEditTargetTag(null)}
@@ -992,55 +926,15 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             </div>
 
             <form onSubmit={handleAssignBusiness} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Search &amp; Select Registered Business *
-                </label>
-                
-                {/* Search Input */}
-                <div className="relative mb-2">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search by Business ID, Name, City..."
-                    value={assignBizSearch}
-                    onChange={(e) => setAssignBizSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-
-                {/* Filtered List */}
-                <div className="border border-zinc-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-zinc-100">
-                  {filteredClientsForAssign.length === 0 ? (
-                    <div className="p-4 text-xs text-zinc-400 text-center">
-                      No businesses found matching &ldquo;{assignBizSearch}&rdquo;
-                    </div>
-                  ) : (
-                    filteredClientsForAssign.map((c) => (
-                      <div
-                        key={c.id}
-                        onClick={() => setAssignBizId(c.business_id)}
-                        className={`p-3 text-xs cursor-pointer transition-colors flex items-center justify-between ${
-                          assignBizId === c.business_id
-                            ? "bg-zinc-900 text-white font-bold"
-                            : "hover:bg-zinc-50 text-zinc-800"
-                        }`}
-                      >
-                        <div>
-                          <span className={`font-mono font-bold mr-2 ${assignBizId === c.business_id ? "text-orange-300" : "text-zinc-900"}`}>
-                            [{c.business_id}]
-                          </span>
-                          <span>{c.business_name}</span>
-                          <span className={`text-[11px] block mt-0.5 ${assignBizId === c.business_id ? "text-zinc-300" : "text-zinc-500"}`}>
-                            Owner: {c.owner_name || "—"} • City: {c.city || "—"}
-                          </span>
-                        </div>
-                        {assignBizId === c.business_id && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={assignBizId}
+                onSelect={(biz) => setAssignBizId(biz ? biz.business_id : null)}
+                label="Select Registered Business"
+                allowUnassign={true}
+                unassignLabel="Unassign Tag (Return to inventory pool)"
+                placeholder="Search by ID or Name as you type..."
+              />
 
               <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
                 <button
@@ -1052,9 +946,10 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 </button>
                 <button
                   type="submit"
-                  className="tactile-btn px-5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                  disabled={isSubmitting}
+                  className="tactile-btn px-5 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
                 >
-                  Confirm Assignment
+                  {isSubmitting ? "Saving..." : "Confirm Assignment"}
                 </button>
               </div>
             </form>
@@ -1110,60 +1005,26 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Assigned Business ID</label>
-                <div className="relative mb-2">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search by ID, name..."
-                    value={editWholeSearch}
-                    onChange={(e) => setEditWholeSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-
-                <div className="border border-zinc-200 rounded-xl overflow-hidden max-h-40 overflow-y-auto divide-y divide-zinc-100">
-                  <div
-                    onClick={() => {
-                      setEditWholeBusinessId("");
-                      setEditWholeBusinessName("");
-                    }}
-                    className={`p-2 text-xs cursor-pointer flex items-center justify-between ${
-                      !editWholeBusinessId ? "bg-zinc-900 text-white font-bold" : "hover:bg-zinc-50 text-zinc-600"
-                    }`}
-                  >
-                    <span>Unassigned (Keep in inventory)</span>
-                    {!editWholeBusinessId && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                  </div>
-
-                  {filteredClientsForEdit.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        setEditWholeBusinessId(c.business_id);
-                        setEditWholeBusinessName(c.business_name);
-                      }}
-                      className={`p-2 text-xs cursor-pointer flex items-center justify-between ${
-                        editWholeBusinessId === c.business_id
-                          ? "bg-zinc-900 text-white font-bold"
-                          : "hover:bg-zinc-50 text-zinc-800"
-                      }`}
-                    >
-                      <div>
-                        <span className={`font-mono font-bold mr-1.5 ${editWholeBusinessId === c.business_id ? "text-orange-300" : "text-zinc-900"}`}>
-                          [{c.business_id}]
-                        </span>
-                        <span>{c.business_name}</span>
-                      </div>
-                      {editWholeBusinessId === c.business_id && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Shared Business Search Component */}
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={editWholeBusinessId}
+                onSelect={(biz) => {
+                  if (biz) {
+                    setEditWholeBusinessId(biz.business_id);
+                    setEditWholeBusinessName(biz.business_name);
+                  } else {
+                    setEditWholeBusinessId(null);
+                    setEditWholeBusinessName("");
+                  }
+                }}
+                label="Assigned Business"
+                allowUnassign={true}
+                placeholder="Search by ID or Name to assign..."
+              />
 
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Generated Link</label>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Generated Dynamic Link</label>
                 <input
                   type="text"
                   value={editWholeLink}
@@ -1244,35 +1105,33 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: PERMANENT DELETE WITH TYPED CONFIRMATION (Deleted Tab Only)          */}
+      {/* MODAL: PERMANENT DELETE (Deleted Tab Only)                                  */}
       {/* ========================================================================= */}
       {permanentDeleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-rose-200 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
               <ShieldAlert className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="font-bold text-lg text-rose-950">Delete Tag Permanently</h3>
-              <p className="text-xs text-rose-700 mt-1 leading-relaxed">
-                This action is <strong>irreversible</strong>. The hardware tag <strong>{permanentDeleteTarget.tag_id}</strong> will be permanently removed from the database.
+              <h3 className="font-bold text-lg text-rose-950">Delete Tag Permanently?</h3>
+              <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
+                This action is <strong>irreversible</strong>. Tag <strong className="text-zinc-900 font-bold">{permanentDeleteTarget.tag_id}</strong> will be permanently wiped from the database.
               </p>
             </div>
 
-            <div className="space-y-2 bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
-              <label className="block text-[11px] font-bold text-zinc-800">
-                To confirm permanent deletion, please type:
-                <span className="block mt-1 font-mono text-xs text-rose-900 bg-white px-2 py-1 rounded border border-rose-200 select-all">
-                  {permanentDeleteTarget.tag_id}
-                </span>
+            <div className="bg-rose-50/70 p-3.5 rounded-xl border border-rose-100 space-y-2">
+              <label className="block text-[11px] font-bold text-rose-900">
+                To confirm, type <span className="font-mono underline text-rose-950 font-black">{permanentDeleteTarget.tag_id}</span> below:
               </label>
               <input
                 type="text"
+                placeholder={permanentDeleteTarget.tag_id}
                 value={typedConfirmName}
                 onChange={(e) => setTypedConfirmName(e.target.value)}
-                placeholder="Type exact Tag ID here"
-                className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono uppercase"
+                className="w-full px-3 py-2 rounded-lg bg-white border border-rose-300 text-xs font-mono font-bold text-rose-950 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                autoFocus
               />
             </div>
 
@@ -1297,7 +1156,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 }
                 className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? "Deleting..." : "Permanently Delete"}
+                {isSubmitting ? "Wiping..." : "Yes, Delete Permanently"}
               </button>
             </div>
           </div>
@@ -1305,15 +1164,15 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: QR CODE PREVIEW & DOWNLOAD                                         */}
+      {/* MODAL: QR CODE PREVIEW                                                     */}
       {/* ========================================================================= */}
       {qrModalTag && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-zinc-200 space-y-4 text-center animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-zinc-200 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
               <div className="text-left">
-                <h3 className="font-bold text-base text-zinc-900">{qrModalTag.tag_id} Dynamic QR</h3>
-                <p className="text-[11px] text-zinc-500">{qrModalTag.product_type}</p>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Dynamic QR Code</span>
+                <h4 className="font-mono font-extrabold text-zinc-900 text-base">{qrModalTag.tag_id}</h4>
               </div>
               <button
                 onClick={() => setQrModalTag(null)}
@@ -1323,33 +1182,38 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
               </button>
             </div>
 
-            <div className="flex flex-col items-center justify-center p-4 bg-zinc-50 rounded-2xl border border-zinc-200/80">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt={`QR for ${qrModalTag.tag_id}`} className="w-56 h-56 rounded-lg shadow-xs" />
-              ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-xs text-zinc-400">
-                  Generating high-res QR...
-                </div>
-              )}
-              <span className="font-mono text-xs font-bold text-zinc-700 mt-3">{qrModalTag.link}</span>
+            {qrDataUrl ? (
+              <div className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-inner flex justify-center">
+                <img src={qrDataUrl} alt={qrModalTag.tag_id} className="w-48 h-48 object-contain" />
+              </div>
+            ) : (
+              <div className="w-48 h-48 mx-auto bg-zinc-100 rounded-2xl flex items-center justify-center text-xs text-zinc-400">
+                Generating QR...
+              </div>
+            )}
+
+            <div className="bg-zinc-50 p-2.5 rounded-xl border border-zinc-100 text-left">
+              <p className="text-[10px] font-mono text-zinc-500 truncate">
+                Encodes: <span className="text-zinc-900 font-bold">{`${DOMAIN_BASE}/t/${qrModalTag.tag_id}`}</span>
+              </p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">
+                Target: {qrModalTag.business_name || "Unassigned"} ({qrModalTag.product_type})
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => handleDownloadQr(qrModalTag, qrDataUrl)}
-                className="tactile-btn flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold shadow-sm cursor-pointer"
+                className="tactile-btn flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 <span>Download PNG</span>
               </button>
               <button
-                onClick={() => {
-                  handleCopyNfcLink(qrModalTag);
-                }}
-                className="tactile-btn flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold cursor-pointer"
+                onClick={() => setQrModalTag(null)}
+                className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
               >
-                <Radio className="w-4 h-4" />
-                <span>NFC</span>
+                Close
               </button>
             </div>
           </div>

@@ -37,6 +37,7 @@ import {
   addManualGoogleReviewLink,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
+import BusinessSearchSelect from "../BusinessSearchSelect";
 
 interface GoogleLinksWebpageTabProps {
   onShowToast: (msg: string) => void;
@@ -421,7 +422,10 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                   </tr>
                 ) : (
                   filteredLinks.map((item) => {
-                    const isCompleted = item.setup_status === "completed" || item.destination !== "not_assigned";
+                    // Setup status is worked out, not stored:
+                    // A standee is Completed (green) when its business has a valid Google review link. Otherwise it's Pending (red).
+                    const link = (item.business_google_review_link || "").trim();
+                    const isCompleted = link.length > 5 && (link.startsWith("http://") || link.startsWith("https://"));
 
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
@@ -1043,21 +1047,14 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
             </div>
 
             <form onSubmit={handleAddManual} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Select Registered Business *</label>
-                <select
-                  required
-                  value={manualBusinessId}
-                  onChange={(e) => setManualBusinessId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.business_id}>
-                      [{c.business_id}] {c.business_name} ({c.city})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <BusinessSearchSelect
+                clients={clients}
+                selectedBusinessId={manualBusinessId}
+                onSelect={(biz) => setManualBusinessId(biz ? biz.business_id : "")}
+                label="Select Registered Business"
+                required
+                placeholder="Search by ID or Name as you type..."
+              />
 
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
