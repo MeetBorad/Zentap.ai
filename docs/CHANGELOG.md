@@ -1,5 +1,18 @@
 # ZenTap — Changelog
 
+## [1.40.0] — 2026-11-02
+### Integrated (OpenSEO Suite Installation)
+- **Installed 13 OpenSEO Skills & Workflows**:
+  - Installed official OpenSEO suite from `every-app/open-seo` into `.agents/skills/`:
+    - `local-seo`: Audit Google Business Profiles, compare against local competitors, and map Google Maps visibility.
+    - `seo-audit`: Comprehensive website technical audit and prioritised organic fixes.
+    - `keyword-research` & `keyword-clustering`: Discover search volume, evaluate SERPs, and group intent.
+    - `competitor-analysis` & `competitive-landscape`: Reverse-engineer competitor footprints and keyword gaps.
+    - `ai-visibility-audit` & `ai-prompt-research`: Evaluate brand citation and visibility across ChatGPT, Gemini, and Google AI Overviews.
+    - `link-prospecting`: High-relevance backlink opportunities and outreach workflows.
+    - `seo-coach`, `seo-project-setup`, `seo-report`, `simple-issue-description`.
+  - Added `.mcp.json` configuring the live OpenSEO MCP endpoint (`https://app.openseo.so/mcp`).
+
 ## [1.39.0] — 2026-11-02
 ### Enhanced & Hardened (Complete Fallback Parity for ST3 & Unslop Natural Copy)
 - **Hardened Tag Resolution & Fallback Synchronization**:
