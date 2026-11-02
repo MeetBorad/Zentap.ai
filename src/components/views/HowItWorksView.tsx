@@ -238,15 +238,13 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
 
             {/* Action Bar */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
-              <OpenDesignButton
-                variant="primary"
-                size="md"
-                onClick={onNavigateToSample}
-                className="shadow-sm"
+              <a
+                href="/r/zentap?preview=1"
+                className="tactile-btn inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-sm hover:bg-primary/90 transition-all cursor-pointer"
               >
-                <span>View Sample Dashboard</span>
+                <span>Sample ZenTap Business Profile</span>
                 <ArrowRight className="w-4 h-4" />
-              </OpenDesignButton>
+              </a>
 
               <a
                 href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
@@ -351,17 +349,17 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
           Ready to Automate Your Venue&apos;s Review Generation?
         </h3>
         <p className="text-xs text-on-surface-variant mt-2 max-w-lg mx-auto">
-          Explore our interactive Sample Dashboard to see how your metrics, reviews, and NFC taps will look live.
+          Explore our live sample review page to see how customers tap and leave 5-star Google reviews.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-          <button
-            onClick={onNavigateToSample}
+          <a
+            href="/r/zentap?preview=1"
             className="px-6 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm flex items-center gap-2"
           >
-            <span>Explore Sample Dashboard</span>
+            <span>Sample ZenTap Business Profile</span>
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </a>
           <a
             href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
             target="_blank"

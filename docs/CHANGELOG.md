@@ -1,5 +1,10 @@
 # ZenTap — Changelog
 
+## [1.47.0] — 2026-11-03
+### Updated (Sample Profile CTA Redirection on How It Works)
+- Renamed all "Explore Sample Dashboard" and "View Sample Dashboard" buttons on `HowItWorksView.tsx` to **"Sample ZenTap Business Profile"**.
+- Updated their redirection target from the internal showcase view to the live ZenTap review preview page: `https://www.zentapdigitalsolutions.com/r/zentap?preview=1`.
+
 ## [1.46.0] — 2026-11-03
 ### Removed (Core SEO Engine Banner from How It Works)
 - Removed the "Core SEO Engine / Helps Boost Your Google Profile Reach, Views & Overall SEO" promotional banner and its "View Live Sample Dashboard" CTA from `HowItWorksView.tsx` to keep the user journey uncluttered and focused purely on how the NFC standee operates.
