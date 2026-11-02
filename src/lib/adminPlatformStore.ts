@@ -95,6 +95,7 @@ export interface PageEditorConfigItemRecord {
   business_id: string; // e.g. ZT-0001
   business_name: string;
   link_url: string;
+  destination?: string;
   setup_status: "pending" | "completed";
   config_data: Record<string, any>;
   updated_at: string;

@@ -1,5 +1,25 @@
 # ZenTap — Changelog
 
+## [1.33.0] — 2026-11-02
+### Enhanced (Page Editor ZenTap Review Isolation, Design Status & Pending Process Architecture)
+- **ZenTap Google Review Destination Isolation**:
+  - The **Page Editor** directory (`PageEditorWebpageTab.tsx`) now strictly filters and displays **only** Standees whose destination in Google Links & QR Sharing is set to **ZenTap Google Review** (`destination === 'zentap_google'`).
+  - Standees assigned to *Direct Google Review* or *Not Assigned* are automatically excluded from the Page Editor, keeping focus strictly on standees requiring custom review assistant landing pages.
+- **Pending Setup Gate ("Business Profile Under Process")**:
+  - In `src/lib/resolveTag.ts`, when a visitor scans or taps a standee whose destination is `zentap_google`, the system checks whether the page has been designed and completed (`setup_status === 'completed'`).
+  - If `setup_status === 'pending'` (meaning the page has not been designed or saved yet), it automatically redirects to `/unavailable`, displaying:
+    - **Business Profile Under Process**: *"This QR Code / NFC Standee has not been activated yet or is currently being configured. The business review profile page is under process and will be live shortly."*
+    - Direct buttons for **"Contact on WhatsApp"** (`wa.me/919274560880`) and **"Return to Homepage"**.
+  - Once the admin designs the page and clicks **"Save Changes"**, the status flips to **Completed** (Green), and scanning immediately redirects to the live customized review page (`/r/[slug]`).
+- **Added "Status of Design" Column**:
+  - Added a dedicated **Status of Design** column alongside Setup Status displaying:
+    - `Pending` (Red badge with `AlertCircle`) when not yet designed.
+    - `Completed` (Green badge with `CheckCircle2`) once designed and saved.
+- **Option to Edit Whole Entry**:
+  - Added an **Edit** action button (`Edit2`) in the Actions column of the Page Editor directory table.
+  - Opens the **Edit Page Entry** modal allowing full editing of Business ID, Business Name, Link of Tag ID, and Status of Design / Setup Status (`Pending` vs `Completed`).
+  - Changes persist both in Supabase PostgreSQL (`/api/admin/platform`) and in the local platform store.
+
 ## [1.32.0] — 2026-11-02
 ### Enhanced (Business Owner Command Center & Overview Tab Overhaul)
 - **Business Owner Executive Dashboard**:

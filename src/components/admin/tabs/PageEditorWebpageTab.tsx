@@ -244,9 +244,49 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeSetupStatus(item.setup_status);
   };
 
-  const handleSaveWholeEdit = (e: React.FormEvent) => {
+  const handleSaveWholeEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editWholeTarget) return;
+
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "page_editor_configs",
+          data: {
+            tag_id: editWholeTarget.tag_id,
+            business_id: editWholeBusinessId.trim(),
+            business_name: editWholeBusinessName.trim(),
+            link_url: editWholeLinkUrl.trim(),
+            setup_status: editWholeSetupStatus,
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      });
+
+      // Keep qr_nfc_tags in sync
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "qr_nfc_tags",
+          data: {
+            tag_id: editWholeTarget.tag_id,
+            business_id: editWholeBusinessId.trim(),
+            business_name: editWholeBusinessName.trim(),
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      }).catch(() => {});
+    } catch (err) {
+      console.warn("Failed to persist whole entry edits to server", err);
+    }
 
     const updated = updatePageEditorConfig(editWholeTarget.tag_id, {
       business_id: editWholeBusinessId.trim(),
@@ -255,11 +295,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       setup_status: editWholeSetupStatus,
     });
 
-    if (updated) {
-      onShowToast(`✓ Updated whole page editor entry for ${updated.business_name} (${updated.tag_id})!`);
-      setEditWholeTarget(null);
-      refreshData();
-    }
+    setIsSubmitting(false);
+    onShowToast(`✓ Updated whole entry for ${editWholeBusinessName.trim()} (${editWholeTarget.tag_id})!`);
+    setEditWholeTarget(null);
+    await refreshData();
   };
 
   // Soft delete (moves to Deleted tab)
@@ -334,9 +373,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     onShowToast(`✓ Downloaded Page QR Code for ${item.tag_id}`);
   };
 
+  // Strictly filter to ONLY entries whose Destination in Google Links & QR sharing is "zentap_google"
+  const zentapOnlyConfigs = editorConfigs.filter((item) => {
+    const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+    const dest = matchingGLink?.destination || item.destination;
+    return dest === "zentap_google";
+  });
+
   // Search filter
   const q = searchQuery.toLowerCase().trim();
-  const filteredConfigs = editorConfigs.filter((item) => {
+  const filteredConfigs = zentapOnlyConfigs.filter((item) => {
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||
@@ -396,7 +442,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                 activeTab === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
               }`}
             >
-              All Standees ({editorConfigs.length})
+              All Standees ({zentapOnlyConfigs.length})
             </button>
             <button
               onClick={() => setTabAndUrl("deleted")}
@@ -435,6 +481,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   <th className="py-3.5 px-4 text-center">QR Code</th>
                   <th className="py-3.5 px-4 text-center">NFC Link</th>
                   <th className="py-3.5 px-4">Setup Status</th>
+                  <th className="py-3.5 px-4">Status of Design</th>
                   <th className="py-3.5 px-4">Destination from the Google Links &amp; QR sharing</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -442,8 +489,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               <tbody className="divide-y divide-zinc-100">
                 {filteredConfigs.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-zinc-500 font-medium">
-                      No Standee entries found. Standees created in QR/NFC Generator automatically populate here.
+                    <td colSpan={10} className="py-12 text-center text-zinc-500 font-medium">
+                      No ZenTap Google Review Standee entries found. To design a custom review assistant page, set a Standee&apos;s destination to &apos;ZenTap Google Review&apos; in Google Links &amp; QR Sharing.
                     </td>
                   </tr>
                 ) : (
@@ -534,39 +581,30 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* 8. Destination from the Google Links & QR sharing */}
+                        {/* 8. Status of Design */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <select
-                            value={matchingGLink?.destination || "not_assigned"}
-                            onChange={(e) =>
-                              handleDestinationChange(
-                                item.tag_id,
-                                item.business_id,
-                                item.business_name,
-                                e.target.value as "not_assigned" | "direct_google" | "zentap_google"
-                              )
-                            }
-                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer outline-none focus:ring-2 focus:ring-offset-1 ${
-                              matchingGLink?.destination === "zentap_google"
-                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 focus:ring-emerald-500"
-                                : matchingGLink?.destination === "direct_google"
-                                ? "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100 focus:ring-orange-500"
-                                : "bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100 focus:ring-rose-500"
-                            }`}
-                          >
-                            <option value="not_assigned" className="bg-white text-rose-800 font-medium">
-                              Not Assigned (Red)
-                            </option>
-                            <option value="direct_google" className="bg-white text-orange-800 font-medium">
-                              Direct Google Review (Orange)
-                            </option>
-                            <option value="zentap_google" className="bg-white text-emerald-800 font-medium">
-                              ZenTap Google Review (Green)
-                            </option>
-                          </select>
+                          {isCompleted ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Completed</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 text-[11px] font-bold">
+                              <AlertCircle className="w-3 h-3 text-rose-600" />
+                              <span>Pending</span>
+                            </span>
+                          )}
                         </td>
 
-                        {/* 9. Actions: Live Preview, Visual Designer, Edit & Delete */}
+                        {/* 9. Destination from the Google Links & QR sharing */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-300 text-[11px] font-bold whitespace-nowrap">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>ZenTap Google Review (Green)</span>
+                          </span>
+                        </td>
+
+                        {/* 10. Actions: Live Preview, Design, Edit Whole Entry, Delete */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <a
@@ -586,6 +624,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             >
                               <Sliders className="w-3 h-3" />
                               <span>Design</span>
+                            </button>
+                            <button
+                              onClick={() => openEditWhole(item)}
+                              title="Edit Whole Entry"
+                              className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold border border-blue-200 transition-transform active:scale-[0.978] cursor-pointer"
+                            >
+                              <Edit2 className="w-3 h-3 text-blue-600" />
+                              <span>Edit</span>
                             </button>
                             <button
                               onClick={() => setDeleteTarget(item)}
@@ -757,15 +803,18 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Setup Status</label>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Status of Design / Setup Status</label>
                 <select
                   value={editWholeSetupStatus}
                   onChange={(e) => setEditWholeSetupStatus(e.target.value as any)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
+                  <option value="pending">Pending (Not Designed — Shows &apos;Business Profile Under Process&apos;)</option>
+                  <option value="completed">Completed (Designed — Live &amp; Redirects to Customized Review Page)</option>
                 </select>
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  When Pending, scanning the standee shows &apos;Business Profile Under Process&apos;. Once designed and saved, it becomes Completed and redirects to the customized review page.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">

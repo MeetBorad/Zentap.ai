@@ -1,7 +1,7 @@
 // lib/resolveTag.ts (server-only: uses Supabase service role key with local store fallback)
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getTagByCode, getAllBusinesses, logScan } from '@/lib/businessStore';
-import { getAllQrNfcTags, getAllGoogleReviewLinks, getAllSocialLinks } from '@/lib/adminPlatformStore';
+import { getAllQrNfcTags, getAllGoogleReviewLinks, getAllSocialLinks, getAllPageEditorConfigs } from '@/lib/adminPlatformStore';
 
 export type Resolution =
   | { kind: 'redirect'; url: string }
@@ -86,8 +86,24 @@ export async function resolveScan(
         }
 
         // 3. Zentap Google Review:
-        // "3. Zentap Google Review - So when the QR/NFC scan/tap for the particular TAG ID it will open the Link which is present in the Page linked to Tag ID cell"
+        // "when the Setup Status is Pending then it should show this page - Business Profile Under Process"
+        // "Setup status pending means the customized page is not designed , Once I design and click save the changes then the it should redirect to the customized page"
         if (tagRow.destination === 'zentap_google') {
+          // Check if Page Editor config has been designed and completed
+          const { data: pageConfig } = await db
+            .from('page_editor_configs')
+            .select('setup_status, config_data')
+            .ilike('tag_id', code)
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          const isDesigned = pageConfig && pageConfig.setup_status === 'completed';
+
+          if (!isDesigned) {
+            // Setup status is Pending: show "Business Profile Under Process" (/unavailable)
+            return { kind: 'unavailable', unassigned: false };
+          }
+
           const { data: bizRow } = await db
             .from('businesses')
             .select('slug')
@@ -134,7 +150,12 @@ export async function resolveScan(
           if (direct) return { kind: 'redirect', url: direct };
         }
         if (gLink.destination === 'zentap_google') {
-          return { kind: 'page', slug: 'zentap' };
+          const peConfigs = getAllPageEditorConfigs();
+          const pe = peConfigs.find((p) => p.tag_id.toLowerCase() === code);
+          if (pe && pe.setup_status === 'completed') {
+            return { kind: 'page', slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap' };
+          }
+          return { kind: 'unavailable', unassigned: false };
         }
       }
     } else if (matchedPlatformTag.product_type === 'Business NFC Card') {

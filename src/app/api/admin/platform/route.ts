@@ -160,20 +160,22 @@ export async function GET(req: Request) {
     const deletedGoogleLinks = deletedGoogleLinksRes.data || [];
     const deletedSocialLinks = deletedSocialLinksRes.data || [];
 
-    // Page Editor configs: derived from Standees whose Destination is 'zentap_google' and has assigned business
+    // Page Editor configs: strictly derived from Standees whose Destination is 'zentap_google' and has assigned business
     const pageEditorFromTags = tags
       .filter((t) => t.product_type === "Counter Standee" && t.business_id && t.destination === "zentap_google")
       .map((t) => {
         const client = clientMap.get(t.business_id);
         const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
         const existingConfig = (activePageEditorRes.data || []).find((p) => p.tag_id === t.tag_id);
-        const setup_status: "active" | "pending" = isValidGoogleUrl(googleUrl) ? "active" : "pending";
+        // Setup status / Status of Design: completed when designed and saved; pending otherwise
+        const setup_status: "completed" | "pending" = existingConfig?.setup_status === "completed" ? "completed" : "pending";
         return {
           id: existingConfig?.id || t.id,
           tag_id: t.tag_id,
           business_id: t.business_id,
           business_name: client?.business_name || t.business_name || "Assigned Business",
           link_url: t.link,
+          destination: "zentap_google",
           setup_status,
           config_data: existingConfig?.config_data || {
             theme: "obsidian",
@@ -195,7 +197,16 @@ export async function GET(req: Request) {
     const pageEditorConfigs = [...pageEditorFromTags];
     (activePageEditorRes.data || []).forEach((row) => {
       if (!pageEditorConfigs.some((p) => p.tag_id === row.tag_id)) {
-        pageEditorConfigs.push(row);
+        const matchingTag = tags.find((t) => t.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+        const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+        const dest = matchingTag?.destination || matchingGLink?.destination;
+        if (dest === "zentap_google") {
+          pageEditorConfigs.push({
+            ...row,
+            destination: "zentap_google",
+            setup_status: row.setup_status === "completed" ? "completed" : "pending",
+          });
+        }
       }
     });
 
