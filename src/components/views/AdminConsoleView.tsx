@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { 
   ShieldCheck, 
@@ -163,7 +163,7 @@ interface AdminConsoleViewProps {
 }
 
 export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminConsoleViewProps) {
-  const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail } = useAuth();
+  const { user, isAdmin, loading, updateUserPassword, resetPasswordForEmail, signOut } = useAuth();
   
   // Navigation Tabs: Analytics Dashboard vs Fleet Table vs Standee Orders vs Plans vs Franchise Quotes
   
@@ -230,6 +230,56 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [adminNotificationOpen, setAdminNotificationOpen] = useState(false);
+
+  // Click-outside listener refs for header popovers
+  const adminDropdownRef = useRef<HTMLDivElement>(null);
+  const adminNotificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (
+        adminDropdownRef.current &&
+        !adminDropdownRef.current.contains(event.target as Node)
+      ) {
+        setAdminDropdownOpen(false);
+      }
+      if (
+        adminNotificationRef.current &&
+        !adminNotificationRef.current.contains(event.target as Node)
+      ) {
+        setAdminNotificationOpen(false);
+      }
+    }
+
+    if (adminDropdownOpen || adminNotificationOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [adminDropdownOpen, adminNotificationOpen]);
+
+  // Clean exit session handler redirecting to the main website homepage
+  const handleExitAdminSession = async () => {
+    setAdminDropdownOpen(false);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("zentap_admin_supreme");
+        document.cookie = "zentap_admin=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "sb-access-token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+      if (signOut) {
+        await signOut();
+      }
+    } catch (err) {
+      console.warn("Exit admin session notice:", err);
+    }
+    window.location.href = "/";
+  };
 
   const [adminTab, setAdminTab] = useState<"analytics" | "fleet" | "orders" | "plans" | "quotations">("analytics");
 
@@ -1604,7 +1654,13 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
           </button>
           
           <button
-            onClick={() => onNavigate ? onNavigate("home") : null}
+            onClick={() => {
+              if (onNavigate) {
+                onNavigate("home");
+              } else {
+                window.location.href = "/";
+              }
+            }}
             className="w-full py-1.5 px-3 rounded-xl hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <ExternalLink className="w-3 h-3" />
@@ -1671,7 +1727,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </button>
 
             {/* Notification Bell */}
-            <div className="relative">
+            <div className="relative" ref={adminNotificationRef}>
               <button
                 onClick={() => {
                   setAdminNotificationOpen(!adminNotificationOpen);
@@ -1688,61 +1744,67 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
               {/* Notification Dropdown Popover */}
               {adminNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-xl border border-zinc-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-3">
-                    <span className="text-xs font-bold text-zinc-900">Admin Alerts</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 font-semibold text-zinc-600">
-                      {pendingLinksCount + pendingOrdersCount} pending
-                    </span>
-                  </div>
+                <>
+                  <div
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setAdminNotificationOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white shadow-xl border border-zinc-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-100 mb-3">
+                      <span className="text-xs font-bold text-zinc-900">Admin Alerts</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 font-semibold text-zinc-600">
+                        {pendingLinksCount + pendingOrdersCount} pending
+                      </span>
+                    </div>
 
-                  <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
-                    {pendingLinksCount > 0 && (
-                      <div 
-                        onClick={() => {
-                          setAdminMenu("review_links");
-                          setStatusFilter("awaiting_link");
-                          setAdminTab("fleet");
-                          setAdminNotificationOpen(false);
-                        }}
-                        className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
-                      >
-                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-bold text-zinc-900">{pendingLinksCount} Clients Need Review URL</p>
-                          <p className="text-[11px] text-zinc-500">Click to open Review Links Hub and paste URLs.</p>
+                    <div className="space-y-2 max-h-60 overflow-y-auto text-xs">
+                      {pendingLinksCount > 0 && (
+                        <div 
+                          onClick={() => {
+                            setAdminMenu("review_links");
+                            setStatusFilter("awaiting_link");
+                            setAdminTab("fleet");
+                            setAdminNotificationOpen(false);
+                          }}
+                          className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
+                        >
+                          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-bold text-zinc-900">{pendingLinksCount} Clients Need Review URL</p>
+                            <p className="text-[11px] text-zinc-500">Click to open Review Links Hub and paste URLs.</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount > 0 && (
-                      <div 
-                        onClick={() => {
-                          setAdminMenu("manual_payments");
-                          setAdminNotificationOpen(false);
-                        }}
-                        className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
-                      >
-                        <DollarSign className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-bold text-zinc-900">
-                            {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount} Pending / Partial Payments
-                          </p>
-                          <p className="text-[11px] text-zinc-500">Click to open Manual Payments ledger.</p>
+                      {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount > 0 && (
+                        <div 
+                          onClick={() => {
+                            setAdminMenu("manual_payments");
+                            setAdminNotificationOpen(false);
+                          }}
+                          className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 cursor-pointer hover:bg-amber-100/70"
+                        >
+                          <DollarSign className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-bold text-zinc-900">
+                              {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount} Pending / Partial Payments
+                            </p>
+                            <p className="text-[11px] text-zinc-500">Click to open Manual Payments ledger.</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {pendingLinksCount === 0 && getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount === 0 && (
-                      <p className="text-center text-zinc-400 py-3">All clear! Fleet operating smoothly.</p>
-                    )}
+                      {pendingLinksCount === 0 && getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount === 0 && (
+                        <p className="text-center text-zinc-400 py-3">All clear! Fleet operating smoothly.</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 
             {/* Admin Avatar Menu */}
-            <div className="relative">
+            <div className="relative" ref={adminDropdownRef}>
               <button
                 onClick={() => {
                   setAdminDropdownOpen(!adminDropdownOpen);
@@ -1761,55 +1823,69 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
               {/* Admin Avatar Dropdown Popover */}
               {adminDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-3 py-2.5 border-b border-zinc-100">
-                    <p className="text-xs font-bold text-zinc-900 truncate">
-                      Supreme Superadmin
-                    </p>
-                    <p className="text-[11px] text-zinc-400 truncate font-mono">
-                      {user?.email || "admin@zentapdigitalsolutions.com"}
-                    </p>
-                  </div>
+                <>
+                  <div
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setAdminDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                    <div className="px-3 py-2.5 border-b border-zinc-100">
+                      <p className="text-xs font-bold text-zinc-900 truncate">
+                        Supreme Superadmin
+                      </p>
+                      <p className="text-[11px] text-zinc-400 truncate font-mono">
+                        {user?.email || "admin@zentapdigitalsolutions.com"}
+                      </p>
+                    </div>
 
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setAdminMenu("settings");
-                        setAdminDropdownOpen(false);
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
-                    >
-                      <Lock className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Security &amp; Passwords</span>
-                    </button>
-
-                    {onNavigate && (
+                    <div className="py-1">
                       <button
                         onClick={() => {
-                          onNavigate("home");
+                          setAdminMenu("settings");
                           setAdminDropdownOpen(false);
                         }}
                         className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
                       >
-                        <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Visit Website</span>
+                        <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Security &amp; Passwords</span>
                       </button>
-                    )}
-                  </div>
 
-                  <div className="pt-1 border-t border-zinc-100">
-                    <button
-                      onClick={() => {
-                        setAdminDropdownOpen(false);
-                        window.location.reload();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-bold text-[#B91C1C] hover:bg-red-50 rounded-xl flex items-center gap-2 cursor-pointer"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Exit Admin Session</span>
-                    </button>
+                      {onNavigate ? (
+                        <button
+                          onClick={() => {
+                            onNavigate("home");
+                            setAdminDropdownOpen(false);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Visit Website</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setAdminDropdownOpen(false);
+                            window.location.href = "/";
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:bg-zinc-100 rounded-xl flex items-center gap-2 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Visit Website</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="pt-1 border-t border-zinc-100">
+                      <button
+                        onClick={handleExitAdminSession}
+                        className="w-full px-3 py-2 text-left text-xs font-bold text-[#B91C1C] hover:bg-red-50 rounded-xl flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Exit Admin Session</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 

@@ -1,5 +1,16 @@
 # ZenTap — Changelog
 
+## [1.42.0] — 2026-11-02
+### Improved (Header Admin Login Positioning, Dismissable Admin Dropdown & Clean Exit Session)
+- **Header Navigation & Admin Login Cleanup**:
+  - Moved the `Admin Login` option in `Header.tsx` to sit strictly to the right side of the Order button in the top navigation.
+  - Removed duplicate `Super Admin Login` buttons from the Hero section and bottom CTA banner in `HomeView.tsx` to maintain a clutter-free, professional customer storefront.
+  - Kept the brand logo on the top-left uncluttered.
+- **Click-Outside Dismissal on Admin Popovers**:
+  - Added `useRef` + `mousedown`/`touchstart` click-outside listeners and fixed transparent click-capturing backdrops to both the Superadmin avatar dropdown and notification bell in `AdminConsoleView.tsx`. Clicking anywhere on the screen or background now instantly closes the popover.
+- **Instant Exit Session Redirection**:
+  - Updated `Exit Admin Session` in `AdminConsoleView.tsx` to purge `localStorage.zentap_admin_supreme`, clear admin authentication cookies, trigger `signOut()`, and immediately redirect the user to the main website homepage (`/`).
+
 ## [1.41.0] — 2026-11-02
 ### Fixed & Hardened (Design Status State Preservation & Tag UUID Resolution)
 - **Design Status Preservation in Standee Page Editor**:

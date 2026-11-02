@@ -146,30 +146,8 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#0e1015]/95 backdrop-blur-md border-b border-[#232734]">
       <div className="max-w-7xl mx-auto h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         
-        {/* Brand Logo & Strictly Homepage Top-Left Admin Login */}
+        {/* Brand Logo */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Admin Login Option: ONLY ONE on entire website, strictly top-left of homepage */}
-          {currentView === "home" && !isAdmin && (
-            <a
-              href="/admin/login"
-              title="Super Admin Portal Login"
-              className="tactile-btn-subtle flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] text-[11px] font-medium cursor-pointer shadow-sm transition-all"
-            >
-              <ShieldAlert className="w-3 h-3 text-[#ff7a00]" />
-              <span>Admin Login</span>
-            </a>
-          )}
-          {currentView === "home" && isAdmin && (
-            <button
-              onClick={() => handleNavClick("admin")}
-              title="Open Admin Console"
-              className="tactile-btn-subtle flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/40 text-[11px] font-semibold cursor-pointer shadow-sm"
-            >
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              <span>Admin Console</span>
-            </button>
-          )}
-
           <div 
             onClick={() => handleNavClick("home")}
             className="flex items-center gap-3 cursor-pointer select-none group flex-shrink-0"
@@ -260,6 +238,15 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
                 <MessageCircle className="w-3.5 h-3.5 fill-black text-black" />
                 <span>Order on WhatsApp</span>
               </a>
+
+              <a
+                href="/admin/login"
+                title="Super Admin Portal Login"
+                className="tactile-btn-subtle flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] text-xs font-semibold cursor-pointer shadow-sm transition-all"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-[#ff7a00]" />
+                <span>Admin Login</span>
+              </a>
             </div>
           )}
 
@@ -320,6 +307,13 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
                   >
                     <MessageCircle className="w-4 h-4 fill-black text-black" />
                     <span>Order on WhatsApp</span>
+                  </a>
+                  <a
+                    href="/admin/login"
+                    className="w-full py-2 rounded-xl bg-[#141720] text-zinc-300 hover:text-white font-medium text-xs border border-[#232734] flex items-center justify-center gap-2"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-[#ff7a00]" />
+                    <span>Admin Login</span>
                   </a>
                 </div>
               )}

@@ -156,14 +156,6 @@ export default function HomeView({
                   <span>Order on WhatsApp</span>
                 </a>
 
-                <a
-                  href="/admin/login"
-                  className="tactile-btn-subtle inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-[#141720] hover:bg-[#1c212e] text-white border border-[#2d3345] font-bold text-sm shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
-                >
-                  <ShieldAlert className="w-4 h-4 text-[#ff7a00]" />
-                  <span>Super Admin Login</span>
-                </a>
-
                 <OpenDesignButton
                   variant="subtle"
                   size="lg"
@@ -648,13 +640,6 @@ export default function HomeView({
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
               <span>Order on WhatsApp</span>
-            </a>
-            <a
-              href="/admin/login"
-              className="tactile-btn-subtle inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-[#141720] hover:bg-[#1e2230] text-white border border-[#232734] font-bold text-xs shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
-            >
-              <ShieldAlert className="w-4 h-4 text-[#ff7a00]" />
-              <span>Super Admin Login</span>
             </a>
           </div>
         </div>
