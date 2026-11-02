@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Share2,
   Radio,
+  Tag,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -183,6 +184,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editWholeTagId, setEditWholeTagId] = useState("");
   const [editWholeBusinessId, setEditWholeBusinessId] = useState("");
   const [editWholeBusinessName, setEditWholeBusinessName] = useState("");
+  const [editWholeCategory, setEditWholeCategory] = useState("Customer Satisfaction Hub");
   const [editWholeLinkUrl, setEditWholeLinkUrl] = useState("");
   const [editWholeSetupStatus, setEditWholeSetupStatus] = useState<"pending" | "completed">("pending");
 
@@ -272,6 +274,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       theme: editTheme,
       title: editTitle.trim(),
       subtitle: editSubtitle.trim(),
+      category: editSubtitle.trim(),
       cover_image: editBannerUrl.trim(),
       logo_url: editLogoUrl.trim(),
       wallpaper_url: editWallpaperUrl.trim(),
@@ -392,6 +395,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeTagId(item.tag_id);
     setEditWholeBusinessId(item.business_id);
     setEditWholeBusinessName(item.business_name);
+    setEditWholeCategory(item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub");
     setEditWholeLinkUrl(item.link_url);
     setEditWholeSetupStatus(item.setup_status);
   };
@@ -401,6 +405,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     if (!editWholeTarget) return;
 
     setIsSubmitting(true);
+    const updatedConfigData = {
+      ...(editWholeTarget.config_data || {}),
+      category: editWholeCategory.trim() || "Customer Satisfaction Hub",
+      subtitle: editWholeCategory.trim() || "Customer Satisfaction Hub",
+    };
+
     try {
       await fetch("/api/admin/platform", {
         method: "POST",
@@ -414,6 +424,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             business_name: editWholeBusinessName.trim(),
             link_url: editWholeLinkUrl.trim(),
             setup_status: editWholeSetupStatus,
+            config_data: updatedConfigData,
             updated_at: new Date().toISOString(),
           },
           onConflict: "tag_id",
@@ -445,6 +456,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       business_name: editWholeBusinessName.trim(),
       link_url: editWholeLinkUrl.trim(),
       setup_status: editWholeSetupStatus,
+      config_data: updatedConfigData,
     });
 
     setIsSubmitting(false);
@@ -525,22 +537,29 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     onShowToast(`✓ Downloaded Page QR Code for ${item.tag_id}`);
   };
 
-  // Strictly filter to ONLY entries whose Destination in Google Links & QR sharing is "zentap_google"
+  // Destination filter state
+  const [destFilter, setDestFilter] = useState<"all" | "zentap">("all");
+
+  // Filter to entries whose Destination in Google Links & QR sharing is "zentap_google"
   const zentapOnlyConfigs = editorConfigs.filter((item) => {
     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
     const dest = matchingGLink?.destination || item.destination;
     return dest === "zentap_google";
   });
 
+  const activeConfigsList = destFilter === "zentap" ? zentapOnlyConfigs : editorConfigs;
+
   // Search filter
   const q = searchQuery.toLowerCase().trim();
-  const filteredConfigs = zentapOnlyConfigs.filter((item) => {
+  const filteredConfigs = activeConfigsList.filter((item) => {
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||
       (item.business_name && item.business_name.toLowerCase().includes(q)) ||
       (item.tag_id && item.tag_id.toLowerCase().includes(q)) ||
-      (item.link_url && item.link_url.toLowerCase().includes(q))
+      (item.link_url && item.link_url.toLowerCase().includes(q)) ||
+      (item.config_data?.category && item.config_data.category.toLowerCase().includes(q)) ||
+      (item.config_data?.subtitle && item.config_data.subtitle.toLowerCase().includes(q))
     );
   });
 
@@ -589,12 +608,20 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-100">
           <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl w-fit">
             <button
-              onClick={() => setTabAndUrl("all")}
+              onClick={() => { setActiveTab("all"); setDestFilter("all"); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
+                activeTab === "all" && destFilter === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
               }`}
             >
-              All Standees ({zentapOnlyConfigs.length})
+              All Standees ({editorConfigs.length})
+            </button>
+            <button
+              onClick={() => { setActiveTab("all"); setDestFilter("zentap"); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "all" && destFilter === "zentap" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-zinc-600 hover:text-zinc-900"
+              }`}
+            >
+              ZenTap Google Review ({zentapOnlyConfigs.length})
             </button>
             <button
               onClick={() => setTabAndUrl("deleted")}
@@ -610,7 +637,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by Business ID, Name, Tag ID..."
+              placeholder="Search by Business ID, Name, Tag ID, Category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium"
@@ -628,6 +655,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold uppercase text-[10px]">
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
+                  <th className="py-3.5 px-4">Category</th>
                   <th className="py-3.5 px-4">Tag ID</th>
                   <th className="py-3.5 px-4">Link of Tag ID</th>
                   <th className="py-3.5 px-4 text-center">QR Code</th>
@@ -641,8 +669,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               <tbody className="divide-y divide-zinc-100">
                 {filteredConfigs.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-zinc-500 font-medium">
-                      No ZenTap Google Review Standee entries found. To design a custom review assistant page, set a Standee&apos;s destination to &apos;ZenTap Google Review&apos; in Google Links &amp; QR Sharing.
+                    <td colSpan={11} className="py-12 text-center text-zinc-500 font-medium">
+                      No Standee entries found. To design a custom review assistant page, configure a Standee below.
                     </td>
                   </tr>
                 ) : (
@@ -650,6 +678,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     const isCompleted = item.setup_status === "completed";
                     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                     const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
+                    const currentCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                    const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
@@ -665,14 +695,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           {item.business_name}
                         </td>
 
-                        {/* 3. Tag ID */}
+                        {/* 3. Category */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => openEditWhole(item)}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-purple-50 text-zinc-800 hover:text-purple-900 text-[11px] font-semibold border border-zinc-200 hover:border-purple-300 transition-colors cursor-pointer group"
+                            title="Click to edit category"
+                          >
+                            <Tag className="w-3 h-3 text-purple-600" />
+                            <span className="max-w-[140px] truncate">{currentCategory}</span>
+                            <Edit2 className="w-2.5 h-2.5 text-zinc-400 group-hover:text-purple-600" />
+                          </button>
+                        </td>
+
+                        {/* 4. Tag ID */}
                         <td className="py-3 px-4 font-mono font-bold whitespace-nowrap">
                           <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-xs tracking-wider">
                             {item.tag_id}
                           </span>
                         </td>
 
-                        {/* 4. Link of Tag ID */}
+                        {/* 5. Link of Tag ID */}
                         <td className="py-3 px-4 font-mono text-[11px] whitespace-nowrap">
                           <a
                             href={displayTagLink}
@@ -686,7 +730,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </a>
                         </td>
 
-                        {/* 5. QR Code */}
+                        {/* 6. QR Code */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <button
                             onClick={() => handleOpenQr(item)}
@@ -697,7 +741,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </button>
                         </td>
 
-                        {/* 6. NFC Link */}
+                        {/* 7. NFC Link */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <button
                             onClick={() => handleCopyNfc(item.tag_id, displayTagLink)}
@@ -718,7 +762,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </button>
                         </td>
 
-                        {/* 7. Setup Status */}
+                        {/* 8. Setup Status */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {isCompleted ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
@@ -733,7 +777,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* 8. Status of Design */}
+                        {/* 9. Status of Design */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {isCompleted ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
@@ -748,12 +792,30 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* 9. Destination from the Google Links & QR sharing */}
+                        {/* 10. Destination from the Google Links & QR sharing (Interactive Dropdown) */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-300 text-[11px] font-bold whitespace-nowrap">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>ZenTap Google Review (Green)</span>
-                          </span>
+                          <select
+                            value={currentDest}
+                            onChange={(e) =>
+                              handleDestinationChange(
+                                item.tag_id,
+                                item.business_id,
+                                item.business_name,
+                                e.target.value as any
+                              )
+                            }
+                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
+                              currentDest === "zentap_google"
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                : currentDest === "direct_google"
+                                ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                            }`}
+                          >
+                            <option value="zentap_google">ZenTap Google Review (Green)</option>
+                            <option value="direct_google">Direct Google Review (Amber)</option>
+                            <option value="not_assigned">Not Assigned (Grey)</option>
+                          </select>
                         </td>
 
                         {/* 10. Actions: Live Preview, Design, Edit Whole Entry, Delete */}
@@ -942,6 +1004,31 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   onChange={(e) => setEditWholeBusinessName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Category / Categories</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Restaurant & Cafe, Salon & Spa, Retail Store, Customer Satisfaction Hub"
+                  value={editWholeCategory}
+                  onChange={(e) => setEditWholeCategory(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {["Restaurant & Cafe", "Salon & Spa", "Retail Store", "Healthcare & Clinic", "Customer Satisfaction Hub"].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setEditWholeCategory(cat)}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-colors ${
+                        editWholeCategory === cat ? "bg-purple-600 text-white border-purple-600" : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -1218,13 +1305,27 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-zinc-900 mb-1">Subtitle / Category</label>
+                      <label className="block text-xs font-bold text-zinc-900 mb-1">Category / Subtitle</label>
                       <input
                         type="text"
                         value={editSubtitle}
                         onChange={(e) => setEditSubtitle(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                       />
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {["Restaurant & Cafe", "Salon & Spa", "Retail Store", "Healthcare & Clinic", "Customer Satisfaction Hub"].map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setEditSubtitle(cat)}
+                            className={`text-[9px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-colors ${
+                              editSubtitle === cat ? "bg-purple-600 text-white border-purple-600" : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

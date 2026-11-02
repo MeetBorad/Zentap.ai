@@ -2,7 +2,14 @@
 import { redirect } from "next/navigation";
 import { getBusinessBySlug, BusinessRecord } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getBusinessReviewConfig } from "@/lib/reviewAssistantStore";
+import { 
+  getPageDesign, 
+  getPageButtons, 
+  PageDesignRecord, 
+  PageButtonRecord 
+} from "@/lib/hubDesignStore";
 import AiReviewCustomerFlow from "@/components/customer/AiReviewCustomerFlow";
 
 export const dynamic = "force-dynamic";
@@ -66,14 +73,113 @@ export default async function ReviewPage({
   // Load Review Config
   const config = getBusinessReviewConfig(biz.id);
 
+  // Check if customized in Page Editor (page_editor_configs)
+  const db = createAdminClient();
+  let pageConfig: any = null;
+  if (db && biz) {
+    try {
+      const q = db
+        .from("page_editor_configs")
+        .select("*")
+        .or(`business_id.eq.${biz.id},business_id.ilike.${cleanSlug}`)
+        .is("deleted_at", null)
+        .maybeSingle();
+      const { data } = await q;
+      pageConfig = data;
+    } catch (e) {
+      console.warn("Error fetching pageConfig for review page:", e);
+    }
+  }
+
+  const defaultDesign = getPageDesign(biz.id);
+  const cfg = pageConfig?.config_data || {};
+  const customDesign: PageDesignRecord = {
+    ...defaultDesign,
+    hub_enabled: true,
+    theme_preset: cfg.theme === "slate" ? "modern_slate"
+                : cfg.theme === "emerald" ? "emerald_luxe"
+                : cfg.theme === "sunset" ? "midnight_amber"
+                : cfg.theme === "clean_light" ? "clean_minimal"
+                : defaultDesign.theme_preset || "modern_slate",
+    primary_color: cfg.theme === "sunset" ? "#ea580c" : cfg.theme === "emerald" ? "#059669" : defaultDesign.primary_color || "#ff7a00",
+    bg_color: cfg.theme === "clean_light" ? "#ffffff" : cfg.theme === "slate" ? "#0f172a" : cfg.theme === "emerald" ? "#062016" : "#0e1015",
+    dark_mode: cfg.theme === "clean_light" ? "light" : "dark",
+    cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
+    logo_url: cfg.logo_url || defaultDesign.logo_url,
+    wallpaper_url: cfg.wallpaper_url || defaultDesign.wallpaper_url,
+    tagline: cfg.subtitle || cfg.category || defaultDesign.tagline,
+    texts: {
+      ...defaultDesign.texts,
+      write_review_btn: cfg.cta_text || "Leave a 5-Star Review on Google",
+    },
+  };
+
+  const customButtons: PageButtonRecord[] = [
+    {
+      id: `btn_review_${biz.id}`,
+      business_id: biz.id,
+      type: "review",
+      label: cfg.cta_text || "Leave a 5-Star Review on Google",
+      url_or_value: cfg.google_link || biz.google_review_link || biz.review_url || "",
+      sort_order: 1,
+      visible: true,
+    },
+    ...(cfg.phone || biz.phone ? [{
+      id: `btn_call_${biz.id}`,
+      business_id: biz.id,
+      type: "call" as const,
+      label: "Call",
+      url_or_value: cfg.phone || biz.phone || "",
+      sort_order: 2,
+      visible: true,
+    }] : []),
+    {
+      id: `btn_maps_${biz.id}`,
+      business_id: biz.id,
+      type: "directions" as const,
+      label: "Directions",
+      url_or_value: cfg.google_link || biz.google_review_link || biz.address || "",
+      sort_order: 3,
+      visible: true,
+    },
+    ...(cfg.whatsapp || biz.whatsapp_number ? [{
+      id: `btn_wa_${biz.id}`,
+      business_id: biz.id,
+      type: "whatsapp" as const,
+      label: "WhatsApp",
+      url_or_value: cfg.whatsapp || biz.whatsapp_number || "",
+      sort_order: 4,
+      visible: true,
+    }] : []),
+    ...(cfg.instagram || biz.instagram ? [{
+      id: `btn_ig_${biz.id}`,
+      business_id: biz.id,
+      type: "instagram" as const,
+      label: "Instagram",
+      url_or_value: cfg.instagram || biz.instagram || "",
+      sort_order: 5,
+      visible: true,
+    }] : []),
+    ...(cfg.facebook || config.facebook_url ? [{
+      id: `btn_fb_${biz.id}`,
+      business_id: biz.id,
+      type: "facebook" as const,
+      label: "Facebook",
+      url_or_value: cfg.facebook || config.facebook_url || "",
+      sort_order: 6,
+      visible: true,
+    }] : []),
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0e1015] py-4 sm:py-8">
-      <AiReviewCustomerFlow
-        business={biz}
-        config={config}
-        tagCode={cleanSlug}
-        isPreview={isPreview}
-      />
-    </div>
+    <AiReviewCustomerFlow
+      business={biz}
+      config={config}
+      tagCode={cleanSlug}
+      isPreview={isPreview}
+      design={customDesign}
+      buttons={customButtons}
+      initialStars={5}
+    />
   );
 }

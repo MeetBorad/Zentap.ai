@@ -15,6 +15,7 @@ import {
   Globe, 
   MapPin, 
   MessageSquare, 
+  MessageCircle, 
   Lock, 
   AlertCircle,
   X,
@@ -31,6 +32,12 @@ import {
   ReviewLength,
   getAllReviewOptions 
 } from "@/lib/reviewAssistantStore";
+import {
+  PageDesignRecord,
+  PageButtonRecord,
+  getPageDesign,
+  getPageButtons,
+} from "@/lib/hubDesignStore";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
 interface AiReviewCustomerFlowProps {
@@ -38,6 +45,9 @@ interface AiReviewCustomerFlowProps {
   config: ReviewConfigRecord;
   tagCode: string;
   isPreview?: boolean;
+  design?: PageDesignRecord;
+  buttons?: PageButtonRecord[];
+  initialStars?: number | null;
 }
 
 interface DraftOption {
@@ -50,9 +60,12 @@ export default function AiReviewCustomerFlow({
   config,
   tagCode,
   isPreview = false,
+  design,
+  buttons,
+  initialStars,
 }: AiReviewCustomerFlowProps) {
-  // Step 1: Star Rating (NO default rating - empty until tapped)
-  const [stars, setStars] = useState<number | null>(null);
+  // Step 1: Star Rating (Default rating or empty until tapped)
+  const [stars, setStars] = useState<number | null>(initialStars !== undefined ? initialStars : null);
 
   // Step 2: Chips
   const [availableOptions, setAvailableOptions] = useState<ReviewOptionRecord[]>([]);
@@ -278,21 +291,46 @@ export default function AiReviewCustomerFlow({
     }
   };
 
-  const showIcons = config.show_icons || {
-    instagram: true,
-    whatsapp: true,
-    facebook: true,
-    website: true,
-  };
+  const hubDesign = design || getPageDesign(business.id);
+  const hubButtons = buttons && buttons.length > 0 ? buttons : getPageButtons(business.id);
 
-  const hasAnySocial =
-    (showIcons.instagram && business.instagram_url) ||
-    (showIcons.whatsapp && business.whatsapp_number) ||
-    (showIcons.facebook && config.facebook_url) ||
-    (showIcons.website && config.website_url);
+  const isDark = hubDesign.dark_mode !== "light";
+  const primaryColor = hubDesign.primary_color || "#ff7a00";
+  const accentColor = hubDesign.accent_color || "#ff7a00";
+  const bgColor = hubDesign.bg_color || "#0e1015";
+  const cardStyle = hubDesign.card_style || "glass";
+
+  const cardClass = 
+    cardStyle === "flat"
+      ? isDark ? "bg-zinc-900 border border-zinc-800" : "bg-white border border-zinc-200 shadow-xs"
+      : cardStyle === "elevated"
+      ? isDark ? "bg-zinc-900/90 shadow-xl border border-zinc-800/80" : "bg-white shadow-xl border border-zinc-100"
+      : cardStyle === "bordered"
+      ? isDark ? "bg-transparent border-2 border-zinc-800" : "bg-white border-2 border-zinc-200"
+      : isDark 
+      ? "bg-zinc-900/70 backdrop-blur-md border border-white/10 shadow-lg text-white" 
+      : "bg-white/80 backdrop-blur-md border border-black/5 shadow-lg text-zinc-900";
+
+  const callBtn = hubButtons.find((b) => b.type === "call") || (business.phone ? { type: "call", url_or_value: business.phone, label: "Call" } : null);
+  const directionsBtn = hubButtons.find((b) => b.type === "directions" || b.type === "maps") || { type: "directions", url_or_value: business.google_review_link || business.address || "", label: "Directions" };
+  const waBtn = hubButtons.find((b) => b.type === "whatsapp") || (business.whatsapp_number ? { type: "whatsapp", url_or_value: business.whatsapp_number, label: "WhatsApp" } : null);
+  const igBtn = hubButtons.find((b) => b.type === "instagram") || (business.instagram ? { type: "instagram", url_or_value: business.instagram, label: "Instagram" } : null);
+  const fbBtn = hubButtons.find((b) => b.type === "facebook") || (config.facebook_url ? { type: "facebook", url_or_value: config.facebook_url, label: "Facebook" } : null);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-zinc-900 font-sans flex flex-col justify-between selection:bg-amber-100">
+    <div 
+      className={`min-h-screen ${isDark ? "text-white" : "text-zinc-900"} font-sans transition-colors relative flex flex-col justify-between selection:bg-amber-500 selection:text-black`}
+      style={{
+        backgroundColor: bgColor,
+        backgroundImage: hubDesign.wallpaper_url ? `url(${hubDesign.wallpaper_url})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      {hubDesign.wallpaper_url && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] pointer-events-none" />
+      )}
       
       {/* Top Banner if preview mode */}
       {isPreview && (
@@ -303,77 +341,151 @@ export default function AiReviewCustomerFlow({
       )}
 
       {/* Main Container */}
-      <main className="w-full max-w-lg mx-auto px-4 py-8 sm:py-12 space-y-6">
+      <main className="w-full max-w-md mx-auto relative z-10 pb-8 space-y-4">
         
-        {/* Header: Business Logo / Monogram & Name */}
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-zinc-900 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-md border border-zinc-200">
-            {business.name.slice(0, 1).toUpperCase()}
+        {/* Top Cover Banner */}
+        <div className="relative h-44 sm:h-52 w-full bg-gradient-to-r from-zinc-800 to-zinc-900 overflow-hidden rounded-b-2xl sm:rounded-b-3xl">
+          {hubDesign.cover_url ? (
+            <img 
+              src={hubDesign.cover_url} 
+              alt={`${business.name} cover`} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#ff7a00]/30 via-zinc-900 to-black flex items-center justify-center">
+              <span className="text-zinc-200 font-bold uppercase tracking-widest text-xs drop-shadow">
+                {business.name}
+              </span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+        </div>
+
+        {/* Round Logo + Business Title & Category */}
+        <div className="px-5 -mt-14 relative z-10 flex flex-col items-center text-center">
+          <div 
+            className="w-24 h-24 rounded-full p-1 bg-white/10 backdrop-blur-md shadow-2xl border-2 border-white/20 overflow-hidden flex items-center justify-center"
+            style={{ backgroundColor: isDark ? "#141720" : "#ffffff" }}
+          >
+            {hubDesign.logo_url || (business as any).logo_url ? (
+              <img 
+                src={hubDesign.logo_url || (business as any).logo_url} 
+                alt={business.name} 
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              <div 
+                className="w-full h-full rounded-full flex items-center justify-center text-2xl font-black text-black"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {business.name.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
-          <div>
-            <h1 className="font-headline font-extrabold text-2xl text-zinc-900 tracking-tight">
-              {business.name}
-            </h1>
-            <p className="text-xs text-zinc-500 font-medium">
-              How was your experience today? Tap to write your review.
-            </p>
-          </div>
+
+          <h1 className="mt-3 text-xl sm:text-2xl font-black tracking-tight flex items-center gap-1.5 justify-center">
+            <span>{business.name}</span>
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+          </h1>
+
+          <p className={`mt-1 text-xs max-w-xs leading-relaxed ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
+            {hubDesign.tagline || (business as any).category || "Customer Satisfaction Hub"}
+          </p>
+        </div>
+
+        {/* Call + Directions Row */}
+        <div className="px-5 grid grid-cols-2 gap-2.5">
+          {callBtn && (
+            <a
+              href={`tel:${callBtn.url_or_value.replace(/[^0-9+]/g, "")}`}
+              className={`tactile-btn py-3 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs border transition-all active:scale-[0.978] cursor-pointer ${
+                isDark 
+                  ? "bg-zinc-900/80 hover:bg-zinc-800 text-white border-zinc-700" 
+                  : "bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200 shadow-xs"
+              }`}
+            >
+              <Phone className="w-4 h-4 text-emerald-400" />
+              <span>Call</span>
+            </a>
+          )}
+
+          {directionsBtn && (
+            <a
+              href={
+                directionsBtn.url_or_value.startsWith("http")
+                  ? directionsBtn.url_or_value
+                  : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionsBtn.url_or_value)}`
+              }
+              target="_blank"
+              rel="noreferrer"
+              className={`tactile-btn py-3 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs border transition-all active:scale-[0.978] cursor-pointer ${
+                isDark 
+                  ? "bg-zinc-900/80 hover:bg-zinc-800 text-white border-zinc-700" 
+                  : "bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200 shadow-xs"
+              }`}
+            >
+              <MapPin className="w-4 h-4 text-red-400" />
+              <span>Directions</span>
+            </a>
+          )}
         </div>
 
         {/* ========================================================================= */}
         {/* STEP A: 5 EMPTY STARS (NO DEFAULT RATING)                                 */}
         {/* ========================================================================= */}
-        <div className="p-5 rounded-3xl bg-white border border-zinc-200/80 shadow-xs text-center space-y-3">
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((starIndex) => {
-              const isFilled = stars !== null && starIndex <= stars;
-              return (
-                <button
-                  key={starIndex}
-                  type="button"
-                  onClick={() => {
-                    setStars(starIndex);
-                    // Clear past drafts on star change so they adapt to sentiment
-                    if (drafts.length > 0) setDrafts([]);
-                  }}
-                  className="p-1 cursor-pointer transition-transform active:scale-90 hover:scale-110"
-                  title={`Rate ${starIndex} out of 5 stars`}
-                >
-                  <Star
-                    className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
-                      isFilled
-                        ? "fill-amber-400 text-amber-400 filter drop-shadow-xs"
-                        : "text-zinc-300 hover:text-amber-300 fill-zinc-50"
-                    }`}
-                  />
-                </button>
-              );
-            })}
-          </div>
+        <div className="px-5">
+          <div className={`p-5 rounded-3xl ${cardClass} text-center space-y-3 shadow-md`}>
+            <div className="flex items-center justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((starIndex) => {
+                const isFilled = stars !== null && starIndex <= stars;
+                return (
+                  <button
+                    key={starIndex}
+                    type="button"
+                    onClick={() => {
+                      setStars(starIndex);
+                      // Clear past drafts on star change so they adapt to sentiment
+                      if (drafts.length > 0) setDrafts([]);
+                    }}
+                    className="p-1 cursor-pointer transition-transform active:scale-90 hover:scale-110"
+                    title={`Rate ${starIndex} out of 5 stars`}
+                  >
+                    <Star
+                      className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
+                        isFilled
+                          ? "fill-amber-400 text-amber-400 filter drop-shadow-xs"
+                          : isDark ? "text-zinc-600 hover:text-amber-300 fill-zinc-800/40" : "text-zinc-300 hover:text-amber-300 fill-zinc-50"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
 
-          <span className="text-xs font-bold text-zinc-600 block">
-            {stars === null
-              ? "Select your rating"
-              : stars === 5
-              ? "Loved it! (5 Stars)"
-              : stars === 4
-              ? "Great experience! (4 Stars)"
-              : stars === 3
-              ? "Standard experience (3 Stars)"
-              : "Room for improvement"}
-          </span>
+            <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
+              {stars === null
+                ? "Loved it? Tap a star to review!"
+                : stars === 5
+                ? "Loved it! (5 Stars)"
+                : stars === 4
+                ? "Great experience! (4 Stars)"
+                : stars === 3
+                ? "Standard experience (3 Stars)"
+                : "Room for improvement"}
+            </span>
+          </div>
         </div>
 
         {/* ========================================================================= */}
         {/* STEP B & C: CHIPS & LENGTH SELECTOR (Appears once rating is tapped)        */}
         {/* ========================================================================= */}
         {stars !== null && (
-          <div className="space-y-5 animate-in fade-in slide-in-from-top-3 duration-300">
+          <div className="px-5 space-y-4 animate-in fade-in slide-in-from-top-3 duration-300">
             
             {/* Product Chips (if configured) */}
             {productChips.length > 0 && (
               <div className="space-y-2">
-                <span className="text-xs font-bold text-zinc-700 block">
+                <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
                   What did you order / receive?
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -387,6 +499,8 @@ export default function AiReviewCustomerFlow({
                         className={`tactile-btn px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border transition-all ${
                           isSelected
                             ? "bg-zinc-900 text-white border-zinc-900 shadow-2xs"
+                            : isDark 
+                            ? "bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border-zinc-700" 
                             : "bg-white hover:bg-zinc-50 text-zinc-700 border-zinc-200"
                         }`}
                       >
@@ -400,7 +514,7 @@ export default function AiReviewCustomerFlow({
 
             {/* Aspect Chips */}
             <div className="space-y-2">
-              <span className="text-xs font-bold text-zinc-700 block">
+              <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
                 What stood out? (Tap 1 or more) *
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -414,6 +528,8 @@ export default function AiReviewCustomerFlow({
                       className={`tactile-btn px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border transition-all ${
                         isSelected
                           ? "bg-[#ff7a00] text-black border-amber-600 font-bold shadow-2xs"
+                          : isDark 
+                          ? "bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border-zinc-700" 
                           : "bg-white hover:bg-zinc-50 text-zinc-700 border-zinc-200"
                       }`}
                     >
@@ -426,17 +542,17 @@ export default function AiReviewCustomerFlow({
 
             {/* Length Selector */}
             <div className="space-y-1.5">
-              <span className="text-xs font-bold text-zinc-700 block">
+              <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
                 Review Length
               </span>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-zinc-100 rounded-2xl border border-zinc-200/80">
+              <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-2xl border ${isDark ? "bg-zinc-800/80 border-zinc-700" : "bg-zinc-100 border-zinc-200/80"}`}>
                 <button
                   type="button"
                   onClick={() => setLength("short")}
                   className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
                     length === "short"
-                      ? "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                      : "text-zinc-600 hover:text-zinc-900"
+                      ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
+                      : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
                   }`}
                 >
                   Short (1-2)
@@ -446,8 +562,8 @@ export default function AiReviewCustomerFlow({
                   onClick={() => setLength("medium")}
                   className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
                     length === "medium"
-                      ? "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                      : "text-zinc-600 hover:text-zinc-900"
+                      ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
+                      : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
                   }`}
                 >
                   Medium (3-4)
@@ -457,8 +573,8 @@ export default function AiReviewCustomerFlow({
                   onClick={() => setLength("long")}
                   className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
                     length === "long"
-                      ? "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                      : "text-zinc-600 hover:text-zinc-900"
+                      ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
+                      : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
                   }`}
                 >
                   Detailed (5+)
@@ -472,16 +588,16 @@ export default function AiReviewCustomerFlow({
                 type="button"
                 onClick={handleGenerateReviews}
                 disabled={loading || selectedOptionIds.length === 0}
-                className="tactile-btn w-full py-3.5 rounded-2xl bg-gradient-to-r from-zinc-900 to-black hover:from-black hover:to-zinc-900 text-white font-bold text-sm shadow-md transition-all active:scale-[0.978] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                className="tactile-btn w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-[#ff7a00] hover:from-amber-600 hover:to-[#ea6c00] text-black font-extrabold text-sm shadow-md transition-all active:scale-[0.978] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-black" />
                     <span>Crafting 3 personalized drafts...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <Sparkles className="w-4 h-4 text-black" />
                     <span>Write my review</span>
                   </>
                 )}
@@ -516,15 +632,15 @@ export default function AiReviewCustomerFlow({
         {/* STEP E & F: 2-3 DRAFT CARDS (SWIPEABLE CAROUSEL & EDITABLE)               */}
         {/* ========================================================================= */}
         {drafts.length > 0 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="px-5 space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
             
             {/* Carousel Header with Arrows & Page Indicator (1/3) */}
             <div className="flex items-center justify-between pb-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-zinc-900">
+                <span className={`text-xs font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>
                   Suggestion {selectedDraftIndex + 1} of {drafts.length}
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-zinc-200 text-zinc-800 text-[10px] font-mono font-bold">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${isDark ? "bg-zinc-800 text-zinc-300" : "bg-zinc-200 text-zinc-800"}`}>
                   {selectedDraftIndex + 1}/{drafts.length}
                 </span>
               </div>
@@ -534,7 +650,7 @@ export default function AiReviewCustomerFlow({
                 <button
                   type="button"
                   onClick={() => setSelectedDraftIndex((prev) => (prev > 0 ? prev - 1 : drafts.length - 1))}
-                  className="p-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                  className={`p-1.5 rounded-xl transition-colors cursor-pointer ${isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
                   title="Previous suggestion"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -542,7 +658,7 @@ export default function AiReviewCustomerFlow({
                 <button
                   type="button"
                   onClick={() => setSelectedDraftIndex((prev) => (prev < drafts.length - 1 ? prev + 1 : 0))}
-                  className="p-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                  className={`p-1.5 rounded-xl transition-colors cursor-pointer ${isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
                   title="Next suggestion"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -552,29 +668,29 @@ export default function AiReviewCustomerFlow({
                   type="button"
                   onClick={handleGenerateReviews}
                   disabled={loading}
-                  className="ml-2 text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200"
+                  className="ml-2 text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20"
                   title="Generate another set"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                  <span>Generate another set</span>
+                  <span>New drafts</span>
                 </button>
               </div>
             </div>
 
             {/* Current Active Suggestion Card */}
             {drafts[selectedDraftIndex] && (
-              <div className="p-4 rounded-2xl bg-white border-2 border-[#ff7a00] ring-4 ring-[#ff7a00]/10 shadow-lg relative transition-all">
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-100">
+              <div className={`p-4 rounded-2xl border-2 border-[#ff7a00] ring-4 ring-[#ff7a00]/10 shadow-lg relative transition-all ${isDark ? "bg-zinc-900/90 text-white" : "bg-white text-zinc-900"}`}>
+                <div className={`flex items-center justify-between pb-2 mb-2 border-b ${isDark ? "border-zinc-800" : "border-zinc-100"}`}>
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
-                    <span className="text-[11px] font-bold text-zinc-700 uppercase tracking-wider font-mono">
+                    <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-[#ff7a00]">
                       Draft {selectedDraftIndex + 1}
                     </span>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-400">
-                      Your draft, edit freely
+                    <span className={`text-[10px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+                      Edit freely
                     </span>
 
                     {/* Mic Voice Dictation Button */}
@@ -585,11 +701,11 @@ export default function AiReviewCustomerFlow({
                         className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                           isListening
                             ? "bg-red-500 text-white border-red-600 animate-pulse"
-                            : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-300"
+                            : isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-300"
                         }`}
                         title={isListening ? "Listening... Tap to stop" : "Tap to speak your review"}
                       >
-                        {isListening ? <MicOff className="w-3.5 h-3.5 text-white" /> : <Mic className="w-3.5 h-3.5 text-zinc-600" />}
+                        {isListening ? <MicOff className="w-3.5 h-3.5 text-white" /> : <Mic className="w-3.5 h-3.5 text-zinc-400" />}
                         <span className="text-[10px] hidden sm:inline">{isListening ? "Listening" : "Dictate"}</span>
                       </button>
                     )}
@@ -600,14 +716,14 @@ export default function AiReviewCustomerFlow({
                   rows={4}
                   value={drafts[selectedDraftIndex].text}
                   onChange={(e) => handleUpdateDraftText(selectedDraftIndex, e.target.value)}
-                  className="w-full text-xs text-zinc-900 leading-relaxed font-sans bg-transparent border-0 focus:outline-none resize-none"
+                  className={`w-full text-xs leading-relaxed font-sans bg-transparent border-0 focus:outline-none resize-none ${isDark ? "text-white placeholder:text-zinc-600" : "text-zinc-900 placeholder:text-zinc-400"}`}
                   placeholder="Review text..."
                 />
               </div>
             )}
 
             {/* Small Helper Note */}
-            <p className="text-[11px] text-zinc-500 italic text-center">
+            <p className={`text-[11px] italic text-center ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
               Suggestions are a starting point. Edit to match your experience.
             </p>
 
@@ -633,7 +749,7 @@ export default function AiReviewCustomerFlow({
               </button>
 
               {!googleReviewUrl && (
-                <p className="text-[11px] text-center text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                <p className="text-[11px] text-center text-amber-400 bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
                   Review link is being set up. You can still copy the text!
                 </p>
               )}
@@ -645,7 +761,7 @@ export default function AiReviewCustomerFlow({
                 <button
                   type="button"
                   onClick={() => setPrivateFeedbackOpen(true)}
-                  className="text-xs font-bold text-zinc-500 hover:text-zinc-800 underline cursor-pointer"
+                  className={`text-xs font-bold underline cursor-pointer ${isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-800"}`}
                 >
                   Tell the owner privately (discreet feedback)
                 </button>
@@ -655,70 +771,92 @@ export default function AiReviewCustomerFlow({
         )}
 
         {/* ========================================================================= */}
-        {/* STEP J: SOCIAL ICON ROW & ADDRESS                                         */}
+        {/* STEP J: UNIFIED TOUCHPOINT BUTTONS (WhatsApp, Instagram, Facebook, Call, Directions) */}
         {/* ========================================================================= */}
-        <div className="pt-6 border-t border-zinc-200/80 text-center space-y-4">
-          {hasAnySocial && (
-            <div className="flex items-center justify-center gap-3">
-              {showIcons.instagram && business.instagram_url && (
-                <a
-                  href={
-                    business.instagram_url.startsWith("http")
-                      ? business.instagram_url
-                      : `https://instagram.com/${business.instagram_url.replace("@", "")}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 text-pink-600 flex items-center justify-center shadow-2xs transition-transform active:scale-95"
-                  title="Instagram"
-                >
-                  <Instagram className="w-4 h-4" />
-                </a>
-              )}
+        <div className="px-5 mt-4">
+          <div className={`p-3 rounded-2xl ${cardClass} flex items-center justify-around gap-2`}>
+            {waBtn && (
+              <a
+                href={`https://wa.me/${waBtn.url_or_value.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                }`}
+                title="WhatsApp"
+              >
+                <MessageCircle className="w-5 h-5 text-emerald-400" />
+              </a>
+            )}
 
-              {showIcons.whatsapp && business.whatsapp_number && (
-                <a
-                  href={`https://wa.me/${business.whatsapp_number.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 text-emerald-600 flex items-center justify-center shadow-2xs transition-transform active:scale-95"
-                  title="WhatsApp"
-                >
-                  <Phone className="w-4 h-4" />
-                </a>
-              )}
+            {igBtn && (
+              <a
+                href={
+                  igBtn.url_or_value.startsWith("http")
+                    ? igBtn.url_or_value
+                    : `https://instagram.com/${igBtn.url_or_value.replace("@", "")}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                }`}
+                title="Instagram"
+              >
+                <Instagram className="w-5 h-5 text-pink-400" />
+              </a>
+            )}
 
-              {showIcons.facebook && config.facebook_url && (
-                <a
-                  href={config.facebook_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 text-blue-600 flex items-center justify-center shadow-2xs transition-transform active:scale-95"
-                  title="Facebook"
-                >
-                  <Facebook className="w-4 h-4" />
-                </a>
-              )}
+            {fbBtn && (
+              <a
+                href={fbBtn.url_or_value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                }`}
+                title="Facebook"
+              >
+                <Facebook className="w-5 h-5 text-blue-400" />
+              </a>
+            )}
 
-              {showIcons.website && config.website_url && (
-                <a
-                  href={config.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-700 flex items-center justify-center shadow-2xs transition-transform active:scale-95"
-                  title="Website"
-                >
-                  <Globe className="w-4 h-4" />
-                </a>
-              )}
-            </div>
-          )}
+            {callBtn && (
+              <a
+                href={`tel:${callBtn.url_or_value.replace(/[^0-9+]/g, "")}`}
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                }`}
+                title="Call"
+              >
+                <Phone className="w-5 h-5 text-emerald-400" />
+              </a>
+            )}
 
-          {/* Physical Address */}
-          {config.address && (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-500 font-medium">
-              <MapPin className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-              <span>{config.address}</span>
+            {directionsBtn && (
+              <a
+                href={
+                  directionsBtn.url_or_value.startsWith("http")
+                    ? directionsBtn.url_or_value
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionsBtn.url_or_value)}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
+                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                }`}
+                title="Directions"
+              >
+                <MapPin className="w-4 h-4 text-red-400" />
+              </a>
+            )}
+          </div>
+
+          {/* Physical Address if available */}
+          {(config.address || hubDesign.address) && (
+            <div className={`mt-3 flex items-center justify-center gap-1.5 text-xs font-medium ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
+              <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+              <span>{config.address || hubDesign.address}</span>
             </div>
           )}
         </div>

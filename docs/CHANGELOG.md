@@ -1,5 +1,29 @@
 # ZenTap — Changelog
 
+## [1.35.0] — 2026-11-02
+### Enhanced (Categories Column, Destination Dropdown & Unified Review Assistant Design Consistency)
+- **Categories Column & Quick Edit in Page Editor Table**:
+  - Added dedicated **Category** column to the Standee Page Editor table (`PageEditorWebpageTab.tsx`).
+  - Displays business category badge (e.g. `Restaurant & Cafe`, `Salon & Spa`, `Customer Satisfaction Hub`) with 1-click quick-edit trigger.
+  - Added `Category / Categories` field to the **Edit Whole Entry** modal and preset category chips (`Restaurant & Cafe`, `Salon & Spa`, `Retail Store`, `Healthcare & Clinic`, `Customer Satisfaction Hub`) in the **Visual Page Designer** modal.
+- **Interactive Destination Dropdown in Page Editor**:
+  - Replaced the static badge under *Destination from the Google Links & QR sharing* with an active `<select>` dropdown.
+  - Allows admins to toggle destinations directly from the Page Editor between:
+    - `ZenTap Google Review (Green)` (`zentap_google`)
+    - `Direct Google Review (Amber)` (`direct_google`)
+    - `Not Assigned (Grey)` (`not_assigned`)
+  - Automatically persists to Supabase PostgreSQL and updates Google Links & QR Sharing state.
+- **Design Consistency Unification (`/r/[slug]/review` vs `/r/[slug]` Hub)**:
+  - Completely aligned `https://www.zentapdigitalsolutions.com/r/zentap/review?s=qr` with `https://www.zentapdigitalsolutions.com/r/zentap?preview=1`:
+    - **Wallpaper Background**: Full background wallpaper with dark blur backdrop overlay.
+    - **Behind the Banner (Hero Cover)**: Exact hero cover banner image with gradient overlay.
+    - **Round Cover Profile (Logo)**: Centered round avatar logo with border and backdrop blur.
+    - **Business Title & Category**: Exact font typography and verified badge.
+    - **Call & Directions Row**: Tactile Call and Directions action buttons.
+    - **Interactive 5-Star Rating & AI Drafts**: Integrated 5 stars rating with sentiment indicator, "What stood out?" aspect chips, review length selector (Short, Medium, Detailed), "Write my review" AI generator button, voice dictation (`Mic`), editable draft carousel (1/3, 2/3, 3/3), and "Submit review" button that copies and opens Google Reviews.
+    - **Unified Touchpoints**: Complete touchpoint row with WhatsApp, Instagram, Facebook, Call, and Directions across both pages.
+  - When the admin clicks **Save & Publish Live**, the design updates both pages simultaneously.
+
 ## [1.34.0] — 2026-11-02
 ### Fixed & Enhanced (Redirect Collision Fix, Client Profile Auto-Fetch, Media Uploads & Hub Synchronization)
 - **Instagram Redirect Collision Resolved**:
