@@ -1,5 +1,15 @@
 # ZenTap — Changelog
 
+## [1.38.0] — 2026-11-02
+### Fixed (Completed Standee Page Resolution & Unintended `/unavailable` Redirect Gate)
+- **Resolved Route Resolution for Completed Standee Designs**:
+  - Fixed an issue where scanning or clicking a completed standee link (e.g. `/t/ST3` routing to `/r/zt-0004`) triggered an unintended redirect to `/unavailable`.
+  - Cause: Previously, `/r/[slug]` strictly required businesses to exist in the legacy `businesses` table before checking `page_editor_configs`. Since clients created via the Admin Console live in the `clients` and `page_editor_configs` tables, `rawBiz` returned `null`, prematurely hitting the `redirect("/unavailable")` gate.
+  - Fix:
+    1. **Prioritized Page Editor Config Lookup**: In `/r/[slug]/page.tsx`, `page_editor_configs` is now queried *before* the business existence validation. When `setup_status === 'completed'`, it immediately constructs the effective business record and renders `<ZenTapHubPage />` with the exact theme, logo, banner, and buttons.
+    2. **Multi-Table Client Fallback**: Enhanced `fetchPublicBusinessBySlug` in `service.ts` to seamlessly fall back to both `clients` (by `business_id` or `business_name`) and `page_editor_configs` (by `tag_id`, `business_id`, or `business_name`).
+    3. **Aligned `/r/[slug]/review` Route**: Implemented the same multi-table fallback in `/r/[slug]/review` to guarantee full parity across both the Hub page and the AI Review Assistant page.
+
 ## [1.37.0] — 2026-11-02
 ### Fixed & Enhanced (Interactive Category Tag Addition & Removal Architecture)
 - **Removable Category Badges with `×` Delete Triggers**:

@@ -60,28 +60,15 @@ export default async function ReviewPage({
   // Find business
   const rawBiz = getBusinessBySlug(cleanSlug) || (await fetchPublicBusinessBySlug(cleanSlug));
 
-  if (!rawBiz) {
-    redirect("/unavailable");
-  }
-
-  const biz = toBusinessRecord(rawBiz);
-
-  if (!isPreview && (!biz.active || biz.is_deleted)) {
-    redirect("/unavailable");
-  }
-
-  // Load Review Config
-  const config = getBusinessReviewConfig(biz.id);
-
   // Check if customized in Page Editor (page_editor_configs)
   const db = createAdminClient();
   let pageConfig: any = null;
-  if (db && biz) {
+  if (db) {
     try {
       const q = db
         .from("page_editor_configs")
         .select("*")
-        .or(`business_id.eq.${biz.id},business_id.ilike.${cleanSlug}`)
+        .or(`business_id.ilike.${cleanSlug},tag_id.ilike.${cleanSlug}`)
         .is("deleted_at", null)
         .maybeSingle();
       const { data } = await q;
@@ -90,6 +77,53 @@ export default async function ReviewPage({
       console.warn("Error fetching pageConfig for review page:", e);
     }
   }
+
+  // If pending in page editor, show unavailable
+  if (pageConfig && pageConfig.setup_status === "pending") {
+    redirect("/unavailable");
+  }
+
+  if (!rawBiz && !pageConfig) {
+    redirect("/unavailable");
+  }
+
+  const effectiveBizRecord: BusinessRecord = rawBiz
+    ? toBusinessRecord(rawBiz)
+    : {
+        id: pageConfig.business_id || pageConfig.tag_id,
+        name: pageConfig.business_name || pageConfig.config_data?.title || "Business",
+        slug: (pageConfig.business_id || pageConfig.tag_id).toLowerCase(),
+        review_url: pageConfig.config_data?.google_link || "",
+        google_review_link: pageConfig.config_data?.google_link || "",
+        active: true,
+        is_deleted: false,
+        owner_user_id: "",
+        email: "",
+        phone: pageConfig.config_data?.phone || "",
+        city: "Ahmedabad",
+        state: "Gujarat",
+        country: "India",
+        pincode: "",
+        address: "",
+        category: pageConfig.config_data?.category || pageConfig.config_data?.subtitle || "Service",
+        gbp_link: pageConfig.config_data?.google_link || "",
+        plan: "standee_1500",
+        payment_status: "paid",
+        created_at: pageConfig.created_at || new Date().toISOString(),
+        redirect_mode: "interactive_profile",
+        whatsapp_number: pageConfig.config_data?.whatsapp || pageConfig.config_data?.phone || "",
+        whatsapp: pageConfig.config_data?.whatsapp || pageConfig.config_data?.phone || "",
+        instagram: pageConfig.config_data?.instagram || "",
+      };
+
+  const biz = effectiveBizRecord;
+
+  if (!isPreview && (!biz.active || biz.is_deleted)) {
+    redirect("/unavailable");
+  }
+
+  // Load Review Config
+  const config = getBusinessReviewConfig(biz.id);
 
   const defaultDesign = getPageDesign(biz.id);
   const cfg = pageConfig?.config_data || {};

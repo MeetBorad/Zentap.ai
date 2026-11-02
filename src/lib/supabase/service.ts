@@ -214,10 +214,81 @@ export async function fetchPublicBusinessBySlug(slug: string): Promise<DbPublicB
       .eq("slug", slug.toLowerCase())
       .maybeSingle();
 
-    if (directErr) {
-      return null;
+    if (!directErr && directData) {
+      return directData;
     }
-    return directData;
+
+    // Fallback 2: check clients table (fleet clients registered via Admin Console)
+    const cleanSlug = slug.toLowerCase().trim();
+    const { data: clientData } = await supabase
+      .from("clients")
+      .select("*")
+      .or(`business_id.ilike.${cleanSlug},business_name.ilike.${cleanSlug}`)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (clientData) {
+      return {
+        id: clientData.business_id,
+        name: clientData.business_name,
+        slug: clientData.business_id.toLowerCase(),
+        review_url: clientData.google_review_link,
+        google_review_link: clientData.google_review_link,
+        active: true,
+        is_deleted: false,
+        email: clientData.owner_email || "",
+        phone: clientData.owner_phone || "",
+        city: clientData.city || "Ahmedabad",
+        state: "Gujarat",
+        country: "India",
+        pincode: "",
+        address: "",
+        category: "Service",
+        gbp_link: clientData.google_review_link,
+        plan: "standee_1500",
+        payment_status: "paid",
+        whatsapp_number: clientData.whatsapp || clientData.owner_phone,
+        instagram_url: clientData.instagram_link,
+        redirect_mode: "interactive_profile",
+      } as any;
+    }
+
+    // Fallback 3: check page_editor_configs (custom review pages configured in Page Editor)
+    const { data: peData } = await supabase
+      .from("page_editor_configs")
+      .select("*")
+      .or(`tag_id.ilike.${cleanSlug},business_id.ilike.${cleanSlug},business_name.ilike.${cleanSlug}`)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (peData) {
+      const cfg = peData.config_data || {};
+      return {
+        id: peData.business_id || peData.tag_id,
+        name: peData.business_name || cfg.title || "Business",
+        slug: (peData.business_id || peData.tag_id).toLowerCase(),
+        review_url: cfg.google_link || "",
+        google_review_link: cfg.google_link || "",
+        active: true,
+        is_deleted: false,
+        email: "",
+        phone: cfg.phone || "",
+        city: "Ahmedabad",
+        state: "Gujarat",
+        country: "India",
+        pincode: "",
+        address: "",
+        category: cfg.category || cfg.subtitle || "Service",
+        gbp_link: cfg.google_link || "",
+        plan: "standee_1500",
+        payment_status: "paid",
+        whatsapp_number: cfg.whatsapp || cfg.phone || "",
+        instagram_url: cfg.instagram || "",
+        redirect_mode: "interactive_profile",
+      } as any;
+    }
+
+    return null;
   } catch (err) {
     console.warn("fetchPublicBusinessBySlug exception:", err);
     return null;
