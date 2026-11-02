@@ -377,39 +377,122 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing table or idValue" }, { status: 400 });
       }
 
-      // Verify row is currently deleted
-      const { data: targetRow, error: findErr } = await (supabase as any)
+      // Legacy audit table mapping
+      const legacyAuditMap: Record<string, string> = {
+        clients: "deleted_businesses",
+        payments: "deleted_payments",
+        qr_nfc_tags: "deleted_qr_nfc_tags",
+        google_review_links: "deleted_google_review_links",
+        social_links: "deleted_social_links",
+        page_editor_configs: "deleted_page_editor_configs",
+      };
+      const legacyTable = legacyAuditMap[table];
+
+      // Step 1: Verify row is currently deleted in primary table
+      const { data: primaryRow, error: findErr } = await (supabase as any)
         .from(table)
         .select("*")
         .eq(idField, idValue)
         .not("deleted_at", "is", null)
         .maybeSingle();
 
-      if (findErr) throw findErr;
+      if (findErr) {
+        console.error(`Error querying deleted record in ${table}:`, findErr);
+        throw findErr;
+      }
+
+      let targetRow = primaryRow;
+      let isLegacyOnly = false;
+
+      // If not in primary table, check legacy audit table
+      if (!targetRow && legacyTable) {
+        const legacyKey = (idField === "business_id" || idField === "tag_id") ? idField : "id";
+        const { data: legacyRow, error: legErr } = await (supabase as any)
+          .from(legacyTable)
+          .select("*")
+          .eq(legacyKey, idValue)
+          .maybeSingle();
+
+        if (legErr) {
+          console.error(`Error querying legacy deleted record in ${legacyTable}:`, legErr);
+          throw legErr;
+        }
+        if (legacyRow) {
+          targetRow = legacyRow;
+          isLegacyOnly = true;
+        }
+      }
+
       if (!targetRow) {
-        return NextResponse.json({ error: "Record not found in Deleted section" }, { status: 404 });
+        return NextResponse.json({ error: `Record "${idValue}" not found in Deleted section` }, { status: 404 });
       }
 
-      // Verify typed confirmation if provided
-      const expectedName = (targetRow.business_name || targetRow.product || targetRow.tag_id || "").trim();
-      if (confirmationName && expectedName && confirmationName.trim().toLowerCase() !== expectedName.toLowerCase()) {
-        return NextResponse.json({
-          error: `Confirmation mismatch. You typed "${confirmationName}", but expected "${expectedName}".`,
-        }, { status: 400 });
+      // Step 2: Validate typed confirmation
+      if (confirmationName) {
+        const cleanTyped = confirmationName.trim().toLowerCase();
+        // Collect all legitimate identifiers for this entity
+        const permissible = [
+          targetRow.tag_id,
+          targetRow.business_name,
+          targetRow.business_id,
+          targetRow.product,
+          String(idValue),
+        ]
+          .filter(Boolean)
+          .map((s: string) => String(s).trim().toLowerCase());
+
+        const isTagTable = ["google_review_links", "social_links", "page_editor_configs", "qr_nfc_tags"].includes(table);
+        const primaryExpected = (isTagTable && targetRow.tag_id
+          ? targetRow.tag_id
+          : (targetRow.business_name || targetRow.business_id || targetRow.tag_id || String(idValue))
+        ).trim();
+
+        if (!permissible.includes(cleanTyped)) {
+          return NextResponse.json({
+            error: `Confirmation mismatch. You typed "${confirmationName.trim()}", but expected "${primaryExpected}".`,
+          }, { status: 400 });
+        }
       }
 
-      const { data: deletedRows, error: delErr } = await (supabase as any)
-        .from(table)
-        .delete()
-        .eq(idField, idValue)
-        .select();
+      // Step 3: Transactional cleanup of dependent / audit records first
+      if (legacyTable) {
+        const legacyKey = (idField === "business_id" || idField === "tag_id") ? idField : "id";
+        const { error: legDelErr } = await (supabase as any)
+          .from(legacyTable)
+          .delete()
+          .eq(legacyKey, idValue);
 
-      if (delErr) throw delErr;
-      if (!deletedRows || deletedRows.length !== 1) {
-        return NextResponse.json({ error: "Expected exactly 1 row to be permanently deleted" }, { status: 409 });
+        if (legDelErr) {
+          console.warn(`Notice: Failed to purge from ${legacyTable}:`, legDelErr);
+        }
       }
 
-      return NextResponse.json({ success: true, deleted: deletedRows[0] });
+      // Step 4: Delete the row from the primary table (guaranteeing it had deleted_at IS NOT NULL)
+      let deletedRow = targetRow;
+      if (!isLegacyOnly) {
+        const { data: deletedRows, error: delErr } = await (supabase as any)
+          .from(table)
+          .delete()
+          .eq(idField, idValue)
+          .not("deleted_at", "is", null)
+          .select();
+
+        if (delErr) {
+          console.error(`DELETE error on ${table}:`, delErr);
+          return NextResponse.json({
+            error: `Database delete failed on ${table}: ${delErr.message || delErr.details || "Constraint violation"}`
+          }, { status: 500 });
+        }
+
+        if (!deletedRows || deletedRows.length !== 1) {
+          return NextResponse.json({
+            error: `Expected exactly 1 row to be permanently deleted from ${table}, but deleted ${deletedRows?.length || 0}.`
+          }, { status: 409 });
+        }
+        deletedRow = deletedRows[0];
+      }
+
+      return NextResponse.json({ success: true, deleted: deletedRow });
     }
 
     // 5. UPSERT RECORD
