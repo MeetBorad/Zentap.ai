@@ -7,8 +7,9 @@ import {
   LogOut, 
   ShieldCheck, 
   ArrowLeft, 
-  MessageCircle,
-  Globe
+  MessageCircle, 
+  Globe,
+  Lock
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -250,6 +251,28 @@ export default function Header({
             <span>{demoBtnText}</span>
           </a>
 
+          {/* Admin Login Option on Top Right */}
+          {isAdmin ? (
+            <button
+              onClick={() => handleNavClick("admin")}
+              className="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff7a00] hover:bg-[#e56d00] text-black text-xs font-bold cursor-pointer shadow-sm transition-all"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Admin Console</span>
+              <span className="md:hidden">Admin</span>
+            </button>
+          ) : (
+            <a
+              href="/admin/login"
+              title="Admin Portal Login"
+              className="tactile-btn-subtle flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] text-xs font-semibold cursor-pointer shadow-sm transition-all"
+            >
+              <Lock className="w-3.5 h-3.5 text-[#ff7a00]" />
+              <span className="hidden sm:inline">Admin Login</span>
+              <span className="sm:hidden">Admin</span>
+            </a>
+          )}
+
           {/* Mobile Menu Hamburger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -290,7 +313,7 @@ export default function Header({
               {currentLang === "gu" ? "સવાલો અને જવાબો (FAQ)" : currentLang === "hi" ? "सवाल और जवाब (FAQ)" : "FAQ"}
             </button>
 
-            <div className="border-t border-[#232734] mt-2 pt-3">
+            <div className="border-t border-[#232734] mt-2 pt-3 flex flex-col gap-2">
               <a
                 href={waUrl}
                 target="_blank"
@@ -306,6 +329,24 @@ export default function Header({
                     : "Get a Free Demo on WhatsApp"}
                 </span>
               </a>
+
+              {isAdmin ? (
+                <button
+                  onClick={() => handleNavClick("admin")}
+                  className="w-full py-2.5 rounded-xl bg-[#ff7a00] text-black font-bold text-xs shadow-sm flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Admin Console</span>
+                </button>
+              ) : (
+                <a
+                  href="/admin/login"
+                  className="w-full py-2.5 rounded-xl bg-[#141720] text-zinc-300 hover:text-white font-medium text-xs border border-[#232734] flex items-center justify-center gap-2"
+                >
+                  <Lock className="w-3.5 h-3.5 text-[#ff7a00]" />
+                  <span>Admin Login</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
