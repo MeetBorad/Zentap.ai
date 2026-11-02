@@ -51,18 +51,7 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
   const [activeTab, setActiveTab] = useState<"all" | "deleted">("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Edit Whole Entry Modal
-  const [editWholeTarget, setEditWholeTarget] = useState<GoogleReviewLinkItemRecord | null>(null);
-  const [editBusinessId, setEditBusinessId] = useState("");
-  const [editBusinessName, setEditBusinessName] = useState("");
-  const [editTagId, setEditTagId] = useState("");
-  const [editLinkOfTagId, setEditLinkOfTagId] = useState("");
-  const [editGoogleUrl, setEditGoogleUrl] = useState("");
-  const [editDestination, setEditDestination] = useState<"not_assigned" | "direct_google" | "zentap_google">("not_assigned");
-  const [editSetupStatus, setEditSetupStatus] = useState<"pending" | "completed">("pending");
-  const [editTotalScans, setEditTotalScans] = useState<number>(0);
-
-  // Quick Edit Google Review Link Modal
+  // Quick Edit Page Linked to Tag ID Modal
   const [quickEditTarget, setQuickEditTarget] = useState<GoogleReviewLinkItemRecord | null>(null);
   const [quickGoogleUrl, setQuickGoogleUrl] = useState("");
 
@@ -122,49 +111,6 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
     }
   };
 
-  // Open Edit Whole Entry Modal
-  const openEditWhole = (item: GoogleReviewLinkItemRecord) => {
-    setEditWholeTarget(item);
-    setEditBusinessId(item.business_id);
-    setEditBusinessName(item.business_name);
-    setEditTagId(item.tag_id);
-    setEditLinkOfTagId(item.link_of_tag_id);
-    setEditGoogleUrl(item.business_google_review_link || "");
-    setEditDestination(item.destination);
-    setEditSetupStatus(item.setup_status);
-    setEditTotalScans(item.total_scans || 0);
-  };
-
-  const handleSaveWholeEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editWholeTarget) return;
-
-    let cleanUrl = editGoogleUrl.trim();
-    if (cleanUrl && !cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-      cleanUrl = `https://${cleanUrl}`;
-    }
-
-    setIsSubmitting(true);
-    const res = await updateGoogleReviewLinkServer(editWholeTarget.tag_id, {
-      business_id: editBusinessId.trim(),
-      business_name: editBusinessName.trim(),
-      link_of_tag_id: editLinkOfTagId.trim(),
-      business_google_review_link: cleanUrl,
-      destination: editDestination,
-      setup_status: editSetupStatus,
-      total_scans: Number(editTotalScans) || 0,
-    });
-    setIsSubmitting(false);
-
-    if (res.success) {
-      onShowToast(`✓ Updated whole entry for ${editBusinessName.trim()} (${editWholeTarget.tag_id})!`);
-      setEditWholeTarget(null);
-      await refreshData();
-    } else {
-      onShowToast(res.error || "Failed to update entry in database");
-    }
-  };
-
   // Quick edit Page Linked to Tag ID (Option to enter any link here)
   const openQuickEdit = (item: GoogleReviewLinkItemRecord) => {
     setQuickEditTarget(item);
@@ -189,7 +135,7 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
     setIsSubmitting(false);
 
     if (res.success) {
-      onShowToast(`✓ Updated linked page URL for ${quickEditTarget.business_name} (${quickEditTarget.tag_id})!`);
+      onShowToast(`✓ Updated Page Linked to Tag ID for ${quickEditTarget.business_name} (${quickEditTarget.tag_id})! Setup Status: Active.`);
       setQuickEditTarget(null);
       await refreshData();
     } else {
@@ -475,9 +421,9 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                 ) : (
                   filteredLinks.map((item) => {
                     // Setup status is worked out, not stored:
-                    // A standee is Completed (green) when its business has a valid Google review link. Otherwise it's Pending (red).
+                    // Default status is Pending (red). Once Page Linked to Tag ID is entered, status automatically changes to Active (green).
                     const link = (item.business_google_review_link || "").trim();
-                    const isCompleted = link.length > 5 && (link.startsWith("http://") || link.startsWith("https://"));
+                    const isActive = link.length > 5 && (link.startsWith("http://") || link.startsWith("https://"));
 
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
@@ -580,12 +526,12 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           </button>
                         </td>
 
-                        {/* Setup Status */}
+                        {/* Setup Status: Default Pending (Red), Active (Green) once link is entered */}
                         <td className="py-3 px-4 whitespace-nowrap">
-                          {isCompleted ? (
+                          {isActive ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Completed</span>
+                              <span>Active</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 text-[11px] font-bold">
@@ -630,12 +576,12 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           </select>
                         </td>
 
-                        {/* Actions: Edit Whole Entry & Delete */}
+                        {/* Actions: Edit Page Linked to Tag ID & Delete */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => openEditWhole(item)}
-                              title="Edit Whole Entry"
+                              onClick={() => openQuickEdit(item)}
+                              title="Edit Page Linked to Tag ID"
                               className="tactile-btn p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -743,195 +689,9 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: EDIT WHOLE ENTRY                                                   */}
-      {/* ========================================================================= */}
-      {editWholeTarget && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center">
-                  <Edit2 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-zinc-900">
-                    Edit Standee Entry: {editWholeTarget.tag_id}
-                  </h3>
-                  <p className="text-[11px] text-zinc-500">
-                    Modify Google review link, destination mode, and routing metadata
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditWholeTarget(null)}
-                className="p-1 rounded-full hover:bg-zinc-100 text-zinc-500 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveWholeEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Tag ID</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={editTagId}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-100 border border-zinc-200 text-xs font-mono font-bold text-zinc-500 cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business ID</label>
-                  <input
-                    type="text"
-                    value={editBusinessId}
-                    onChange={(e) => setEditBusinessId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Business Name</label>
-                <input
-                  type="text"
-                  value={editBusinessName}
-                  onChange={(e) => setEditBusinessName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Page Linked to Tag ID <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://... (Enter any web address, destination URL, or Google review link)"
-                  value={editGoogleUrl}
-                  onChange={(e) => setEditGoogleUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Destination of QR/NFC
-                </label>
-                <div className="space-y-2">
-                  <label
-                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                      editDestination === "not_assigned"
-                        ? "bg-rose-50 border-rose-300 text-rose-950 font-bold"
-                        : "bg-zinc-50 border-zinc-200 text-zinc-700"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="editDest"
-                      checked={editDestination === "not_assigned"}
-                      onChange={() => setEditDestination("not_assigned")}
-                      className="mt-0.5 text-rose-600"
-                    />
-                    <div>
-                      <span className="block text-xs font-bold text-rose-700">Not Assigned (Red)</span>
-                      <span className="text-[11px] text-zinc-500 font-normal">
-                        Needs Google Review Link. QR/NFC leads to setup-pending screen.
-                      </span>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                      editDestination === "direct_google"
-                        ? "bg-orange-50 border-orange-300 text-orange-950 font-bold"
-                        : "bg-zinc-50 border-zinc-200 text-zinc-700"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="editDest"
-                      checked={editDestination === "direct_google"}
-                      onChange={() => setEditDestination("direct_google")}
-                      className="mt-0.5 text-orange-600"
-                    />
-                    <div>
-                      <span className="block text-xs font-bold text-orange-700">Direct Google Review (Orange)</span>
-                      <span className="text-[11px] text-zinc-500 font-normal">
-                        Redirects directly to the business&apos;s Google Review form.
-                      </span>
-                    </div>
-                  </label>
-
-                  <label
-                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                      editDestination === "zentap_google"
-                        ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-bold"
-                        : "bg-zinc-50 border-zinc-200 text-zinc-700"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="editDest"
-                      checked={editDestination === "zentap_google"}
-                      onChange={() => setEditDestination("zentap_google")}
-                      className="mt-0.5 text-emerald-600"
-                    />
-                    <div>
-                      <span className="block text-xs font-bold text-emerald-700">ZenTap Google Review (Green)</span>
-                      <span className="text-[11px] text-zinc-500 font-normal">
-                        Renders customized ZenTap Smart Review Assistant with AI drafting.
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Setup Status</label>
-                  <select
-                    value={editSetupStatus}
-                    onChange={(e) => setEditSetupStatus(e.target.value as any)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Total Scans/Taps</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editTotalScans}
-                    onChange={(e) => setEditTotalScans(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
-                <button
-                  type="button"
-                  onClick={() => setEditWholeTarget(null)}
-                  className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="tactile-btn px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL: QUICK EDIT GOOGLE REVIEW LINK                                      */}
@@ -957,34 +717,36 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
             <form onSubmit={handleSaveQuickEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-800 mb-1">
-                  Page Link URL <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
+                  Page Linked to Tag ID <span className="text-zinc-400 font-normal">(Option to enter any link here)</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="https://... (Enter any web URL, custom page, or Google review link)"
+                  placeholder="https://search.google.com/local/writereview?placeid=... or any web address"
                   value={quickGoogleUrl}
                   onChange={(e) => setQuickGoogleUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono text-zinc-900 focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white"
                 />
-                <p className="text-[10px] text-zinc-500 mt-1">
-                  Enter any destination link, Google review URL, portfolio, or landing page to connect to this tag.
+                <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+                  Enter any valid URL or Google Review link. Once entered, setup status automatically changes to <strong className="text-emerald-700 font-bold">Active</strong>.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
                 <button
                   type="button"
                   onClick={() => setQuickEditTarget(null)}
+                  disabled={isSubmitting}
                   className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="tactile-btn px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                  disabled={isSubmitting}
+                  className="tactile-btn px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
                 >
-                  Save Link
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

@@ -96,7 +96,7 @@ export async function GET(req: Request) {
       .map((t) => {
         const client = clientMap.get(t.business_id);
         const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
-        const setup_status: "completed" | "pending" = isValidGoogleUrl(googleUrl) ? "completed" : "pending";
+        const setup_status: "active" | "pending" = isValidGoogleUrl(googleUrl) ? "active" : "pending";
         return {
           id: t.id,
           tag_id: t.tag_id,
@@ -104,7 +104,7 @@ export async function GET(req: Request) {
           business_name: client?.business_name || t.business_name || "Assigned Business",
           link_of_tag_id: t.link,
           business_google_review_link: googleUrl,
-          destination: t.destination || (googleUrl ? "direct_google" : "not_assigned"),
+          destination: t.destination || "not_assigned",
           setup_status,
           total_scans: t.scans_count || 0,
           created_at: t.created_at,
@@ -121,7 +121,7 @@ export async function GET(req: Request) {
         const client = clientMap.get(t.business_id);
         const platform = t.social_platform || "N/A";
         const socialUrl = (t.social_link || "").trim();
-        const setup_status: "completed" | "pending" = isValidSocialUrl(platform, socialUrl) ? "completed" : "pending";
+        const setup_status: "active" | "pending" = isValidSocialUrl(platform, socialUrl) ? "active" : "pending";
         return {
           id: t.id,
           tag_id: t.tag_id,
@@ -130,7 +130,7 @@ export async function GET(req: Request) {
           social_platform: platform,
           link_of_tag_id: t.link,
           social_link: socialUrl,
-          destination: t.destination || (setup_status === "completed" ? "assigned" : "not_assigned"),
+          destination: t.destination || (setup_status === "active" ? "assigned" : "not_assigned"),
           setup_status,
           total_scans: t.scans_count || 0,
           created_at: t.created_at,
@@ -144,15 +144,15 @@ export async function GET(req: Request) {
     const googleLinks = [...googleLinksFromTags];
     (activeGoogleLinksRes.data || []).forEach((row) => {
       if (!googleLinks.some((g) => g.tag_id === row.tag_id)) {
-        const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "completed" : "pending";
-        googleLinks.push({ ...row, setup_status });
+        const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "active" : "pending";
+        googleLinks.push({ ...row, setup_status, destination: row.destination || "not_assigned" });
       }
     });
 
     const socialLinks = [...socialLinksFromTags];
     (activeSocialLinksRes.data || []).forEach((row) => {
       if (!socialLinks.some((s) => s.tag_id === row.tag_id)) {
-        const setup_status = isValidSocialUrl(row.social_platform, row.social_link) ? "completed" : "pending";
+        const setup_status = isValidSocialUrl(row.social_platform, row.social_link) ? "active" : "pending";
         socialLinks.push({ ...row, setup_status });
       }
     });
@@ -160,7 +160,45 @@ export async function GET(req: Request) {
     const deletedGoogleLinks = deletedGoogleLinksRes.data || [];
     const deletedSocialLinks = deletedSocialLinksRes.data || [];
 
-    const pageEditorConfigs = activePageEditorRes.data || [];
+    // Page Editor configs: derived from Standees whose Destination is 'zentap_google' and has assigned business
+    const pageEditorFromTags = tags
+      .filter((t) => t.product_type === "Counter Standee" && t.business_id && t.destination === "zentap_google")
+      .map((t) => {
+        const client = clientMap.get(t.business_id);
+        const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
+        const existingConfig = (activePageEditorRes.data || []).find((p) => p.tag_id === t.tag_id);
+        const setup_status: "active" | "pending" = isValidGoogleUrl(googleUrl) ? "active" : "pending";
+        return {
+          id: existingConfig?.id || t.id,
+          tag_id: t.tag_id,
+          business_id: t.business_id,
+          business_name: client?.business_name || t.business_name || "Assigned Business",
+          link_url: t.link,
+          setup_status,
+          config_data: existingConfig?.config_data || {
+            theme: "obsidian",
+            title: client?.business_name || t.business_name || "Welcome",
+            subtitle: "Rate your experience on Google",
+            cta_text: "Write a 5-Star Review on Google",
+            google_link: googleUrl,
+            phone: client?.owner_phone || "",
+            whatsapp: client?.whatsapp || client?.owner_phone || "",
+            instagram: client?.instagram_link || "",
+          },
+          created_at: existingConfig?.created_at || t.created_at,
+          updated_at: existingConfig?.updated_at || t.updated_at,
+          deleted_at: t.deleted_at,
+          deleted_by: t.deleted_by,
+        };
+      });
+
+    const pageEditorConfigs = [...pageEditorFromTags];
+    (activePageEditorRes.data || []).forEach((row) => {
+      if (!pageEditorConfigs.some((p) => p.tag_id === row.tag_id)) {
+        pageEditorConfigs.push(row);
+      }
+    });
+
     const deletedPageEditorConfigs = deletedPageEditorRes.data || [];
 
     const counts = {
@@ -666,6 +704,118 @@ function sanitizeRowForTable(item: any, table: string) {
             data[0].business_id = nextBid;
           } else {
             data.business_id = nextBid;
+          }
+        }
+      }
+
+      // If table is qr_nfc_tags and updating existing tag, use update to avoid not-null check on unprovided columns
+      if (table === "qr_nfc_tags") {
+        const checkItem = Array.isArray(data) ? data[0] : data;
+        if (checkItem.tag_id) {
+          const { data: existingTag } = await (supabase as any)
+            .from("qr_nfc_tags")
+            .select("id")
+            .eq("tag_id", checkItem.tag_id)
+            .maybeSingle();
+
+          if (existingTag) {
+            const clean = sanitizeRowForTable(checkItem, "qr_nfc_tags");
+            delete clean.id;
+            const { data: updated, error: upErr } = await (supabase as any)
+              .from("qr_nfc_tags")
+              .update(clean)
+              .eq("tag_id", checkItem.tag_id)
+              .select();
+
+            if (upErr) {
+              console.error("qr_nfc_tags update error:", upErr);
+              return NextResponse.json({ error: upErr.message }, { status: 500 });
+            }
+            return NextResponse.json({ success: true, data: updated });
+          }
+        }
+      }
+
+      // If table is google_review_links and updating existing row by tag_id, use update
+      if (table === "google_review_links") {
+        const checkItem = Array.isArray(data) ? data[0] : data;
+        if (checkItem.tag_id) {
+          const { data: existingGLink } = await (supabase as any)
+            .from("google_review_links")
+            .select("id")
+            .eq("tag_id", checkItem.tag_id)
+            .maybeSingle();
+
+          if (existingGLink) {
+            const clean = sanitizeRowForTable(checkItem, "google_review_links");
+            delete clean.id;
+            const { data: updated, error: upErr } = await (supabase as any)
+              .from("google_review_links")
+              .update(clean)
+              .eq("tag_id", checkItem.tag_id)
+              .select();
+
+            if (upErr) {
+              console.error("google_review_links update error:", upErr);
+              return NextResponse.json({ error: upErr.message }, { status: 500 });
+            }
+            return NextResponse.json({ success: true, data: updated });
+          }
+        }
+      }
+
+      // If table is social_links and updating existing row by tag_id, use update
+      if (table === "social_links") {
+        const checkItem = Array.isArray(data) ? data[0] : data;
+        if (checkItem.tag_id) {
+          const { data: existingSLink } = await (supabase as any)
+            .from("social_links")
+            .select("id")
+            .eq("tag_id", checkItem.tag_id)
+            .maybeSingle();
+
+          if (existingSLink) {
+            const clean = sanitizeRowForTable(checkItem, "social_links");
+            delete clean.id;
+            const { data: updated, error: upErr } = await (supabase as any)
+              .from("social_links")
+              .update(clean)
+              .eq("tag_id", checkItem.tag_id)
+              .select();
+
+            if (upErr) {
+              console.error("social_links update error:", upErr);
+              return NextResponse.json({ error: upErr.message }, { status: 500 });
+            }
+            return NextResponse.json({ success: true, data: updated });
+          }
+        }
+      }
+
+      // If table is page_editor_configs and updating existing config by tag_id, use update
+      if (table === "page_editor_configs") {
+        const checkItem = Array.isArray(data) ? data[0] : data;
+        if (checkItem.tag_id) {
+          const { data: existingCfg } = await (supabase as any)
+            .from("page_editor_configs")
+            .select("id")
+            .eq("tag_id", checkItem.tag_id)
+            .maybeSingle();
+
+          if (existingCfg) {
+            const clean = sanitizeRowForTable(checkItem, "page_editor_configs");
+            delete clean.id;
+            const { data: updated, error: upErr } = await (supabase as any)
+              .from("page_editor_configs")
+              .update(clean)
+              .eq("tag_id", checkItem.tag_id)
+              .select();
+
+            if (upErr) {
+              console.error("page_editor_configs update error:", upErr);
+              return NextResponse.json({ error: upErr.message }, { status: 500 });
+            }
+            return NextResponse.json({ success: true, data: updated });
           }
         }
       }

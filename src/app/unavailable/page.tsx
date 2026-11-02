@@ -24,11 +24,11 @@ export default function UnavailablePage() {
         </div>
 
         <h1 className="font-headline font-bold text-2xl text-white tracking-tight mb-2">
-          Page Unavailable
+          Business Profile Under Process
         </h1>
 
         <p className="text-sm text-zinc-400 leading-relaxed mb-6">
-          This standee or card is currently not active or being configured for its location. If you own this business or need support, contact us directly on WhatsApp.
+          This QR Code / NFC Standee has not been activated yet or is currently being configured. The business review profile page is under process and will be live shortly.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">

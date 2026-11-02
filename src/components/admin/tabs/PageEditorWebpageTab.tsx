@@ -33,6 +33,7 @@ import {
   getAllPageEditorConfigs,
   getAllDeletedPageEditorConfigs,
   savePageEditorConfig,
+  savePageEditorConfigServer,
   updatePageEditorConfig,
   softDeletePageEditorServer,
   restorePageEditorServer,
@@ -136,7 +137,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditTagLink(item.link_url || `${DOMAIN_BASE}/r/zentap?preview=1`);
   };
 
-  const handleSaveDesign = (e: React.FormEvent) => {
+  const handleSaveDesign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeItem) return;
 
@@ -154,11 +155,20 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       link_url: editTagLink.trim(),
     };
 
-    const updated = savePageEditorConfig(activeItem.tag_id, newConfigData);
-    if (updated) {
-      onShowToast(`✓ Saved design changes for "${updated.business_name}"! Setup Status: Completed (Green).`);
+    setIsSubmitting(true);
+    const res = await savePageEditorConfigServer(activeItem.tag_id, newConfigData, {
+      business_id: activeItem.business_id,
+      business_name: activeItem.business_name,
+      link_url: activeItem.link_url,
+    });
+    setIsSubmitting(false);
+
+    if (res.success) {
+      onShowToast(`✓ Saved design changes for "${activeItem.business_name}"! Setup Status: Completed (Green).`);
       setActiveItem(null);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to save design in database");
     }
   };
 
@@ -434,23 +444,26 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* Actions: Open Page Editor, Edit Whole Entry, Delete */}
+                        {/* Actions: Live Preview, Visual Designer, Edit & Delete */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            <a
+                              href={item.link_url || `${DOMAIN_BASE}/t/${item.tag_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Live Preview Standee Page"
+                              className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold border border-zinc-200 transition-transform active:scale-[0.978] cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-zinc-700" />
+                              <span>Live Preview</span>
+                            </a>
                             <button
                               onClick={() => handleOpenEditor(item)}
                               title="Open Visual Page Designer"
                               className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
                             >
                               <Sliders className="w-3 h-3" />
-                              <span>Designer</span>
-                            </button>
-                            <button
-                              onClick={() => openEditWhole(item)}
-                              title="Edit Whole Entry"
-                              className="tactile-btn p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
-                            >
-                              <Edit2 className="w-4 h-4" />
+                              <span>Design</span>
                             </button>
                             <button
                               onClick={() => setDeleteTarget(item)}
@@ -896,90 +909,154 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   </div>
 
                   {/* Bottom Action */}
-                  <div className="flex justify-end gap-2.5 pt-4 border-t border-zinc-200">
-                    <button
-                      type="button"
-                      onClick={() => setActiveItem(null)}
-                      className="px-4 py-2.5 rounded-xl bg-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-300 cursor-pointer"
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-4 border-t border-zinc-200">
+                    <a
+                      href={activeItem.link_url || `${DOMAIN_BASE}/t/${activeItem.tag_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="tactile-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold border border-zinc-300 transition-transform active:scale-[0.978]"
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="tactile-btn flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>Save &amp; Publish Live</span>
-                    </button>
+                      <Eye className="w-3.5 h-3.5 text-zinc-600" />
+                      <span>Live Preview Standee</span>
+                    </a>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveItem(null)}
+                        disabled={isSubmitting}
+                        className="px-4 py-2.5 rounded-xl bg-zinc-200 text-xs font-bold text-zinc-700 hover:bg-zinc-300 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="tactile-btn flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{isSubmitting ? "Saving..." : "Save & Publish Live"}</span>
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
 
-              {/* Live Interactive Phone Mockup (5 Cols) */}
-              <div className="lg:col-span-5 p-6 bg-zinc-900 flex flex-col items-center justify-center overflow-y-auto">
-                <div className="w-[280px] bg-[#0e1015] rounded-[36px] border-[5px] border-zinc-800 shadow-2xl overflow-hidden text-white flex flex-col relative">
-                  {/* Notch */}
-                  <div className="h-4 bg-zinc-900 flex justify-center items-center">
-                    <div className="w-16 h-2.5 bg-zinc-950 rounded-full" />
-                  </div>
+              {/* Live Interactive Phone Mockup (5 Cols) with Instant Theme Reflection */}
+              {(() => {
+                const mockupStyle = (() => {
+                  switch (editTheme) {
+                    case "slate":
+                      return {
+                        bg: "bg-slate-900",
+                        text: "text-slate-100",
+                        subtext: "text-slate-400",
+                        btn: "bg-gradient-to-r from-slate-700 to-slate-800 border border-slate-600 text-white",
+                        cover: "bg-gradient-to-r from-slate-800 to-slate-700",
+                      };
+                    case "emerald":
+                      return {
+                        bg: "bg-[#062016]",
+                        text: "text-emerald-50",
+                        subtext: "text-emerald-300/70",
+                        btn: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-950/50",
+                        cover: "bg-gradient-to-r from-emerald-800 to-teal-800",
+                      };
+                    case "sunset":
+                      return {
+                        bg: "bg-[#200e06]",
+                        text: "text-orange-50",
+                        subtext: "text-orange-300/70",
+                        btn: "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-orange-950/50",
+                        cover: "bg-gradient-to-r from-orange-800 to-amber-700",
+                      };
+                    case "clean_light":
+                      return {
+                        bg: "bg-white",
+                        text: "text-zinc-900",
+                        subtext: "text-zinc-500",
+                        btn: "bg-zinc-900 text-white shadow-zinc-400/30",
+                        cover: "bg-gradient-to-r from-zinc-200 to-zinc-300",
+                      };
+                    case "obsidian":
+                    default:
+                      return {
+                        bg: "bg-[#0e1015]",
+                        text: "text-white",
+                        subtext: "text-zinc-400",
+                        btn: "bg-gradient-to-br from-orange-500 to-amber-600 text-white",
+                        cover: "bg-gradient-to-r from-orange-500 to-amber-500",
+                      };
+                  }
+                })();
 
-                  {/* Cover */}
-                  <div className="h-20 bg-gradient-to-r from-orange-500 to-amber-500 relative flex items-center justify-center">
-                    <div className="absolute -bottom-6 w-12 h-12 rounded-full border-2 border-zinc-900 bg-white overflow-hidden shadow-md flex items-center justify-center">
-                      <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                return (
+                  <div className="lg:col-span-5 p-6 bg-zinc-900 flex flex-col items-center justify-center overflow-y-auto">
+                    <div className={`w-[280px] ${mockupStyle.bg} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl overflow-hidden flex flex-col relative transition-colors duration-200`}>
+                      {/* Notch */}
+                      <div className="h-4 bg-zinc-900 flex justify-center items-center">
+                        <div className="w-16 h-2.5 bg-zinc-950 rounded-full" />
+                      </div>
+
+                      {/* Cover */}
+                      <div className={`h-20 ${mockupStyle.cover} relative flex items-center justify-center transition-all duration-200`}>
+                        <div className="absolute -bottom-6 w-12 h-12 rounded-full border-2 border-zinc-900 bg-white overflow-hidden shadow-md flex items-center justify-center">
+                          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                        </div>
+                      </div>
+
+                      {/* Body Content */}
+                      <div className="pt-8 px-4 pb-4 text-center space-y-3">
+                        <div>
+                          <h4 className={`font-extrabold text-xs ${mockupStyle.text} leading-tight`}>
+                            {editTitle || "Business Name"}
+                          </h4>
+                          <p className={`text-[10px] ${mockupStyle.subtext} mt-0.5`}>{editSubtitle}</p>
+                        </div>
+
+                        {/* Quick Call & Directions */}
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="px-2.5 py-1 rounded-md bg-zinc-800/80 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Call</span>
+                          </div>
+                          <div className="px-2.5 py-1 rounded-md bg-zinc-800/80 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
+                            <Navigation className="w-2.5 h-2.5 text-blue-400" />
+                            <span>Directions</span>
+                          </div>
+                        </div>
+
+                        {/* Primary Review Hero Button */}
+                        <div className={`p-3 rounded-xl ${mockupStyle.btn} shadow-sm text-center transition-all duration-200`}>
+                          <div className="flex items-center justify-center gap-0.5 mb-1">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star key={s} className="w-3 h-3 fill-current text-current" />
+                            ))}
+                          </div>
+                          <span className="block text-[10px] font-extrabold leading-snug">
+                            {editCtaText}
+                          </span>
+                        </div>
+
+                        {/* Social Shortcuts */}
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center">
+                            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          </div>
+                          <div className="w-7 h-7 rounded-full bg-pink-600/30 border border-pink-500/40 flex items-center justify-center">
+                            <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Home Bar */}
+                      <div className="py-2 flex justify-center">
+                        <div className="w-20 h-1 bg-zinc-700 rounded-full" />
+                      </div>
                     </div>
                   </div>
-
-                  {/* Body Content */}
-                  <div className="pt-8 px-4 pb-4 text-center space-y-3">
-                    <div>
-                      <h4 className="font-extrabold text-xs text-white leading-tight">
-                        {editTitle || "Business Name"}
-                      </h4>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">{editSubtitle}</p>
-                    </div>
-
-                    {/* Quick Call & Directions */}
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="px-2.5 py-1 rounded-md bg-zinc-800 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
-                        <Phone className="w-2.5 h-2.5 text-emerald-400" />
-                        <span>Call</span>
-                      </div>
-                      <div className="px-2.5 py-1 rounded-md bg-zinc-800 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
-                        <Navigation className="w-2.5 h-2.5 text-blue-400" />
-                        <span>Directions</span>
-                      </div>
-                    </div>
-
-                    {/* Primary Review Hero Button */}
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm text-center">
-                      <div className="flex items-center justify-center gap-0.5 mb-1">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className="w-3 h-3 fill-white text-white" />
-                        ))}
-                      </div>
-                      <span className="block text-[10px] font-extrabold text-white leading-snug">
-                        {editCtaText}
-                      </span>
-                    </div>
-
-                    {/* Social Shortcuts */}
-                    <div className="flex items-center justify-center gap-2 pt-1">
-                      <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center">
-                        <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                      </div>
-                      <div className="w-7 h-7 rounded-full bg-pink-600/30 border border-pink-500/40 flex items-center justify-center">
-                        <Instagram className="w-3.5 h-3.5 text-pink-400" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Home Bar */}
-                  <div className="py-2 flex justify-center">
-                    <div className="w-20 h-1 bg-zinc-700 rounded-full" />
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -940,6 +940,45 @@ export async function permanentDeleteSocialLinkServer(tagId: string, confirmatio
 }
 
 // Page Editor Config helpers
+export async function savePageEditorConfigServer(
+  tagId: string,
+  configData: Record<string, any>,
+  extra?: { business_id?: string; business_name?: string; link_url?: string }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const payload: any = {
+      tag_id: tagId,
+      config_data: configData,
+      setup_status: "completed",
+      updated_at: new Date().toISOString(),
+    };
+    if (extra?.business_id) payload.business_id = extra.business_id;
+    if (extra?.business_name) payload.business_name = extra.business_name;
+    if (extra?.link_url) payload.link_url = extra.link_url;
+
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "page_editor_configs",
+        data: payload,
+        onConflict: "tag_id",
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to save page editor config in database" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true, data: json.data };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error saving page editor configuration" };
+  }
+}
+
 export async function softDeletePageEditorServer(tagId: string): Promise<{ success: boolean; error?: string }> {
   return serverSoftDelete("page_editor_configs", "tag_id", tagId);
 }

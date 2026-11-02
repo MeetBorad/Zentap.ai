@@ -49,7 +49,75 @@ export async function resolveScan(
   const code = rawCode.toLowerCase().trim();
   if (!CODE_RE.test(code)) return { kind: 'unavailable' };
 
-  // 0. Check new QR/NFC Generator system (ST1, ST2... CRD1, CRD2...)
+  // 1. Direct Supabase Query against Single Source of Truth: qr_nfc_tags
+  const db = createAdminClient();
+  if (db) {
+    try {
+      const { data: tagRow } = await db
+        .from('qr_nfc_tags')
+        .select('*')
+        .ilike('tag_id', code)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (tagRow) {
+        // Increment scans_count asynchronously
+        Promise.resolve(
+          db.from('qr_nfc_tags')
+            .update({ scans_count: (tagRow.scans_count || 0) + 1 })
+            .eq('id', tagRow.id)
+        ).catch(() => {});
+
+        // 1. Not assigned - Default status:
+        // "1. Not assigned - It is default status means I have not setp the QR/Link activation (when scanned the QR /Tap and the status is not assigned it will oprn the page show that your business profile page is under process)"
+        if (!tagRow.destination || tagRow.destination === 'not_assigned' || !tagRow.business_id) {
+          return { kind: 'unavailable', unassigned: true };
+        }
+
+        // 2. Direct Google review:
+        // "2. Direct Google review - So when the QR/NFC scan/tap for the particular TAG ID it will open the Link which is present in the Page linked to Tag ID cell"
+        if (tagRow.destination === 'direct_google') {
+          const directUrl = (tagRow.google_review_link || '').trim();
+          if (directUrl) {
+            const formatted = directUrl.startsWith('http://') || directUrl.startsWith('https://') ? directUrl : `https://${directUrl}`;
+            return { kind: 'redirect', url: formatted };
+          }
+          return { kind: 'unavailable', unassigned: true };
+        }
+
+        // 3. Zentap Google Review:
+        // "3. Zentap Google Review - So when the QR/NFC scan/tap for the particular TAG ID it will open the Link which is present in the Page linked to Tag ID cell"
+        if (tagRow.destination === 'zentap_google') {
+          const { data: bizRow } = await db
+            .from('businesses')
+            .select('slug')
+            .eq('id', tagRow.business_id)
+            .maybeSingle();
+
+          const slug = bizRow?.slug || tagRow.business_id?.toLowerCase() || code;
+          return { kind: 'page', slug };
+        }
+
+        // 4. Social links for NFC Cards:
+        if (tagRow.product_type === 'Business NFC Card' && tagRow.destination === 'assigned' && tagRow.social_link) {
+          let destUrl = tagRow.social_link.trim();
+          if (tagRow.social_platform === 'WhatsApp') {
+            const wa = waUrl(destUrl);
+            if (wa) return { kind: 'redirect', url: wa };
+          } else if (tagRow.social_platform === 'Instagram') {
+            const ig = igUrl(destUrl);
+            if (ig) return { kind: 'redirect', url: ig };
+          }
+          const safe = safeHttps(destUrl);
+          if (safe) return { kind: 'redirect', url: safe };
+        }
+      }
+    } catch (err) {
+      console.warn('resolveScan: qr_nfc_tags query failed', err);
+    }
+  }
+
+  // 0. Fallback check for local store
   const allPlatformTags = getAllQrNfcTags();
   const matchedPlatformTag = allPlatformTags.find((t) => t.tag_id.toLowerCase() === code);
   if (matchedPlatformTag) {
@@ -91,7 +159,6 @@ export async function resolveScan(
   let biz: any = null;
 
   // 1. Try Supabase via Admin Client
-  const db = createAdminClient();
   if (db) {
     try {
       const { data, error } = await db
