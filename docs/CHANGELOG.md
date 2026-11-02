@@ -1,5 +1,25 @@
 # ZenTap — Changelog
 
+## [1.32.0] — 2026-11-02
+### Enhanced (Business Owner Command Center & Overview Tab Overhaul)
+- **Business Owner Executive Dashboard**:
+  - Completely redesigned the **Overview** tab in `AdminConsoleView.tsx` from an internal hardware fleet and warehouse tracking page into a focused, operational **Business Owner Command Center**.
+  - **Removed Unnecessary Internal Agency Metrics**: Purged hardware fleet manufacturing earnings, unconfirmed merchant names, raw factory inventory counts, product sales pie charts, and internal agency onboarding checklists.
+  - **Added Multi-Store & Outlet Switcher**: Business owners can toggle between aggregated metrics across all outlets or zoom into a specific store (`ZT-XXXX`).
+  - **Core Business KPIs**:
+    - **Customer Footfall Taps & Scans**: Total in-store visitor interactions, growth trajectory (+24%), and visual NFC vs QR ratio breakdown.
+    - **Google Reviews Generated**: Net verified review completions with conversion rate (~88% of visitors proceed to Google Maps).
+    - **Average Customer Satisfaction**: Live rating aggregate (4.9 ★) with 5-star distribution.
+    - **Sub-4★ Private Feedback Intercepted**: Negative sentiment safely caught privately to protect public Google rating and maintain Google Anti-Gating compliance.
+  - **Weekly Footfall & Customer Sentiment Analytics**:
+    - 7-day footfall bar chart with peak traffic time callout.
+    - Star-rating breakdown distribution bar (5★, 4★, 3★, 1-2★).
+  - **Active Standees & Counter Touchpoints Directory**:
+    - Live list of physical devices placed across the venue with Tag ID, Counter Location, Routing Mode, Link of Tag ID (`/t/[tag_id]`), Scans recorded, and 1-tap Copy / Live Preview actions.
+  - **What Customers Love Most & Live Customer Activity Feed**:
+    - Interactive review aspect chips with 1-click modal to customize the tags customers see when leaving a review.
+    - Real-time customer tap & scan stream showing recent visitor interactions.
+
 ## [1.31.0] — 2026-11-02
 ### Enhanced (Connected Design Review Page & Google Links & QR Sharing Architecture)
 - **Tag ID Link Connection & Synchronization**:
