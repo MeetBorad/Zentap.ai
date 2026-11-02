@@ -189,12 +189,19 @@ export default function ZenTapHubPage({
 
   return (
     <div 
-      className={`min-h-screen ${isDark ? "text-white" : "text-zinc-900"} transition-colors`}
+      className={`min-h-screen ${isDark ? "text-white" : "text-zinc-900"} transition-colors relative`}
       style={{ 
         backgroundColor: bgColor,
+        backgroundImage: design.wallpaper_url ? `url(${design.wallpaper_url})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
         fontFamily: design.font && design.font !== "Inter" ? `'${design.font}', sans-serif` : "'Outfit', sans-serif"
       }}
     >
+      {design.wallpaper_url && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] pointer-events-none" />
+      )}
       <div className="max-w-md mx-auto min-h-screen flex flex-col relative pb-12">
 
         {/* 1. COVER BANNER */}

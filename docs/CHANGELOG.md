@@ -1,5 +1,23 @@
 # ZenTap — Changelog
 
+## [1.34.0] — 2026-11-02
+### Fixed & Enhanced (Redirect Collision Fix, Client Profile Auto-Fetch, Media Uploads & Hub Synchronization)
+- **Instagram Redirect Collision Resolved**:
+  - Fixed route collision in `src/app/r/[slug]/page.tsx` where legacy mock tag `tag-zt-0004` (`type: "instagram"`) intercepted business route `zt-0004` and issued an unintended 307 redirect to Instagram.
+  - Renamed mock tag code to `demo-ig-0004` in `src/lib/businessStore.ts` and hardened `/r/[slug]` so `legacyTag` resolution is strictly bypassed when handling business routes.
+- **Default Status of Design = Pending Gate**:
+  - Enforced `setup_status = 'pending'` for unconfigured Standees in Supabase PostgreSQL (`page_editor_configs`).
+  - When scanning or tapping `/t/ST3`, the visitor is smoothly routed to `/unavailable` ("Business Profile Under Process") with the exact copy and WhatsApp / Return to Homepage buttons.
+- **Visual Page Designer Customization Upgrades**:
+  - **Auto-Fetch from Client Profile**: Added 1-click "Auto-fetch from Client Profile" button that pulls phone, WhatsApp, Instagram, Facebook, business name, and city from `ClientRecord`.
+  - **Behind the Banner (Cover Banner Image)**: Direct image file upload + URL field for the hero background banner.
+  - **Round Cover Profile (Logo)**: Direct image file upload + URL field for circular business avatar.
+  - **Background Wallpaper**: Direct image file upload, URL field, and preset wallpaper chips (Cyber Dark, Aurora, Studio, Slate).
+  - **Facebook Integration**: Added Facebook URL field and tactile Facebook button in the live mockup and rendered Hub page.
+- **Database & Live Hub Synchronization**:
+  - Clicking **Save & Publish Live** persists `cover_image`, `logo_url`, `wallpaper_url`, `facebook`, `instagram`, `phone`, `whatsapp`, and switches `setup_status` to `completed`.
+  - Synchronizes to both Supabase PostgreSQL and local `hubDesignStore`, rendering the full landing page matching `/r/zentap?preview=1` for `/r/[slug]`.
+
 ## [1.33.0] — 2026-11-02
 ### Enhanced (Page Editor ZenTap Review Isolation, Design Status & Pending Process Architecture)
 - **ZenTap Google Review Destination Isolation**:

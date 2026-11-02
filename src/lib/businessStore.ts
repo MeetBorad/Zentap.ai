@@ -1458,7 +1458,7 @@ const INITIAL_TAGS: TagRecord[] = [
   },
   {
     id: "tag-zt-0004",
-    code: "zt-0004",
+    code: "demo-ig-0004",
     form: "card",
     type: "instagram",
     business_id: "sample-demo-biz-01",

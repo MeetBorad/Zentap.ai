@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Palette,
   Search,
@@ -19,6 +19,10 @@ import {
   Navigation,
   MessageCircle,
   Instagram,
+  Facebook,
+  Upload,
+  Image as ImageIcon,
+  RefreshCw,
   Star,
   Save,
   Edit2,
@@ -36,6 +40,7 @@ import {
   getAllPageEditorConfigs,
   getAllDeletedPageEditorConfigs,
   getAllGoogleReviewLinks,
+  getAllClients,
   savePageEditorConfig,
   savePageEditorConfigServer,
   updatePageEditorConfig,
@@ -46,6 +51,12 @@ import {
   serverFetchPlatformData,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
+import {
+  getPageDesign,
+  savePageDesign,
+  savePageButtons,
+  PageButtonRecord,
+} from "@/lib/hubDesignStore";
 
 interface PageEditorWebpageTabProps {
   onShowToast: (msg: string) => void;
@@ -111,12 +122,61 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editSubtitle, setEditSubtitle] = useState("");
   const [editBannerUrl, setEditBannerUrl] = useState("/standees/standee_01.jpg");
   const [editLogoUrl, setEditLogoUrl] = useState("/logo.png");
-  const [editCtaText, setEditCtaText] = useState("Write a 5-Star Review on Google");
+  const [editWallpaperUrl, setEditWallpaperUrl] = useState("");
+  const [editCtaText, setEditCtaText] = useState("Leave a 5-Star Review on Google");
   const [editGoogleLink, setEditGoogleLink] = useState("");
   const [editPhone, setEditPhone] = useState("+91 98250 12345");
   const [editWhatsapp, setEditWhatsapp] = useState("919825012345");
   const [editInstagram, setEditInstagram] = useState("");
+  const [editFacebook, setEditFacebook] = useState("");
   const [editTagLink, setEditTagLink] = useState("");
+
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const wallpaperInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileToUrl = (file: File, setter: (url: string) => void, label: string) => {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      onShowToast("Image size exceeds 4MB. Please choose a smaller image.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (typeof e.target?.result === "string") {
+        setter(e.target.result);
+        onShowToast(`✓ ${label} uploaded successfully!`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFetchFromClient = (businessId: string) => {
+    const allC = getAllClients();
+    const client = allC.find((c) => c.business_id.toLowerCase() === businessId.toLowerCase());
+    if (!client) {
+      onShowToast(`No client profile found for ${businessId}`);
+      return;
+    }
+
+    if (client.business_name) setEditTitle(client.business_name);
+    if (client.city) setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
+    if (client.owner_phone) setEditPhone(client.owner_phone);
+    if (client.whatsapp || client.owner_phone) setEditWhatsapp(client.whatsapp || client.owner_phone);
+    if (client.instagram_link) setEditInstagram(client.instagram_link);
+    if (client.facebook_link) setEditFacebook(client.facebook_link);
+    if (client.google_review_link) {
+      setEditGoogleLink(client.google_review_link);
+    } else if (activeItem) {
+      const matchingG = googleLinks.find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase()) ||
+        getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase());
+      if (matchingG?.business_google_review_link) {
+        setEditGoogleLink(matchingG.business_google_review_link);
+      }
+    }
+
+    onShowToast(`✓ Auto-fetched data from Client profile (${client.business_name})!`);
+  };
 
   // Edit Whole Entry Modal
   const [editWholeTarget, setEditWholeTarget] = useState<PageEditorConfigItemRecord | null>(null);
@@ -183,19 +243,24 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase()) ||
       getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
 
+    const allC = getAllClients();
+    const client = allC.find((c) => c.business_id.toLowerCase() === item.business_id.toLowerCase());
+
     const resolvedTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-    const resolvedGoogleLink = matchingGLink?.business_google_review_link || cfg.google_link || "";
+    const resolvedGoogleLink = cfg.google_link || matchingGLink?.business_google_review_link || client?.google_review_link || "";
 
     setEditTheme(cfg.theme || "obsidian");
-    setEditTitle(cfg.title || item.business_name || "Business Name");
-    setEditSubtitle(cfg.subtitle || "Customer Satisfaction Hub");
-    setEditBannerUrl(cfg.cover_image || "/standees/standee_01.jpg");
+    setEditTitle(cfg.title || item.business_name || client?.business_name || "Business Name");
+    setEditSubtitle(cfg.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : "Customer Satisfaction Hub"));
+    setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
     setEditLogoUrl(cfg.logo_url || "/logo.png");
+    setEditWallpaperUrl(cfg.wallpaper_url || "");
     setEditCtaText(cfg.cta_text || "Leave a 5-Star Review on Google");
     setEditGoogleLink(resolvedGoogleLink);
-    setEditPhone(cfg.phone || "+91 98250 12345");
-    setEditWhatsapp(cfg.whatsapp || "919825012345");
-    setEditInstagram(cfg.instagram || "");
+    setEditPhone(cfg.phone || client?.owner_phone || "+91 98250 12345");
+    setEditWhatsapp(cfg.whatsapp || client?.whatsapp || client?.owner_phone || "919825012345");
+    setEditInstagram(cfg.instagram || client?.instagram_link || "");
+    setEditFacebook(cfg.facebook || client?.facebook_link || "");
     setEditTagLink(resolvedTagLink);
   };
 
@@ -209,11 +274,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       subtitle: editSubtitle.trim(),
       cover_image: editBannerUrl.trim(),
       logo_url: editLogoUrl.trim(),
+      wallpaper_url: editWallpaperUrl.trim(),
       cta_text: editCtaText.trim(),
       google_link: editGoogleLink.trim(),
       phone: editPhone.trim(),
       whatsapp: editWhatsapp.trim(),
       instagram: editInstagram.trim(),
+      facebook: editFacebook.trim(),
       link_url: editTagLink.trim(),
     };
 
@@ -226,7 +293,92 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setIsSubmitting(false);
 
     if (res.success) {
-      onShowToast(`✓ Saved design changes for "${activeItem.business_name}"! Setup Status: Completed (Green).`);
+      // Sync to hubDesignStore for live preview and Hub hydration
+      try {
+        const defaultDesign = getPageDesign(activeItem.business_id);
+        savePageDesign({
+          ...defaultDesign,
+          hub_enabled: true,
+          theme_preset: editTheme === "slate" ? "modern_slate"
+                      : editTheme === "emerald" ? "emerald_luxe"
+                      : editTheme === "sunset" ? "midnight_amber"
+                      : editTheme === "clean_light" ? "clean_minimal"
+                      : "modern_slate",
+          primary_color: editTheme === "sunset" ? "#ea580c" : editTheme === "emerald" ? "#059669" : "#ff7a00",
+          bg_color: editTheme === "clean_light" ? "#ffffff" : editTheme === "slate" ? "#0f172a" : editTheme === "emerald" ? "#062016" : "#0e1015",
+          dark_mode: editTheme === "clean_light" ? "light" : "dark",
+          cover_url: editBannerUrl.trim(),
+          logo_url: editLogoUrl.trim(),
+          wallpaper_url: editWallpaperUrl.trim(),
+          tagline: editSubtitle.trim(),
+          texts: {
+            ...defaultDesign.texts,
+            write_review_btn: editCtaText.trim(),
+          },
+        });
+
+        const hubButtons: PageButtonRecord[] = [
+          {
+            id: `btn_review_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "review",
+            label: editCtaText.trim() || "Leave a 5-Star Review on Google",
+            url_or_value: editGoogleLink.trim(),
+            sort_order: 1,
+            visible: true,
+          },
+          ...(editPhone.trim() ? [{
+            id: `btn_call_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "call" as const,
+            label: "Call",
+            url_or_value: editPhone.trim(),
+            sort_order: 2,
+            visible: true,
+          }] : []),
+          {
+            id: `btn_maps_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "directions" as const,
+            label: "Directions",
+            url_or_value: editGoogleLink.trim(),
+            sort_order: 3,
+            visible: true,
+          },
+          ...(editWhatsapp.trim() ? [{
+            id: `btn_wa_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "whatsapp" as const,
+            label: "WhatsApp",
+            url_or_value: editWhatsapp.trim(),
+            sort_order: 4,
+            visible: true,
+          }] : []),
+          ...(editInstagram.trim() ? [{
+            id: `btn_ig_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "instagram" as const,
+            label: "Instagram",
+            url_or_value: editInstagram.trim(),
+            sort_order: 5,
+            visible: true,
+          }] : []),
+          ...(editFacebook.trim() ? [{
+            id: `btn_fb_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "facebook" as const,
+            label: "Facebook",
+            url_or_value: editFacebook.trim(),
+            sort_order: 6,
+            visible: true,
+          }] : []),
+        ];
+        savePageButtons(activeItem.business_id, hubButtons);
+      } catch (err) {
+        console.warn("Hub design sync error", err);
+      }
+
+      onShowToast(`✓ Successfully saved & published live for "${activeItem.business_name}"! Status of Design: Completed.`);
       setActiveItem(null);
       await refreshData();
     } else {
@@ -960,10 +1112,18 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       <span>Connected to Google Links &amp; QR Sharing</span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex flex-wrap items-center gap-3 mt-1">
                     <span className="text-[11px] text-zinc-400 font-mono">
                       Link of Tag ID: <strong className="text-amber-400">{editTagLink}</strong>
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleFetchFromClient(activeItem.business_id)}
+                      className="tactile-btn inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-400/30 text-[10px] font-bold transition-all cursor-pointer"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5 text-purple-300" />
+                      <span>Auto-fetch data from Client Profile</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -980,6 +1140,38 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               {/* Controls Column (7 Cols) */}
               <div className="lg:col-span-7 p-6 overflow-y-auto space-y-5 border-r border-zinc-200 bg-zinc-50/50">
                 <form onSubmit={handleSaveDesign} className="space-y-4">
+                  {/* Hidden File Inputs */}
+                  <input
+                    type="file"
+                    ref={bannerInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileToUrl(file, setEditBannerUrl, "Cover Banner");
+                    }}
+                  />
+                  <input
+                    type="file"
+                    ref={logoInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileToUrl(file, setEditLogoUrl, "Round Profile Logo");
+                    }}
+                  />
+                  <input
+                    type="file"
+                    ref={wallpaperInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileToUrl(file, setEditWallpaperUrl, "Page Wallpaper");
+                    }}
+                  />
+
                   {/* Theme Presets */}
                   <div>
                     <label className="block text-xs font-bold text-zinc-900 mb-1.5 flex items-center gap-1">
@@ -1036,7 +1228,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     </div>
                   </div>
 
-                  {/* CTA Text & Google Link */}
+                  {/* Primary Button Text */}
                   <div>
                     <label className="block text-xs font-bold text-zinc-900 mb-1">Primary Hero Button Text</label>
                     <input
@@ -1045,6 +1237,141 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       onChange={(e) => setEditCtaText(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-semibold"
                     />
+                  </div>
+
+                  {/* Visual Assets: Cover Banner, Round Profile Logo, Background Wallpaper */}
+                  <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs font-bold text-zinc-900">Custom Visual Assets</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500 font-medium">Upload files or enter direct image URLs</span>
+                    </div>
+
+                    {/* 1. Behind the Banner (Cover Image) & 2. Round Cover Profile (Logo) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Behind the Banner */}
+                      <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                        <label className="block text-[11px] font-bold text-zinc-800">
+                          Behind the Banner (Cover Banner)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 h-10 rounded-lg bg-zinc-200 border border-zinc-300 overflow-hidden shrink-0">
+                            {editBannerUrl ? (
+                              <img src={editBannerUrl} alt="Banner" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] text-zinc-500">None</div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => bannerInputRef.current?.click()}
+                            className="tactile-btn flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-zinc-600" />
+                            <span>Upload Banner</span>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste banner image URL..."
+                          value={editBannerUrl}
+                          onChange={(e) => setEditBannerUrl(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-[11px] text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* Round Cover Profile (Logo) */}
+                      <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                        <label className="block text-[11px] font-bold text-zinc-800">
+                          Round Cover Profile (Logo)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-zinc-200 border border-zinc-300 overflow-hidden shrink-0 flex items-center justify-center">
+                            {editLogoUrl ? (
+                              <img src={editLogoUrl} alt="Logo" className="w-full h-full object-cover rounded-full" />
+                            ) : (
+                              <div className="text-[9px] text-zinc-500 font-bold">Logo</div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => logoInputRef.current?.click()}
+                            className="tactile-btn flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-zinc-600" />
+                            <span>Upload Round Logo</span>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Or paste round logo image URL..."
+                          value={editLogoUrl}
+                          onChange={(e) => setEditLogoUrl(e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-[11px] text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Background Wallpaper for the Page */}
+                    <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-zinc-800">
+                          Background Wallpaper for the Page
+                        </label>
+                        {editWallpaperUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditWallpaperUrl("")}
+                            className="text-[10px] text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+                          >
+                            Remove Wallpaper
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-10 rounded-lg bg-zinc-200 border border-zinc-300 overflow-hidden shrink-0">
+                          {editWallpaperUrl ? (
+                            <img src={editWallpaperUrl} alt="Wallpaper" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[9px] text-zinc-500">Theme Color</div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => wallpaperInputRef.current?.click()}
+                          className="tactile-btn flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Upload className="w-3 h-3 text-zinc-600" />
+                          <span>Upload Page Wallpaper</span>
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Or paste wallpaper image URL..."
+                        value={editWallpaperUrl}
+                        onChange={(e) => setEditWallpaperUrl(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-[11px] text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      />
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        <span className="text-[10px] text-zinc-500 font-medium">Quick Presets:</span>
+                        {[
+                          { label: "Dark Mesh", url: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1200&q=80" },
+                          { label: "Luxury Texture", url: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80" },
+                          { label: "Obsidian Abstract", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&q=80" },
+                        ].map((wp) => (
+                          <button
+                            key={wp.label}
+                            type="button"
+                            onClick={() => setEditWallpaperUrl(wp.url)}
+                            className="px-2 py-0.5 rounded-md bg-white hover:bg-zinc-200 text-zinc-700 border border-zinc-300 text-[10px] font-medium cursor-pointer"
+                          >
+                            {wp.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Connected Google Links & QR Sharing Box */}
@@ -1138,34 +1465,58 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     </div>
                   </div>
 
-                  {/* Direct Contact Links */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-900 mb-1">Phone</label>
-                      <input
-                        type="tel"
-                        value={editPhone}
-                        onChange={(e) => setEditPhone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-900 mb-1">WhatsApp</label>
-                      <input
-                        type="text"
-                        value={editWhatsapp}
-                        onChange={(e) => setEditWhatsapp(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-900 mb-1">Instagram URL</label>
-                      <input
-                        type="text"
-                        value={editInstagram}
-                        onChange={(e) => setEditInstagram(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                      />
+                  {/* Direct Contact Links: Phone, WhatsApp, Instagram, Facebook */}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-900 mb-1.5">Direct Contact &amp; Social Links</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          <span>Phone</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3 text-emerald-500" />
+                          <span>WhatsApp</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editWhatsapp}
+                          onChange={(e) => setEditWhatsapp(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Instagram className="w-3 h-3 text-pink-500" />
+                          <span>Instagram URL</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editInstagram}
+                          onChange={(e) => setEditInstagram(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Facebook className="w-3 h-3 text-blue-500" />
+                          <span>Facebook URL</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editFacebook}
+                          onChange={(e) => setEditFacebook(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1253,26 +1604,54 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                 return (
                   <div className="lg:col-span-5 p-6 bg-zinc-900 flex flex-col items-center justify-center overflow-y-auto">
-                    <div className={`w-[280px] ${mockupStyle.bg} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl overflow-hidden flex flex-col relative transition-colors duration-200`}>
+                    <div 
+                      className={`w-[280px] ${mockupStyle.bg} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl overflow-hidden flex flex-col relative transition-colors duration-200`}
+                      style={{
+                        backgroundImage: editWallpaperUrl ? `url(${editWallpaperUrl})` : undefined,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }}
+                    >
+                      {editWallpaperUrl && (
+                        <div className="absolute inset-0 bg-black/60 pointer-events-none" />
+                      )}
+
                       {/* Notch */}
-                      <div className="h-4 bg-zinc-900 flex justify-center items-center">
+                      <div className="h-4 bg-zinc-900 flex justify-center items-center relative z-10">
                         <div className="w-16 h-2.5 bg-zinc-950 rounded-full" />
                       </div>
 
-                      {/* Cover */}
-                      <div className={`h-20 ${mockupStyle.cover} relative flex items-center justify-center transition-all duration-200`}>
-                        <div className="absolute -bottom-6 w-12 h-12 rounded-full border-2 border-zinc-900 bg-white overflow-hidden shadow-md flex items-center justify-center">
-                          <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                      {/* Cover Banner */}
+                      <div className={`h-22 ${mockupStyle.cover} relative flex items-center justify-center overflow-hidden transition-all duration-200`}>
+                        {editBannerUrl ? (
+                          <img src={editBannerUrl} alt="Cover Banner" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-[#ff7a00]/30 to-black/60 flex items-center justify-center text-[10px] text-white/70 font-bold uppercase tracking-wider">
+                            {editTitle || "Banner"}
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
+                        {/* Round Cover Profile (Logo) */}
+                        <div className="absolute -bottom-6 w-14 h-14 rounded-full border-2 border-zinc-900 bg-white overflow-hidden shadow-lg flex items-center justify-center z-10">
+                          <img 
+                            src={editLogoUrl || "/logo.png"} 
+                            alt="Round Logo" 
+                            className="w-full h-full object-cover rounded-full" 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/logo.png";
+                            }}
+                          />
                         </div>
                       </div>
 
                       {/* Body Content */}
-                      <div className="pt-8 px-4 pb-4 text-center space-y-3">
+                      <div className="pt-8 px-4 pb-4 text-center space-y-3 relative z-10">
                         <div>
                           <h4 className={`font-extrabold text-xs ${mockupStyle.text} leading-tight`}>
                             {editTitle || "Business Name"}
                           </h4>
-                          <p className={`text-[10px] ${mockupStyle.subtext} mt-0.5`}>{editSubtitle}</p>
+                          <p className={`text-[10px] ${mockupStyle.subtext} mt-0.5 line-clamp-1`}>{editSubtitle}</p>
                         </div>
 
                         {/* Quick Call & Directions */}
@@ -1299,19 +1678,22 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </span>
                         </div>
 
-                        {/* Social Shortcuts */}
+                        {/* Social Shortcuts: WhatsApp, Instagram, Facebook */}
                         <div className="flex items-center justify-center gap-2 pt-1">
-                          <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center" title="WhatsApp">
                             <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
                           </div>
-                          <div className="w-7 h-7 rounded-full bg-pink-600/30 border border-pink-500/40 flex items-center justify-center">
+                          <div className="w-7 h-7 rounded-full bg-pink-600/30 border border-pink-500/40 flex items-center justify-center" title="Instagram">
                             <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                          </div>
+                          <div className="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center" title="Facebook">
+                            <Facebook className="w-3.5 h-3.5 text-blue-400" />
                           </div>
                         </div>
                       </div>
 
                       {/* Home Bar */}
-                      <div className="py-2 flex justify-center">
+                      <div className="py-2 flex justify-center relative z-10">
                         <div className="w-20 h-1 bg-zinc-700 rounded-full" />
                       </div>
                     </div>

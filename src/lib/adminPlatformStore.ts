@@ -12,6 +12,7 @@ export interface ClientRecord {
   whatsapp: string;
   instagram_link: string;
   facebook_link: string;
+  google_review_link?: string;
   city: string;
   created_at: string;
 }
@@ -26,6 +27,7 @@ export interface DeletedBusinessRecord {
   whatsapp: string;
   instagram_link: string;
   facebook_link: string;
+  google_review_link?: string;
   city: string;
   deleted_at: string;
   deleted_by: string;

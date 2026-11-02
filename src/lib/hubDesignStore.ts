@@ -41,6 +41,7 @@ export interface PageDesignRecord {
   hub_enabled: boolean;
   logo_url?: string;
   cover_url?: string;
+  wallpaper_url?: string;
   tagline?: string;
   address?: string;
   maps_link?: string;
