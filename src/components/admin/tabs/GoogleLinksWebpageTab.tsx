@@ -20,6 +20,7 @@ import {
   AlertCircle,
   HelpCircle,
   ShieldAlert,
+  Palette,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -41,9 +42,10 @@ import BusinessSearchSelect from "../BusinessSearchSelect";
 
 interface GoogleLinksWebpageTabProps {
   onShowToast: (msg: string) => void;
+  onNavigateToPageEditor?: (tagId?: string) => void;
 }
 
-export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpageTabProps) {
+export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEditor }: GoogleLinksWebpageTabProps) {
   const [links, setLinks] = useState<GoogleReviewLinkItemRecord[]>([]);
   const [deletedLinks, setDeletedLinks] = useState<DeletedGoogleReviewLinkRecord[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
@@ -576,9 +578,18 @@ export default function GoogleLinksWebpageTab({ onShowToast }: GoogleLinksWebpag
                           </select>
                         </td>
 
-                        {/* Actions: Edit Page Linked to Tag ID & Delete */}
+                        {/* Actions: Design Review Page, Edit Page Linked to Tag ID & Delete */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            {onNavigateToPageEditor && (
+                              <button
+                                onClick={() => onNavigateToPageEditor(item.tag_id)}
+                                title="Design Review Page (Page Editor)"
+                                className="tactile-btn p-1.5 rounded-lg text-purple-600 hover:text-purple-800 hover:bg-purple-50 border border-transparent hover:border-purple-200 transition-all cursor-pointer"
+                              >
+                                <Palette className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => openQuickEdit(item)}
                               title="Edit Page Linked to Tag ID"

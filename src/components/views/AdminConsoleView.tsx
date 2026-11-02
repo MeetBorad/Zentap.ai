@@ -1832,7 +1832,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
           {/* 4. Google Links & QR Sharing Webpage */}
           {adminMenu === "review_links" && (
-            <GoogleLinksWebpageTab onShowToast={showToast} />
+            <GoogleLinksWebpageTab
+              onShowToast={showToast}
+              onNavigateToPageEditor={() => handleSelectTab("page_designer")}
+            />
           )}
 
           {/* 5. Social Links & QR Setting Webpage */}

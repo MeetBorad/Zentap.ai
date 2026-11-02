@@ -1,5 +1,26 @@
 # ZenTap — Changelog
 
+## [1.31.0] — 2026-11-02
+### Enhanced (Connected Design Review Page & Google Links & QR Sharing Architecture)
+- **Tag ID Link Connection & Synchronization**:
+  - Connected the **Design Review Page** (Page Editor) directly to **Google Links & QR Sharing**:
+    - Replaced the disconnected manual "Google Review Form URL" with a dedicated **Connected to Google Links & QR Sharing** section.
+    - Displays the **Link of Tag ID** (`${DOMAIN_BASE}/t/${tag_id}`) pulled directly from Google Links & QR Sharing for the active Standee Tag ID with a 1-click "Copy Link" and "Visit" button.
+    - Synchronized **Page Linked to Tag ID (Google Review Posting Link)** between `page_editor_configs`, `google_review_links`, and `qr_nfc_tags`: changes saved in either tab automatically sync to the other.
+- **Directory Table Standardization**:
+  - Re-structured the Page Editor directory table with the exact standardized columns:
+    1. **Business ID**: Monospace badge linked to merchant.
+    2. **Business Name**: Full business name.
+    3. **Tag ID**: High-contrast dark badge.
+    4. **Link of Tag ID**: Active NFC/QR destination URL (`/t/[tag_id]`).
+    5. **QR Code**: Quick high-res QR code preview and download.
+    6. **NFC Link**: Dedicated 1-tap copy button for programming NFC tags (`?s=nfc`).
+    7. **Setup Status**: Completed (Green) / Pending (Red).
+    8. **Destination from the Google Links & QR sharing**: Interactive dropdown synced live with `google_review_links` and `qr_nfc_tags` (Not Assigned / Direct Google Review / ZenTap Google Review).
+    9. **Actions**: Live Preview, Design Review Page, and Soft Delete.
+- **Cross-Tab Navigation Shortcut**:
+  - Added a direct **Palette ("Design Review Page")** shortcut button in the Actions column of **Google Links & QR Sharing** to seamlessly jump to the Standee's Page Editor design flow.
+
 ## [1.30.0] — 2026-11-02
 ### Fixed & Enhanced (Persistent Soft Delete Architecture, Query-Level Filtering & Tag Cascade Release)
 - **Database Schema Migration (`011_soft_delete_system.sql`)**:

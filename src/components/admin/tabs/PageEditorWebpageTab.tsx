@@ -25,16 +25,21 @@ import {
   Trash2,
   RotateCcw,
   ShieldAlert,
+  Share2,
+  Radio,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
   PageEditorConfigItemRecord,
   DeletedPageEditorConfigRecord,
+  GoogleReviewLinkItemRecord,
   getAllPageEditorConfigs,
   getAllDeletedPageEditorConfigs,
+  getAllGoogleReviewLinks,
   savePageEditorConfig,
   savePageEditorConfigServer,
   updatePageEditorConfig,
+  updateGoogleReviewLinkServer,
   softDeletePageEditorServer,
   restorePageEditorServer,
   permanentDeletePageEditorServer,
@@ -49,9 +54,55 @@ interface PageEditorWebpageTabProps {
 export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageTabProps) {
   const [editorConfigs, setEditorConfigs] = useState<PageEditorConfigItemRecord[]>([]);
   const [deletedConfigs, setDeletedConfigs] = useState<DeletedPageEditorConfigRecord[]>([]);
+  const [googleLinks, setGoogleLinks] = useState<GoogleReviewLinkItemRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "deleted">("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copiedTagLink, setCopiedTagLink] = useState(false);
+  const [copiedNfcTagId, setCopiedNfcTagId] = useState<string | null>(null);
+
+  const handleCopyNfc = (tagId: string, tagLink: string) => {
+    const nfcUrl = `${tagLink}?s=nfc`;
+    navigator.clipboard.writeText(nfcUrl);
+    setCopiedNfcTagId(tagId);
+    onShowToast(`✓ Copied NFC Link: ${nfcUrl}`);
+    setTimeout(() => setCopiedNfcTagId(null), 2500);
+  };
+
+  const handleDestinationChange = async (
+    tagId: string,
+    businessId: string,
+    businessName: string,
+    newDest: "not_assigned" | "direct_google" | "zentap_google"
+  ) => {
+    // Optimistic UI state update for googleLinks
+    setGoogleLinks((prev) =>
+      prev.map((l) => (l.tag_id === tagId ? { ...l, destination: newDest } : l))
+    );
+
+    const matching = googleLinks.find((g) => g.tag_id === tagId);
+    const res = await updateGoogleReviewLinkServer(tagId, {
+      destination: newDest,
+      business_id: businessId,
+      business_name: businessName,
+      business_google_review_link: matching?.business_google_review_link,
+    });
+
+    if (res.success) {
+      onShowToast(
+        `✓ Synced destination for ${businessName} (${tagId}) to ${
+          newDest === "zentap_google"
+            ? "ZenTap Google Review"
+            : newDest === "direct_google"
+            ? "Direct Google Review"
+            : "Not Assigned"
+        } in Google Links & QR Sharing!`
+      );
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update destination");
+    }
+  };
 
   // Visual Editor State
   const [activeItem, setActiveItem] = useState<PageEditorConfigItemRecord | null>(null);
@@ -114,27 +165,38 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const refreshData = async () => {
     setEditorConfigs(getAllPageEditorConfigs());
     setDeletedConfigs(getAllDeletedPageEditorConfigs());
+    setGoogleLinks(getAllGoogleReviewLinks());
     const res = await serverFetchPlatformData();
     if (res.success && res.data) {
       setEditorConfigs(res.data.pageEditorConfigs || []);
       setDeletedConfigs(res.data.deletedPageEditorConfigs || []);
+      if (res.data.googleLinks) {
+        setGoogleLinks(res.data.googleLinks);
+      }
     }
   };
 
   const handleOpenEditor = (item: PageEditorConfigItemRecord) => {
     setActiveItem(item);
     const cfg = item.config_data || {};
+    const matchingGLink =
+      googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase()) ||
+      getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+
+    const resolvedTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
+    const resolvedGoogleLink = matchingGLink?.business_google_review_link || cfg.google_link || "";
+
     setEditTheme(cfg.theme || "obsidian");
     setEditTitle(cfg.title || item.business_name || "Business Name");
     setEditSubtitle(cfg.subtitle || "Customer Satisfaction Hub");
     setEditBannerUrl(cfg.cover_image || "/standees/standee_01.jpg");
     setEditLogoUrl(cfg.logo_url || "/logo.png");
     setEditCtaText(cfg.cta_text || "Leave a 5-Star Review on Google");
-    setEditGoogleLink(cfg.google_link || "");
+    setEditGoogleLink(resolvedGoogleLink);
     setEditPhone(cfg.phone || "+91 98250 12345");
     setEditWhatsapp(cfg.whatsapp || "919825012345");
     setEditInstagram(cfg.instagram || "");
-    setEditTagLink(item.link_url || `${DOMAIN_BASE}/r/zentap?preview=1`);
+    setEditTagLink(resolvedTagLink);
   };
 
   const handleSaveDesign = async (e: React.FormEvent) => {
@@ -250,8 +312,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
   const handleOpenQr = async (item: PageEditorConfigItemRecord) => {
     setQrModalItem(item);
+    const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+    const targetUrl = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
     try {
-      const url = await QRCode.toDataURL(item.link_url, {
+      const url = await QRCode.toDataURL(targetUrl, {
         width: 320,
         margin: 2,
         color: { dark: "#0f172a", light: "#ffffff" },
@@ -367,58 +431,63 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
                   <th className="py-3.5 px-4">Tag ID</th>
-                  <th className="py-3.5 px-4">Link</th>
+                  <th className="py-3.5 px-4">Link of Tag ID</th>
                   <th className="py-3.5 px-4 text-center">QR Code</th>
+                  <th className="py-3.5 px-4 text-center">NFC Link</th>
                   <th className="py-3.5 px-4">Setup Status</th>
+                  <th className="py-3.5 px-4">Destination from the Google Links &amp; QR sharing</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {filteredConfigs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={9} className="py-12 text-center text-zinc-500 font-medium">
                       No Standee entries found. Standees created in QR/NFC Generator automatically populate here.
                     </td>
                   </tr>
                 ) : (
                   filteredConfigs.map((item) => {
                     const isCompleted = item.setup_status === "completed";
+                    const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+                    const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
 
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50/70 transition-colors">
-                        {/* Business ID */}
+                        {/* 1. Business ID */}
                         <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
                           <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px]">
                             {item.business_id}
                           </span>
                         </td>
 
-                        {/* Name */}
+                        {/* 2. Business Name */}
                         <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
                           {item.business_name}
                         </td>
 
-                        {/* Tag ID */}
+                        {/* 3. Tag ID */}
                         <td className="py-3 px-4 font-mono font-bold whitespace-nowrap">
                           <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-xs tracking-wider">
                             {item.tag_id}
                           </span>
                         </td>
 
-                        {/* Link */}
+                        {/* 4. Link of Tag ID */}
                         <td className="py-3 px-4 font-mono text-[11px] whitespace-nowrap">
                           <a
-                            href={item.link_url}
+                            href={displayTagLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-semibold"
+                            title={displayTagLink}
                           >
-                            <span className="truncate max-w-[200px]">{item.link_url}</span>
+                            <span className="truncate max-w-[170px]">{displayTagLink}</span>
                             <ExternalLink className="w-3 h-3 opacity-60" />
                           </a>
                         </td>
 
-                        {/* QR to Download */}
+                        {/* 5. QR Code */}
                         <td className="py-3 px-4 text-center whitespace-nowrap">
                           <button
                             onClick={() => handleOpenQr(item)}
@@ -429,7 +498,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </button>
                         </td>
 
-                        {/* Status */}
+                        {/* 6. NFC Link */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => handleCopyNfc(item.tag_id, displayTagLink)}
+                            className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-black text-white text-[11px] font-bold shadow-2xs transition-all cursor-pointer"
+                            title="Copy NFC Link"
+                          >
+                            {copiedNfcTagId === item.tag_id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Radio className="w-3.5 h-3.5 text-zinc-300" />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
+
+                        {/* 7. Setup Status */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {isCompleted ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
@@ -444,11 +534,43 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* Actions: Live Preview, Visual Designer, Edit & Delete */}
+                        {/* 8. Destination from the Google Links & QR sharing */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <select
+                            value={matchingGLink?.destination || "not_assigned"}
+                            onChange={(e) =>
+                              handleDestinationChange(
+                                item.tag_id,
+                                item.business_id,
+                                item.business_name,
+                                e.target.value as "not_assigned" | "direct_google" | "zentap_google"
+                              )
+                            }
+                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer outline-none focus:ring-2 focus:ring-offset-1 ${
+                              matchingGLink?.destination === "zentap_google"
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 focus:ring-emerald-500"
+                                : matchingGLink?.destination === "direct_google"
+                                ? "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100 focus:ring-orange-500"
+                                : "bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100 focus:ring-rose-500"
+                            }`}
+                          >
+                            <option value="not_assigned" className="bg-white text-rose-800 font-medium">
+                              Not Assigned (Red)
+                            </option>
+                            <option value="direct_google" className="bg-white text-orange-800 font-medium">
+                              Direct Google Review (Orange)
+                            </option>
+                            <option value="zentap_google" className="bg-white text-emerald-800 font-medium">
+                              ZenTap Google Review (Green)
+                            </option>
+                          </select>
+                        </td>
+
+                        {/* 9. Actions: Live Preview, Visual Designer, Edit & Delete */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <a
-                              href={item.link_url || `${DOMAIN_BASE}/t/${item.tag_id}`}
+                              href={displayTagLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Live Preview Standee Page"
@@ -504,7 +626,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   <th className="py-3.5 px-4">Tag ID</th>
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
-                  <th className="py-3.5 px-4">Link URL</th>
+                  <th className="py-3.5 px-4">Link of Tag ID</th>
                   <th className="py-3.5 px-4">Deleted At</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -529,7 +651,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       </td>
                       <td className="py-3 px-4 font-bold text-zinc-900">{item.business_name}</td>
                       <td className="py-3 px-4 font-mono text-[11px] text-zinc-600 truncate max-w-xs">
-                        {item.link_url}
+                        {item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`}
                       </td>
                       <td className="py-3 px-4 text-zinc-500 text-[11px]">
                         {new Date(item.deleted_at).toLocaleDateString()}
@@ -625,7 +747,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Link URL</label>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Link of Tag ID</label>
                 <input
                   type="text"
                   value={editWholeLinkUrl}
@@ -780,10 +902,20 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   <Palette className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-white">
-                    Design Review Page — {activeItem.business_name} ({activeItem.tag_id})
-                  </h3>
-                  <span className="text-[11px] text-zinc-400 font-mono">{editTagLink}</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-white">
+                      Design Review Page — {activeItem.business_name} ({activeItem.tag_id})
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                      <Share2 className="w-3 h-3 text-emerald-400" />
+                      <span>Connected to Google Links &amp; QR Sharing</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      Link of Tag ID: <strong className="text-amber-400">{editTagLink}</strong>
+                    </span>
+                  </div>
                 </div>
               </div>
               <button
@@ -866,15 +998,95 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-900 mb-1">Google Review Form URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://g.page/r/.../review"
-                      value={editGoogleLink}
-                      onChange={(e) => setEditGoogleLink(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono"
-                    />
+                  {/* Connected Google Links & QR Sharing Box */}
+                  <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Share2 className="w-4 h-4 text-amber-600" />
+                        <span className="text-xs font-bold text-zinc-900">
+                          Connected to Google Links &amp; QR Sharing
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono text-[10px] font-bold flex items-center gap-1 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>Tag ID: {activeItem.tag_id}</span>
+                      </span>
+                    </div>
+
+                    {/* 1. Link of Tag ID from Google Links & QR Sharing */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-zinc-800 flex items-center gap-1">
+                          <span>Link of Tag ID</span>
+                          <span className="text-[10px] text-amber-700 font-normal">
+                            (Standee NFC Tap &amp; QR Scan Link)
+                          </span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(editTagLink);
+                            setCopiedTagLink(true);
+                            onShowToast(`✓ Copied Link of Tag ID: ${editTagLink}`);
+                            setTimeout(() => setCopiedTagLink(false), 2000);
+                          }}
+                          className="text-[11px] text-amber-800 hover:text-amber-950 font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedTagLink ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="text-emerald-700">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={editTagLink}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-amber-300/80 text-xs text-zinc-900 font-mono font-bold select-all"
+                        />
+                        <a
+                          href={editTagLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open Link of Tag ID in new tab"
+                          className="tactile-btn px-3 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold flex items-center gap-1 shrink-0 transition-transform active:scale-[0.978]"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Visit</span>
+                        </a>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 mt-1">
+                        Live NFC/QR scan URL from <strong>Google Links &amp; QR Sharing</strong> programmed on the merchant&apos;s physical standee.
+                      </p>
+                    </div>
+
+                    {/* 2. Page Linked to Tag ID / Google Review Posting URL */}
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-800 mb-1">
+                        Page Linked to Tag ID{" "}
+                        <span className="text-[10px] text-zinc-500 font-normal">
+                          (Business&apos;s Google Review Page Link)
+                        </span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://g.page/r/.../review"
+                        value={editGoogleLink}
+                        onChange={(e) => setEditGoogleLink(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono font-medium"
+                      />
+                      <p className="text-[10px] text-zinc-500 mt-1">
+                        Both are connected: changes saved here automatically sync with <strong>Google Links &amp; QR Sharing</strong> for {activeItem.tag_id}.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Direct Contact Links */}
@@ -911,13 +1123,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   {/* Bottom Action */}
                   <div className="flex flex-wrap items-center justify-between gap-2.5 pt-4 border-t border-zinc-200">
                     <a
-                      href={activeItem.link_url || `${DOMAIN_BASE}/t/${activeItem.tag_id}`}
+                      href={editTagLink || `${DOMAIN_BASE}/t/${activeItem.tag_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="tactile-btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold border border-zinc-300 transition-transform active:scale-[0.978]"
                     >
                       <Eye className="w-3.5 h-3.5 text-zinc-600" />
-                      <span>Live Preview Standee</span>
+                      <span>Live Preview Standee ({activeItem.tag_id})</span>
                     </a>
 
                     <div className="flex items-center gap-2">
@@ -1089,7 +1301,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   Generating high-res QR...
                 </div>
               )}
-              <span className="font-mono text-xs font-bold text-zinc-700 mt-3">{qrModalItem.link_url}</span>
+              <span className="font-mono text-xs font-bold text-zinc-700 mt-3">
+                {qrModalItem.link_url?.includes("/t/") ? qrModalItem.link_url : `${DOMAIN_BASE}/t/${qrModalItem.tag_id}`}
+              </span>
             </div>
 
             <button

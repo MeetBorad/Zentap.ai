@@ -54,6 +54,9 @@ export interface QrNfcTagItemRecord {
   business_name: string | null;
   link: string; // e.g. https://www.zentapdigitalsolutions.com/t/ST1
   scans_count: number;
+  destination?: string;
+  google_review_link?: string | null;
+  social_link?: string | null;
   created_at: string;
 }
 
@@ -325,7 +328,7 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
     tag_id: "ST1",
     business_id: "ZT-0001",
     business_name: "Café Aroma Bodakdev",
-    link_url: `${DOMAIN_BASE}/r/zentap?preview=1`,
+    link_url: `${DOMAIN_BASE}/t/ST1`,
     setup_status: "completed",
     config_data: {
       theme: "obsidian",
@@ -343,13 +346,14 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
     tag_id: "ST2",
     business_id: "ZT-0002",
     business_name: "Smile Dental Clinic",
-    link_url: `${DOMAIN_BASE}/r/smile-dental?preview=1`,
-    setup_status: "pending",
+    link_url: `${DOMAIN_BASE}/t/ST2`,
+    setup_status: "completed",
     config_data: {
       theme: "slate",
       title: "Smile Dental Clinic",
       subtitle: "Multi-Speciality Dental Care",
       cta_text: "Rate Your Visit on Google",
+      google_link: "https://g.page/r/CbOD_SmileDental/review",
     },
     updated_at: "2026-10-28T14:45:00Z",
   },
@@ -919,6 +923,43 @@ export async function updateGoogleReviewLinkServer(
       }).catch(() => {});
     }
 
+    // 4. Also keep page_editor_configs in sync (Connected to Design Review Page)
+    if (updates.business_google_review_link !== undefined) {
+      const cleanGoogleReviewUrl = updates.business_google_review_link ? updates.business_google_review_link.trim() : "";
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "page_editor_configs",
+          data: {
+            tag_id: tagId,
+            link_url: `${DOMAIN_BASE}/t/${tagId}`,
+            config_data: {
+              google_link: cleanGoogleReviewUrl,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      }).catch(() => {});
+
+      const pConfigs = getAllPageEditorConfigs();
+      const pIdx = pConfigs.findIndex((p) => p.tag_id.toLowerCase() === tagId.toLowerCase());
+      if (pIdx !== -1) {
+        pConfigs[pIdx] = {
+          ...pConfigs[pIdx],
+          link_url: `${DOMAIN_BASE}/t/${tagId}`,
+          config_data: {
+            ...(pConfigs[pIdx].config_data || {}),
+            google_link: cleanGoogleReviewUrl,
+          },
+          updated_at: new Date().toISOString(),
+        };
+        setStored(KEY_PAGE_EDITOR, pConfigs);
+      }
+    }
+
     await serverFetchPlatformData();
     return { success: true };
   } catch (err: any) {
@@ -954,7 +995,8 @@ export async function savePageEditorConfigServer(
     };
     if (extra?.business_id) payload.business_id = extra.business_id;
     if (extra?.business_name) payload.business_name = extra.business_name;
-    if (extra?.link_url) payload.link_url = extra.link_url;
+    // Link URL is always the Link of Tag ID from Google Links & QR Sharing
+    payload.link_url = extra?.link_url || `${DOMAIN_BASE}/t/${tagId}`;
 
     const res = await fetch("/api/admin/platform", {
       method: "POST",
@@ -970,6 +1012,58 @@ export async function savePageEditorConfigServer(
     const json = await res.json();
     if (!res.ok || !json.success) {
       return { success: false, error: json.error || "Failed to save page editor config in database" };
+    }
+
+    // Keep google_review_links & qr_nfc_tags in sync (Two-way connected)
+    if (configData?.google_link !== undefined) {
+      const cleanGoogleUrl = (configData.google_link || "").trim();
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "google_review_links",
+          data: {
+            tag_id: tagId,
+            business_id: extra?.business_id,
+            business_name: extra?.business_name,
+            link_of_tag_id: `${DOMAIN_BASE}/t/${tagId}`,
+            business_google_review_link: cleanGoogleUrl,
+            destination: "zentap_google",
+            setup_status: cleanGoogleUrl ? "completed" : "pending",
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      }).catch(() => {});
+
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "qr_nfc_tags",
+          data: {
+            tag_id: tagId,
+            google_review_link: cleanGoogleUrl,
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      }).catch(() => {});
+
+      const gLinks = getAllGoogleReviewLinks();
+      const gIdx = gLinks.findIndex((g) => g.tag_id.toLowerCase() === tagId.toLowerCase());
+      if (gIdx !== -1) {
+        gLinks[gIdx] = {
+          ...gLinks[gIdx],
+          business_google_review_link: cleanGoogleUrl,
+          link_of_tag_id: `${DOMAIN_BASE}/t/${tagId}`,
+          setup_status: cleanGoogleUrl ? "completed" : "pending",
+          updated_at: new Date().toISOString(),
+        };
+        setStored(KEY_GOOGLE_LINKS, gLinks);
+      }
     }
 
     await serverFetchPlatformData();
@@ -1493,11 +1587,12 @@ function syncTagAssignmentDownstream(tag: QrNfcTagItemRecord): void {
         tag_id: tag.tag_id,
         business_id: tag.business_id,
         business_name: tag.business_name || "Assigned Business",
-        link_url: `${DOMAIN_BASE}/r/zentap?preview=1`,
+        link_url: tag.link || `${DOMAIN_BASE}/t/${tag.tag_id}`,
         setup_status: "pending", // Default pending in red until saved in editor
         config_data: {
           title: tag.business_name || "Business Name",
           theme: "obsidian",
+          google_link: tag.google_review_link || "",
         },
         updated_at: new Date().toISOString(),
       };
@@ -1567,6 +1662,25 @@ export function updateGoogleReviewLink(tagId: string, updates: Partial<GoogleRev
     google_review_link: newReviewLink,
     destination: newDestination,
   }, "tag_id");
+
+  // Keep page_editor_configs in sync (Connected to Design Review Page)
+  if (newReviewLink !== undefined) {
+    const pConfigs = getAllPageEditorConfigs();
+    const pIdx = pConfigs.findIndex((p) => p.tag_id.toLowerCase() === tagId.toLowerCase());
+    if (pIdx !== -1) {
+      pConfigs[pIdx] = {
+        ...pConfigs[pIdx],
+        link_url: `${DOMAIN_BASE}/t/${tagId}`,
+        config_data: {
+          ...(pConfigs[pIdx].config_data || {}),
+          google_link: newReviewLink || "",
+        },
+        updated_at: new Date().toISOString(),
+      };
+      setStored(KEY_PAGE_EDITOR, pConfigs);
+      asyncDbUpsert("page_editor_configs", pConfigs[pIdx], "tag_id");
+    }
+  }
 
   return updatedItem;
 }
@@ -1841,6 +1955,7 @@ export function savePageEditorConfig(tagId: string, configData: Record<string, a
   // When saved from page editor, status changes to Completed in Green!
   const updatedItem: PageEditorConfigItemRecord = {
     ...current[index],
+    link_url: `${DOMAIN_BASE}/t/${tagId}`,
     config_data: { ...current[index].config_data, ...configData },
     setup_status: "completed",
     updated_at: new Date().toISOString(),
@@ -1849,5 +1964,35 @@ export function savePageEditorConfig(tagId: string, configData: Record<string, a
   current[index] = updatedItem;
   setStored(KEY_PAGE_EDITOR, current);
   asyncDbUpsert("page_editor_configs", updatedItem, "tag_id");
+
+  // Keep google_review_links in sync (Two-way connection with Google Links & QR Sharing)
+  if (configData.google_link !== undefined) {
+    const cleanGoogleLink = (configData.google_link || "").trim();
+    const gLinks = getAllGoogleReviewLinks();
+    const gIdx = gLinks.findIndex((g) => g.tag_id.toLowerCase() === tagId.toLowerCase());
+    if (gIdx !== -1) {
+      gLinks[gIdx] = {
+        ...gLinks[gIdx],
+        business_google_review_link: cleanGoogleLink,
+        link_of_tag_id: `${DOMAIN_BASE}/t/${tagId}`,
+        setup_status: cleanGoogleLink ? "completed" : gLinks[gIdx].setup_status,
+        updated_at: new Date().toISOString(),
+      };
+      setStored(KEY_GOOGLE_LINKS, gLinks);
+      asyncDbUpsert("google_review_links", gLinks[gIdx], "tag_id");
+    }
+
+    const allTags = getAllQrNfcTags();
+    const tIdx = allTags.findIndex((t) => t.tag_id.toLowerCase() === tagId.toLowerCase());
+    if (tIdx !== -1) {
+      allTags[tIdx] = {
+        ...allTags[tIdx],
+        google_review_link: cleanGoogleLink,
+      };
+      setStored(KEY_QR_NFC_TAGS, allTags);
+      asyncDbUpsert("qr_nfc_tags", allTags[tIdx], "tag_id");
+    }
+  }
+
   return updatedItem;
 }
