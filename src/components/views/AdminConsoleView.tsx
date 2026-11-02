@@ -1649,7 +1649,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </h2>
               <span className="hidden sm:inline-block text-xs text-zinc-400 font-normal">|</span>
               <span className="hidden sm:inline-block text-xs font-semibold text-zinc-500">
-                ZenTap Master Fleet ({businesses.length} Clients)
+                ZenTap Master Fleet ({platformClients.length} Clients)
               </span>
             </div>
           </div>

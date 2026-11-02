@@ -34,8 +34,10 @@ import {
   getAllDeletedPageEditorConfigs,
   savePageEditorConfig,
   updatePageEditorConfig,
-  deletePageEditorConfig,
-  restoreDeletedPageEditorConfig,
+  softDeletePageEditorServer,
+  restorePageEditorServer,
+  permanentDeletePageEditorServer,
+  serverFetchPlatformData,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
 
@@ -48,6 +50,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [deletedConfigs, setDeletedConfigs] = useState<DeletedPageEditorConfigRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "deleted">("all");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Visual Editor State
   const [activeItem, setActiveItem] = useState<PageEditorConfigItemRecord | null>(null);
@@ -71,20 +74,50 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editWholeLinkUrl, setEditWholeLinkUrl] = useState("");
   const [editWholeSetupStatus, setEditWholeSetupStatus] = useState<"pending" | "completed">("pending");
 
-  // Delete Target Modal
+  // Delete Target Modal (Soft delete)
   const [deleteTarget, setDeleteTarget] = useState<PageEditorConfigItemRecord | null>(null);
+
+  // Permanent Delete Target (Deleted tab only)
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<DeletedPageEditorConfigRecord | null>(null);
+  const [typedConfirmName, setTypedConfirmName] = useState("");
 
   // QR Modal
   const [qrModalItem, setQrModalItem] = useState<PageEditorConfigItemRecord | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
 
   useEffect(() => {
+    // Preserve URL state on refresh (Requirement 4)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const st = params.get("status");
+      if (st === "deleted") {
+        setActiveTab("deleted");
+      }
+    }
     refreshData();
   }, []);
 
-  const refreshData = () => {
+  const setTabAndUrl = (status: "all" | "deleted") => {
+    setActiveTab(status);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (status === "all") {
+        url.searchParams.delete("status");
+      } else {
+        url.searchParams.set("status", status);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const refreshData = async () => {
     setEditorConfigs(getAllPageEditorConfigs());
     setDeletedConfigs(getAllDeletedPageEditorConfigs());
+    const res = await serverFetchPlatformData();
+    if (res.success && res.data) {
+      setEditorConfigs(res.data.pageEditorConfigs || []);
+      setDeletedConfigs(res.data.deletedPageEditorConfigs || []);
+    }
   };
 
   const handleOpenEditor = (item: PageEditorConfigItemRecord) => {
@@ -157,23 +190,51 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     }
   };
 
-  // Delete
-  const handleConfirmDelete = () => {
+  // Soft delete (moves to Deleted tab)
+  const handleConfirmSoftDelete = async () => {
     if (!deleteTarget) return;
-    const res = deletePageEditorConfig(deleteTarget.tag_id);
+    setIsSubmitting(true);
+    const res = await softDeletePageEditorServer(deleteTarget.tag_id);
+    setIsSubmitting(false);
     if (res.success) {
       onShowToast(`✓ Page configuration for ${deleteTarget.tag_id} moved to Deleted section`);
       setDeleteTarget(null);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to delete page configuration");
     }
   };
 
   // Restore
-  const handleRestore = (item: DeletedPageEditorConfigRecord) => {
-    const success = restoreDeletedPageEditorConfig(item.tag_id);
-    if (success) {
+  const handleRestore = async (item: DeletedPageEditorConfigRecord) => {
+    setIsSubmitting(true);
+    const res = await restorePageEditorServer(item.tag_id);
+    setIsSubmitting(false);
+    if (res.success) {
       onShowToast(`✓ Restored page configuration for ${item.tag_id}!`);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to restore page configuration");
+    }
+  };
+
+  // Permanent Delete (Deleted tab only with typed Tag ID confirmation)
+  const handleConfirmPermanentDelete = async () => {
+    if (!permanentDeleteTarget) return;
+    if (typedConfirmName.trim().toUpperCase() !== permanentDeleteTarget.tag_id.trim().toUpperCase()) {
+      onShowToast(`Typed Tag ID does not match "${permanentDeleteTarget.tag_id}".`);
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await permanentDeletePageEditorServer(permanentDeleteTarget.tag_id, typedConfirmName.trim());
+    setIsSubmitting(false);
+    if (res.success) {
+      onShowToast(`✓ Permanently deleted page config for ${permanentDeleteTarget.tag_id}`);
+      setPermanentDeleteTarget(null);
+      setTypedConfirmName("");
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to permanently delete page configuration");
     }
   };
 
@@ -256,7 +317,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-zinc-100">
           <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl w-fit">
             <button
-              onClick={() => setActiveTab("all")}
+              onClick={() => setTabAndUrl("all")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
               }`}
@@ -264,7 +325,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               All Standees ({editorConfigs.length})
             </button>
             <button
-              onClick={() => setActiveTab("deleted")}
+              onClick={() => setTabAndUrl("deleted")}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "deleted" ? "bg-white text-rose-700 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
               }`}
@@ -432,7 +493,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   <th className="py-3.5 px-4">Business Name</th>
                   <th className="py-3.5 px-4">Link URL</th>
                   <th className="py-3.5 px-4">Deleted At</th>
-                  <th className="py-3.5 px-4 text-right">Restore</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -460,14 +521,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       <td className="py-3 px-4 text-zinc-500 text-[11px]">
                         {new Date(item.deleted_at).toLocaleDateString()}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleRestore(item)}
-                          className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restore</span>
-                        </button>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRestore(item)}
+                            disabled={isSubmitting}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Restore</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPermanentDeleteTarget(item);
+                              setTypedConfirmName("");
+                            }}
+                            disabled={isSubmitting}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Permanently</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -579,20 +654,20 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE CONFIRMATION                                                */}
+      {/* MODAL: SOFT DELETE CONFIRMATION                                            */}
       {/* ========================================================================= */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="font-bold text-lg text-zinc-900">Delete Page Configuration?</h3>
-              <p className="text-xs text-zinc-500 mt-1">
-                Are you sure you want to delete the page customization for <strong className="text-zinc-900">{deleteTarget.business_name}</strong> ({deleteTarget.tag_id})?
-                This will be moved to the Deleted section and can be restored at any time.
+              <h3 className="font-bold text-lg text-zinc-900">Move Config to Deleted Section?</h3>
+              <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
+                Are you sure you want to delete the page customization for <strong className="text-zinc-900 font-bold">{deleteTarget.business_name}</strong> ({deleteTarget.tag_id})?
+                This will be moved to the <strong>Deleted</strong> section and can be restored at any time.
               </p>
             </div>
 
@@ -600,16 +675,79 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
+                disabled={isSubmitting}
                 className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
-                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                onClick={handleConfirmSoftDelete}
+                disabled={isSubmitting}
+                className="tactile-btn px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
               >
-                Yes, Delete Config
+                {isSubmitting ? "Deleting..." : "Yes, Move to Deleted"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: PERMANENT DELETE WITH TYPED CONFIRMATION (Deleted Tab Only)          */}
+      {/* ========================================================================= */}
+      {permanentDeleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-rose-950">Delete Page Config Permanently</h3>
+              <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                This action is <strong>irreversible</strong>. The landing page configuration for <strong>{permanentDeleteTarget.business_name}</strong> ({permanentDeleteTarget.tag_id}) will be permanently removed from the database.
+              </p>
+            </div>
+
+            <div className="space-y-2 bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
+              <label className="block text-[11px] font-bold text-zinc-800">
+                To confirm permanent deletion, please type:
+                <span className="block mt-1 font-mono text-xs text-rose-900 bg-white px-2 py-1 rounded border border-rose-200 select-all">
+                  {permanentDeleteTarget.tag_id}
+                </span>
+              </label>
+              <input
+                type="text"
+                value={typedConfirmName}
+                onChange={(e) => setTypedConfirmName(e.target.value)}
+                placeholder="Type exact Tag ID here"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono uppercase"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setPermanentDeleteTarget(null);
+                  setTypedConfirmName("");
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPermanentDelete}
+                disabled={
+                  isSubmitting ||
+                  typedConfirmName.trim().toUpperCase() !== permanentDeleteTarget.tag_id.trim().toUpperCase()
+                }
+                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Deleting..." : "Permanently Delete"}
               </button>
             </div>
           </div>

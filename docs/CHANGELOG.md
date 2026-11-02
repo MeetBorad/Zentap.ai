@@ -1,5 +1,30 @@
 # ZenTap — Changelog
 
+## [1.30.0] — 2026-11-02
+### Fixed & Enhanced (Persistent Soft Delete Architecture, Query-Level Filtering & Tag Cascade Release)
+- **Database Schema Migration (`011_soft_delete_system.sql`)**:
+  - Added `deleted_at TIMESTAMPTZ DEFAULT NULL` and `deleted_by TEXT DEFAULT NULL` across all 6 core platform tables (`clients`, `payments`, `qr_nfc_tags`, `google_review_links`, `social_links`, `page_editor_configs`).
+  - Added B-tree indexes (`idx_<table>_deleted_at`) to enable high-performance query-level filtering.
+- **Query-Level State Filtering**:
+  - Replaced local array filtering with real Supabase database query filters:
+    - Active tabs query `WHERE deleted_at IS NULL`.
+    - Deleted tabs query `WHERE deleted_at IS NOT NULL`.
+  - Badges and counts compute live from PostgreSQL.
+- **Server-Side Mutation Integrity**:
+  - All operations (`soft_delete`, `restore`, `permanent_delete`) execute server-side via `/api/admin/platform` using service-role credentials.
+  - Exactly one row changed is verified; on failure, operations abort without modifying UI state.
+- **Cascade Deletion & Tag Release**:
+  - Soft-deleting a Client immediately releases all assigned hardware tags (`business_id = NULL, business_name = NULL`), returning them to unassigned inventory.
+  - Linked payments, Google review links, social links, and page editor configurations are marked `deleted_by = 'cascade:client_delete'` (hidden everywhere else, but preserved in their respective Deleted tabs).
+- **Collision Prevention on Restore**:
+  - Restoring a Client verifies that no active client possesses a clashing `business_id`, `owner_email`, or `owner_phone`, showing an explicit warning toast if a clash exists.
+- **Permanent Delete Safeguard**:
+  - "Delete Permanently" action exists strictly on the Deleted tab, protected by a modal requiring typing the exact business name or tag ID.
+- **URL Query State Preservation**:
+  - Preserves view state across browser refreshes via `?status=deleted` (or `paid`, `unpaid`, `all`).
+- **Fleet Header Count Fix**:
+  - Fixed discrepancy where header showed 8 clients (from mock data) while the table showed 3. Connected header count directly to live Supabase active client records.
+
 ## [1.29.0] — 2026-11-02
 ### Enhanced (Live Overview Telemetry, Full Supabase Synchronizer & Operational Login Portal)
 - **Live Overview Page Integration**:

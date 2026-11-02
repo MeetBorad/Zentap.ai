@@ -392,17 +392,37 @@ function asyncDbDelete(table: string, idField: string, idValue: string) {
   fetch("/api/admin/platform", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "delete", table, idField, idValue }),
+    body: JSON.stringify({ action: "soft_delete", table, idField, idValue }),
   }).catch((err) => console.warn(`Async DB delete from ${table} notice:`, err));
 }
 
-export async function initPlatformStoreFromBackend(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
+export interface PlatformCounts {
+  clients: { all: number; deleted: number };
+  payments: { all: number; paid: number; unpaid: number; deleted: number };
+  tags: { all: number; deleted: number };
+  googleLinks: { all: number; deleted: number };
+  socialLinks: { all: number; deleted: number };
+  pageEditorConfigs: { all: number; deleted: number };
+}
+
+export function getPlatformCounts(): PlatformCounts {
+  return getStored<PlatformCounts>("zentap_platform_counts_v2", {
+    clients: { all: 0, deleted: 0 },
+    payments: { all: 0, paid: 0, unpaid: 0, deleted: 0 },
+    tags: { all: 0, deleted: 0 },
+    googleLinks: { all: 0, deleted: 0 },
+    socialLinks: { all: 0, deleted: 0 },
+    pageEditorConfigs: { all: 0, deleted: 0 },
+  });
+}
+
+export async function serverFetchPlatformData(): Promise<{ success: boolean; counts?: PlatformCounts; data?: any }> {
+  if (typeof window === "undefined") return { success: false };
   try {
-    const res = await fetch("/api/admin/platform");
-    if (!res.ok) return false;
+    const res = await fetch("/api/admin/platform", { cache: "no-store" });
+    if (!res.ok) return { success: false };
     const json = await res.json();
-    if (!json.success || !json.data) return false;
+    if (!json.success || !json.data) return { success: false };
 
     const {
       clients,
@@ -419,72 +439,206 @@ export async function initPlatformStoreFromBackend(): Promise<boolean> {
       deletedPageEditorConfigs,
     } = json.data;
 
-    // If Supabase database was empty, seed it
-    if ((!clients || clients.length === 0) && (!tags || tags.length === 0)) {
-      await fetch("/api/admin/platform", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "seed_initial",
-          initialClients: INITIAL_CLIENTS,
-          initialTags: INITIAL_TAGS,
-          initialPayments: INITIAL_PAYMENTS,
-          initialGoogleLinks: INITIAL_GOOGLE_LINKS,
-          initialSocialLinks: INITIAL_SOCIAL_LINKS,
-          initialPageEditors: INITIAL_PAGE_EDITORS,
-        }),
-      });
-      return true;
+    // Always persist database state, even if empty array
+    localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients || []));
+    localStorage.setItem(KEY_DELETED_BUSINESSES, JSON.stringify(deletedBusinesses || []));
+    localStorage.setItem(KEY_PAYMENTS, JSON.stringify(payments || []));
+    localStorage.setItem(KEY_DELETED_PAYMENTS, JSON.stringify(deletedPayments || []));
+    localStorage.setItem(KEY_QR_NFC_TAGS, JSON.stringify(tags || []));
+    localStorage.setItem(KEY_DELETED_QR_NFC_TAGS, JSON.stringify(deletedTags || []));
+    localStorage.setItem(KEY_GOOGLE_LINKS, JSON.stringify(googleLinks || []));
+    localStorage.setItem(KEY_DELETED_GOOGLE_LINKS, JSON.stringify(deletedGoogleLinks || []));
+    localStorage.setItem(KEY_SOCIAL_LINKS, JSON.stringify(socialLinks || []));
+    localStorage.setItem(KEY_DELETED_SOCIAL_LINKS, JSON.stringify(deletedSocialLinks || []));
+    localStorage.setItem(KEY_PAGE_EDITOR, JSON.stringify(pageEditorConfigs || []));
+    localStorage.setItem(KEY_DELETED_PAGE_EDITOR, JSON.stringify(deletedPageEditorConfigs || []));
+
+    if (json.counts) {
+      localStorage.setItem("zentap_platform_counts_v2", JSON.stringify(json.counts));
     }
 
-    if (clients && clients.length > 0) {
-      localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients));
-    }
-    if (deletedBusinesses && deletedBusinesses.length > 0) {
-      localStorage.setItem(KEY_DELETED_BUSINESSES, JSON.stringify(deletedBusinesses));
-    }
-    if (payments && payments.length > 0) {
-      localStorage.setItem(KEY_PAYMENTS, JSON.stringify(payments));
-    }
-    if (deletedPayments && deletedPayments.length > 0) {
-      localStorage.setItem(KEY_DELETED_PAYMENTS, JSON.stringify(deletedPayments));
-    }
-    if (tags && tags.length > 0) {
-      localStorage.setItem(KEY_QR_NFC_TAGS, JSON.stringify(tags));
-    }
-    if (deletedTags && deletedTags.length > 0) {
-      localStorage.setItem(KEY_DELETED_QR_NFC_TAGS, JSON.stringify(deletedTags));
-    }
-    if (googleLinks && googleLinks.length > 0) {
-      localStorage.setItem(KEY_GOOGLE_LINKS, JSON.stringify(googleLinks));
-    }
-    if (deletedGoogleLinks && deletedGoogleLinks.length > 0) {
-      localStorage.setItem(KEY_DELETED_GOOGLE_LINKS, JSON.stringify(deletedGoogleLinks));
-    }
-    if (socialLinks && socialLinks.length > 0) {
-      localStorage.setItem(KEY_SOCIAL_LINKS, JSON.stringify(socialLinks));
-    }
-    if (deletedSocialLinks && deletedSocialLinks.length > 0) {
-      localStorage.setItem(KEY_DELETED_SOCIAL_LINKS, JSON.stringify(deletedSocialLinks));
-    }
-    if (pageEditorConfigs && pageEditorConfigs.length > 0) {
-      localStorage.setItem(KEY_PAGE_EDITOR, JSON.stringify(pageEditorConfigs));
-    }
-    if (deletedPageEditorConfigs && deletedPageEditorConfigs.length > 0) {
-      localStorage.setItem(KEY_DELETED_PAGE_EDITOR, JSON.stringify(deletedPageEditorConfigs));
-    }
-
-    window.dispatchEvent(new CustomEvent("zentap_platform_updated", { detail: { source: "backend" } }));
-    return true;
+    window.dispatchEvent(new CustomEvent("zentap_platform_updated", { detail: { source: "backend", counts: json.counts } }));
+    return { success: true, counts: json.counts, data: json.data };
   } catch (err) {
-    console.warn("Backend platform store sync notice:", err);
-    return false;
+    console.warn("serverFetchPlatformData notice:", err);
+    return { success: false };
   }
+}
+
+export async function serverSoftDelete(
+  table: "clients" | "payments" | "qr_nfc_tags" | "google_review_links" | "social_links" | "page_editor_configs",
+  idField: string,
+  idValue: string,
+  deletedBy = "admin"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "soft_delete",
+        table,
+        idField,
+        idValue,
+        deletedBy,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to soft-delete record on server" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while deleting" };
+  }
+}
+
+export async function serverRestore(
+  table: "clients" | "payments" | "qr_nfc_tags" | "google_review_links" | "social_links" | "page_editor_configs",
+  idField: string,
+  idValue: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "restore",
+        table,
+        idField,
+        idValue,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to restore record on server" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while restoring" };
+  }
+}
+
+export async function serverPermanentDelete(
+  table: "clients" | "payments" | "qr_nfc_tags" | "google_review_links" | "social_links" | "page_editor_configs",
+  idField: string,
+  idValue: string,
+  confirmationName: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "permanent_delete",
+        table,
+        idField,
+        idValue,
+        confirmationName,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to permanently delete record on server" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while permanently deleting" };
+  }
+}
+
+export async function initPlatformStoreFromBackend(): Promise<boolean> {
+  const result = await serverFetchPlatformData();
+  return result.success;
 }
 
 // ============================================================================
 // 1. CLIENTS STORE & DELETED BUSINESSES
 // ============================================================================
+
+// Client helpers
+export async function softDeleteClientServer(businessId: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("clients", "business_id", businessId);
+}
+
+export async function restoreClientServer(businessId: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("clients", "business_id", businessId);
+}
+
+export async function permanentDeleteClientServer(businessId: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("clients", "business_id", businessId, confirmationName);
+}
+
+// Payment helpers
+export async function softDeletePaymentServer(id: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("payments", "id", id);
+}
+
+export async function restorePaymentServer(id: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("payments", "id", id);
+}
+
+export async function permanentDeletePaymentServer(id: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("payments", "id", id, confirmationName);
+}
+
+// Tag helpers
+export async function softDeleteTagServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("qr_nfc_tags", "tag_id", tagId);
+}
+
+export async function restoreTagServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("qr_nfc_tags", "tag_id", tagId);
+}
+
+export async function permanentDeleteTagServer(tagId: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("qr_nfc_tags", "tag_id", tagId, confirmationName);
+}
+
+// Google Review Link helpers
+export async function softDeleteGoogleLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("google_review_links", "tag_id", tagId);
+}
+
+export async function restoreGoogleLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("google_review_links", "tag_id", tagId);
+}
+
+export async function permanentDeleteGoogleLinkServer(tagId: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("google_review_links", "tag_id", tagId, confirmationName);
+}
+
+// Social Link helpers
+export async function softDeleteSocialLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("social_links", "tag_id", tagId);
+}
+
+export async function restoreSocialLinkServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("social_links", "tag_id", tagId);
+}
+
+export async function permanentDeleteSocialLinkServer(tagId: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("social_links", "tag_id", tagId, confirmationName);
+}
+
+// Page Editor Config helpers
+export async function softDeletePageEditorServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverSoftDelete("page_editor_configs", "tag_id", tagId);
+}
+
+export async function restorePageEditorServer(tagId: string): Promise<{ success: boolean; error?: string }> {
+  return serverRestore("page_editor_configs", "tag_id", tagId);
+}
+
+export async function permanentDeletePageEditorServer(tagId: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
+  return serverPermanentDelete("page_editor_configs", "tag_id", tagId, confirmationName);
+}
 
 export function getAllClients(): ClientRecord[] {
   return getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);

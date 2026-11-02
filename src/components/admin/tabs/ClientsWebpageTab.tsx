@@ -25,9 +25,11 @@ import {
   getAllDeletedBusinesses,
   addClient,
   updateClient,
-  deleteClientPermanently,
-  restoreDeletedBusiness,
   generateNextBusinessIdCode,
+  softDeleteClientServer,
+  restoreClientServer,
+  permanentDeleteClientServer,
+  serverFetchPlatformData,
 } from "@/lib/adminPlatformStore";
 
 interface ClientsWebpageTabProps {
@@ -39,6 +41,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   const [deletedBusinesses, setDeletedBusinesses] = useState<DeletedBusinessRecord[]>([]);
   const [viewFilter, setViewFilter] = useState<"all" | "deleted">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Add Business Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -64,16 +67,46 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   const [editFacebook, setEditFacebook] = useState("");
   const [editCity, setEditCity] = useState("Ahmedabad");
 
-  // Delete confirmation
+  // Soft delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ClientRecord | null>(null);
 
+  // Permanent delete confirmation (Deleted tab only)
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<DeletedBusinessRecord | null>(null);
+  const [typedConfirmName, setTypedConfirmName] = useState("");
+
   useEffect(() => {
+    // Preserve URL state on refresh (Requirement 4)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const st = params.get("status");
+      if (st === "deleted") {
+        setViewFilter("deleted");
+      }
+    }
     refreshData();
   }, []);
 
-  const refreshData = () => {
+  const setFilterAndUrl = (status: "all" | "deleted") => {
+    setViewFilter(status);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (status === "all") {
+        url.searchParams.delete("status");
+      } else {
+        url.searchParams.set("status", status);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const refreshData = async () => {
     setClients(getAllClients());
     setDeletedBusinesses(getAllDeletedBusinesses());
+    const res = await serverFetchPlatformData();
+    if (res.success && res.data) {
+      setClients(res.data.clients || []);
+      setDeletedBusinesses(res.data.deletedBusinesses || []);
+    }
   };
 
   const nextIdPreview = generateNextBusinessIdCode(clients);
@@ -153,21 +186,51 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
     refreshData();
   };
 
-  const handleConfirmDelete = () => {
+  // Soft delete client (Requirement 2, 3, 7)
+  const handleConfirmSoftDelete = async () => {
     if (!deleteTarget) return;
-    const res = deleteClientPermanently(deleteTarget.business_id);
+    setIsSubmitting(true);
+    const res = await softDeleteClientServer(deleteTarget.business_id);
+    setIsSubmitting(false);
     if (res.success) {
-      onShowToast(`✓ "${deleteTarget.business_name}" (${deleteTarget.business_id}) permanently removed from clients.`);
+      onShowToast(`✓ "${deleteTarget.business_name}" (${deleteTarget.business_id}) moved to Deleted section.`);
       setDeleteTarget(null);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to delete client");
     }
   };
 
-  const handleRestore = (item: DeletedBusinessRecord) => {
-    const success = restoreDeletedBusiness(item.business_id);
-    if (success) {
+  // Restore deleted client with clash warning (Requirement 3, 5)
+  const handleRestore = async (item: DeletedBusinessRecord) => {
+    setIsSubmitting(true);
+    const res = await restoreClientServer(item.business_id);
+    setIsSubmitting(false);
+    if (res.success) {
       onShowToast(`✓ Restored "${item.business_name}" (${item.business_id}) back to active clients!`);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to restore client");
+    }
+  };
+
+  // Permanent delete (Requirement 6: Deleted tab only with typed confirmation)
+  const handleConfirmPermanentDelete = async () => {
+    if (!permanentDeleteTarget) return;
+    if (typedConfirmName.trim().toLowerCase() !== permanentDeleteTarget.business_name.trim().toLowerCase()) {
+      onShowToast("Confirmation name does not match.");
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await permanentDeleteClientServer(permanentDeleteTarget.business_id, typedConfirmName.trim());
+    setIsSubmitting(false);
+    if (res.success) {
+      onShowToast(`✓ Permanently deleted "${permanentDeleteTarget.business_name}" from database.`);
+      setPermanentDeleteTarget(null);
+      setTypedConfirmName("");
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to permanently delete client");
     }
   };
 
@@ -230,7 +293,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
           {/* Two options only: All or Deleted */}
           <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-xl border border-zinc-200/60 w-fit">
             <button
-              onClick={() => setViewFilter("all")}
+              onClick={() => setFilterAndUrl("all")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewFilter === "all"
                   ? "bg-white text-zinc-900 shadow-xs"
@@ -240,7 +303,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
               All Clients ({clients.length})
             </button>
             <button
-              onClick={() => setViewFilter("deleted")}
+              onClick={() => setFilterAndUrl("deleted")}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewFilter === "deleted"
                   ? "bg-rose-50 text-rose-700 shadow-xs border border-rose-200/60"
@@ -450,7 +513,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                   <th className="py-3.5 px-4">City</th>
                   <th className="py-3.5 px-4">Deleted At</th>
                   <th className="py-3.5 px-4">Notes</th>
-                  <th className="py-3.5 px-4 text-right">Restore</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -481,14 +544,30 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                       <td className="py-3 px-4 text-zinc-500 text-[11px] max-w-xs truncate">
                         {item.notes || "Deleted by admin"}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleRestore(item)}
-                          className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restore</span>
-                        </button>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRestore(item)}
+                            disabled={isSubmitting}
+                            title="Restore back to active clients"
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Restore</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPermanentDeleteTarget(item);
+                              setTypedConfirmName("");
+                            }}
+                            disabled={isSubmitting}
+                            title="Delete Permanently (Irreversible)"
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Permanently</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -789,20 +868,20 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE CONFIRMATION                                                */}
+      {/* MODAL: SOFT DELETE CONFIRMATION (All Tab)                                  */}
       {/* ========================================================================= */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="font-bold text-lg text-zinc-900">Delete Client Permanently?</h3>
-              <p className="text-xs text-zinc-500 mt-1">
+              <h3 className="font-bold text-lg text-zinc-900">Move to Deleted Section?</h3>
+              <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
                 Are you sure you want to delete <strong className="text-zinc-900 font-bold">{deleteTarget.business_name}</strong> ({deleteTarget.business_id})?
-                This will remove it from active clients and preserve a permanent audit record in the Deleted list.
+                This will move it to the <strong>Deleted</strong> tab, release any linked QR/NFC tags back to unassigned inventory, and archive linked records.
               </p>
             </div>
 
@@ -810,16 +889,79 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
+                disabled={isSubmitting}
                 className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
-                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                onClick={handleConfirmSoftDelete}
+                disabled={isSubmitting}
+                className="tactile-btn px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
               >
-                Yes, Delete Client
+                {isSubmitting ? "Deleting..." : "Yes, Move to Deleted"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: PERMANENT DELETE WITH TYPED CONFIRMATION (Deleted Tab Only)          */}
+      {/* ========================================================================= */}
+      {permanentDeleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-rose-950">Delete Client Permanently</h3>
+              <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                This action is <strong>irreversible</strong>. The record for <strong>{permanentDeleteTarget.business_name}</strong> ({permanentDeleteTarget.business_id}) will be completely deleted from the database.
+              </p>
+            </div>
+
+            <div className="space-y-2 bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
+              <label className="block text-[11px] font-bold text-zinc-800">
+                To confirm permanent deletion, please type:
+                <span className="block mt-1 font-mono text-xs text-rose-900 bg-white px-2 py-1 rounded border border-rose-200 select-all">
+                  {permanentDeleteTarget.business_name}
+                </span>
+              </label>
+              <input
+                type="text"
+                value={typedConfirmName}
+                onChange={(e) => setTypedConfirmName(e.target.value)}
+                placeholder="Type exact business name here"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setPermanentDeleteTarget(null);
+                  setTypedConfirmName("");
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPermanentDelete}
+                disabled={
+                  isSubmitting ||
+                  typedConfirmName.trim().toLowerCase() !== permanentDeleteTarget.business_name.trim().toLowerCase()
+                }
+                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Deleting..." : "Permanently Delete"}
               </button>
             </div>
           </div>

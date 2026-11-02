@@ -33,8 +33,10 @@ import {
   generateBatchTags,
   assignTagBusiness,
   updateQrNfcTag,
-  deleteQrNfcTag,
-  restoreDeletedQrNfcTag,
+  softDeleteTagServer,
+  restoreTagServer,
+  permanentDeleteTagServer,
+  serverFetchPlatformData,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
 
@@ -46,6 +48,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   const [tags, setTags] = useState<QrNfcTagItemRecord[]>([]);
   const [deletedTags, setDeletedTags] = useState<DeletedQrNfcTagRecord[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Default filter on this page: Unassigned as requested!
   const [statusFilter, setStatusFilter] = useState<"all" | "unassigned" | "assigned" | "deleted">("unassigned");
@@ -78,8 +81,12 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   const [editWholeScans, setEditWholeScans] = useState<number>(0);
   const [editWholeSearch, setEditWholeSearch] = useState("");
 
-  // Delete target
+  // Delete target (Soft delete)
   const [deleteTarget, setDeleteTarget] = useState<QrNfcTagItemRecord | null>(null);
+
+  // Permanent delete (Deleted tab only)
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<DeletedQrNfcTagRecord | null>(null);
+  const [typedConfirmName, setTypedConfirmName] = useState("");
 
   // QR Preview Modal
   const [qrModalTag, setQrModalTag] = useState<QrNfcTagItemRecord | null>(null);
@@ -87,13 +94,40 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Preserve URL state on refresh (Requirement 4)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const st = params.get("status");
+      if (st === "deleted" || st === "assigned" || st === "unassigned" || st === "all") {
+        setStatusFilter(st as any);
+      }
+    }
     refreshData();
   }, []);
 
-  const refreshData = () => {
+  const setStatusAndUrl = (status: "all" | "unassigned" | "assigned" | "deleted") => {
+    setStatusFilter(status);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (status === "unassigned") {
+        url.searchParams.delete("status");
+      } else {
+        url.searchParams.set("status", status);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const refreshData = async () => {
     setTags(getAllQrNfcTags());
     setDeletedTags(getAllDeletedQrNfcTags());
     setClients(getAllClients());
+    const res = await serverFetchPlatformData();
+    if (res.success && res.data) {
+      setTags(res.data.tags || []);
+      setDeletedTags(res.data.deletedTags || []);
+      setClients(res.data.clients || []);
+    }
   };
 
   const handleCreateSingle = (e: React.FormEvent) => {
@@ -178,21 +212,51 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     }
   };
 
-  const handleConfirmDelete = () => {
+  // Soft delete tag
+  const handleConfirmSoftDelete = async () => {
     if (!deleteTarget) return;
-    const res = deleteQrNfcTag(deleteTarget.tag_id);
+    setIsSubmitting(true);
+    const res = await softDeleteTagServer(deleteTarget.tag_id);
+    setIsSubmitting(false);
     if (res.success) {
       onShowToast(`✓ Tag ${deleteTarget.tag_id} moved to Deleted section`);
       setDeleteTarget(null);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to delete tag");
     }
   };
 
-  const handleRestore = (item: DeletedQrNfcTagRecord) => {
-    const success = restoreDeletedQrNfcTag(item.tag_id);
-    if (success) {
+  // Restore deleted tag
+  const handleRestore = async (item: DeletedQrNfcTagRecord) => {
+    setIsSubmitting(true);
+    const res = await restoreTagServer(item.tag_id);
+    setIsSubmitting(false);
+    if (res.success) {
       onShowToast(`✓ Restored tag ${item.tag_id}!`);
-      refreshData();
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to restore tag");
+    }
+  };
+
+  // Permanent delete tag (Deleted tab only with typed Tag ID confirmation)
+  const handleConfirmPermanentDelete = async () => {
+    if (!permanentDeleteTarget) return;
+    if (typedConfirmName.trim().toUpperCase() !== permanentDeleteTarget.tag_id.trim().toUpperCase()) {
+      onShowToast(`Typed Tag ID does not match "${permanentDeleteTarget.tag_id}".`);
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await permanentDeleteTagServer(permanentDeleteTarget.tag_id, typedConfirmName.trim());
+    setIsSubmitting(false);
+    if (res.success) {
+      onShowToast(`✓ Permanently deleted tag ${permanentDeleteTarget.tag_id}`);
+      setPermanentDeleteTarget(null);
+      setTypedConfirmName("");
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to permanently delete tag");
     }
   };
 
@@ -339,7 +403,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
             {/* Status Pills */}
             <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl border border-zinc-200/60">
               <button
-                onClick={() => setStatusFilter("unassigned")}
+                onClick={() => setStatusAndUrl("unassigned")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   statusFilter === "unassigned"
                     ? "bg-rose-50 text-rose-700 shadow-xs border border-rose-200"
@@ -349,7 +413,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 Unassigned ({tags.filter((t) => !t.business_id).length})
               </button>
               <button
-                onClick={() => setStatusFilter("assigned")}
+                onClick={() => setStatusAndUrl("assigned")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   statusFilter === "assigned"
                     ? "bg-emerald-50 text-emerald-800 shadow-xs border border-emerald-200"
@@ -359,7 +423,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 Assigned ({tags.filter((t) => !!t.business_id).length})
               </button>
               <button
-                onClick={() => setStatusFilter("all")}
+                onClick={() => setStatusAndUrl("all")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   statusFilter === "all"
                     ? "bg-white text-zinc-900 shadow-xs"
@@ -369,7 +433,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                 All ({tags.length})
               </button>
               <button
-                onClick={() => setStatusFilter("deleted")}
+                onClick={() => setStatusAndUrl("deleted")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   statusFilter === "deleted"
                     ? "bg-white text-rose-700 shadow-xs"
@@ -620,7 +684,7 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                   <th className="py-3.5 px-4">Business ID</th>
                   <th className="py-3.5 px-4">Business Name</th>
                   <th className="py-3.5 px-4">Deleted At</th>
-                  <th className="py-3.5 px-4 text-right">Restore</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
@@ -646,14 +710,28 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
                       <td className="py-3 px-4 text-zinc-500 text-[11px]">
                         {new Date(item.deleted_at).toLocaleDateString()}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleRestore(item)}
-                          className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restore</span>
-                        </button>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRestore(item)}
+                            disabled={isSubmitting}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Restore</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPermanentDeleteTarget(item);
+                              setTypedConfirmName("");
+                            }}
+                            disabled={isSubmitting}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Permanently</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1126,20 +1204,20 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: DELETE CONFIRMATION                                                */}
+      {/* MODAL: SOFT DELETE CONFIRMATION                                            */}
       {/* ========================================================================= */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
               <Trash2 className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="font-bold text-lg text-zinc-900">Delete Hardware Tag?</h3>
-              <p className="text-xs text-zinc-500 mt-1">
-                Are you sure you want to delete tag <strong className="text-zinc-900">{deleteTarget.tag_id}</strong> ({deleteTarget.product_type})?
-                This tag will be moved to the Deleted section and can be restored at any time.
+              <h3 className="font-bold text-lg text-zinc-900">Move Tag to Deleted Section?</h3>
+              <p className="text-xs text-zinc-600 mt-1 leading-relaxed">
+                Are you sure you want to delete tag <strong className="text-zinc-900 font-bold">{deleteTarget.tag_id}</strong> ({deleteTarget.product_type})?
+                This tag will be moved to the <strong>Deleted</strong> section and can be restored at any time.
               </p>
             </div>
 
@@ -1147,16 +1225,79 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
+                disabled={isSubmitting}
                 className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDelete}
-                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer"
+                onClick={handleConfirmSoftDelete}
+                disabled={isSubmitting}
+                className="tactile-btn px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-50"
               >
-                Yes, Delete Tag
+                {isSubmitting ? "Deleting..." : "Yes, Move to Deleted"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: PERMANENT DELETE WITH TYPED CONFIRMATION (Deleted Tab Only)          */}
+      {/* ========================================================================= */}
+      {permanentDeleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-rose-950">Delete Tag Permanently</h3>
+              <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                This action is <strong>irreversible</strong>. The hardware tag <strong>{permanentDeleteTarget.tag_id}</strong> will be permanently removed from the database.
+              </p>
+            </div>
+
+            <div className="space-y-2 bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
+              <label className="block text-[11px] font-bold text-zinc-800">
+                To confirm permanent deletion, please type:
+                <span className="block mt-1 font-mono text-xs text-rose-900 bg-white px-2 py-1 rounded border border-rose-200 select-all">
+                  {permanentDeleteTarget.tag_id}
+                </span>
+              </label>
+              <input
+                type="text"
+                value={typedConfirmName}
+                onChange={(e) => setTypedConfirmName(e.target.value)}
+                placeholder="Type exact Tag ID here"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-rose-300 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono uppercase"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setPermanentDeleteTarget(null);
+                  setTypedConfirmName("");
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPermanentDelete}
+                disabled={
+                  isSubmitting ||
+                  typedConfirmName.trim().toUpperCase() !== permanentDeleteTarget.tag_id.trim().toUpperCase()
+                }
+                className="tactile-btn px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-transform active:scale-[0.978] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Deleting..." : "Permanently Delete"}
               </button>
             </div>
           </div>
