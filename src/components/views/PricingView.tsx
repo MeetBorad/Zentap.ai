@@ -48,7 +48,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
   const faqs = [
     {
       q: "Does customer phone require an app to tap?",
-      a: "No app, download, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and Android automatically detect the NTAG216 chip instantly when held within 4cm of the standee or smart card.",
+      a: "No app, download, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and Android automatically detect the smart chip instantly when held within 4cm of the standee or smart card.",
     },
     {
       q: "How does the AI Review Assistant help increase Google reviews?",
@@ -56,7 +56,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
     },
     {
       q: "How does ZenTap boost my Google reach and SEO?",
-      a: "Google's local search algorithm heavily prioritizes review velocity, fresh keywords, and verified customer engagement. ZenTap generates high-volume, keyword-rich reviews from real customer visits, propelling your profile to the top 3-pack on Google Maps and Local Search.",
+      a: "Google's local search algorithm heavily prioritizes consistent customer reviews, fresh keywords, and verified customer engagement. ZenTap generates high-volume, keyword-rich reviews from real customer visits, propelling your profile to the Google Maps and local search and Local Search.",
     },
     {
       q: "Can I change the standee URL destination after receiving it?",
@@ -64,7 +64,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
     },
     {
       q: "What are the courier and subscription charges?",
-      a: "Hardware is shipped pan-India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free smart routing and auto-sync, followed by an affordable ₹1,000/month subscription starting the next month of purchase. For multi-branch franchises, bulk volume standee discounts (₹1,200/standee) and custom SaaS rates (from ₹800/branch/mo) apply.",
+      a: "Hardware is shipped across India via BlueDart / Delhivery Express . The Normal Smart Card has zero monthly fees. The customized standees include 30 days of free smart routing and auto-sync, followed by an affordable monthly subscription starting the next month of purchase. For multi-branch franchises, bulk volume standee discounts (special rates) and custom SaaS rates (from discounted plans) apply.",
     },
     {
       q: "How does Plan 4 (Franchise & Multi-Location Custom Plan) work?",
@@ -113,7 +113,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             className="px-5 py-3 rounded-2xl bg-secondary text-on-secondary font-bold text-xs hover:bg-secondary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm flex items-center gap-2"
           >
             <Palette className="w-4 h-4" />
-            <span>Customize Hardware &amp; Logo</span>
+            <span>Request Custom Branding</span>
           </button>
 
           <a
@@ -123,7 +123,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
             className="px-5 py-3 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-xs transition-all cursor-pointer whitespace-nowrap shadow-sm flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4 fill-black text-black" />
-            <span>Order on WhatsApp</span>
+            <span>Contact us on WhatsApp</span>
           </a>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           className="px-4 py-2.5 rounded-xl bg-surface-container-highest hover:bg-surface-dim text-on-surface text-xs font-bold transition-all border border-surface-variant/50 cursor-pointer flex items-center gap-2 whitespace-nowrap"
         >
           <Palette className="w-3.5 h-3.5 text-secondary" />
-          <span>Launch 3D Design Studio</span>
+          <span>Request Custom Logo</span>
         </button>
       </div>
 
@@ -173,8 +173,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 <span className="text-xs text-on-surface-variant">Direct Google Review redirection (No intermediate page)</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-on-surface">₹999</span>
-                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">Standee • ₹499 Card</span>
+                <span className="font-headline font-extrabold text-2xl text-on-surface">Contact us</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">Standee & Smart Card</span>
               </div>
             </div>
 
@@ -189,7 +189,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
-                <span>High-Speed NTAG216 NFC (0.6s Tap Velocity)</span>
+                <span>Instant Tap Smart NFC & QR Code</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary flex-shrink-0" />
@@ -218,7 +218,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               className="tactile-btn w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-extrabold cursor-pointer text-center flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.978]"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </div>
         </div>
@@ -244,13 +244,13 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 <span className="text-xs text-zinc-300">Customized Review Assistant page with AI guidance</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-white">₹1,499</span>
-                <span className="text-[10px] block text-zinc-300 font-semibold mt-0.5">Standee + Assistant</span>
+                <span className="font-headline font-extrabold text-2xl text-white">Contact us</span>
+                <span className="text-[10px] block text-zinc-300 font-semibold mt-0.5">Standee with Assistant</span>
               </div>
             </div>
 
             <div className="p-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-[11px] font-bold mb-6">
-              ✨ Guided Review Assistant + 1-2★ Private Shield
+              ✨ Guided Review Assistant + Easy 1-Tap Google Reviews
             </div>
 
             <ul className="space-y-3 mb-8 text-xs text-white font-medium">
@@ -260,7 +260,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Negative Review Shield (1-2★ sent to private feedback)</span>
+                <span>Fast & effortless Google review posting for every guest</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
@@ -272,7 +272,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Premium Acrylic Counter Standee with NTAG216</span>
+                <span>Premium Acrylic Counter Standee with smart tap chip</span>
               </li>
             </ul>
           </div>
@@ -289,7 +289,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               className="tactile-btn w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-extrabold cursor-pointer text-center flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.978]"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </div>
         </div>
@@ -311,8 +311,8 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                 <span className="text-xs text-on-surface-variant">NFC &amp; QR Digital Card with Socials &amp; Contact</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
-                <span className="font-headline font-extrabold text-2xl text-on-surface">₹699</span>
-                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">PVC • ₹1,499 Metal</span>
+                <span className="font-headline font-extrabold text-2xl text-on-surface">Contact us</span>
+                <span className="text-[10px] block text-on-surface-variant font-semibold mt-0.5">PVC • Contact us Metal</span>
               </div>
             </div>
 
@@ -356,7 +356,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               className="tactile-btn w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-extrabold cursor-pointer text-center flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.978]"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </div>
         </div>
@@ -406,7 +406,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>Dedicated founder onboarding &amp; pan-India courier delivery</span>
+                <span>Dedicated founder onboarding &amp; across India courier delivery</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-amber-600 flex-shrink-0" />
@@ -441,7 +441,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           <span>Interactive Growth Calculator</span>
         </div>
         <h3 className="font-headline font-bold text-2xl text-on-surface mb-2">
-          Calculate Your Monthly Review &amp; Revenue Velocity
+          Calculate Your Monthly Reviews &amp; Growth
         </h3>
         <p className="text-xs text-on-surface-variant mb-8 max-w-xl">
           Adjust your daily customer footfall to estimate how many 5-star Google reviews your venue will generate with ZenTap standees.

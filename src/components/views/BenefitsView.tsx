@@ -59,7 +59,7 @@ export default function BenefitsView({ onNavigateToPricing, onNavigateToSample }
       badge: "Zero Maintenance",
       title: "Zero Batteries, Zero Charging & 10-Year Durability",
       description:
-        "Powered by passive near-field radio induction (NFC NTAG216). Requires no power cables, charging, or WiFi configuration. Simply place it on your counter and it works 24/7 forever.",
+        "Powered by passive near-field radio induction (Smart NFC Tap). Requires no power cables, charging, or WiFi configuration. Simply place it on your counter and it works 24/7 forever.",
       impact: "100% passive hardware with lifetime durability",
     },
     {

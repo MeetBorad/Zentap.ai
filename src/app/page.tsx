@@ -20,7 +20,6 @@ import AdminConsoleView from "@/components/views/AdminConsoleView";
 import AuthModal from "@/components/modals/AuthModal";
 import AdminAuthModal from "@/components/modals/AdminAuthModal";
 import TapReviewModal from "@/components/modals/TapReviewModal";
-import UpcomingServicesDrawer from "@/components/UpcomingServicesDrawer";
 import { ReviewItem } from "@/data/mockData";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -29,6 +28,8 @@ import {
   Radio, 
   DollarSign, 
   User,
+  Package,
+  HelpCircle,
   MessageCircle,
   ShieldCheck,
   ShieldAlert
@@ -69,7 +70,6 @@ export default function Page() {
   const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signin");
   const [tapReviewModalOpen, setTapReviewModalOpen] = useState(false);
-  const [upcomingDrawerOpen, setUpcomingDrawerOpen] = useState(false);
   const [latestReview, setLatestReview] = useState<ReviewItem | null>(null);
 
   const hasInitializedAuth = useRef(false);
@@ -169,7 +169,6 @@ export default function Page() {
           <HomeView
             onNavigate={handleNavigate}
             onOpenAuth={handleOpenAuth}
-            onTriggerTapReviewModal={() => setTapReviewModalOpen(true)}
           />
         )}
 
@@ -218,14 +217,12 @@ export default function Page() {
           <PricingView
             onNavigate={handleNavigate}
             onOpenAuth={handleOpenAuth}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
         {currentView === "faq" && (
           <FaqView
             onNavigateToPricing={() => handleNavigate("pricing")}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
@@ -236,7 +233,6 @@ export default function Page() {
             onTriggerTapSimulator={() => setTapReviewModalOpen(true)}
             onOpenAuthModal={(tab) => handleOpenAuth(tab)}
             onNavigate={handleNavigate}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
@@ -249,17 +245,11 @@ export default function Page() {
         )}
       </main>
 
-      {/* Floating Side Icon Drawer for Upcoming Tech Projects & Services */}
-      <UpcomingServicesDrawer
-        isOpen={upcomingDrawerOpen}
-        onClose={() => setUpcomingDrawerOpen(false)}
-        onOpen={() => setUpcomingDrawerOpen(true)}
-      />
 
       {/* Fixed Mobile Bottom Navigation Bar (Hidden when inside private dashboards) */}
       {!isDashboardView && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e1015]/95 backdrop-blur-xl border-t border-[#232734] shadow-lg lg:hidden">
-          <div className="h-16 px-3 flex items-center justify-around">
+          <div className="h-16 px-4 flex items-center justify-around">
             <button
               onClick={() => handleNavigate("home")}
               className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
@@ -286,39 +276,19 @@ export default function Page() {
                 currentView === "pricing" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
               }`}
             >
-              <DollarSign className="w-4 h-4 mb-0.5" />
-              <span>Pricing</span>
+              <Package className="w-4 h-4 mb-0.5" />
+              <span>Products</span>
             </button>
 
-            {/* Instant Order on WhatsApp */}
-            <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#25D366] hover:text-[#20bd5a] transition-colors"
+            <button
+              onClick={() => handleNavigate("faq")}
+              className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
+                currentView === "faq" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
+              }`}
             >
-              <MessageCircle className="w-4 h-4 mb-0.5 fill-[#25D366] text-[#25D366]" />
-              <span>Order</span>
-            </a>
-
-            {/* Admin Console / Login (Synced with Desktop) */}
-            {isAdmin ? (
-              <button
-                onClick={() => handleNavigate("admin")}
-                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#ff7a00] transition-colors cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" />
-                <span>Admin</span>
-              </button>
-            ) : (
-              <a
-                href="/admin/login"
-                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-medium text-zinc-400 hover:text-white transition-colors"
-              >
-                <ShieldAlert className="w-4 h-4 mb-0.5 text-[#ff7a00]" />
-                <span>Admin</span>
-              </a>
-            )}
+              <HelpCircle className="w-4 h-4 mb-0.5" />
+              <span>FAQ</span>
+            </button>
           </div>
         </nav>
       )}

@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     "Smart Review Card India",
     "Tap to Review Standee",
     "Smart NFC Google Reviews",
-    "NTAG216 NFC Card",
+    "Smart NFC Card",
     "Restaurant Google Reviews NFC",
     "Salon Google Reviews Standee",
     "ZenTap Digital Solutions",
@@ -147,7 +147,7 @@ const jsonLdData = {
       "name": "ZenTap Tactile NFC & Dynamic QR Review Standee",
       "image": "https://www.zentapdigitalsolutions.com/og-image.png",
       "description":
-        "Precision-machined matte-black acrylic counter standee with embedded 13.56 MHz NTAG216 NFC chip and Level Q Laser QR Code for automated Google Review collection.",
+        "Premium acrylic counter standee with smart NFC chip and QR code for fast Google Review collection.",
       "brand": {
         "@type": "Brand",
         "name": "ZenTap",
@@ -170,7 +170,7 @@ const jsonLdData = {
           "name": "Does ZenTap require customers to download an app?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Customers simply tap their iPhone or Android smartphone on the standee or scan the high-contrast Level Q QR code with their default camera app. The Google review screen opens in under 0.6 seconds.",
+            "text": "No. Customers simply tap their iPhone or Android phone on the standee or scan the QR code with their camera. The Google review screen opens immediately.",
           },
         },
         {

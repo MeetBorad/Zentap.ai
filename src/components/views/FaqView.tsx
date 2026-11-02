@@ -14,19 +14,19 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
   const faqs = [
     {
       q: "Does the customer need to download any app or enable Bluetooth?",
-      a: "No! No app, download, login, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and all modern Android devices detect the NTAG216 chip instantly when held within 4cm of the standee or smart card. A browser prompt pops up natively in under 400 milliseconds.",
+      a: "No! No app, download, login, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and all modern Android devices detect the smart tap chip instantly when held within 4cm of the standee or smart card. A browser prompt pops up natively in under 1 second.",
     },
     {
       q: "How does ZenTap boost our Google Business Profile reach and SEO?",
-      a: "Google's local search algorithms heavily prioritize review velocity (how frequently new reviews appear), verified local customer check-in signals, and relevant keywords in review text. ZenTap prompts guests right after a positive transaction and generates keyword-rich drafts, signaling immense local popularity to Google Search and Maps algorithms, boosting your impressions, direction requests, and phone calls.",
+      a: "Google's local search algorithms heavily prioritize frequent, authentic new reviews, verified local customer check-in signals, and relevant keywords in review text. ZenTap prompts guests right after a positive transaction and generates keyword-rich drafts, signaling immense local popularity to Google Search and Maps algorithms, boosting your impressions, direction requests, and phone calls.",
     },
     {
       q: "How does the rating and review flow work on Google?",
       a: "ZenTap provides an unhindered direct link to your official Google Business Profile review listing for every customer. The AI review assistant suggests thoughtful, keyword-rich drafts based on what the customer enjoyed, eliminating typing friction. Customers always submit reviews directly through their personal Google account, ensuring 100% authentic public reviews.",
     },
     {
-      q: "What is the difference between the ₹500 Smart Card and the Standees?",
-      a: "The ₹500 Smart Card is a credit-card-sized NFC card with a laser-printed dynamic QR code. It has zero monthly subscription and is ideal for mobile staff, delivery, or solo desks. The ₹1,500 and ₹2,000 Standees are heavy-duty, luxury acrylic or brushed brass counter displays custom-branded with your logo and colors, and include the full review assistant suite (+ ₹1,000/month subscription starting next month).",
+      q: "What is the difference between the Smart Card and the Counter Standee?",
+      a: "The Smart Card is a credit-card-sized NFC card ideal for mobile staff, billing folders, or home delivery. The Standees are heavy-duty counter displays custom-branded with your business logo and colors, perfect for your front reception or checkout desk. Contact us on WhatsApp to get exact pricing for your venue.",
     },
     {
       q: "Do you support franchises and multi-location businesses?",
@@ -38,7 +38,7 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
     },
     {
       q: "How fast is delivery and how does payment work?",
-      a: "Hardware is custom laser-engraved and dispatched across India via BlueDart / Delhivery Express (+ ₹99 extra courier charges). Delivery takes 3 to 5 business days. Once payment is confirmed, your live review assistant page and QR code activate immediately in your merchant portal.",
+      a: "Hardware is custom laser-engraved and dispatched across India via BlueDart / Delhivery Express . Delivery takes 3 to 5 business days. Once payment is confirmed, your live review assistant page and QR code activate immediately in your merchant portal.",
     },
   ];
 

@@ -1,40 +1,32 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
+import Image from "next/image";
 import { 
   ArrowRight, 
   Radio, 
-  Zap, 
-  ShieldCheck, 
-  ShieldAlert,
-  QrCode, 
   TrendingUp, 
-  Layers, 
-  Cpu, 
   RefreshCw,
   MessageCircle,
   Calendar,
   Briefcase,
   Send,
-  Palette,
   Check,
   Sparkles,
   Star,
-  Sliders,
-  Building2,
   Smartphone,
-  CheckCircle2
+  CheckCircle2,
+  Store,
+  Utensils,
+  Stethoscope,
+  Dumbbell,
+  Building2
 } from "lucide-react";
-import Standee3DPreview from "../Standee3DPreview";
-import SentimentSimulator from "../SentimentSimulator";
-import HyperFramesPlayer from "../HyperFramesPlayer";
 import PhysicalStandeeGallery from "../PhysicalStandeeGallery";
 import { ActiveView } from "../Header";
-import CardCustomizerModal from "@/components/CardCustomizerModal";
-import { CustomCardDesign } from "@/lib/businessStore";
-import { trackCtaClick, trackWhatsAppClick, trackPhoneClick } from "@/lib/analytics";
-import { SpotlightCard, ShinyText, BlurText, CountUp, AuroraBackground, TiltedCard } from "@/components/react-bits";
-import { OpenDesignButton, OpenDesignBadge, OpenDesignCard } from "@/components/open-design";
+import { trackWhatsAppClick } from "@/lib/analytics";
+import { SpotlightCard, AuroraBackground } from "@/components/react-bits";
+import { OpenDesignCard } from "@/components/open-design";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -45,22 +37,15 @@ if (typeof window !== "undefined") {
 
 interface HomeViewProps {
   onNavigate: (view: ActiveView, plan?: any) => void;
-  onOpenAuth: (initialTab: "signin" | "signup" | "admin") => void;
-  onTriggerTapReviewModal: () => void;
+  onOpenAuth?: (initialTab: "signin" | "signup" | "admin") => void;
 }
 
-export default function HomeView({
-  onNavigate,
-  onOpenAuth,
-  onTriggerTapReviewModal,
-}: HomeViewProps) {
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [customDesign, setCustomDesign] = useState<CustomCardDesign | null>(null);
+export default function HomeView({ onNavigate }: HomeViewProps) {
   const homeContainerRef = useRef<HTMLDivElement>(null);
 
   // GSAP ScrollTrigger Animations for smooth section entries
   useGSAP(() => {
-    // 1. Staggered reveal for 3-step How It Works cards (with safe initial opacity)
+    // 1. Staggered reveal for 3-step How It Works cards
     gsap.fromTo(
       ".step-card-stagger",
       { y: 25, opacity: 0.3 },
@@ -78,7 +63,7 @@ export default function HomeView({
       }
     );
 
-    // 2. Staggered reveal for 4 hardware product cards (with safe initial opacity)
+    // 2. Staggered reveal for 4 hardware product cards
     gsap.fromTo(
       ".product-card-stagger",
       { y: 25, opacity: 0.3 },
@@ -97,11 +82,13 @@ export default function HomeView({
     );
   }, { scope: homeContainerRef });
 
+  const getWaLink = (msg: string) => `https://wa.me/919274560880?text=${encodeURIComponent(msg)}`;
+
   return (
     <div ref={homeContainerRef} className="flex flex-col w-full animate-in fade-in duration-300">
       
       {/* ========================================================================= */}
-      {/* 1. MINIMAL HERO SECTION (CLEAN, BOLD, EASY TO UNDERSTAND + REACT BITS)    */}
+      {/* 1. HERO SECTION (SIMPLE, CLEAR, CLASS 8 READING LEVEL)                    */}
       {/* ========================================================================= */}
       <AuroraBackground className="w-full">
         <section className="px-4 sm:px-6 lg:px-8 pt-8 pb-16 max-w-7xl mx-auto w-full">
@@ -110,180 +97,181 @@ export default function HomeView({
             {/* Left: Value Proposition */}
             <div className="lg:col-span-7 flex flex-col">
               
-              {/* Stitch Verified Counter Pill Badge */}
+              {/* Trust Badge */}
               <div className="inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full bg-[#1e2230] border border-[#2d3345] mb-6 shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
                 <CheckCircle2 className="w-4 h-4 text-[#ff7a00]" />
                 <span className="text-xs font-semibold text-white tracking-tight">
-                  Tested Across <span className="font-bold text-[#ff7a00]">15+</span> Local Businesses in Ahmedabad • 500+ Customer Reviews
+                  For Local Cafes, Salons, Clinics &amp; Shops in Ahmedabad
                 </span>
               </div>
 
-              {/* Stitch Hero Headline */}
+              {/* Main Headline */}
               <h1 className="font-headline font-extrabold text-2xl sm:text-4xl lg:text-5xl text-white tracking-tight leading-snug sm:leading-[1.14] mb-5 text-balance">
-                Turn Every Customer Tap into{" "}
+                Get more Google reviews.{" "}
                 <span className="text-[#ff7a00] font-black underline decoration-[#ff7a00]/40 decoration-wavy inline-block">
-                  5-Star Google Reviews
-                </span>{" "}
-                instantly
+                  Just one tap.
+                </span>
               </h1>
 
-              {/* Stitch Subtitle */}
+              {/* Subtitle */}
               <p className="text-base sm:text-lg text-slate-200 mb-6 leading-relaxed max-w-2xl font-sans">
-                Smart NFC &amp; Dynamic QR standees to collect genuine 5-star Google reviews seamlessly without awkward asking or paperwork.
+                Put the ZenTap stand on your counter. Your customer taps their phone. Your Google review page opens directly on their screen. No app required. No typing needed.
               </p>
 
-              {/* Local SEO Callout Bar */}
+              {/* Why It Works Benefit Callout */}
               <div className="mb-8 p-4 rounded-2xl bg-[#161a26] border border-[#2d3345] flex items-center gap-3.5 text-xs text-white">
                 <div className="w-8 h-8 rounded-xl bg-[#1e2230] flex items-center justify-center flex-shrink-0 shadow-sm border border-[#2d3345]">
                   <TrendingUp className="w-4 h-4 text-[#ff7a00]" />
                 </div>
                 <span className="text-slate-200 leading-normal">
-                  <strong className="text-white font-bold">Verified Google Maps SEO Lift:</strong> High review velocity and customer interaction signal high authority to Google algorithms, driving your business to the Local 3-Pack.
+                  <strong className="text-white font-bold">Ask at the right moment:</strong> Happy customers tap their phone right after paying the bill, helping you collect 5-star Google reviews effortlessly.
                 </span>
               </div>
 
-              {/* OpenDesign Tactile CTA Buttons */}
+              {/* Action Buttons (Note: Only 1 "Order on WhatsApp" button exists, located in the top-right header) */}
               <div className="flex flex-wrap items-center gap-3.5 mb-10">
                 <a
-                  href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => trackWhatsAppClick("hero_order_whatsapp")}
-                  className="tactile-btn inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-sm shadow-lg shadow-emerald-950/20 transition-transform active:scale-[0.978] cursor-pointer"
+                  href="#how-it-works"
+                  className="tactile-btn inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#ff7a00] hover:bg-[#e56d00] text-black font-extrabold text-sm shadow-lg shadow-orange-950/20 transition-transform active:scale-[0.978] cursor-pointer"
                 >
-                  <MessageCircle className="w-4 h-4 fill-black text-black" />
-                  <span>Order on WhatsApp</span>
+                  <span>See How It Works</span>
+                  <ArrowRight className="w-4 h-4 text-black" />
                 </a>
 
-                <OpenDesignButton
-                  variant="subtle"
-                  size="lg"
-                  icon={<Radio className="w-3.5 h-3.5 text-emerald-400" />}
-                  iconPosition="left"
-                  onClick={() => {
-                    trackCtaClick("hero_tap_simulator", "tap_modal");
-                    onTriggerTapReviewModal();
-                  }}
+                <a
+                  href="#products"
+                  className="tactile-btn-subtle inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#1e2230] hover:bg-[#252b3d] text-white border border-[#2d3345] font-bold text-sm transition-colors cursor-pointer"
                 >
-                  Tap Simulator
-                </OpenDesignButton>
+                  <span>View Standee Models</span>
+                </a>
               </div>
 
-              {/* Technical Verification Metrics with React Bits CountUp */}
+              {/* Simple Feature Highlights */}
               <div className="grid grid-cols-3 gap-6 pt-6 border-t border-[#232734] text-xs">
                 <div>
-                  <p className="font-headline font-extrabold text-2xl text-white">
-                    <CountUp to={0.6} decimals={1} suffix="s" />
-                  </p>
-                  <p className="text-xs font-mono text-slate-300 mt-0.5">Average Tap Velocity</p>
+                  <p className="font-headline font-extrabold text-2xl text-white">1 Tap</p>
+                  <p className="text-xs text-slate-300 mt-0.5">Quick &amp; Instant</p>
                 </div>
                 <div>
-                  <p className="font-headline font-extrabold text-2xl text-white">
-                    <CountUp to={100} suffix="%" />
-                  </p>
-                  <p className="text-xs font-mono text-slate-300 mt-0.5">Zero App Install Required</p>
+                  <p className="font-headline font-extrabold text-2xl text-white">100%</p>
+                  <p className="text-xs text-slate-300 mt-0.5">No App Needed</p>
                 </div>
                 <div>
-                  <p className="font-headline font-extrabold text-2xl text-white">NTAG216</p>
-                  <p className="text-xs font-mono text-slate-300 mt-0.5">Certified 888-Byte NFC Chip</p>
+                  <p className="font-headline font-extrabold text-2xl text-white">Tap &amp; QR</p>
+                  <p className="text-xs text-slate-300 mt-0.5">Works on Any Phone</p>
                 </div>
               </div>
             </div>
 
-            {/* Right: Physical Standee Specimen */}
+            {/* Right: Authentic Product Photo Showcase (Replacing 3D customizer) */}
             <div className="lg:col-span-5 flex flex-col justify-center">
-              <Standee3DPreview onTapSuccess={onTriggerTapReviewModal} />
+              <div className="relative rounded-3xl overflow-hidden border border-[#2d3345] bg-[#141720] shadow-2xl p-4 sm:p-6 group">
+                <div className="relative aspect-4/3 w-full rounded-2xl overflow-hidden border border-[#232734]">
+                  <Image
+                    src="/standees/Gold.webp"
+                    alt="ZenTap Google Review Stand on Counter"
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 100vw, 500px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-white text-base">Champagne Gold Standee</h3>
+                    <p className="text-xs text-slate-300 mt-0.5">Placed directly on your billing counter</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-400">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400" />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
+
           </div>
         </section>
       </AuroraBackground>
 
       {/* ========================================================================= */}
-      {/* 2. STITCH RAPID GROWTH & 5-STAR VELOCITY ENGINE                           */}
+      {/* 2. HOW IT WORKS (3 SIMPLE STEPS)                                          */}
       {/* ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 bg-[#0a0c10] border-y border-[#232734] w-full">
+      <section id="how-it-works" className="px-4 sm:px-6 lg:px-8 py-16 bg-[#0a0c10] border-y border-[#232734] w-full">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-            <div>
-              <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
-                Zero Friction. Pure 5-Star Velocity.
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed max-w-2xl text-pretty">
-                Designed for zero friction. Guests tap with their smartphone and connect with your business in under 1 second.
-              </p>
-            </div>
-            <button
-              onClick={() => onNavigate("how-it-works")}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#ff7a00] hover:underline cursor-pointer self-start md:self-auto"
-            >
-              <span>Explore full mechanism</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+          <div className="mb-12 text-center max-w-2xl mx-auto">
+            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
+              How It Works
+            </h2>
+            <p className="text-sm text-slate-200 mt-2 leading-relaxed text-pretty">
+              Three simple steps. No customer app, no login, and zero typing friction.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 steps-grid-trigger">
             
-            {/* Stitch Card 1: Instant Tap-to-Review */}
+            {/* Step 1 */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
                 <div className="flex items-center gap-3.5 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#ff7a00]/15 border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] flex-shrink-0">
-                    <Smartphone className="w-5 h-5 text-[#ff7a00]" />
+                  <div className="w-10 h-10 rounded-xl bg-[#ff7a00]/15 border border-[#ff7a00]/30 flex items-center justify-center text-[#ff7a00] flex-shrink-0 font-bold">
+                    1
                   </div>
                   <h3 className="font-headline font-bold text-lg text-white">
-                    Instant Tap-to-Review
+                    Customer finishes and pays
                   </h3>
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
-                  Works seamlessly with modern iOS and Android devices without installing apps, entering passwords, or pairing Bluetooth.
+                <p className="text-sm text-slate-200 leading-relaxed font-normal text-pretty">
+                  After a great meal, haircut, treatment, or shopping visit, your customer completes payment at your counter.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-[#ff7a00] font-semibold">
-                <Radio className="w-3.5 h-3.5 text-[#ff7a00]" />
-                <span>Instant 0.6s NFC detection</span>
+                <Check className="w-3.5 h-3.5 text-[#ff7a00]" />
+                <span>Right at the billing counter</span>
               </div>
             </OpenDesignCard>
 
-            {/* Stitch Card 2: Smart AI Review Assistant */}
+            {/* Step 2 */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
                 <div className="flex items-center gap-3.5 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0">
-                    <Sparkles className="w-5 h-5 text-amber-400" />
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 flex-shrink-0 font-bold">
+                    2
                   </div>
                   <h3 className="font-headline font-bold text-lg text-white">
-                    Smart AI Review Assistant
+                    They tap or scan the stand
                   </h3>
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
-                  Suggests personalized, keyword-rich drafts based on customer highlights in 1 tap, removing typing fatigue so real reviews get posted faster.
+                <p className="text-sm text-slate-200 leading-relaxed font-normal text-pretty">
+                  They simply tap their smartphone on the standee, or scan the clear QR code with their phone camera.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-amber-400 font-semibold">
-                <Check className="w-3.5 h-3.5 text-amber-400" />
-                <span>Zero Typing Friction</span>
+                <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                <span>Works on any iPhone &amp; Android</span>
               </div>
             </OpenDesignCard>
 
-            {/* Stitch Card 3: Dynamic Link Updates */}
+            {/* Step 3 */}
             <OpenDesignCard variant="paper" className="flex flex-col justify-between step-card-stagger">
               <div>
                 <div className="flex items-center gap-3.5 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
-                    <RefreshCw className="w-5 h-5 text-emerald-400" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0 font-bold">
+                    3
                   </div>
                   <h3 className="font-headline font-bold text-lg text-white">
-                    Dynamic Link Updates
+                    Google review page opens
                   </h3>
                 </div>
-                <p className="text-xs text-slate-200 leading-relaxed font-normal text-pretty">
-                  Repoint your standee destination instantly to Google Maps, WhatsApp, Instagram, or Guest WiFi without ever replacing hardware.
+                <p className="text-sm text-slate-200 leading-relaxed font-normal text-pretty">
+                  Your official Google review screen opens directly on their phone. They tap 5 stars and post their review in seconds.
                 </p>
               </div>
               <div className="mt-6 pt-4 border-t border-[#232734] flex items-center gap-2 text-xs text-emerald-400 font-semibold">
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span>1-Click Cloud Re-Routing</span>
+                <span>Direct Google Maps review</span>
               </div>
             </OpenDesignCard>
 
@@ -292,42 +280,16 @@ export default function HomeView({
       </section>
 
       {/* ========================================================================= */}
-      {/* 2.5 HYPERFRAMES INTERACTIVE MOTION TIMELINE (POWERED BY HEYGEN ENGINE)    */}
+      {/* 3. CORE 4 PRODUCTS LINEUP (NO PRICES - CONTACT US ON WHATSAPP)            */}
       {/* ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-2xl mx-auto mb-10">
+      <section id="products" className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
+        <div className="mb-12 text-center max-w-2xl mx-auto">
           <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
-            The ZenTap Experience in Motion
+            Our Products
           </h2>
-          <p className="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed text-pretty">
-            Continuous kinetic timeline powered by HyperFrames. Discover how 1 tap turns physical customer footfall into 5-star Google Maps authority.
+          <p className="text-sm text-slate-200 mt-2 text-pretty">
+            High-quality counter review stands and smart business cards for local stores.
           </p>
-        </div>
-
-        <HyperFramesPlayer onOrderClick={() => onNavigate("pricing")} />
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 3. CORE 4 PRODUCTS LINEUP                                                 */}
-      {/* ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-          <div>
-            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl lg:text-4xl text-white tracking-tight text-balance">
-              Four Core QR &amp; NFC Solutions
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-200 mt-1.5 max-w-xl text-pretty">
-              From direct Google review standees to AI review assistants, dynamic smart business cards, and bespoke enterprise solutions.
-            </p>
-          </div>
-
-          <button
-            onClick={() => onNavigate("pricing")}
-            className="tactile-btn self-start md:self-auto py-2.5 px-5 rounded-xl bg-[#1e2230] text-white hover:bg-[#252b3d] border border-[#2d3345] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-          >
-            <span>Compare All Details</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 products-grid-trigger">
@@ -339,26 +301,29 @@ export default function HomeView({
           >
             <div>
               <span className="px-2.5 py-0.5 rounded-full bg-[#1e2230] text-[#ff7a00] text-[11px] font-bold uppercase tracking-wider">
-                Direct Review Mode
+                Direct Review
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-[#ff7a00] transition-colors">
-                Business Review Standee
+                Review Stand
               </h3>
               <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
-                Direct Google Review redirection. Tap or scan immediately opens your Google review write page with zero intermediate steps.
+                Tap or scan and your Google review page opens directly. One-time payment with zero monthly fees.
               </p>
+              
+              {/* No price displayed - replaced with Contact Us on WhatsApp */}
               <div className="mt-4 pt-3 border-t border-[#232734]">
-                <span className="font-headline font-extrabold text-2xl text-white">₹999</span>
-                <span className="text-xs text-slate-300 block font-semibold">Standee • ₹499 Card</span>
+                <span className="font-headline font-bold text-lg text-emerald-400 block">Contact us on WhatsApp</span>
+                <span className="text-xs text-slate-300 block font-medium">For details &amp; pricing</span>
               </div>
+
               <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#ff7a00] flex-shrink-0" />
-                  <span>Opens Google Review page directly to post reviews</span>
+                  <span>Opens your Google review page in 1 tap</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#ff7a00] flex-shrink-0" />
-                  <span>High-speed NTAG216 chip + Level-Q QR code</span>
+                  <span>Contactless tap chip + high-clarity QR code</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#ff7a00] flex-shrink-0" />
@@ -368,84 +333,92 @@ export default function HomeView({
             </div>
 
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20am%20interested%20in%20your%20QR%2FNFC%20Business%20Review%20Standee%20with%20direct%20Google%20Review%20integration.%20Please%20share%20the%20details."
+              href={getWaLink("Hello ZenTap, I want to know more about the Review Stand.")}
               target="_blank"
               rel="noreferrer"
+              onClick={() => trackWhatsAppClick("product_review_stand")}
               className="tactile-btn mt-6 w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </SpotlightCard>
 
-          {/* Product 2: ZenTap Smart Review Standee */}
+          {/* Product 2: Smart Review Stand */}
           <SpotlightCard 
             spotlightColor="rgba(212, 175, 55, 0.28)"
             className="p-6 rounded-3xl bg-[#161a26] text-white border-2 border-[#D4AF37] shadow-xl hover:scale-[1.015] transition-transform duration-200 ease-out flex flex-col justify-between relative overflow-hidden product-card-stagger"
           >
             <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-[#D4AF37] text-black text-[11px] font-black uppercase tracking-wider">
-              Popular • AI Flow
+              Smart Ideas
             </div>
             <div>
               <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-[#F7E7A9] text-[11px] font-bold uppercase tracking-wider">
                 Review Assistant
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3">
-                ZenTap Smart Review Standee
+                Smart Review Stand
               </h3>
               <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
-                Advanced review standee with customized Review Assistant page, 1-tap AI drafts, and direct customer feedback inbox.
+                Opens your own simple review page with ideas customers can pick from, like &quot;friendly staff&quot; or &quot;clean place&quot;.
               </p>
+
+              {/* No price displayed - replaced with Contact Us on WhatsApp */}
               <div className="mt-4 pt-3 border-t border-white/20">
-                <span className="font-headline font-extrabold text-2xl text-white">₹1,499</span>
-                <span className="text-xs text-slate-300 block font-semibold">Standee + Smart Assistant</span>
+                <span className="font-headline font-bold text-lg text-emerald-400 block">Contact us on WhatsApp</span>
+                <span className="text-xs text-slate-300 block font-medium">Customized for your business</span>
               </div>
+
               <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-                  <span>Customized Review Assistant page (/r/[slug])</span>
+                  <span>Custom review page with your business name</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-                  <span>AI review drafts &amp; preset aspect tags</span>
+                  <span>Compliment ideas so customers post easily</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-                  <span>Direct Google Maps review access + private feedback desk</span>
+                  <span>Customers post their final words directly on Google</span>
                 </li>
               </ul>
             </div>
 
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20am%20interested%20in%20the%20ZenTap%20Smart%20Review%20Standee%20with%20the%20ZenTap%20Review%20Assistant.%20Please%20share%20the%20details."
+              href={getWaLink("Hello ZenTap, I want to know more about the Smart Review Stand.")}
               target="_blank"
               rel="noreferrer"
+              onClick={() => trackWhatsAppClick("product_smart_stand")}
               className="tactile-btn mt-6 w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </SpotlightCard>
 
-          {/* Product 3: ZenTap Smart Business Card */}
+          {/* Product 3: Digital Visiting Card */}
           <SpotlightCard 
             spotlightColor="rgba(14, 165, 233, 0.2)"
             className="p-6 rounded-3xl bg-[#161a26] border border-[#2d3345] hover:border-sky-500/60 shadow-sm transition-all hover:shadow-md flex flex-col justify-between product-card-stagger"
           >
             <div>
               <span className="px-2.5 py-0.5 rounded-full bg-sky-950/60 text-sky-400 border border-sky-800/50 text-[11px] font-bold uppercase tracking-wider">
-                Digital Profile Hub
+                Digital Profile
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-sky-400 transition-colors">
-                ZenTap Smart Business Card
+                Digital Visiting Card
               </h3>
               <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
-                NFC &amp; QR digital business card. Tap or scan to instantly share contact vCard, Instagram, Facebook, website, and WhatsApp.
+                Tap to save your phone number instantly and share your WhatsApp, Instagram, and website. Available in PVC and metal.
               </p>
+
+              {/* No price displayed - replaced with Contact Us on WhatsApp */}
               <div className="mt-4 pt-3 border-t border-[#232734]">
-                <span className="font-headline font-extrabold text-2xl text-white">₹699</span>
-                <span className="text-xs text-slate-300 block font-semibold">PVC • ₹1,499 Metal</span>
+                <span className="font-headline font-bold text-lg text-emerald-400 block">Contact us on WhatsApp</span>
+                <span className="text-xs text-slate-300 block font-medium">PVC &amp; Metal Finishes</span>
               </div>
+
               <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
@@ -453,69 +426,74 @@ export default function HomeView({
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                  <span>Socials hub: Instagram, Facebook, LinkedIn, YouTube</span>
+                  <span>Share Instagram, WhatsApp, website, and address</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                  <span>Dynamic link updating with zero reprinting costs</span>
+                  <span>Never run out of paper business cards again</span>
                 </li>
               </ul>
             </div>
 
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20am%20interested%20in%20the%20ZenTap%20Smart%20Business%20Card%20with%20QR%2FNFC%20functionality.%20Please%20share%20the%20details."
+              href={getWaLink("Hello ZenTap, I want to know more about the Digital Visiting Card.")}
               target="_blank"
               rel="noreferrer"
+              onClick={() => trackWhatsAppClick("product_visiting_card")}
               className="tactile-btn mt-6 w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </SpotlightCard>
 
-          {/* Product 4: ZenTap Custom Solutions */}
+          {/* Product 4: Custom Orders */}
           <SpotlightCard 
             spotlightColor="rgba(245, 158, 11, 0.2)"
             className="p-6 rounded-3xl bg-[#161a26] border border-[#2d3345] hover:border-amber-500/60 shadow-sm transition-all hover:shadow-md flex flex-col justify-between product-card-stagger"
           >
             <div>
               <span className="px-2.5 py-0.5 rounded-full bg-amber-950/60 text-amber-400 border border-amber-800/50 text-[11px] font-bold uppercase tracking-wider">
-                Custom Solutions
+                Multiple Branches
               </span>
               <h3 className="font-headline font-bold text-lg text-white mt-3 group-hover:text-amber-400 transition-colors">
-                ZenTap Custom Solutions
+                Custom Orders
               </h3>
               <p className="text-xs text-slate-200 mt-1 leading-relaxed text-pretty">
-                Tailored QR &amp; NFC solutions for multi-location businesses, custom branded acrylics, menu cards, event displays, and loyalty cards.
+                Many branches, multiple checkout counters, or want your custom brand logo on it? Message us for pricing.
               </p>
+
+              {/* No price displayed - replaced with Contact Us on WhatsApp */}
               <div className="mt-4 pt-3 border-t border-[#232734]">
-                <span className="font-headline font-extrabold text-2xl text-amber-400">Custom Quote</span>
-                <span className="text-xs text-slate-300 block font-semibold">Bulk Volume Pricing</span>
+                <span className="font-headline font-bold text-lg text-emerald-400 block">Contact us on WhatsApp</span>
+                <span className="text-xs text-slate-300 block font-medium">Bulk orders &amp; custom designs</span>
               </div>
+
               <ul className="mt-4 space-y-2 text-xs text-slate-100 font-medium">
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                  <span>Custom branded acrylic &amp; metal standees with your logo</span>
+                  <span>Custom branded stands with your shop logo</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                  <span>Multi-branch management &amp; central analytics</span>
+                  <span>Support for multiple branches and counters</span>
                 </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                  <span>Pan-India express logistics &amp; founder onboarding</span>
+                  <span>Direct delivery across Ahmedabad &amp; India</span>
                 </li>
               </ul>
             </div>
 
             <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20discuss%20a%20customized%20QR%2FNFC%20solution%20for%20my%20business."
+              href={getWaLink("Hello ZenTap, I want to discuss a Custom Bulk Order for my business.")}
               target="_blank"
               rel="noreferrer"
+              onClick={() => trackWhatsAppClick("product_custom_bulk")}
               className="tactile-btn mt-6 w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Discuss on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </SpotlightCard>
 
@@ -523,140 +501,160 @@ export default function HomeView({
       </section>
 
       {/* ========================================================================= */}
-      {/* 3.5 REAL PHYSICAL COUNTER STANDEE GALLERY (AUTHENTIC HARDWARE SHOWCASE)   */}
+      {/* 3.5 REAL PHYSICAL COUNTER STANDEE GALLERY (NO TECHNICAL JARGON)           */}
       {/* ========================================================================= */}
-      <PhysicalStandeeGallery
-        onOrderClick={() => onNavigate("pricing")}
-        onCustomizeClick={() => setIsCustomizerOpen(true)}
-      />
+      <PhysicalStandeeGallery />
 
       {/* ========================================================================= */}
-      {/* 4. DYNAMIC PROFILE & LEAD CAPTURE HIGHLIGHT                               */}
+      {/* 4. WHO IT'S FOR                                                           */}
       {/* ========================================================================= */}
       <section className="px-4 sm:px-6 lg:px-8 py-14 bg-[#0a0c10] border-y border-[#232734] w-full">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-white tracking-tight text-balance">
+              Who It&apos;s For
+            </h2>
+            <p className="text-sm text-slate-200 mt-2 leading-relaxed">
+              Designed for local businesses in Ahmedabad with a billing desk or customer counter.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center mb-2">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Salons &amp; Spas</h3>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-2">
+                <Utensils className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Restaurants &amp; Cafes</h3>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-2">
+                <Stethoscope className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Clinics &amp; Doctors</h3>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2">
+                <Dumbbell className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Gyms &amp; Fitness</h3>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center mb-2">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Hotels &amp; Stays</h3>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col items-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center mb-2">
+                <Store className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-white text-xs">Retail &amp; Jewellery</h3>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 5. MORE THAN REVIEWS (SIMPLE 4 POINTS)                                    */}
+      {/* ========================================================================= */}
+      <section className="px-4 sm:px-6 lg:px-8 py-14 max-w-7xl mx-auto w-full">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
-          <div className="lg:col-span-6 space-y-4">
-            <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-white tracking-tight text-balance">
-              More than reviews: Your Complete Digital Customer Front Desk
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal text-pretty">
-              When guests tap your standee or card, they write 5-star Google reviews and connect directly with your business through an app-free digital hub:
-            </p>
+          <div className="lg:col-span-12 space-y-4">
+            <div className="text-center max-w-2xl mx-auto mb-8">
+              <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-white tracking-tight text-balance">
+                One Tap Can Also Do More
+              </h2>
+              <p className="text-sm text-slate-200 mt-2 leading-relaxed font-normal text-pretty">
+                Beyond Google reviews, the same tap can connect customers directly with your business:
+              </p>
+            </div>
 
-            <div className="space-y-3 pt-2">
-              <div className="p-3.5 rounded-2xl bg-[#141720] border border-[#232734] flex items-center gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center flex-shrink-0">
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white">1-Tap WhatsApp Direct Chat</h3>
-                  <p className="text-xs text-slate-200">Connects guests with your staff or owner directly with a prefilled message.</p>
+                  <h3 className="text-sm font-bold text-white">WhatsApp chat with you</h3>
+                  <p className="text-xs text-slate-200 mt-1 leading-relaxed">Customers tap to start a direct WhatsApp chat with your staff or manager.</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#141720] border border-[#232734] flex items-center gap-3">
+              <div className="p-5 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white">Table &amp; Appointment Booking</h3>
-                  <p className="text-xs text-slate-200">Direct link to your Calendly, table reservation system, or clinic booking.</p>
+                  <h3 className="text-sm font-bold text-white">Booking link</h3>
+                  <p className="text-xs text-slate-200 mt-1 leading-relaxed">Direct link for appointment booking, table reservation, or consultation.</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#141720] border border-[#232734] flex items-center gap-3">
+              <div className="p-5 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/20 text-[#F7E7A9] flex items-center justify-center flex-shrink-0">
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white">Digital Menu &amp; Portfolio Showcase</h3>
-                  <p className="text-xs text-slate-200">Allows diners and clients to view your services, photo galleries &amp; PDF menus.</p>
+                  <h3 className="text-sm font-bold text-white">Digital menu &amp; photos</h3>
+                  <p className="text-xs text-slate-200 mt-1 leading-relaxed">Allows diners and clients to view your digital menu and service photos.</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#141720] border border-[#232734] flex items-center gap-3">
+              <div className="p-5 rounded-2xl bg-[#141720] border border-[#232734] flex flex-col gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0">
                   <Send className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-white">Built-in Lead Capture Form</h3>
-                  <p className="text-xs text-slate-200">Inquiries route straight to your email &amp; WhatsApp with instant alerts.</p>
+                  <h3 className="text-sm font-bold text-white">Customer enquiry form</h3>
+                  <p className="text-xs text-slate-200 mt-1 leading-relaxed">A quick form for customer feedback and contact details.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right: Live Interactive Card Preview Teaser */}
-          <div className="lg:col-span-6 flex flex-col items-center justify-center p-8 rounded-3xl bg-[#141720] border border-[#232734] shadow-sm">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-1.5">
-              <Palette className="w-4 h-4 text-[#ff7a00]" />
-              <span>Interactive Hardware Design Studio</span>
-            </span>
-
-            <p className="text-xs text-slate-200 text-center max-w-sm mb-6 leading-relaxed">
-              Preview your logo engraved on Matte Obsidian Black, Brushed Silver Metal, Champagne Gold, or Emerald finish.
-            </p>
-
-            <button
-              onClick={() => setIsCustomizerOpen(true)}
-              className="tactile-btn py-3 px-6 rounded-2xl bg-[#ff7a00] text-black hover:bg-[#e56d00] font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md transition-colors"
-            >
-              <Sliders className="w-4 h-4" />
-              <span>Launch 3D Card &amp; Standee Customizer</span>
-            </button>
-          </div>
-
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. INTERACTIVE SENTIMENT SIMULATOR (GOOGLE COMPLIANCE BENCHMARK)          */}
-      {/* ========================================================================= */}
-      <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <SentimentSimulator />
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 6. CALL TO ACTION BANNER                                                  */}
+      {/* 6. CALL TO ACTION BANNER (NO EXTRA "ORDER ON WHATSAPP" BUTTON)            */}
       {/* ========================================================================= */}
       <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full">
         <div className="rounded-3xl bg-gradient-to-br from-[#141720] via-[#1a1f2c] to-[#141720] text-white p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 border border-[#232734] shadow-xl">
           <div className="max-w-xl">
             <h2 className="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight text-balance">
-              Equip your front desk with smart review standees today.
+              Equip your billing desk with a smart review stand today.
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed text-pretty">
-              Custom laser-engraved with your business name and logo, pre-configured with your Google Maps link.
+            <p className="text-sm text-zinc-300 mt-2 leading-relaxed text-pretty">
+              Printed with your business name and pre-configured with your Google Maps link.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-shrink-0">
             <a
-              href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
+              href={getWaLink("Hello ZenTap, I would like to get more information about your review stands.")}
               target="_blank"
               rel="noreferrer"
-              className="tactile-btn inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-xs shadow-md transition-transform active:scale-[0.978] cursor-pointer"
+              onClick={() => trackWhatsAppClick("bottom_cta_contact")}
+              className="tactile-btn inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-sm shadow-md transition-transform active:scale-[0.978] cursor-pointer"
             >
               <MessageCircle className="w-4 h-4 fill-black text-black" />
-              <span>Order on WhatsApp</span>
+              <span>Contact us on WhatsApp</span>
             </a>
           </div>
         </div>
       </section>
-
-      {/* Hardware Design Studio Customizer Modal */}
-      <CardCustomizerModal
-        isOpen={isCustomizerOpen}
-        onClose={() => setIsCustomizerOpen(false)}
-        initialDesign={customDesign || undefined}
-        businessName="YOUR BUSINESS"
-        onSaveDesign={(d) => setCustomDesign(d)}
-        onProceedOrder={(d) => {
-          setCustomDesign(d);
-          onNavigate("pricing");
-        }}
-      />
 
     </div>
   );

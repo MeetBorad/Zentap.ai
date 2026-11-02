@@ -3,17 +3,12 @@
 import React, { useState } from "react";
 import { 
   Radio, 
-  Sparkles, 
-  ShieldCheck, 
-  Layers, 
-  QrCode, 
   Check, 
   Maximize2, 
-  ArrowRight,
-  Eye,
-  Sliders
+  MessageCircle,
+  Eye
 } from "lucide-react";
-import { OpenDesignButton } from "./open-design";
+import { trackWhatsAppClick } from "@/lib/analytics";
 
 export interface StandeePhotoItem {
   id: string;
@@ -32,8 +27,8 @@ export const STANDEE_PHOTOS: StandeePhotoItem[] = [
     category: "finish",
     tag: "Luxury Finish",
     src: "/standees/Gold.webp",
-    description: "Brushed champagne gold faceplate with high-reflectivity mirror accents. Popular for premium restaurants, luxury salons, and boutique hotels.",
-    spec: "Brushed Gold Acrylic · NTAG216 · Level Q QR",
+    description: "Brushed champagne gold faceplate with reflective mirror accents. Popular for premium restaurants, luxury salons, and boutique hotels.",
+    spec: "Brushed Gold Acrylic · High-Clarity QR Code",
   },
   {
     id: "finish-steel",
@@ -41,8 +36,8 @@ export const STANDEE_PHOTOS: StandeePhotoItem[] = [
     category: "finish",
     tag: "Modern Metallic",
     src: "/standees/Steel.webp",
-    description: "Industrial satin brushed steel finish with anti-fingerprint coating. Engineered for high-traffic billing counters, clinics, and modern cafes.",
-    spec: "Brushed Steel Plate · ISO 14443A · 888 Bytes",
+    description: "Industrial satin brushed steel finish with anti-fingerprint coating. Designed for high-traffic billing counters, clinics, and cafes.",
+    spec: "Brushed Steel Plate · Scratch-Resistant Finish",
   },
   {
     id: "finish-wood",
@@ -50,8 +45,8 @@ export const STANDEE_PHOTOS: StandeePhotoItem[] = [
     category: "finish",
     tag: "Minimal & Organic",
     src: "/standees/Wood Trans.webp",
-    description: "Laser-cut crystal-clear 5mm acrylic plate slotted into a hand-finished solid beechwood base. Blends seamlessly with warm, artisanal interiors.",
-    spec: "Natural Wood Base · 5mm Pure Acrylic · 13.56 MHz",
+    description: "Crystal-clear acrylic plate slotted into a solid beechwood base. Blends seamlessly with warm, artisanal interiors.",
+    spec: "Natural Wood Base · 5mm Pure Acrylic",
   },
   {
     id: "finish-pink",
@@ -59,74 +54,66 @@ export const STANDEE_PHOTOS: StandeePhotoItem[] = [
     category: "finish",
     tag: "Designer Series",
     src: "/standees/Pink.webp",
-    description: "Soft rose gold sheen with radiant edge glow. Highly favored by aesthetics clinics, spas, beauty bars, and designer studios.",
-    spec: "Rose Gold Metallic · NFC Handshake < 0.6s",
+    description: "Soft rose gold sheen with radiant edge finish. Favored by aesthetics clinics, spas, beauty bars, and designer studios.",
+    spec: "Rose Gold Metallic · Smooth Acrylic Finish",
   },
   {
     id: "angle-1",
     name: "Perspective Counter Setup",
     category: "angle",
-    tag: "Studio Angle 01",
+    tag: "Studio View 01",
     src: "/standees/1.webp",
-    description: "Side-by-side showcase of the standee and companion smart review card positioned on a hospitality billing counter.",
-    spec: "Front Desk Staging · Zero Batteries Required",
+    description: "Showcase of the standee and companion smart review card positioned on a hospitality billing counter.",
+    spec: "Front Desk Setup · Zero Batteries Required",
   },
   {
     id: "angle-2",
-    name: "NFC Tap Target Close-Up",
+    name: "Tap & Scan Target Close-Up",
     category: "angle",
-    tag: "Studio Angle 02",
+    tag: "Studio View 02",
     src: "/standees/2.webp",
-    description: "Detailed view of the illuminated NFC radar wave icon, Google 5-star review styling, and business branding header.",
-    spec: "Dual-Frequency Sensing · Smartphone Tap Target",
+    description: "Detailed view of the smartphone tap zone, Google review styling, and business branding header.",
+    spec: "Instant Tap & QR Code Target",
   },
   {
     id: "angle-3",
     name: "Frontal Presentation",
     category: "angle",
-    tag: "Studio Angle 03",
+    tag: "Studio View 03",
     src: "/standees/3.webp",
-    description: "Full frontal portrait showing balanced visual hierarchy: business logo, clear call-to-action, NFC chip zone, and dynamic QR code.",
-    spec: "Level-Q Error Correction · Dynamic Cloud Routing",
+    description: "Full frontal view showing balanced layout: your business logo, clear call-to-action, and high-clarity QR code.",
+    spec: "High-Contrast QR Code · Direct Google Link",
   },
   {
     id: "angle-4",
     name: "Acrylic Depth & Bevels",
     category: "angle",
-    tag: "Studio Angle 04",
+    tag: "Studio View 04",
     src: "/standees/4.webp",
-    description: "Highlighting the polished diamond-beveled edges and optical clarity of the high-grade cast acrylic block.",
-    spec: "Diamond-Cut Edges · Scratch-Resistant Finish",
+    description: "Highlighting the polished beveled edges and optical clarity of the high-grade cast acrylic block.",
+    spec: "Smooth Cut Edges · Durable Acrylic",
   },
   {
     id: "angle-5",
     name: "Cafe & Dining Table Setting",
     category: "angle",
-    tag: "Studio Angle 05",
+    tag: "Studio View 05",
     src: "/standees/5.webp",
-    description: "Natural ambient placement on dining tables, showing the compact desk footprint that never obstructs table service.",
-    spec: "Compact Stance · Weighted Anti-Tip Architecture",
+    description: "Placement on dining tables, showing the compact desk footprint that never takes up too much table space.",
+    spec: "Compact Stance · Sturdy Weighted Base",
   },
   {
     id: "angle-6",
-    name: "Dynamic Laser QR Code Detail",
+    name: "High-Clarity QR Code Detail",
     category: "angle",
-    tag: "Studio Angle 06",
+    tag: "Studio View 06",
     src: "/standees/6.webp",
-    description: "Micro-detail of the high-contrast laser-etched QR code, engineered to scan instantly even in low-light ambient dining rooms.",
-    spec: "Instant Camera Handshake · Low-Light Scannable",
+    description: "Detail of the clean laser-etched QR code, engineered to scan easily even in soft ambient room lighting.",
+    spec: "Quick Camera Scan · Scannable in Low Light",
   },
 ];
 
-interface PhysicalStandeeGalleryProps {
-  onOrderClick: () => void;
-  onCustomizeClick: () => void;
-}
-
-export default function PhysicalStandeeGallery({
-  onOrderClick,
-  onCustomizeClick,
-}: PhysicalStandeeGalleryProps) {
+export default function PhysicalStandeeGallery() {
   const [selectedPhoto, setSelectedPhoto] = useState<StandeePhotoItem>(STANDEE_PHOTOS[0]);
   const [activeTab, setActiveTab] = useState<"all" | "finishes" | "angles">("all");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -138,19 +125,19 @@ export default function PhysicalStandeeGallery({
   });
 
   return (
-    <section className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
+    <section id="photos" className="px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
       {/* Section Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1e2230] border border-[#2d3345] text-[11px] font-mono text-[#ff7a00] font-semibold mb-3">
             <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
-            <span>AUTHENTIC PHYSICAL HARDWARE PHOTOGRAPHY</span>
+            <span>REAL HARDWARE PHOTOS</span>
           </div>
           <h2 className="font-headline font-extrabold text-2xl sm:text-4xl text-white tracking-tight text-balance">
-            How ZenTap Look on Your Counter
+            How It Looks on Your Counter
           </h2>
-          <p className="text-xs sm:text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
-            Real photos of our precision laser-crafted smart standees. Featuring embedded NTAG216 NFC chips, Level-Q dynamic QR codes, and 4 premium material finishes.
+          <p className="text-sm text-slate-200 mt-2 max-w-2xl leading-relaxed">
+            Real photos of our counter review stands. Premium acrylic and natural wood finishes designed to fit beautifully on any counter.
           </p>
         </div>
 
@@ -174,7 +161,7 @@ export default function PhysicalStandeeGallery({
                 : "text-slate-300 hover:text-white"
             }`}
           >
-            4 Material Finishes
+            Finishes
           </button>
           <button
             onClick={() => setActiveTab("angles")}
@@ -184,7 +171,7 @@ export default function PhysicalStandeeGallery({
                 : "text-slate-300 hover:text-white"
             }`}
           >
-            Counter Angles
+            Counter Views
           </button>
         </div>
       </div>
@@ -195,52 +182,36 @@ export default function PhysicalStandeeGallery({
         {/* Left: Big Hero Photography Viewer */}
         <div className="lg:col-span-7 flex flex-col items-center">
           <div className="relative w-full max-w-lg aspect-[3/4] rounded-2xl overflow-hidden bg-gradient-to-b from-[#1a1e2b] to-[#0e1015] border border-[#2d3345] shadow-2xl group flex items-center justify-center p-3 sm:p-5">
-            
-            {/* Ambient Backlight Glow */}
             <div className="absolute inset-0 bg-radial from-[#ff7a00]/10 via-transparent to-transparent pointer-events-none" />
 
-            {/* Main High-Res Image */}
             <img
               src={selectedPhoto.src}
               alt={selectedPhoto.name}
-              className="w-full h-full object-contain rounded-xl transition-transform duration-500 group-hover:scale-[1.03]"
+              className="w-full h-full object-contain rounded-xl drop-shadow-2xl transition-transform duration-300 group-hover:scale-[1.02]"
             />
-
-            {/* Badges Over Image */}
-            <div className="absolute top-4 left-4 flex flex-col gap-1.5">
-              <span className="px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-[11px] font-mono text-[#ff7a00] font-bold uppercase tracking-wider">
-                {selectedPhoto.tag}
-              </span>
-            </div>
 
             <button
               onClick={() => setIsFullscreen(true)}
-              className="absolute bottom-4 right-4 p-2.5 rounded-full bg-black/70 hover:bg-[#ff7a00] hover:text-black text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg"
-              title="Click to expand high-resolution photo"
+              className="absolute top-4 right-4 p-2.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-black/90 transition-colors border border-white/20 shadow-lg cursor-pointer"
+              title="View full resolution"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
           </div>
-
-          <span className="text-xs font-mono text-slate-300 mt-3 flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-[#ff7a00]" />
-            <span>Authentic unedited studio specimen · Click thumbnails below to inspect</span>
-          </span>
         </div>
 
-        {/* Right: Technical Spec & Material Details */}
+        {/* Right: Hardware Details */}
         <div className="lg:col-span-5 flex flex-col justify-between h-full space-y-6">
-          
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-[#1e2230] border border-[#2d3345] text-[11px] font-mono text-[#ff7a00] font-semibold mb-2">
-              <span>{selectedPhoto.category === "finish" ? "PREMIUM FINISH" : "STUDIO PERSPECTIVE"}</span>
-            </div>
+            <span className="px-3 py-1 rounded-full bg-[#1e2230] text-[#ff7a00] text-xs font-bold border border-[#2d3345]">
+              {selectedPhoto.tag}
+            </span>
 
-            <h3 className="font-headline font-extrabold text-2xl sm:text-3xl text-white text-balance">
+            <h3 className="font-headline font-bold text-2xl text-white mt-3">
               {selectedPhoto.name}
             </h3>
 
-            <p className="text-xs sm:text-sm text-slate-200 mt-3 leading-relaxed">
+            <p className="text-sm text-slate-200 mt-3 leading-relaxed">
               {selectedPhoto.description}
             </p>
 
@@ -248,7 +219,7 @@ export default function PhysicalStandeeGallery({
               <Radio className="w-5 h-5 text-[#ff7a00] flex-shrink-0" />
               <div>
                 <span className="text-xs font-mono uppercase tracking-wider text-slate-400 block">
-                  Hardware Specification
+                  Material Details
                 </span>
                 <span className="text-xs font-semibold text-white font-mono">
                   {selectedPhoto.spec}
@@ -264,40 +235,31 @@ export default function PhysicalStandeeGallery({
               </div>
               <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-xs font-medium">Instant 0.6s smartphone handshake</span>
+                <span className="text-slate-100 text-xs font-medium">Works on any smartphone (tap or scan)</span>
               </div>
               <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-xs font-medium">Custom laser-engraved with your logo</span>
+                <span className="text-slate-100 text-xs font-medium">Custom printed with your business name</span>
               </div>
               <div className="flex items-start gap-2 py-1">
                 <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span className="text-slate-100 text-xs font-medium">Dynamic cloud-editable Google link</span>
+                <span className="text-slate-100 text-xs font-medium">Change your Google link anytime</span>
               </div>
             </div>
           </div>
 
-          {/* Action CTAs */}
+          {/* Action CTA */}
           <div className="pt-4 border-t border-[#232734] flex flex-wrap items-center gap-3">
-            <OpenDesignButton
-              variant="primary"
-              size="md"
-              icon={<ArrowRight className="w-4 h-4" />}
-              iconPosition="right"
-              onClick={onOrderClick}
+            <a
+              href={`https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20am%20interested%20in%20the%20${encodeURIComponent(selectedPhoto.name)}%20standee.`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => trackWhatsAppClick("gallery_contact_whatsapp")}
+              className="tactile-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-xs shadow-md transition-transform active:scale-[0.978] cursor-pointer"
             >
-              Order Standee (From ₹999)
-            </OpenDesignButton>
-
-            <OpenDesignButton
-              variant="secondary"
-              size="md"
-              icon={<Sliders className="w-4 h-4 text-[#ff7a00]" />}
-              iconPosition="left"
-              onClick={onCustomizeClick}
-            >
-              Customize with Your Logo
-            </OpenDesignButton>
+              <MessageCircle className="w-4 h-4 fill-black text-black" />
+              <span>Contact us on WhatsApp</span>
+            </a>
           </div>
 
         </div>
@@ -328,45 +290,36 @@ export default function PhysicalStandeeGallery({
               <p className={`text-[11px] font-bold truncate leading-tight ${isSelected ? "text-black" : "text-white"}`}>
                 {photo.name}
               </p>
-              <span className={`text-[11px] font-mono block truncate ${isSelected ? "text-black/80" : "text-slate-300"}`}>
-                {photo.tag}
-              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Fullscreen Photo Modal */}
+      {/* Fullscreen Lightbox Modal */}
       {isFullscreen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-200"
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setIsFullscreen(false)}
         >
-          <div
-            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
             <img
               src={selectedPhoto.src}
               alt={selectedPhoto.name}
-              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/20"
+              className="max-h-[80vh] w-auto object-contain rounded-2xl shadow-2xl"
             />
-            <div className="mt-4 flex items-center justify-between w-full text-white text-xs px-2">
-              <div>
-                <p className="font-bold text-sm">{selectedPhoto.name}</p>
-                <p className="text-zinc-400 font-mono text-[11px]">{selectedPhoto.spec}</p>
-              </div>
-              <button
-                onClick={() => setIsFullscreen(false)}
-                className="px-4 py-2 rounded-xl bg-[#ff7a00] text-black font-bold text-xs cursor-pointer hover:bg-[#e56d00] transition-colors"
-              >
-                Close Preview
-              </button>
+            <div className="mt-4 text-center">
+              <p className="text-white font-bold text-lg">{selectedPhoto.name}</p>
+              <p className="text-slate-400 text-xs mt-1">{selectedPhoto.description}</p>
             </div>
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="mt-4 px-4 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
-
     </section>
   );
 }

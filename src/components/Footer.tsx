@@ -66,7 +66,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
             </p>
             <div className="flex items-center gap-2 text-[11px] font-mono text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>NTAG216 · 13.56 MHz · ISO 14443A</span>
+              <span>Smart Standee · Instant Tap &amp; Scan</span>
             </div>
 
             {/* Direct Contact Touchpoints */}
@@ -154,20 +154,13 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
               Solutions &amp; Pricing
             </h4>
             <ul className="space-y-2 text-xs">
-              <li>
-                <button
-                  onClick={() => onNavigate("client-proofs")}
-                  className="hover:text-white transition-colors cursor-pointer"
-                >
-                  Client Proofs &amp; Testimonials
-                </button>
-              </li>
+              
               <li>
                 <button
                   onClick={() => onNavigate("pricing")}
                   className="hover:text-white transition-colors cursor-pointer"
                 >
-                  Pricing &amp; Franchise Plans (From ₹500)
+                  Products &amp; Models
                 </button>
               </li>
               <li>
@@ -218,7 +211,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
                     className="text-[#25D366] hover:underline font-semibold flex items-center gap-1.5"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Order on WhatsApp</span>
+                    <span>Contact us on WhatsApp</span>
                   </a>
                 </li>
               )}
@@ -228,7 +221,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
 
         {/* Colophon Base */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono">
-          <p>© 2026 ZenTap Digital Solutions · Precision Crafted NFC Hardware</p>
+          <p>© 2026 ZenTap Digital Solutions · Smart Review Standees</p>
           <button
             onClick={scrollToTop}
             className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer"

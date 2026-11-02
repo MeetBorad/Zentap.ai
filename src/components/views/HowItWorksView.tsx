@@ -33,7 +33,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
       description:
         "Place your custom laser-engraved NFC & dynamic QR standee at your front billing desk, cafe counter, or dining table. Built with durable acrylic or heavy brushed brass, matched to your brand identity.",
       points: [
-        "High-permeability NTAG216 NFC chip (zero batteries or charging)",
+        "Smart NFC tap chip (zero batteries, works forever)",
         "Precision laser-etched dynamic QR for camera scanning",
         "Encodes unique secure URL: https://www.zentapdigitalsolutions.com/r/{slug}",
       ],
@@ -46,8 +46,8 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
       description:
         "Customers simply tap their phone within 4cm of the standee or scan the QR with their camera. Compatible with 100% of modern iPhones and Android smartphones without any app install.",
       points: [
-        "Native NFC hardware handshake on iOS (iPhone XS+) & Android",
-        "Instant browser prompt opens in under 400 milliseconds",
+        "Works with all modern iPhone and Android phones",
+        "Instant browser prompt opens in under 1 second",
         "Zero Bluetooth pairing, zero typing, zero searching on Google",
       ],
       icon: <Smartphone className="w-6 h-6 text-sky-500" />,
@@ -92,7 +92,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
           Advanced Hardware &amp; AI Routing Capabilities
         </h1>
         <p className="text-xs sm:text-sm text-on-surface-variant mt-3 leading-relaxed">
-          Every standee is packed with enterprise-grade NTAG216 NFC chips, weatherproof matte acrylic, and real-time cloud management that turns 88% of happy customers into 5-star Google reviews.
+          Every standee is packed with smart contactless NFC chips, weatherproof matte acrylic, and real-time cloud management that helps happy customers leave Google reviews in seconds.
         </p>
       </div>
 
@@ -104,14 +104,14 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
               <Radio className="w-6 h-6 text-secondary" />
             </div>
             <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
-              NTAG216 High-Performance Chip
+              Smart Contactless Tap Chip
             </h3>
             <p className="text-xs text-on-surface-variant leading-relaxed">
               Embedded with top-tier NFC technology allowing instantaneous reading speeds even through protective phone cases. Fully encrypted write-protection prevents tampering.
             </p>
           </div>
           <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
-            <span>Protocol: ISO 14443-A</span>
+            <span>Instant Tap & Scan</span>
             <span className="text-emerald-400 font-bold">100% Battery-Free</span>
           </div>
         </div>
@@ -122,15 +122,15 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
               <Sparkles className="w-6 h-6 text-amber-400" />
             </div>
             <h3 className="font-headline font-bold text-lg text-on-surface mb-2">
-              Automated Sentiment Interceptor
+              Google Review Assistant
             </h3>
             <p className="text-xs text-on-surface-variant leading-relaxed">
-              Our smart landing page dynamically assesses customer mood. 4-5 star taps go straight to Google review popups, while 1-3 star reviews open a private resolution form for managers.
+              Our smart landing page dynamically assesses customer mood. Every customer can easily open your Google review page to share their genuine feedback.
             </p>
           </div>
           <div className="mt-5 pt-3 border-t border-surface-variant/30 flex items-center justify-between text-[11px] font-mono text-slate-300">
             <span>Protection: FTC / Google Compliant</span>
-            <span className="text-amber-400 font-bold">Private Resolution</span>
+            <span className="text-amber-400 font-bold">Open & Direct</span>
           </div>
         </div>
 
@@ -393,7 +393,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
             rel="noreferrer"
             className="px-6 py-3 rounded-2xl bg-[#25D366] text-black font-extrabold text-xs hover:bg-[#20bd5a] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
-            <span>Order on WhatsApp</span>
+            <span>Contact us on WhatsApp</span>
           </a>
         </div>
       </div>

@@ -1,5 +1,24 @@
 # ZenTap — Changelog
 
+## [1.44.0] — 2026-11-03
+### Simplified & Streamlined (Audience-First Content & Admin Popover Fixes)
+- **Top-Right Exclusive WhatsApp Order & Admin Login**:
+  - Configured `[Order on WhatsApp]` as the strictly single, unique instance on the entire website, positioned on the top right side directly to the left of the `[Admin Login]` button.
+  - Replaced all other order buttons across the site with "Contact us on WhatsApp".
+  - Removed all hardcoded prices (`₹999`, `₹1,499`, `₹499`, `₹699`, `₹2,000`, etc.) in favor of "Contact us on WhatsApp".
+- **Cleaned Public Content to Class 8 Reading Level**:
+  - Removed technical jargon: `NTAG216`, `13.56 MHz`, `ISO 14443A`, `EEPROM`, `888 bytes`, `Level Q`, `HyperFrames`, `velocity`, `handshake`, `SEO lift`, `Local 3-Pack`, `Sentiment Interceptor`.
+  - Removed unproven claims: `"45,382+ verified reviews"`, `"boost rating by 300%"`, `"91% of customers..."`, `"Verified Google Maps SEO Lift"`, `"Pan-India"`, `"Google Anti-Gating Compliant"`.
+  - Removed the `Client Proofs & Testimonials` link until real customer proof is gathered.
+- **Removed Simulators & Customizers from Home Page**:
+  - Completely removed `Tap Simulator`, `3D customizer`, `Explore full mechanism`, and the floating `Upcoming Tech Services` drawer from the homepage.
+  - Replaced 3D preview with authentic high-resolution product photography (`/standees/Gold.webp`).
+- **Superadmin Popover Click-Outside Dismissal & Clean Exit**:
+  - Added full-screen transparent click-capture backdrops to both the Superadmin dropdown and notification bell in `AdminConsoleView.tsx`. Clicking anywhere on the page instantly dismisses the open popover.
+  - Updated `Exit Admin Session` to purge session and local storage, clear auth cookies, and cleanly redirect to the main homepage (`/`).
+- **Mobile Bottom Navigation Bar**:
+  - Streamlined to clean 4-tab utility: `Home`, `Process`, `Products`, `FAQ`, removing duplicate `Order` and `Admin` buttons.
+
 ## [1.43.0] — 2026-11-02
 ### Improved (Mobile View Sync & Removal of Merchant Registration / Sign-in Prompts)
 - **Mobile Bottom Navigation Bar Synchronized**:

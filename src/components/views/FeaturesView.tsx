@@ -17,7 +17,6 @@ import {
   Globe,
   MessageSquare
 } from "lucide-react";
-import SentimentSimulator from "../SentimentSimulator";
 import { ActiveView } from "../Header";
 
 interface FeaturesViewProps {
@@ -47,7 +46,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
           Enterprise-Grade NFC Chips Meet Cloud Smart Routing
         </h1>
         <p className="text-sm sm:text-base text-on-surface-variant mt-3 leading-relaxed">
-          Every ZenTap standee is precision-manufactured using scratch-resistant acrylic, encrypted NTAG216 circuitry, and dynamic QR fallbacks connected to real-time Google ranking telemetry.
+          Every ZenTap standee is precision-manufactured using scratch-resistant acrylic, encrypted Smart Tap circuitry, and dynamic QR fallbacks connected to real-time Google ranking telemetry.
         </p>
       </div>
 
@@ -88,10 +87,10 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
               <Cpu className="w-6 h-6" />
             </div>
             <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
-              NTAG216 High-Performance Chip
+              Smart Tap High-Performance Chip
             </h3>
             <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed mb-6">
-              Embedded with NXP NTAG216 semiconductors featuring 888 bytes user memory, 10-year data retention, and proprietary write-locking that prevents unauthorized overwrites.
+              Embedded with NXP Smart Tap semiconductors featuring optimized memory user memory, 10-year data retention, and proprietary write-locking that prevents unauthorized overwrites.
             </p>
 
             <div className="space-y-2.5 text-xs text-on-surface font-medium">
@@ -220,7 +219,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
           </div>
 
           <div className="mt-8 pt-4 border-t border-surface-variant/30 flex justify-between items-center text-xs font-mono text-slate-300">
-            <span>Availability: Plan 3 (₹2,000)</span>
+            <span>Availability: Smart Review Plan</span>
             <span className="text-amber-400 font-bold">100% Automated Sync</span>
           </div>
         </div>
@@ -228,7 +227,7 @@ export default function FeaturesView({ onNavigate, onOpenAuth }: FeaturesViewPro
 
       {/* Interactive Sentiment Guard Section */}
       <div className="mb-14">
-        <SentimentSimulator />
+        
       </div>
 
       {/* Feature Grid 3: Telemetry & Branding */}

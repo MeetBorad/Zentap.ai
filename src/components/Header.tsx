@@ -306,7 +306,7 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
                     className="w-full py-2.5 rounded-xl bg-[#25D366] text-black font-bold text-xs shadow-sm flex items-center justify-center gap-2"
                   >
                     <MessageCircle className="w-4 h-4 fill-black text-black" />
-                    <span>Order on WhatsApp</span>
+                    <span>Contact us on WhatsApp</span>
                   </a>
                   <a
                     href="/admin/login"
