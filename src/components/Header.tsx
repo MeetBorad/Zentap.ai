@@ -225,8 +225,31 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
             </>
           )}
 
-          {/* CASE B: NOT LOGGED IN AS ADMIN (GUEST / PUBLIC) */}
-          {!isAdmin && (
+          {/* CASE B: LOGGED IN AS MERCHANT */}
+          {user && !isAdmin && (
+            <>
+              <button
+                onClick={() => handleNavClick("portal")}
+                className="tactile-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#ff7a00] text-black text-xs font-bold hover:bg-[#e56d00] cursor-pointer shadow-sm"
+              >
+                <Store className="w-3.5 h-3.5 text-black" />
+                <span>My Dashboard</span>
+                <ArrowRight className="w-3 h-3 text-black/70" />
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="tactile-btn-subtle flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 text-xs font-medium cursor-pointer border border-rose-800/40"
+                title="Sign out of Session"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Sign Out</span>
+              </button>
+            </>
+          )}
+
+          {/* CASE C: GUEST / PUBLIC */}
+          {!user && !isAdmin && (
             <div className="flex items-center gap-2">
               <a
                 href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."

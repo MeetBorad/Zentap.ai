@@ -366,13 +366,119 @@ function getStored<T>(key: string, fallback: T): T {
   }
 }
 
-// Helper: safe write
+// Helper: safe write + event notification
 function setStored<T>(key: string, data: T): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(key, JSON.stringify(data));
+    window.dispatchEvent(new CustomEvent("zentap_platform_updated", { detail: { key } }));
   } catch (e) {
     console.warn("Storage write error for key:", key, e);
+  }
+}
+
+// Background sync helpers with Supabase
+function asyncDbUpsert(table: string, data: any, onConflict?: string) {
+  if (typeof window === "undefined") return;
+  fetch("/api/admin/platform", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "upsert", table, data, onConflict }),
+  }).catch((err) => console.warn(`Async DB upsert to ${table} notice:`, err));
+}
+
+function asyncDbDelete(table: string, idField: string, idValue: string) {
+  if (typeof window === "undefined") return;
+  fetch("/api/admin/platform", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "delete", table, idField, idValue }),
+  }).catch((err) => console.warn(`Async DB delete from ${table} notice:`, err));
+}
+
+export async function initPlatformStoreFromBackend(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const res = await fetch("/api/admin/platform");
+    if (!res.ok) return false;
+    const json = await res.json();
+    if (!json.success || !json.data) return false;
+
+    const {
+      clients,
+      deletedBusinesses,
+      payments,
+      deletedPayments,
+      tags,
+      deletedTags,
+      googleLinks,
+      deletedGoogleLinks,
+      socialLinks,
+      deletedSocialLinks,
+      pageEditorConfigs,
+      deletedPageEditorConfigs,
+    } = json.data;
+
+    // If Supabase database was empty, seed it
+    if ((!clients || clients.length === 0) && (!tags || tags.length === 0)) {
+      await fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "seed_initial",
+          initialClients: INITIAL_CLIENTS,
+          initialTags: INITIAL_TAGS,
+          initialPayments: INITIAL_PAYMENTS,
+          initialGoogleLinks: INITIAL_GOOGLE_LINKS,
+          initialSocialLinks: INITIAL_SOCIAL_LINKS,
+          initialPageEditors: INITIAL_PAGE_EDITORS,
+        }),
+      });
+      return true;
+    }
+
+    if (clients && clients.length > 0) {
+      localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients));
+    }
+    if (deletedBusinesses && deletedBusinesses.length > 0) {
+      localStorage.setItem(KEY_DELETED_BUSINESSES, JSON.stringify(deletedBusinesses));
+    }
+    if (payments && payments.length > 0) {
+      localStorage.setItem(KEY_PAYMENTS, JSON.stringify(payments));
+    }
+    if (deletedPayments && deletedPayments.length > 0) {
+      localStorage.setItem(KEY_DELETED_PAYMENTS, JSON.stringify(deletedPayments));
+    }
+    if (tags && tags.length > 0) {
+      localStorage.setItem(KEY_QR_NFC_TAGS, JSON.stringify(tags));
+    }
+    if (deletedTags && deletedTags.length > 0) {
+      localStorage.setItem(KEY_DELETED_QR_NFC_TAGS, JSON.stringify(deletedTags));
+    }
+    if (googleLinks && googleLinks.length > 0) {
+      localStorage.setItem(KEY_GOOGLE_LINKS, JSON.stringify(googleLinks));
+    }
+    if (deletedGoogleLinks && deletedGoogleLinks.length > 0) {
+      localStorage.setItem(KEY_DELETED_GOOGLE_LINKS, JSON.stringify(deletedGoogleLinks));
+    }
+    if (socialLinks && socialLinks.length > 0) {
+      localStorage.setItem(KEY_SOCIAL_LINKS, JSON.stringify(socialLinks));
+    }
+    if (deletedSocialLinks && deletedSocialLinks.length > 0) {
+      localStorage.setItem(KEY_DELETED_SOCIAL_LINKS, JSON.stringify(deletedSocialLinks));
+    }
+    if (pageEditorConfigs && pageEditorConfigs.length > 0) {
+      localStorage.setItem(KEY_PAGE_EDITOR, JSON.stringify(pageEditorConfigs));
+    }
+    if (deletedPageEditorConfigs && deletedPageEditorConfigs.length > 0) {
+      localStorage.setItem(KEY_DELETED_PAGE_EDITOR, JSON.stringify(deletedPageEditorConfigs));
+    }
+
+    window.dispatchEvent(new CustomEvent("zentap_platform_updated", { detail: { source: "backend" } }));
+    return true;
+  } catch (err) {
+    console.warn("Backend platform store sync notice:", err);
+    return false;
   }
 }
 
@@ -411,6 +517,7 @@ export function addClient(
   };
   const updated = [newClient, ...current];
   setStored(KEY_CLIENTS, updated);
+  asyncDbUpsert("clients", newClient, "business_id");
   return newClient;
 }
 
@@ -426,6 +533,7 @@ export function deleteClientPermanently(businessId: string, notes?: string): { s
   // 1. Remove from active clients
   const remaining = clients.filter((c) => c.business_id !== target.business_id && c.id !== target.id);
   setStored(KEY_CLIENTS, remaining);
+  asyncDbDelete("clients", "business_id", target.business_id);
 
   // 2. Add to deleted_businesses table
   const deletedRecords = getAllDeletedBusinesses();
@@ -445,6 +553,7 @@ export function deleteClientPermanently(businessId: string, notes?: string): { s
     notes: notes || "Permanently deleted by founder via Clients tab",
   };
   setStored(KEY_DELETED_BUSINESSES, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_businesses", deletedItem);
 
   return { success: true, deleted: deletedItem };
 }
@@ -457,6 +566,7 @@ export function restoreDeletedBusiness(businessId: string): boolean {
   // Remove from deleted table
   const updatedDeleted = deletedList.filter((d) => d.business_id !== target.business_id);
   setStored(KEY_DELETED_BUSINESSES, updatedDeleted);
+  asyncDbDelete("deleted_businesses", "business_id", target.business_id);
 
   // Restore back to clients table
   const clients = getAllClients();
@@ -474,6 +584,7 @@ export function restoreDeletedBusiness(businessId: string): boolean {
     created_at: new Date().toISOString(),
   };
   setStored(KEY_CLIENTS, [restoredClient, ...clients]);
+  asyncDbUpsert("clients", restoredClient, "business_id");
   return true;
 }
 
@@ -489,6 +600,7 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
   };
   clients[index] = updatedClient;
   setStored(KEY_CLIENTS, clients);
+  asyncDbUpsert("clients", updatedClient, "business_id");
 
   // If business_id or business_name changed, cascade to other tables
   if ((updates.business_id && updates.business_id !== oldBusinessId) || updates.business_name) {
@@ -576,6 +688,7 @@ export function addPayment(payment: Omit<PaymentItemRecord, "id" | "created_at">
   };
   const updated = [newPayment, ...current];
   setStored(KEY_PAYMENTS, updated);
+  asyncDbUpsert("payments", newPayment);
   return newPayment;
 }
 
@@ -586,6 +699,7 @@ export function updatePayment(id: string, updates: Partial<PaymentItemRecord>): 
   const updatedItem = { ...current[index], ...updates };
   current[index] = updatedItem;
   setStored(KEY_PAYMENTS, current);
+  asyncDbUpsert("payments", updatedItem);
   return updatedItem;
 }
 
@@ -601,6 +715,7 @@ export function deletePayment(id: string, notes?: string): { success: boolean; d
   // Remove from active payments
   const remaining = current.filter((p) => p.id !== id);
   setStored(KEY_PAYMENTS, remaining);
+  asyncDbDelete("payments", "id", target.id);
 
   // Add to deleted_payments
   const deletedRecords = getAllDeletedPayments();
@@ -611,6 +726,7 @@ export function deletePayment(id: string, notes?: string): { success: boolean; d
     notes: notes || target.notes,
   };
   setStored(KEY_DELETED_PAYMENTS, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_payments", deletedItem);
   return { success: true, deleted: deletedItem };
 }
 
@@ -622,6 +738,7 @@ export function restoreDeletedPayment(id: string): boolean {
   // Remove from deleted
   const remaining = deletedList.filter((p) => p.id !== id);
   setStored(KEY_DELETED_PAYMENTS, remaining);
+  asyncDbDelete("deleted_payments", "id", target.id);
 
   // Restore to active payments
   const current = getAllPayments();
@@ -639,6 +756,7 @@ export function restoreDeletedPayment(id: string): boolean {
     created_at: target.created_at,
   };
   setStored(KEY_PAYMENTS, [restored, ...current]);
+  asyncDbUpsert("payments", restored);
   return true;
 }
 
@@ -691,6 +809,7 @@ export function createSingleTag(params: {
 
   const updatedTags = [newTag, ...current];
   setStored(KEY_QR_NFC_TAGS, updatedTags);
+  asyncDbUpsert("qr_nfc_tags", newTag, "tag_id");
 
   // If assigned right away, synchronize with downstream tabs!
   if (params.business_id) {
@@ -735,6 +854,7 @@ export function generateBatchTags(params: {
 
   const updatedTags = [...generatedBatch, ...current];
   setStored(KEY_QR_NFC_TAGS, updatedTags);
+  asyncDbUpsert("qr_nfc_tags", generatedBatch, "tag_id");
   return generatedBatch;
 }
 
@@ -750,6 +870,7 @@ export function assignTagBusiness(tagId: string, businessId: string, businessNam
   };
   current[index] = updatedTag;
   setStored(KEY_QR_NFC_TAGS, current);
+  asyncDbUpsert("qr_nfc_tags", updatedTag, "tag_id");
 
   // Sync to Google Links (Standee) or Social Links (Card) and Page Editor
   syncTagAssignmentDownstream(updatedTag);
@@ -773,6 +894,7 @@ export function updateQrNfcTag(tagId: string, updates: Partial<QrNfcTagItemRecor
 
   current[index] = updatedTag;
   setStored(KEY_QR_NFC_TAGS, current);
+  asyncDbUpsert("qr_nfc_tags", updatedTag, "tag_id");
 
   if (updatedTag.business_id) {
     syncTagAssignmentDownstream(updatedTag);
@@ -792,6 +914,7 @@ export function deleteQrNfcTag(tagId: string): { success: boolean; deleted?: Del
 
   const remaining = current.filter((t) => t.tag_id !== tagId);
   setStored(KEY_QR_NFC_TAGS, remaining);
+  asyncDbDelete("qr_nfc_tags", "tag_id", target.tag_id);
 
   const deletedRecords = getAllDeletedQrNfcTags();
   const deletedItem: DeletedQrNfcTagRecord = {
@@ -800,6 +923,7 @@ export function deleteQrNfcTag(tagId: string): { success: boolean; deleted?: Del
     deleted_by: "admin",
   };
   setStored(KEY_DELETED_QR_NFC_TAGS, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_qr_nfc_tags", deletedItem);
   return { success: true, deleted: deletedItem };
 }
 
@@ -810,6 +934,7 @@ export function restoreDeletedQrNfcTag(tagId: string): boolean {
 
   const remaining = deletedList.filter((t) => t.tag_id !== tagId);
   setStored(KEY_DELETED_QR_NFC_TAGS, remaining);
+  asyncDbDelete("deleted_qr_nfc_tags", "tag_id", target.tag_id);
 
   const current = getAllQrNfcTags();
   const restored: QrNfcTagItemRecord = {
@@ -823,6 +948,7 @@ export function restoreDeletedQrNfcTag(tagId: string): boolean {
     created_at: target.created_at,
   };
   setStored(KEY_QR_NFC_TAGS, [restored, ...current]);
+  asyncDbUpsert("qr_nfc_tags", restored, "tag_id");
   return true;
 }
 
@@ -924,6 +1050,7 @@ export function updateGoogleReviewLink(tagId: string, updates: Partial<GoogleRev
 
   current[index] = updatedItem;
   setStored(KEY_GOOGLE_LINKS, current);
+  asyncDbUpsert("google_review_links", updatedItem, "tag_id");
   return updatedItem;
 }
 
@@ -938,6 +1065,7 @@ export function addManualGoogleReviewLink(link: Omit<GoogleReviewLinkItemRecord,
   };
   const updated = [newLink, ...current];
   setStored(KEY_GOOGLE_LINKS, updated);
+  asyncDbUpsert("google_review_links", newLink, "tag_id");
   return newLink;
 }
 
@@ -952,6 +1080,7 @@ export function deleteGoogleReviewLink(tagId: string): { success: boolean; delet
 
   const remaining = current.filter((g) => g.tag_id !== tagId);
   setStored(KEY_GOOGLE_LINKS, remaining);
+  asyncDbDelete("google_review_links", "tag_id", target.tag_id);
 
   const deletedRecords = getAllDeletedGoogleReviewLinks();
   const deletedItem: DeletedGoogleReviewLinkRecord = {
@@ -960,6 +1089,7 @@ export function deleteGoogleReviewLink(tagId: string): { success: boolean; delet
     deleted_by: "admin",
   };
   setStored(KEY_DELETED_GOOGLE_LINKS, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_google_review_links", deletedItem);
   return { success: true, deleted: deletedItem };
 }
 
@@ -970,6 +1100,7 @@ export function restoreDeletedGoogleReviewLink(tagId: string): boolean {
 
   const remaining = deletedList.filter((g) => g.tag_id !== tagId);
   setStored(KEY_DELETED_GOOGLE_LINKS, remaining);
+  asyncDbDelete("deleted_google_review_links", "tag_id", target.tag_id);
 
   const current = getAllGoogleReviewLinks();
   const restored: GoogleReviewLinkItemRecord = {
@@ -986,6 +1117,7 @@ export function restoreDeletedGoogleReviewLink(tagId: string): boolean {
     updated_at: target.updated_at,
   };
   setStored(KEY_GOOGLE_LINKS, [restored, ...current]);
+  asyncDbUpsert("google_review_links", restored, "tag_id");
   return true;
 }
 
@@ -1018,6 +1150,7 @@ export function updateSocialLink(tagId: string, updates: Partial<SocialLinkItemR
 
   current[index] = updatedItem;
   setStored(KEY_SOCIAL_LINKS, current);
+  asyncDbUpsert("social_links", updatedItem, "tag_id");
   return updatedItem;
 }
 
@@ -1032,6 +1165,7 @@ export function addManualSocialLink(link: Omit<SocialLinkItemRecord, "id" | "cre
   };
   const updated = [newLink, ...current];
   setStored(KEY_SOCIAL_LINKS, updated);
+  asyncDbUpsert("social_links", newLink, "tag_id");
   return newLink;
 }
 
@@ -1046,6 +1180,7 @@ export function deleteSocialLink(tagId: string): { success: boolean; deleted?: D
 
   const remaining = current.filter((s) => s.tag_id !== tagId);
   setStored(KEY_SOCIAL_LINKS, remaining);
+  asyncDbDelete("social_links", "tag_id", target.tag_id);
 
   const deletedRecords = getAllDeletedSocialLinks();
   const deletedItem: DeletedSocialLinkRecord = {
@@ -1054,6 +1189,7 @@ export function deleteSocialLink(tagId: string): { success: boolean; deleted?: D
     deleted_by: "admin",
   };
   setStored(KEY_DELETED_SOCIAL_LINKS, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_social_links", deletedItem);
   return { success: true, deleted: deletedItem };
 }
 
@@ -1064,6 +1200,7 @@ export function restoreDeletedSocialLink(tagId: string): boolean {
 
   const remaining = deletedList.filter((s) => s.tag_id !== tagId);
   setStored(KEY_DELETED_SOCIAL_LINKS, remaining);
+  asyncDbDelete("deleted_social_links", "tag_id", target.tag_id);
 
   const current = getAllSocialLinks();
   const restored: SocialLinkItemRecord = {
@@ -1081,6 +1218,7 @@ export function restoreDeletedSocialLink(tagId: string): boolean {
     updated_at: target.updated_at,
   };
   setStored(KEY_SOCIAL_LINKS, [restored, ...current]);
+  asyncDbUpsert("social_links", restored, "tag_id");
   return true;
 }
 
@@ -1105,6 +1243,7 @@ export function updatePageEditorConfig(tagId: string, updates: Partial<PageEdito
 
   current[index] = updatedItem;
   setStored(KEY_PAGE_EDITOR, current);
+  asyncDbUpsert("page_editor_configs", updatedItem, "tag_id");
   return updatedItem;
 }
 
@@ -1119,6 +1258,7 @@ export function deletePageEditorConfig(tagId: string): { success: boolean; delet
 
   const remaining = current.filter((p) => p.tag_id !== tagId);
   setStored(KEY_PAGE_EDITOR, remaining);
+  asyncDbDelete("page_editor_configs", "tag_id", target.tag_id);
 
   const deletedRecords = getAllDeletedPageEditorConfigs();
   const deletedItem: DeletedPageEditorConfigRecord = {
@@ -1127,6 +1267,7 @@ export function deletePageEditorConfig(tagId: string): { success: boolean; delet
     deleted_by: "admin",
   };
   setStored(KEY_DELETED_PAGE_EDITOR, [deletedItem, ...deletedRecords]);
+  asyncDbUpsert("deleted_page_editor_configs", deletedItem);
   return { success: true, deleted: deletedItem };
 }
 
@@ -1137,6 +1278,7 @@ export function restoreDeletedPageEditorConfig(tagId: string): boolean {
 
   const remaining = deletedList.filter((p) => p.tag_id !== tagId);
   setStored(KEY_DELETED_PAGE_EDITOR, remaining);
+  asyncDbDelete("deleted_page_editor_configs", "tag_id", target.tag_id);
 
   const current = getAllPageEditorConfigs();
   const restored: PageEditorConfigItemRecord = {
@@ -1150,6 +1292,7 @@ export function restoreDeletedPageEditorConfig(tagId: string): boolean {
     updated_at: target.updated_at,
   };
   setStored(KEY_PAGE_EDITOR, [restored, ...current]);
+  asyncDbUpsert("page_editor_configs", restored, "tag_id");
   return true;
 }
 
@@ -1168,5 +1311,6 @@ export function savePageEditorConfig(tagId: string, configData: Record<string, a
 
   current[index] = updatedItem;
   setStored(KEY_PAGE_EDITOR, current);
+  asyncDbUpsert("page_editor_configs", updatedItem, "tag_id");
   return updatedItem;
 }

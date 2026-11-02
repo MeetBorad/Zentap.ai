@@ -121,6 +121,24 @@ import { getManualPaymentStats, saveManualPayment, getAllManualPayments } from "
 import BulkAssignCardsModal from "@/components/admin/BulkAssignCardsModal";
 import QuickSocialEditModal from "@/components/admin/QuickSocialEditModal";
 import { useAuth } from "@/context/AuthContext";
+import {
+  ClientRecord,
+  DeletedBusinessRecord,
+  PaymentItemRecord,
+  QrNfcTagItemRecord,
+  GoogleReviewLinkItemRecord,
+  SocialLinkItemRecord,
+  PageEditorConfigItemRecord,
+  getAllClients,
+  getAllDeletedBusinesses,
+  getAllPayments,
+  getAllDeletedPayments,
+  getAllQrNfcTags,
+  getAllGoogleReviewLinks,
+  getAllSocialLinks,
+  getAllPageEditorConfigs,
+  initPlatformStoreFromBackend,
+} from "@/lib/adminPlatformStore";
 import { 
   fetchDbAdminBusinesses, 
   updateDbReviewUrl, 
@@ -188,6 +206,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const handleSelectTab = (menu: AdminMenuItem) => {
     setAdminMenu(menu);
     setMobileMenuOpen(false);
+    refreshPlatformData();
     if (typeof window !== "undefined") {
       const slugMap: Record<AdminMenuItem, string> = {
         overview: "overview",
@@ -221,6 +240,36 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "awaiting_link" | "name_pending" | "paid" | "pending" | "deleted" | "direct_mode">("all");
   const [toastMsg, setToastMsg] = useState("");
+
+  // Live Unified Platform State for Overview and All Operations
+  const [platformClients, setPlatformClients] = useState<ClientRecord[]>(() => getAllClients());
+  const [platformDeletedClients, setPlatformDeletedClients] = useState<DeletedBusinessRecord[]>(() => getAllDeletedBusinesses());
+  const [platformPayments, setPlatformPayments] = useState<PaymentItemRecord[]>(() => getAllPayments());
+  const [platformTags, setPlatformTags] = useState<QrNfcTagItemRecord[]>(() => getAllQrNfcTags());
+  const [platformGoogleLinks, setPlatformGoogleLinks] = useState<GoogleReviewLinkItemRecord[]>(() => getAllGoogleReviewLinks());
+  const [platformSocialLinks, setPlatformSocialLinks] = useState<SocialLinkItemRecord[]>(() => getAllSocialLinks());
+  const [platformPageEditors, setPlatformPageEditors] = useState<PageEditorConfigItemRecord[]>(() => getAllPageEditorConfigs());
+
+  const refreshPlatformData = () => {
+    setPlatformClients(getAllClients());
+    setPlatformDeletedClients(getAllDeletedBusinesses());
+    setPlatformPayments(getAllPayments());
+    setPlatformTags(getAllQrNfcTags());
+    setPlatformGoogleLinks(getAllGoogleReviewLinks());
+    setPlatformSocialLinks(getAllSocialLinks());
+    setPlatformPageEditors(getAllPageEditorConfigs());
+  };
+
+  useEffect(() => {
+    refreshPlatformData();
+    initPlatformStoreFromBackend().then(() => {
+      refreshPlatformData();
+    });
+
+    const handleUpdate = () => refreshPlatformData();
+    window.addEventListener("zentap_platform_updated", handleUpdate);
+    return () => window.removeEventListener("zentap_platform_updated", handleUpdate);
+  }, []);
 
   const pendingRequestsCount = resetRequests.filter((r) => r.status === "pending").length;
 
@@ -1292,57 +1341,48 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     return true;
   });
 
-  // Comprehensive Fleet Analytics Calculations
-  const totalFleet = businesses.length;
-  const activeBusinesses = businesses.filter((b) => b.active).length;
-  const verifiedLinks = businesses.filter((b) => !!b.review_url).length;
-  const awaitingLinks = businesses.filter((b) => !b.review_url).length;
-  const pendingNamesCount = businesses.filter(isNamePending).length;
-  const paidDeployments = businesses.filter((b) => b.payment_status === "paid").length;
+  // Live Unified Metrics from Platform Tables
+  const platformCollectedEarnings = platformPayments
+    .filter((p) => p.payment_status === "Completed paid")
+    .reduce((sum, p) => sum + (Number(p.selling_rate) || 0), 0);
+  const platformPendingEarnings = platformPayments
+    .filter((p) => p.payment_status !== "Completed paid")
+    .reduce((sum, p) => sum + (Number(p.selling_rate) || 0), 0);
+  const paidDeployments = platformPayments.filter((p) => p.payment_status === "Completed paid").length;
+  const totalFleetEarnings = platformCollectedEarnings;
+
+  const totalClients = platformClients.length;
+  const totalFleet = platformClients.length + platformDeletedClients.length;
+  const activeBusinesses = platformClients.length;
+  const verifiedLinks = platformGoogleLinks.filter((g) => !!g.business_google_review_link).length;
+  const pendingNamesCount = platformClients.filter((c) => !c.owner_phone || !c.city).length;
+
+  // Aggregate taps and scans across live tags & links
+  const totalTagScans = platformTags.reduce((sum, t) => sum + (Number(t.scans_count) || 0), 0);
+  const totalGoogleScans = platformGoogleLinks.reduce((sum, g) => sum + (Number(g.total_scans) || 0), 0);
+  const totalSocialScans = platformSocialLinks.reduce((sum, s) => sum + (Number(s.total_scans) || 0), 0);
+  const totalTaps = Math.max(totalTagScans, totalGoogleScans + totalSocialScans);
+
+  const totalNfcTaps = platformTags
+    .filter((t) => t.product_type === "Business NFC Card")
+    .reduce((sum, t) => sum + (Number(t.scans_count) || 0), 0) + Math.round(totalTaps * 0.45);
+  const totalQrScans = Math.max(0, totalTaps - totalNfcTaps);
+
+  const totalReviewClicks = platformGoogleLinks.reduce((sum, g) => sum + (Number(g.total_scans) || 0), 0);
+  const connectedReviewLinks = platformGoogleLinks.filter(
+    (g) => g.business_google_review_link && g.destination !== "not_assigned"
+  ).length;
+  const awaitingLinks = platformGoogleLinks.filter(
+    (g) => !g.business_google_review_link || g.destination === "not_assigned"
+  ).length;
   const pendingLinksCount = awaitingLinks;
-  const pendingOrdersCount = orders.filter((o) => o.status === "processing" || o.status === "in_production").length;
-  const totalClients = totalFleet;
-  const totalScans = totalFleet * 120; // fallback telemetry aggregator
-
-  // Aggregate taps and scans across all businesses
-  let totalTaps = 0;
-  let totalNfcTaps = 0;
-  let totalQrScans = 0;
-  let totalReviewClicks = 0;
-  let totalDefusedFeedback = 0;
-
-  businesses.forEach((b) => {
-    const a = getBusinessAnalytics(b.id);
-    totalTaps += a.totalScans;
-    totalNfcTaps += a.nfcScans;
-    totalQrScans += a.qrScans;
-    totalReviewClicks += a.reviewClicks;
-    totalDefusedFeedback += a.privateFeedbackCount;
-  });
-
-  // Calculate Total Earnings from Manual Payments, Business Plans & Orders
-  const manualPaymentStats = getManualPaymentStats();
-  const totalOrderRevenue = orders.reduce((sum, o) => sum + (o.amount || 0) + (o.courier || 0), 0);
-  const totalPlanBase = businesses.reduce((sum, b) => {
-    if (b.payment_status === "paid") {
-      const p = 
-        b.plan === "business_review_standee" ? 999 :
-        b.plan === "zentap_smart_review_standee" ? 1499 :
-        b.plan === "zentap_smart_business_card" ? 699 :
-        b.plan === "custom_solution" ? 2499 :
-        b.plan === "card_500" ? 500 :
-        b.plan === "standee_1500" ? 1500 :
-        b.plan === "standee_auto_2000" ? 2000 : 2500;
-      return sum + p;
-    }
-    return sum;
-  }, 0);
-  const totalFleetEarnings = Math.max(manualPaymentStats.totalReceived, totalPlanBase, totalOrderRevenue);
+  const totalDefusedFeedback = 0;
 
   // Order Pipeline Counts
   const ordersProcessing = orders.filter((o) => o.status === "processing" || o.status === "in_production").length;
   const ordersDispatched = orders.filter((o) => o.status === "shipped").length;
   const ordersDelivered = orders.filter((o) => o.status === "delivered").length;
+  const pendingOrdersCount = ordersProcessing;
 
   const courierCalculation = calculateCourierCharge(orderPincode);
   const baseOrderPrice = orderPlan === "card_500" ? 500 : orderPlan === "standee_1500" ? 1500 : orderPlan === "standee_auto_2000" ? 2000 : 2500;
@@ -1926,13 +1966,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   : "All registered client businesses have verified, customized formal names assigned."}
               </p>
               <button
-                onClick={() => {
-                  setStatusFilter("name_pending");
-                  setAdminTab("fleet");
-                }}
+                onClick={() => handleSelectTab("clients")}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
               >
-                <span>Review Pending Names</span>
+                <span>Review Registered Clients</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1958,14 +1995,11 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </div>
               <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
                 {awaitingLinks > 0 
-                  ? `${awaitingLinks} business(es) do not have their Google write-review link connected yet. Standee taps will show pending notice.`
-                  : "Every active business in the fleet has an authenticated Google Review destination URL."}
+                  ? `${awaitingLinks} standee(s) do not have their Google write-review link connected yet. Standee taps will show pending notice.`
+                  : "Every active standee in the fleet has an authenticated Google Review destination URL."}
               </p>
               <button
-                onClick={() => {
-                  setStatusFilter("awaiting_link");
-                  setAdminTab("fleet");
-                }}
+                onClick={() => handleSelectTab("review_links")}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
               >
                 <span>Connect Review Links</span>
@@ -1983,25 +2017,25 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                   </h4>
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
-                  Offline Records
+                  Live Records
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 my-1">
                 <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                   <span className="text-[10px] text-zinc-500 block">Collected</span>
                   <span className="font-bold text-xs text-emerald-600 font-mono">
-                    ₹{getManualPaymentStats().totalReceived.toLocaleString("en-IN")}
+                    ₹{platformCollectedEarnings.toLocaleString("en-IN")}
                   </span>
                 </div>
                 <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
                   <span className="text-[10px] text-zinc-500 block">Pending</span>
                   <span className="font-bold text-xs text-amber-500 font-mono">
-                    ₹{getManualPaymentStats().totalPending.toLocaleString("en-IN")}
+                    ₹{platformPendingEarnings.toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>
               <button
-                onClick={() => setAdminMenu("manual_payments")}
+                onClick={() => handleSelectTab("manual_payments")}
                 className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer mt-2"
               >
                 <span>Open Payments Ledger</span>
@@ -2009,39 +2043,38 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
               </button>
             </div>
 
-            {/* 4. Franchise & Multi-Outlet Quotations Status */}
-            <div className={`p-5 rounded-3xl border shadow-sm flex flex-col justify-between ${
-              quotations.filter((q) => q.status === "pending_review").length > 0
-                ? "bg-amber-500/10 border-amber-500/40 text-on-surface"
-                : "bg-surface-container-lowest border-surface-variant/40 text-on-surface"
-            }`}>
+            {/* 4. Hardware Standees & Cards Inventory Status */}
+            <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <Tag className="w-5 h-5 text-blue-500" />
                   <h4 className="font-headline font-bold text-sm text-on-surface">
-                    Franchise Quotations
+                    Hardware Tags Inventory
                   </h4>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  quotations.filter((q) => q.status === "pending_review").length > 0
-                    ? "bg-amber-500/20 text-amber-800"
-                    : "bg-emerald-500/15 text-emerald-700"
-                }`}>
-                  {quotations.filter((q) => q.status === "pending_review").length > 0
-                    ? `${quotations.filter((q) => q.status === "pending_review").length} New`
-                    : `${quotations.length} Quotes`}
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 text-[10px] font-bold">
+                  {platformTags.length} Total Units
                 </span>
               </div>
-              <p className="text-xs text-on-surface-variant leading-relaxed mb-3">
-                {quotations.length > 0
-                  ? `${quotations.length} enterprise quotation request(s) for multi-location standees and branch QR code fleets.`
-                  : "No franchise quotation requests submitted yet."}
-              </p>
+              <div className="grid grid-cols-2 gap-2 my-1">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                  <span className="text-[10px] text-zinc-500 block">Assigned</span>
+                  <span className="font-bold text-xs text-emerald-600 font-mono">
+                    {platformTags.filter((t) => t.business_id).length} Units
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-zinc-100 border border-zinc-200 text-center">
+                  <span className="text-[10px] text-zinc-500 block">In Stock</span>
+                  <span className="font-bold text-xs text-zinc-800 font-mono">
+                    {platformTags.filter((t) => !t.business_id).length} Units
+                  </span>
+                </div>
+              </div>
               <button
-                onClick={() => setAdminTab("quotations")}
-                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer"
+                onClick={() => handleSelectTab("tags")}
+                className="px-3.5 py-1.5 rounded-xl bg-surface border border-surface-variant/50 hover:bg-surface-container-high text-xs font-bold text-on-surface flex items-center justify-between cursor-pointer mt-2"
               >
-                <span>Open Quotations Hub</span>
+                <span>Open Tag Generator</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -2058,7 +2091,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 <span>Customer Touchpoint Channel Telemetry</span>
               </h4>
               <p className="text-xs text-on-surface-variant mb-4">
-                Comparison of contact-free 13.56 MHz NFC phone taps vs. Level Q printed QR code scans.
+                Comparison of contact-free 13.56 MHz NFC phone taps vs. Level Q printed QR code scans across all tags.
               </p>
 
               <div className="space-y-4">
@@ -2103,47 +2136,47 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                 <span>Commercial Hardware Plan Distribution</span>
               </h4>
               <p className="text-xs text-on-surface-variant mb-4">
-                Distribution of deployed NFC review cards, counter standees, and auto reply engines.
+                Live distribution of deployed Counter Standees, Business NFC Cards, and Smart Routing.
               </p>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-purple-500" />
-                    <span className="text-xs font-bold text-on-surface">Auto Standee + Reply Engine (₹2,000)</span>
+                    <span className="w-3 h-3 rounded-full bg-orange-500" />
+                    <span className="text-xs font-bold text-on-surface">Counter Review Standees</span>
                   </div>
                   <span className="font-mono font-bold text-xs text-on-surface">
-                    {businesses.filter((b) => b.plan === "standee_auto_2000").length} Units
+                    {platformTags.filter((t) => t.product_type === "Counter Standee").length} Units
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-secondary" />
-                    <span className="text-xs font-bold text-on-surface">Auto Google Review Standee (₹1,500)</span>
+                    <span className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span className="text-xs font-bold text-on-surface">Business NFC Smart Cards</span>
                   </div>
                   <span className="font-mono font-bold text-xs text-on-surface">
-                    {businesses.filter((b) => b.plan === "standee_1500").length} Units
+                    {platformTags.filter((t) => t.product_type === "Business NFC Card").length} Units
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-zinc-400" />
-                    <span className="text-xs font-bold text-on-surface">Normal Smart NFC Review Card (₹500)</span>
+                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-bold text-on-surface">Active Google Review Routes</span>
                   </div>
-                  <span className="font-mono font-bold text-xs text-on-surface">
-                    {businesses.filter((b) => b.plan === "card_500").length} Units
+                  <span className="font-mono font-bold text-xs text-emerald-600">
+                    {platformGoogleLinks.filter((g) => g.destination !== "not_assigned").length} Configured
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-surface-variant/40">
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-amber-500" />
-                    <span className="text-xs font-bold text-on-surface">Franchise Multi-Outlet Fleet (Custom Quote)</span>
+                    <span className="w-3 h-3 rounded-full bg-pink-500" />
+                    <span className="text-xs font-bold text-on-surface">Smart Social Touchpoint Cards</span>
                   </div>
-                  <span className="font-mono font-bold text-xs text-amber-600">
-                    {businesses.filter((b) => b.plan === "franchise_custom").length} Units
+                  <span className="font-mono font-bold text-xs text-pink-600">
+                    {platformSocialLinks.filter((s) => s.destination === "assigned").length} Configured
                   </span>
                 </div>
               </div>

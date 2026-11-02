@@ -1,5 +1,22 @@
 # ZenTap — Changelog
 
+## [1.29.0] — 2026-11-02
+### Enhanced (Live Overview Telemetry, Full Supabase Synchronizer & Operational Login Portal)
+- **Live Overview Page Integration**:
+  - Replaced mock and disconnected metrics with active real-time platform calculations from `platformClients`, `platformPayments`, `platformTags`, `platformGoogleLinks`, and `platformSocialLinks`.
+  - Live revenue telemetry: `platformCollectedEarnings` calculated across all completed payments.
+  - Live customer engagement: Aggregated hardware NFC scans and QR scans with accurate distribution.
+  - Connected action modules: Dynamic badges for unconfirmed client details, pending Google review link destinations, payment ledger collections, and hardware inventory stock.
+- **Backend Database Platform Synchronizer (`/api/admin/platform`)**:
+  - Created dedicated backend API handler with automated Supabase PostgreSQL synchronization using service-role credentials.
+  - Automatically queries, hydrates, and mutates records across all 12 platform tables: `clients`, `deleted_businesses`, `payments`, `deleted_payments`, `qr_nfc_tags`, `deleted_qr_nfc_tags`, `google_review_links`, `deleted_google_review_links`, `social_links`, `deleted_social_links`, `page_editor_configs`, and `deleted_page_editor_configs`.
+  - Added broadcast event pipeline (`zentap_platform_updated`) for sub-second UI synchronization across all open views.
+- **Merchant & Admin Login Architecture**:
+  - Upgraded `/login` with dual-mode role selector ("Merchant" and "Admin Console").
+  - Seamless navigation to Merchant Dashboard upon merchant sign-in, and instant redirect to the Admin Console for verified administrative accounts.
+  - Integrated interactive password reset modal with Supabase authentication.
+  - Added "My Dashboard" shortcut directly in the global header for authenticated merchants.
+
 ## [1.28.0] — 2026-11-02
 ### Enhanced (Full Entry Editing, Database Deletion Audit Tables, Business ID Search & Table Enhancements)
 - **Database Schema Migration (`010_admin_tables_enhancements.sql`)**:

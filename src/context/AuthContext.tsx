@@ -8,6 +8,10 @@ export function checkIsAdmin(user: User | null): boolean {
   // Strict Superadmin Whitelist: Only verified root administrators have supreme console authority
   const adminList = [
     "admin@zentapdigitalsolutions.com",
+    "admin@zentap.ai",
+    "meet@zentap.ai",
+    "mbborad143bmb@gmail.com",
+    "meetborad@hotmail.com"
   ];
 
   // If a user is logged in, their email/metadata determines authority

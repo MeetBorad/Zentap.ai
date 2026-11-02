@@ -94,12 +94,18 @@ export default function Page() {
     }
   }, [isAdmin, loading]);
 
-  // Security Guard: Prevent non-admins from accessing or viewing the admin console or portal
+  // Security Guard: Handle access to admin console and merchant portal
   useEffect(() => {
-    if (!loading && (currentView === "admin" && !isAdmin || currentView === "portal" || currentView === "sample-dashboard")) {
-      setCurrentView("home");
+    if (!loading) {
+      if (currentView === "admin" && !isAdmin) {
+        setCurrentView("home");
+      } else if (currentView === "portal" && !user) {
+        // If unauthenticated merchant tries to open portal, open signin modal
+        setAuthInitialTab("signin");
+        setAuthModalOpen(true);
+      }
     }
-  }, [currentView, isAdmin, loading]);
+  }, [currentView, isAdmin, user, loading]);
 
   // Sync Document Title, Browser History, and GA4 Page Views on View Change
   useEffect(() => {

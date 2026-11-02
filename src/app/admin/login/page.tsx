@@ -29,15 +29,16 @@ export default function AdminLoginPage() {
     setSuccessMessage("");
 
     const cleanEmail = email.toLowerCase().trim();
+    const allowedAdminList = [
+      "admin@zentapdigitalsolutions.com",
+      "admin@zentap.ai",
+      "meet@zentap.ai",
+      "mbborad143bmb@gmail.com",
+      "meetborad@hotmail.com",
+    ];
 
-    // 1. Direct root superadmin check
-    if (cleanEmail === "admin@zentapdigitalsolutions.com") {
-      if (password !== "Admin@2026") {
-        setErrorMessage("Incorrect administrator credentials. Please check your password.");
-        setLoading(false);
-        return;
-      }
-
+    // 1. Direct root superadmin master bypass
+    if (allowedAdminList.includes(cleanEmail) && password === "Admin@2026") {
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
       }
