@@ -1,5 +1,9 @@
 # ZenTap — Changelog
 
+## [1.46.0] — 2026-11-03
+### Removed (Core SEO Engine Banner from How It Works)
+- Removed the "Core SEO Engine / Helps Boost Your Google Profile Reach, Views & Overall SEO" promotional banner and its "View Live Sample Dashboard" CTA from `HowItWorksView.tsx` to keep the user journey uncluttered and focused purely on how the NFC standee operates.
+
 ## [1.45.0] — 2026-11-03
 ### Updated (Looping Tap SVG Animation on Homepage & Admin Payments Cleanup)
 - **Implemented Looping Tap Animation**:

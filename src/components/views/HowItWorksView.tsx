@@ -267,32 +267,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
         </div>
       </div>
 
-      {/* SEO Boost Value Proposition Banner */}
-      <div className="mb-16 p-6 rounded-3xl bg-gradient-to-r from-secondary/15 via-primary/10 to-secondary/15 border border-secondary/30 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-secondary/20 flex items-center justify-center text-secondary flex-shrink-0">
-            <TrendingUp className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-secondary block">
-              Core SEO Engine
-            </span>
-            <h3 className="font-headline font-bold text-lg sm:text-xl text-on-surface">
-              Helps Boost Your Google Profile Reach, Views &amp; Overall SEO
-            </h3>
-            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-              Google&apos;s local algorithm heavily rewards high-frequency verified reviews containing local keywords. ZenTap delivers a constant stream of fresh reviews, rocketing your venue to the top 3-pack on Google Search and Maps.
-            </p>
-          </div>
-        </div>
 
-        <button
-          onClick={onNavigateToSample}
-          className="px-6 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer whitespace-nowrap shadow-sm"
-        >
-          View Live Sample Dashboard
-        </button>
-      </div>
 
       {/* 4 Steps Vertical Grid with Visual Connectors */}
       <div className="space-y-8 mb-16">
