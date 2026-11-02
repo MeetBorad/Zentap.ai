@@ -109,11 +109,11 @@ export async function resolveScan(
             return { kind: 'unavailable', unassigned: false };
           }
 
-          const { data: bizRow } = await db
-            .from('businesses')
-            .select('slug')
-            .eq('id', tagRow.business_id)
-            .maybeSingle();
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tagRow.business_id || '');
+          const bizQuery = isUuid
+            ? db.from('businesses').select('slug').eq('id', tagRow.business_id).maybeSingle()
+            : db.from('businesses').select('slug').eq('slug', (tagRow.business_id || '').toLowerCase()).maybeSingle();
+          const { data: bizRow } = await bizQuery;
 
           const slug = bizRow?.slug || tagRow.business_id?.toLowerCase() || code;
           return { kind: 'page', slug };

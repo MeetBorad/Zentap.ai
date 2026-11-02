@@ -486,7 +486,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeCategory(item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub");
     setCategoryInputText("");
     setEditWholeLinkUrl(item.link_url);
-    setEditWholeSetupStatus(item.setup_status);
+    const isAlreadyDesigned = item.setup_status === "completed" || Boolean(item.config_data && (item.config_data.title || item.config_data.theme));
+    setEditWholeSetupStatus(isAlreadyDesigned ? "completed" : (item.setup_status || "pending"));
   };
 
   const handleSaveWholeEdit = async (e: React.FormEvent) => {

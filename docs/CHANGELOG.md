@@ -1,5 +1,13 @@
 # ZenTap — Changelog
 
+## [1.41.0] — 2026-11-02
+### Fixed & Hardened (Design Status State Preservation & Tag UUID Resolution)
+- **Design Status Preservation in Standee Page Editor**:
+  - In `PageEditorWebpageTab.tsx`, `openEditWhole` now detects existing designs (`config_data.title` or `theme`) and locks the dropdown default to `completed`, preventing editing business names or category chips from accidentally reverting the design status to `pending`.
+- **Robust Tag-to-Business Lookup**:
+  - In `resolveTag.ts`, sanitized `businesses` table query to distinguish between UUID and custom business codes (e.g. `ZT-0004`), preventing PostgreSQL `22P02 invalid input syntax for type uuid` errors.
+  - Confirmed `/t/ST3` 302 redirects seamlessly to `/r/zt-0004?via=st3&s=qr` which serves the live 200 OK custom Google review assistant for **XYZ**.
+
 ## [1.40.0] — 2026-11-02
 ### Integrated (OpenSEO Suite Installation)
 - **Installed 13 OpenSEO Skills & Workflows**:
