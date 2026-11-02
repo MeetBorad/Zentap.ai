@@ -23,8 +23,8 @@ import {
   DeletedBusinessRecord,
   getAllClients,
   getAllDeletedBusinesses,
-  addClient,
-  updateClient,
+  addClientServer,
+  updateClientServer,
   generateNextBusinessIdCode,
   softDeleteClientServer,
   restoreClientServer,
@@ -125,7 +125,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
     if (!editBizName.trim()) {
@@ -133,7 +133,8 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       return;
     }
 
-    const updated = updateClient(editTarget.business_id, {
+    setIsSubmitting(true);
+    const res = await updateClientServer(editTarget.business_id, {
       business_id: editBusinessId.trim() || editTarget.business_id,
       business_name: editBizName.trim(),
       owner_name: editOwnerName.trim() || undefined,
@@ -144,46 +145,53 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       facebook_link: editFacebook.trim() || undefined,
       city: editCity.trim() || "India",
     });
+    setIsSubmitting(false);
 
-    if (updated) {
-      onShowToast(`✓ Updated "${updated.business_name}" (${updated.business_id}) successfully!`);
+    if (res.success) {
+      onShowToast(`✓ Updated "${editBizName.trim()}" (${editTarget.business_id}) successfully!`);
       setIsEditModalOpen(false);
       setEditTarget(null);
-      refreshData();
+      await refreshData();
     } else {
-      onShowToast("Failed to update business");
+      onShowToast(res.error || "Failed to update business in database");
     }
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBizName.trim()) {
       onShowToast("Please enter a business name");
       return;
     }
 
-    const created = addClient({
+    setIsSubmitting(true);
+    const res = await addClientServer({
       business_name: newBizName.trim(),
-      owner_name: newOwnerName.trim() || undefined as any,
-      owner_phone: newOwnerPhone.trim() || undefined as any,
-      owner_email: newOwnerEmail.trim() || undefined as any,
-      whatsapp: newWhatsapp.trim() || newOwnerPhone.trim() || undefined as any,
-      instagram_link: newInstagram.trim() || undefined as any,
-      facebook_link: newFacebook.trim() || undefined as any,
+      owner_name: newOwnerName.trim() || undefined,
+      owner_phone: newOwnerPhone.trim() || undefined,
+      owner_email: newOwnerEmail.trim() || undefined,
+      whatsapp: newWhatsapp.trim() || newOwnerPhone.trim() || undefined,
+      instagram_link: newInstagram.trim() || undefined,
+      facebook_link: newFacebook.trim() || undefined,
       city: newCity.trim() || "India",
     });
+    setIsSubmitting(false);
 
-    onShowToast(`✓ Registered "${created.business_name}" with ID ${created.business_id}!`);
-    setIsAddModalOpen(false);
-    // Reset form
-    setNewBizName("");
-    setNewOwnerName("");
-    setNewOwnerPhone("");
-    setNewOwnerEmail("");
-    setNewWhatsapp("");
-    setNewInstagram("");
-    setNewFacebook("");
-    refreshData();
+    if (res.success && res.data) {
+      onShowToast(`✓ Registered "${res.data.business_name}" with ID ${res.data.business_id}!`);
+      setIsAddModalOpen(false);
+      // Reset form
+      setNewBizName("");
+      setNewOwnerName("");
+      setNewOwnerPhone("");
+      setNewOwnerEmail("");
+      setNewWhatsapp("");
+      setNewInstagram("");
+      setNewFacebook("");
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to save business to database");
+    }
   };
 
   // Soft delete client (Requirement 2, 3, 7)

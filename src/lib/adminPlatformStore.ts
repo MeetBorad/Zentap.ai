@@ -575,6 +575,92 @@ export async function permanentDeleteClientServer(businessId: string, confirmati
   return serverPermanentDelete("clients", "business_id", businessId, confirmationName);
 }
 
+// Server-side Client Creation (Direct to Supabase with auto UUID)
+export async function addClientServer(params: {
+  business_name: string;
+  owner_name?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  whatsapp?: string;
+  instagram_link?: string;
+  facebook_link?: string;
+  city?: string;
+  google_review_link?: string;
+}): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
+  try {
+    const current = getAllClients();
+    const nextBusinessId = generateNextBusinessIdCode(current);
+
+    const clientPayload = {
+      business_id: nextBusinessId,
+      business_name: params.business_name.trim(),
+      owner_name: params.owner_name?.trim() || null,
+      owner_phone: params.owner_phone?.trim() || null,
+      owner_email: params.owner_email?.trim() || null,
+      whatsapp: params.whatsapp?.trim() || params.owner_phone?.trim() || null,
+      instagram_link: params.instagram_link?.trim() || null,
+      facebook_link: params.facebook_link?.trim() || null,
+      city: params.city?.trim() || "India",
+      google_review_link: params.google_review_link?.trim() || null,
+    };
+
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "clients",
+        data: clientPayload,
+        onConflict: "business_id",
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to save client in database" };
+    }
+
+    await serverFetchPlatformData();
+    const created = json.data?.[0] || clientPayload;
+    return { success: true, data: created };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while saving client" };
+  }
+}
+
+// Server-side Client Update
+export async function updateClientServer(
+  businessId: string,
+  updates: Partial<ClientRecord>
+): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "clients",
+        data: {
+          ...updates,
+          business_id: businessId,
+          updated_at: new Date().toISOString(),
+        },
+        onConflict: "business_id",
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to update client in database" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true, data: json.data?.[0] };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while updating client" };
+  }
+}
+
 // Payment helpers
 export async function softDeletePaymentServer(id: string): Promise<{ success: boolean; error?: string }> {
   return serverSoftDelete("payments", "id", id);
@@ -586,6 +672,87 @@ export async function restorePaymentServer(id: string): Promise<{ success: boole
 
 export async function permanentDeletePaymentServer(id: string, confirmationName: string): Promise<{ success: boolean; error?: string }> {
   return serverPermanentDelete("payments", "id", id, confirmationName);
+}
+
+// Server-side Payment Creation (Auto UUID in database)
+export async function addPaymentServer(params: {
+  business_id: string;
+  business_name: string;
+  product: string;
+  product_price: number;
+  selling_rate: number;
+  payment_date: string;
+  payment_method: "UPI" | "Cash";
+  payment_status: "Completed paid" | "Partial Advance" | "Pending Unpaid";
+  notes?: string;
+}): Promise<{ success: boolean; data?: PaymentItemRecord; error?: string }> {
+  try {
+    const paymentPayload = {
+      business_id: params.business_id,
+      business_name: params.business_name,
+      product: params.product,
+      product_price: params.product_price,
+      selling_rate: params.selling_rate,
+      payment_date: params.payment_date,
+      payment_method: params.payment_method,
+      payment_status: params.payment_status,
+      notes: params.notes || null,
+      created_at: new Date().toISOString(),
+    };
+
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "payments",
+        data: paymentPayload,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to save payment in database" };
+    }
+
+    await serverFetchPlatformData();
+    const created = json.data?.[0] || paymentPayload;
+    return { success: true, data: created };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while saving payment" };
+  }
+}
+
+// Server-side Payment Update
+export async function updatePaymentServer(
+  id: string,
+  updates: Partial<PaymentItemRecord>
+): Promise<{ success: boolean; data?: PaymentItemRecord; error?: string }> {
+  try {
+    const res = await fetch("/api/admin/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "upsert",
+        table: "payments",
+        data: {
+          ...updates,
+          id,
+          updated_at: new Date().toISOString(),
+        },
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || !json.success) {
+      return { success: false, error: json.error || "Failed to update payment in database" };
+    }
+
+    await serverFetchPlatformData();
+    return { success: true, data: json.data?.[0] };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error while updating payment" };
+  }
 }
 
 // Tag helpers

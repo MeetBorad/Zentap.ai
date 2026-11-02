@@ -21,8 +21,8 @@ import {
   getAllPayments,
   getAllDeletedPayments,
   getAllClients,
-  addPayment,
-  updatePayment,
+  addPaymentServer,
+  updatePaymentServer,
   softDeletePaymentServer,
   restorePaymentServer,
   permanentDeletePaymentServer,
@@ -132,7 +132,7 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
     }
   };
 
-  const handleRecordSubmit = (e: React.FormEvent) => {
+  const handleRecordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetBiz = clients.find((c) => c.business_id === selectedBusinessId);
     if (!targetBiz) {
@@ -140,7 +140,8 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
       return;
     }
 
-    const created = addPayment({
+    setIsSubmitting(true);
+    const res = await addPaymentServer({
       business_id: targetBiz.business_id,
       business_name: targetBiz.business_name,
       product: selectedProduct,
@@ -151,11 +152,16 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
       payment_status: paymentStatus,
       notes: paymentNotes.trim() || undefined,
     });
+    setIsSubmitting(false);
 
-    onShowToast(`✓ Recorded payment of ₹${created.selling_rate} for ${created.business_name}!`);
-    setIsRecordModalOpen(false);
-    setPaymentNotes("");
-    refreshData();
+    if (res.success && res.data) {
+      onShowToast(`✓ Recorded payment of ₹${res.data.selling_rate} for ${res.data.business_name}!`);
+      setIsRecordModalOpen(false);
+      setPaymentNotes("");
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to record payment in database");
+    }
   };
 
   // Open Edit Modal with full entry prefilled
@@ -173,11 +179,12 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTargetId) return;
 
-    const updated = updatePayment(editTargetId, {
+    setIsSubmitting(true);
+    const res = await updatePaymentServer(editTargetId, {
       business_id: editBusinessId.trim(),
       business_name: editBusinessName.trim(),
       product: editProduct,
@@ -188,14 +195,15 @@ export default function PaymentsWebpageTab({ onShowToast }: PaymentsWebpageTabPr
       payment_status: editPaymentStatus,
       notes: editPaymentNotes.trim() || undefined,
     });
+    setIsSubmitting(false);
 
-    if (updated) {
-      onShowToast(`✓ Payment record for "${updated.business_name}" updated!`);
+    if (res.success && res.data) {
+      onShowToast(`✓ Payment record for "${res.data.business_name}" updated!`);
       setIsEditModalOpen(false);
       setEditTargetId(null);
-      refreshData();
+      await refreshData();
     } else {
-      onShowToast("Failed to update payment record");
+      onShowToast(res.error || "Failed to update payment record");
     }
   };
 

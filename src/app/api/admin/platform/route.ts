@@ -262,14 +262,32 @@ export async function POST(req: Request) {
     if (action === "seed_initial") {
       const { initialClients, initialTags, initialPayments, initialGoogleLinks, initialSocialLinks, initialPageEditors } = body;
       
-      const { data: existingClients } = await supabase.from("clients").select("id").limit(1);
+      const { data: existingClients } = await (supabase as any).from("clients").select("id").limit(1);
       if (!existingClients || existingClients.length === 0) {
-        if (initialClients?.length) await supabase.from("clients").insert(initialClients);
-        if (initialTags?.length) await supabase.from("qr_nfc_tags").insert(initialTags);
-        if (initialPayments?.length) await supabase.from("payments").insert(initialPayments);
-        if (initialGoogleLinks?.length) await supabase.from("google_review_links").insert(initialGoogleLinks);
-        if (initialSocialLinks?.length) await supabase.from("social_links").insert(initialSocialLinks);
-        if (initialPageEditors?.length) await supabase.from("page_editor_configs").insert(initialPageEditors);
+        if (initialClients?.length) {
+          const clean = initialClients.map((c: any) => sanitizeRowForTable(c, "clients"));
+          await (supabase as any).from("clients").insert(clean);
+        }
+        if (initialTags?.length) {
+          const clean = initialTags.map((t: any) => sanitizeRowForTable(t, "qr_nfc_tags"));
+          await (supabase as any).from("qr_nfc_tags").insert(clean);
+        }
+        if (initialPayments?.length) {
+          const clean = initialPayments.map((p: any) => sanitizeRowForTable(p, "payments"));
+          await (supabase as any).from("payments").insert(clean);
+        }
+        if (initialGoogleLinks?.length) {
+          const clean = initialGoogleLinks.map((g: any) => sanitizeRowForTable(g, "google_review_links"));
+          await (supabase as any).from("google_review_links").insert(clean);
+        }
+        if (initialSocialLinks?.length) {
+          const clean = initialSocialLinks.map((s: any) => sanitizeRowForTable(s, "social_links"));
+          await (supabase as any).from("social_links").insert(clean);
+        }
+        if (initialPageEditors?.length) {
+          const clean = initialPageEditors.map((pe: any) => sanitizeRowForTable(pe, "page_editor_configs"));
+          await (supabase as any).from("page_editor_configs").insert(clean);
+        }
       }
       return NextResponse.json({ success: true, message: "Seed check completed" });
     }
@@ -584,18 +602,167 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, deleted: deletedRow });
     }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const TABLE_COLUMNS: Record<string, string[]> = {
+  clients: [
+    "id",
+    "business_id",
+    "business_name",
+    "owner_name",
+    "owner_phone",
+    "owner_email",
+    "whatsapp",
+    "instagram_link",
+    "facebook_link",
+    "city",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+    "google_review_link",
+  ],
+  payments: [
+    "id",
+    "business_id",
+    "business_name",
+    "product",
+    "product_price",
+    "selling_rate",
+    "payment_date",
+    "payment_method",
+    "payment_status",
+    "notes",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+  ],
+  qr_nfc_tags: [
+    "id",
+    "tag_id",
+    "product_type",
+    "business_id",
+    "business_name",
+    "link",
+    "scans_count",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+    "google_review_link",
+    "destination",
+    "social_platform",
+    "social_link",
+  ],
+  google_review_links: [
+    "id",
+    "tag_id",
+    "business_id",
+    "business_name",
+    "link_of_tag_id",
+    "business_google_review_link",
+    "destination",
+    "setup_status",
+    "total_scans",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+  ],
+  social_links: [
+    "id",
+    "tag_id",
+    "business_id",
+    "business_name",
+    "social_platform",
+    "link_of_tag_id",
+    "social_link",
+    "destination",
+    "setup_status",
+    "total_scans",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+  ],
+  page_editor_configs: [
+    "id",
+    "tag_id",
+    "business_id",
+    "business_name",
+    "link_url",
+    "setup_status",
+    "config_data",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "deleted_by",
+  ],
+};
+
+function sanitizeRowForTable(item: any, table: string) {
+  if (!item || typeof item !== "object") return item;
+  const copy: any = {};
+  const allowed = TABLE_COLUMNS[table];
+
+  for (const [key, value] of Object.entries(item)) {
+    if (allowed && !allowed.includes(key)) {
+      continue; // Skip extra fields that don't exist in Supabase schema
+    }
+    if (key === "id" && typeof value === "string" && !UUID_REGEX.test(value)) {
+      continue; // Skip non-UUID strings so PostgreSQL auto-generates gen_random_uuid()
+    }
+    copy[key] = value;
+  }
+  return copy;
+}
+
     // 5. UPSERT RECORD
     if (action === "upsert") {
       if (!table || !data) {
         return NextResponse.json({ error: "Missing table or data" }, { status: 400 });
       }
 
+      // If table is clients and business_id is missing or clashing, generate next available
+      if (table === "clients") {
+        const checkItem = Array.isArray(data) ? data[0] : data;
+        if (!checkItem.business_id) {
+          const { data: allBiz } = await (supabase as any).from("clients").select("business_id");
+          let max = 0;
+          (allBiz || []).forEach((b: any) => {
+            const match = (b.business_id || "").match(/ZT-(\d+)/i);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (num > max) max = num;
+            }
+          });
+          const nextBid = `ZT-${String(max + 1).padStart(4, "0")}`;
+          if (Array.isArray(data)) {
+            data[0].business_id = nextBid;
+          } else {
+            data.business_id = nextBid;
+          }
+        }
+      }
+
+      // Column whitelist + UUID sanitization: strips non-existent columns and non-UUID IDs
+      const cleanData = Array.isArray(data)
+        ? data.map((item) => sanitizeRowForTable(item, table))
+        : sanitizeRowForTable(data, table);
+
+      const conflictTarget = body.onConflict || (table === "clients" ? "business_id" : (table === "qr_nfc_tags" ? "tag_id" : idField));
+
       const { data: res, error } = await (supabase as any)
         .from(table)
-        .upsert(data, { onConflict: body.onConflict || idField })
+        .upsert(cleanData, { onConflict: conflictTarget })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Upsert error on ${table}:`, error);
+        return NextResponse.json({ error: error.message || `Failed to save to ${table}` }, { status: 500 });
+      }
+
       return NextResponse.json({ success: true, data: res });
     }
 
