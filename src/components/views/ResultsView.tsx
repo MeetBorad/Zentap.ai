@@ -23,7 +23,7 @@ interface ResultsViewProps {
 export default function ResultsView({ onNavigateToSample, onNavigateToPricing }: ResultsViewProps) {
   const stats = [
     { value: "5x", label: "Review Volume Velocity", detail: "Significant review acceleration across pilot merchant venues within weeks." },
-    { value: "4.9 ★", label: "Average Google Rating", detail: "Assisted by ZenTap's frictionless AI review assistant." },
+    { value: "4.9 ★", label: "Average Google Rating", detail: "Assisted by ZenTap's frictionless review assistant." },
     { value: "+34%", label: "Google Maps Footfall Lift", detail: "Measurable increase in Google directions, calls, and walk-in visitors." },
     { value: "88%", label: "Tap Conversion Rate", detail: "88 out of 100 tapping guests successfully publish a Google review." },
   ];

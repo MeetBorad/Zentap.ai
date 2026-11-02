@@ -1,5 +1,14 @@
 # ZenTap — Changelog
 
+## [1.48.0] — 2026-11-03
+### Updated (Removed AI References & Real Standee Hero Showcase)
+- **Removed AI References Across Public Website**:
+  - Removed "AI", "AI Review", "AI draft", "AI guidance", and "AI engine" from all customer-facing views (`PricingView.tsx`, `HowItWorksView.tsx`, `FaqView.tsx`, `ResultsView.tsx`, `AiReviewCustomerFlow.tsx`).
+  - Standardized all terminology to human-centric wording: "Smart Review Assistant", "Guided Review Flow", and "Instant Review Suggestions".
+- **Fixed & Enhanced Real Standee Showcase on Homepage**:
+  - Resolved container height collapse issue when switching to the "Real Standee" tab in `HomeView.tsx`.
+  - Added an interactive multi-standee model selector showcasing authentic photography for Champagne Gold, Brushed Steel, Clear Acrylic & Beechwood, Rose Gold, and Counter Tap setups.
+
 ## [1.47.0] — 2026-11-03
 ### Updated (Sample Profile CTA Redirection on How It Works)
 - Renamed all "Explore Sample Dashboard" and "View Sample Dashboard" buttons on `HowItWorksView.tsx` to **"Sample ZenTap Business Profile"**.

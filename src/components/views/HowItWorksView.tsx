@@ -89,14 +89,14 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
           Complete Ecosystem &amp; How It Works
         </span>
         <h1 className="font-headline font-extrabold text-3xl sm:text-5xl text-on-surface mt-2 tracking-tight">
-          Advanced Hardware &amp; AI Routing Capabilities
+          Advanced Hardware &amp; Smart Routing Capabilities
         </h1>
         <p className="text-xs sm:text-sm text-on-surface-variant mt-3 leading-relaxed">
           Every standee is packed with smart contactless NFC chips, weatherproof matte acrylic, and real-time cloud management that helps happy customers leave Google reviews in seconds.
         </p>
       </div>
 
-      {/* Stitch 4-Pillar Hardware & AI Capability Grid */}
+      {/* Stitch 4-Pillar Hardware & Smart Capability Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
         <div className="p-6 sm:p-7 rounded-3xl bg-surface-container-low border border-surface-variant/40 shadow-sm flex flex-col justify-between">
           <div>
@@ -210,7 +210,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-on-surface">AI Review Engine</h4>
+                  <h4 className="text-xs font-bold text-on-surface">Smart Review Engine</h4>
                   <p className="text-[11px] text-on-surface-variant mt-0.5">Generates authentic, keyword-dense reviews in under 5 seconds.</p>
                 </div>
               </div>

@@ -51,7 +51,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
       a: "No app, download, or Bluetooth pairing is required. Both Apple iOS (iPhone XS and newer) and Android automatically detect the smart chip instantly when held within 4cm of the standee or smart card.",
     },
     {
-      q: "How does the AI Review Assistant help increase Google reviews?",
+      q: "How does the Review Assistant help increase Google reviews?",
       a: "When a customer taps your standee, they can pick aspects they loved (e.g. Cleanliness, Fast Service, Great Ambience) and instantly generate a helpful, high-quality review draft. With a single tap, the draft opens directly in Google Maps for immediate posting—eliminating typing hassle while keeping reviews 100% authentic.",
     },
     {
@@ -231,7 +231,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
           }`}
         >
           <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-secondary-container text-white text-[11px] font-bold shadow-md">
-            Most Popular • AI Review Flow
+            Most Popular • Guided Review Flow
           </div>
 
           <div>
@@ -241,7 +241,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
                   Review Assistant
                 </span>
                 <h3 className="font-headline font-bold text-lg text-white mt-2">ZenTap Smart Review Standee</h3>
-                <span className="text-xs text-zinc-300">Customized Review Assistant page with AI guidance</span>
+                <span className="text-xs text-zinc-300">Customized Review Assistant page with guided suggestions</span>
               </div>
               <div className="text-right flex-shrink-0 pl-2">
                 <span className="font-headline font-extrabold text-2xl text-white">Contact us</span>
@@ -264,7 +264,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Preset aspect tags &amp; AI review draft generation</span>
+                <span>Preset aspect tags &amp; instant review suggestions</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />

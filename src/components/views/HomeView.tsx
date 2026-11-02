@@ -41,9 +41,38 @@ interface HomeViewProps {
   onOpenAuth?: (initialTab: "signin" | "signup" | "admin") => void;
 }
 
+const HERO_STANDEES = [
+  {
+    name: "Champagne Gold Standee",
+    src: "/standees/Gold.webp",
+    desc: "Luxury brushed finish for cafes, salons & hotels",
+  },
+  {
+    name: "Brushed Steel Standee",
+    src: "/standees/Steel.webp",
+    desc: "Industrial satin finish for high-traffic billing counters",
+  },
+  {
+    name: "Clear Acrylic & Beechwood",
+    src: "/standees/Wood Trans.webp",
+    desc: "Organic minimal beechwood base for warm interiors",
+  },
+  {
+    name: "Rose Gold Standee",
+    src: "/standees/Pink.webp",
+    desc: "Designer radiant finish for spas & beauty bars",
+  },
+  {
+    name: "Counter Tap Setup",
+    src: "/standees/1.webp",
+    desc: "Compact billing desk placement with companion card",
+  },
+];
+
 export default function HomeView({ onNavigate }: HomeViewProps) {
   const homeContainerRef = useRef<HTMLDivElement>(null);
   const [heroVisualMode, setHeroVisualMode] = useState<"demo" | "photo">("demo");
+  const [selectedStandeeIdx, setSelectedStandeeIdx] = useState(0);
 
   // GSAP ScrollTrigger Animations for smooth section entries
   useGSAP(() => {
@@ -164,8 +193,8 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                   <p className="text-xs text-slate-300 mt-0.5">Works on Any Phone</p>
                 </div>
               </div>
-            </div>
 
+            </div>
             {/* Right: Looping Tap Demonstration & Authentic Standee Visual */}
             <div className="lg:col-span-5 flex flex-col justify-center">
               <div className="relative rounded-3xl overflow-hidden border border-[#2d3345] bg-[#141720] shadow-2xl p-4 sm:p-6">
@@ -206,15 +235,31 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                 {heroVisualMode === "demo" ? (
                   <TapAnimationLoop className="w-full border border-[#232734]" />
                 ) : (
-                  <div className="relative aspect-4/3 w-full rounded-2xl overflow-hidden border border-[#232734] group">
-                    <Image
-                      src="/standees/Gold.webp"
-                      alt="ZenTap Google Review Stand on Counter"
-                      fill
-                      priority
-                      sizes="(max-width: 768px) 100vw, 500px"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                  <div className="flex flex-col gap-3">
+                    <div className="relative w-full h-[260px] sm:h-[280px] rounded-2xl overflow-hidden bg-[#0c0e14] border border-[#232734] flex items-center justify-center p-3">
+                      <img
+                        src={HERO_STANDEES[selectedStandeeIdx].src}
+                        alt={HERO_STANDEES[selectedStandeeIdx].name}
+                        className="w-full h-full object-contain drop-shadow-xl transition-all duration-300"
+                      />
+                    </div>
+
+                    {/* Standee Model Selector Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                      {HERO_STANDEES.map((st, idx) => (
+                        <button
+                          key={st.name}
+                          onClick={() => setSelectedStandeeIdx(idx)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                            selectedStandeeIdx === idx
+                              ? "bg-white text-black shadow-sm"
+                              : "bg-[#1e2230] text-zinc-400 hover:text-white border border-[#2d3345]"
+                          }`}
+                        >
+                          {st.name.replace(" Standee", "")}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -222,12 +267,14 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                 <div className="mt-4 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-white text-base">
-                      {heroVisualMode === "demo" ? "One Tap to Google Reviews" : "Champagne Gold Standee"}
+                      {heroVisualMode === "demo"
+                        ? "One Tap to Google Reviews"
+                        : HERO_STANDEES[selectedStandeeIdx].name}
                     </h3>
                     <p className="text-xs text-slate-300 mt-0.5">
                       {heroVisualMode === "demo"
                         ? "Phone taps standee → 5-star Google review opens"
-                        : "Placed directly on your customer billing counter"}
+                        : HERO_STANDEES[selectedStandeeIdx].desc}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 text-amber-400">
@@ -236,7 +283,7 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                     ))}
                   </div>
                 </div>
-              </div>
+            </div>
             </div>
 
           </div>

@@ -22,7 +22,7 @@ export default function FaqView({ onNavigateToPricing, onOpenUpcomingDrawer }: F
     },
     {
       q: "How does the rating and review flow work on Google?",
-      a: "ZenTap provides an unhindered direct link to your official Google Business Profile review listing for every customer. The AI review assistant suggests thoughtful, keyword-rich drafts based on what the customer enjoyed, eliminating typing friction. Customers always submit reviews directly through their personal Google account, ensuring 100% authentic public reviews.",
+      a: "ZenTap provides an unhindered direct link to your official Google Business Profile review listing for every customer. The review assistant suggests thoughtful, keyword-rich drafts based on what the customer enjoyed, eliminating typing friction. Customers always submit reviews directly through their personal Google account, ensuring 100% authentic public reviews.",
     },
     {
       q: "What is the difference between the Smart Card and the Counter Standee?",

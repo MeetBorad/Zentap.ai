@@ -336,7 +336,7 @@ export default function AiReviewCustomerFlow({
       {isPreview && (
         <div className="bg-amber-500 text-black px-4 py-2 text-center text-xs font-bold font-mono tracking-wider sticky top-0 z-50 shadow-sm flex items-center justify-center gap-2">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>ADMIN LIVE PREVIEW • AI REVIEW ASSISTANT ACTIVE</span>
+          <span>ADMIN LIVE PREVIEW • SMART REVIEW ASSISTANT ACTIVE</span>
         </div>
       )}
 
