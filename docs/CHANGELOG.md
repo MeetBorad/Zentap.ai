@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.43.0] — 2026-11-02
+### Improved (Mobile View Sync & Removal of Merchant Registration / Sign-in Prompts)
+- **Mobile Bottom Navigation Bar Synchronized**:
+  - Replaced legacy mobile `Account` button (which previously opened merchant sign-in/registration modals) with high-utility, synchronized actions:
+    - `Home` (`Store`)
+    - `Process` (`Radio`)
+    - `Pricing` (`DollarSign`)
+    - `Order` (`MessageCircle` - direct instant WhatsApp order)
+    - `Admin` (`ShieldAlert` / `ShieldCheck` - direct access to Admin Login / Console)
+- **Eliminated Merchant Register/Sign-in Prompts Across Views**:
+  - In `HowItWorksView.tsx`, converted "Sign Up Business" and "Order Custom Standee" to direct WhatsApp order actions.
+  - In `SampleDashboardView.tsx`, converted "Register Your Business" button to "Order on WhatsApp".
+  - In `ClientPortalView.tsx`, converted guest preview "Sign In / Register Business" actions into "Order on WhatsApp".
+  - Maintained complete visual parity between desktop and mobile.
+
 ## [1.42.0] — 2026-11-02
 ### Improved (Header Admin Login Positioning, Dismissable Admin Dropdown & Clean Exit Session)
 - **Header Navigation & Admin Login Cleanup**:

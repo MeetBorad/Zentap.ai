@@ -248,13 +248,14 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
                 <ArrowRight className="w-4 h-4" />
               </OpenDesignButton>
 
-              <OpenDesignButton
-                variant="subtle"
-                size="md"
-                onClick={() => onOpenAuth("signup")}
+              <a
+                href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
+                target="_blank"
+                rel="noreferrer"
+                className="tactile-btn-subtle px-5 py-3 rounded-xl bg-surface-container hover:bg-surface-dim text-on-surface text-xs font-bold transition-all border border-surface-variant/40 flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 <span>Order Custom Standee</span>
-              </OpenDesignButton>
+              </a>
             </div>
           </div>
 
@@ -378,7 +379,7 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
           Explore our interactive Sample Dashboard to see how your metrics, reviews, and NFC taps will look live.
         </p>
 
-        <div className="flex items-center justify-center gap-3 mt-6">
+        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
           <button
             onClick={onNavigateToSample}
             className="px-6 py-3 rounded-2xl bg-primary text-on-primary font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm flex items-center gap-2"
@@ -386,12 +387,14 @@ export default function HowItWorksView({ onOpenAuth, onNavigateToSample }: HowIt
             <span>Explore Sample Dashboard</span>
             <ArrowRight className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onOpenAuth("signup")}
-            className="px-6 py-3 rounded-2xl bg-secondary-container text-on-secondary-container font-bold text-xs hover:opacity-90 transition-all cursor-pointer"
+          <a
+            href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
+            target="_blank"
+            rel="noreferrer"
+            className="px-6 py-3 rounded-2xl bg-[#25D366] text-black font-extrabold text-xs hover:bg-[#20bd5a] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
-            Sign Up Business
-          </button>
+            <span>Order on WhatsApp</span>
+          </a>
         </div>
       </div>
 

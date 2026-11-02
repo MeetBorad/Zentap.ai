@@ -156,13 +156,14 @@ export default function SampleDashboardView({ onNavigateToPricing, onOpenAuth }:
             <span>Test Customer Flow</span>
           </a>
 
-          <button
-            onClick={() => onOpenAuth("signup")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-primary text-on-primary text-xs font-bold hover:bg-primary/90 shadow-sm transition-all cursor-pointer"
+          <a
+            href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#25D366] text-black text-xs font-extrabold hover:bg-[#20bd5a] shadow-sm transition-all cursor-pointer"
           >
-            <Building2 className="w-4 h-4" />
-            <span>Register Your Business</span>
-          </button>
+            <span>Order on WhatsApp</span>
+          </a>
         </div>
       </div>
 

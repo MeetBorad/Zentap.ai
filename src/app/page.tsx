@@ -28,7 +28,10 @@ import {
   Sparkles, 
   Radio, 
   DollarSign, 
-  User 
+  User,
+  MessageCircle,
+  ShieldCheck,
+  ShieldAlert
 } from "lucide-react";
 import { trackPageView, trackCtaClick } from "@/lib/analytics";
 
@@ -255,12 +258,12 @@ export default function Page() {
 
       {/* Fixed Mobile Bottom Navigation Bar (Hidden when inside private dashboards) */}
       {!isDashboardView && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-xl border-t border-surface-variant/40 shadow-lg lg:hidden">
-          <div className="h-16 px-2 flex items-center justify-around">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e1015]/95 backdrop-blur-xl border-t border-[#232734] shadow-lg lg:hidden">
+          <div className="h-16 px-3 flex items-center justify-around">
             <button
               onClick={() => handleNavigate("home")}
               className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "home" ? "text-secondary-container" : "text-on-surface-variant"
+                currentView === "home" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
               }`}
             >
               <Store className="w-4 h-4 mb-0.5" />
@@ -270,7 +273,7 @@ export default function Page() {
             <button
               onClick={() => handleNavigate("how-it-works")}
               className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "how-it-works" ? "text-secondary-container" : "text-on-surface-variant"
+                currentView === "how-it-works" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
               }`}
             >
               <Radio className="w-4 h-4 mb-0.5" />
@@ -280,26 +283,42 @@ export default function Page() {
             <button
               onClick={() => handleNavigate("pricing")}
               className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "pricing" ? "text-secondary-container" : "text-on-surface-variant"
+                currentView === "pricing" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
               }`}
             >
               <DollarSign className="w-4 h-4 mb-0.5" />
               <span>Pricing</span>
             </button>
 
-            <button
-              onClick={() => {
-                if (user) {
-                  handleNavigate(isAdmin ? "admin" : "portal");
-                } else {
-                  handleOpenAuth("signin");
-                }
-              }}
-              className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold text-on-surface-variant transition-colors cursor-pointer"
+            {/* Instant Order on WhatsApp */}
+            <a
+              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
+              target="_blank"
+              rel="noreferrer"
+              className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#25D366] hover:text-[#20bd5a] transition-colors"
             >
-              <User className="w-4 h-4 mb-0.5" />
-              <span>{user ? (isAdmin ? "Admin" : "Portal") : "Account"}</span>
-            </button>
+              <MessageCircle className="w-4 h-4 mb-0.5 fill-[#25D366] text-[#25D366]" />
+              <span>Order</span>
+            </a>
+
+            {/* Admin Console / Login (Synced with Desktop) */}
+            {isAdmin ? (
+              <button
+                onClick={() => handleNavigate("admin")}
+                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#ff7a00] transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" />
+                <span>Admin</span>
+              </button>
+            ) : (
+              <a
+                href="/admin/login"
+                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-medium text-zinc-400 hover:text-white transition-colors"
+              >
+                <ShieldAlert className="w-4 h-4 mb-0.5 text-[#ff7a00]" />
+                <span>Admin</span>
+              </a>
+            )}
           </div>
         </nav>
       )}

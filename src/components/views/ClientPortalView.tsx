@@ -1261,18 +1261,15 @@ export default function ClientPortalView({
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => onOpenAuthModal && onOpenAuthModal("signin")}
-                  className="px-4 py-1.5 rounded-full bg-zinc-900 text-white font-bold text-xs hover:bg-zinc-800 transition-all cursor-pointer shadow-sm"
+                <a
+                  href="https://wa.me/919274560880?text=Hi,%20I%20want%20to%20order%20a%20ZenTap%20standee"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-1.5 rounded-full bg-[#25D366] text-black font-extrabold text-xs hover:bg-[#20bd5a] transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
                 >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => onOpenAuthModal && onOpenAuthModal("signup")}
-                  className="px-4 py-1.5 rounded-full bg-[#B91C1C] text-white font-bold text-xs hover:bg-red-700 transition-all cursor-pointer shadow-sm"
-                >
-                  Register Business
-                </button>
+                  <MessageCircle className="w-3.5 h-3.5 fill-black text-black" />
+                  <span>Order on WhatsApp</span>
+                </a>
               </div>
             </div>
           )}
