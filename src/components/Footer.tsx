@@ -45,7 +45,7 @@ export default function Footer({ currentView, onNavigate, onOpenAuth }: FooterPr
             onClick={() => onNavigate("pricing")}
             className="px-4 py-2 rounded-lg bg-[#ff7a00] text-black text-xs font-bold hover:bg-[#e56d00] transition-colors cursor-pointer whitespace-nowrap self-start md:self-auto shadow-sm"
           >
-            Explore Hardware &amp; Pricing
+            Products &amp; Pricing
           </button>
         </div>
 

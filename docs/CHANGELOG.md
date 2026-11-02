@@ -1,5 +1,9 @@
 # ZenTap — Changelog
 
+## [1.49.0] — 2026-11-03
+### Updated (Footer Navigation Label)
+- Renamed the button in the Google Review Transparency banner in `Footer.tsx` from **"Explore Hardware & Pricing"** to **"Products & Pricing"** for unified site navigation nomenclature.
+
 ## [1.48.0] — 2026-11-03
 ### Updated (Removed AI References & Real Standee Hero Showcase)
 - **Removed AI References Across Public Website**:
