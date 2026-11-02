@@ -49,7 +49,7 @@ export async function resolveScan(
   const code = rawCode.toLowerCase().trim();
   if (!CODE_RE.test(code)) return { kind: 'unavailable' };
 
-  // 1. Direct Supabase Query against Single Source of Truth: qr_nfc_tags
+  // 1. Direct Supabase Query against qr_nfc_tags and connected tables
   const db = createAdminClient();
   if (db) {
     try {
@@ -60,6 +60,47 @@ export async function resolveScan(
         .is('deleted_at', null)
         .maybeSingle();
 
+      // Check linked google_review_links table as well
+      const { data: grlRow } = await db
+        .from('google_review_links')
+        .select('*')
+        .ilike('tag_id', code)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      // Check page_editor_configs table as well
+      const { data: pageConfig } = await db
+        .from('page_editor_configs')
+        .select('*')
+        .or(`tag_id.ilike.${code}${tagRow?.business_id ? `,business_id.ilike.${tagRow.business_id}` : ''}${grlRow?.business_id ? `,business_id.ilike.${grlRow.business_id}` : ''}`)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      const localGrl = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === code);
+      const localCfg = getAllPageEditorConfigs().find(
+        (p) => p.tag_id.toLowerCase() === code || (tagRow?.business_id && p.business_id.toLowerCase() === tagRow.business_id.toLowerCase())
+      );
+
+      const effectiveDest =
+        grlRow?.destination ||
+        localGrl?.destination ||
+        tagRow?.destination ||
+        (pageConfig?.setup_status === 'completed' || localCfg?.setup_status === 'completed' ? 'zentap_google' : null) ||
+        'not_assigned';
+
+      const effectiveGoogleLink =
+        (tagRow?.google_review_link || '').trim() ||
+        (grlRow?.business_google_review_link || '').trim() ||
+        (localGrl?.business_google_review_link || '').trim() ||
+        (pageConfig?.config_data?.google_link || '').trim() ||
+        (localCfg?.config_data?.google_link || '').trim();
+
+      const effectiveBusinessId =
+        tagRow?.business_id ||
+        grlRow?.business_id ||
+        pageConfig?.business_id ||
+        localCfg?.business_id;
+
       if (tagRow) {
         // Increment scans_count asynchronously
         Promise.resolve(
@@ -67,71 +108,61 @@ export async function resolveScan(
             .update({ scans_count: (tagRow.scans_count || 0) + 1 })
             .eq('id', tagRow.id)
         ).catch(() => {});
+      }
 
-        // 1. Not assigned - Default status:
-        // "1. Not assigned - It is default status means I have not setp the QR/Link activation (when scanned the QR /Tap and the status is not assigned it will oprn the page show that your business profile page is under process)"
-        if (!tagRow.destination || tagRow.destination === 'not_assigned' || !tagRow.business_id) {
-          return { kind: 'unavailable', unassigned: true };
+      // 1. Direct Google review:
+      if (effectiveDest === 'direct_google') {
+        if (effectiveGoogleLink) {
+          const formatted = effectiveGoogleLink.startsWith('http://') || effectiveGoogleLink.startsWith('https://')
+            ? effectiveGoogleLink
+            : `https://${effectiveGoogleLink}`;
+          return { kind: 'redirect', url: formatted };
+        }
+        return { kind: 'unavailable', unassigned: true };
+      }
+
+      // 2. Zentap Google Review (Standee Review Assistant):
+      if (effectiveDest === 'zentap_google') {
+        const effectiveStatus = pageConfig?.setup_status || localCfg?.setup_status;
+        const isDesigned = effectiveStatus === 'completed' || Boolean(pageConfig?.config_data || localCfg?.config_data);
+
+        if (!isDesigned) {
+          // Setup status is Pending: show "Business Profile Under Process" (/unavailable)
+          return { kind: 'unavailable', unassigned: false };
         }
 
-        // 2. Direct Google review:
-        // "2. Direct Google review - So when the QR/NFC scan/tap for the particular TAG ID it will open the Link which is present in the Page linked to Tag ID cell"
-        if (tagRow.destination === 'direct_google') {
-          const directUrl = (tagRow.google_review_link || '').trim();
-          if (directUrl) {
-            const formatted = directUrl.startsWith('http://') || directUrl.startsWith('https://') ? directUrl : `https://${directUrl}`;
-            return { kind: 'redirect', url: formatted };
-          }
-          return { kind: 'unavailable', unassigned: true };
-        }
-
-        // 3. Zentap Google Review:
-        // "when the Setup Status is Pending then it should show this page - Business Profile Under Process"
-        // "Setup status pending means the customized page is not designed , Once I design and click save the changes then the it should redirect to the customized page"
-        if (tagRow.destination === 'zentap_google') {
-          // Check if Page Editor config has been designed and completed (check Supabase + local cache)
-          const { data: pageConfig } = await db
-            .from('page_editor_configs')
-            .select('setup_status, config_data')
-            .or(`tag_id.ilike.${code},business_id.ilike.${tagRow.business_id || code}`)
-            .is('deleted_at', null)
-            .maybeSingle();
-
-          const localCfg = getAllPageEditorConfigs().find(
-            (p) => p.tag_id.toLowerCase() === code || (tagRow.business_id && p.business_id.toLowerCase() === tagRow.business_id.toLowerCase())
-          );
-
-          const effectiveStatus = pageConfig?.setup_status || localCfg?.setup_status;
-          const isDesigned = effectiveStatus === 'completed';
-
-          if (!isDesigned) {
-            // Setup status is Pending: show "Business Profile Under Process" (/unavailable)
-            return { kind: 'unavailable', unassigned: false };
-          }
-
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tagRow.business_id || '');
+        let slug = code;
+        if (effectiveBusinessId) {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveBusinessId);
           const bizQuery = isUuid
-            ? db.from('businesses').select('slug').eq('id', tagRow.business_id).maybeSingle()
-            : db.from('businesses').select('slug').eq('slug', (tagRow.business_id || '').toLowerCase()).maybeSingle();
+            ? db.from('businesses').select('slug').eq('id', effectiveBusinessId).maybeSingle()
+            : db.from('businesses').select('slug').eq('slug', effectiveBusinessId.toLowerCase()).maybeSingle();
           const { data: bizRow } = await bizQuery;
-
-          const slug = bizRow?.slug || tagRow.business_id?.toLowerCase() || code;
-          return { kind: 'page', slug };
-        }
-
-        // 4. Social links for NFC Cards:
-        if (tagRow.product_type === 'Business NFC Card' && tagRow.destination === 'assigned' && tagRow.social_link) {
-          let destUrl = tagRow.social_link.trim();
-          if (tagRow.social_platform === 'WhatsApp') {
-            const wa = waUrl(destUrl);
-            if (wa) return { kind: 'redirect', url: wa };
-          } else if (tagRow.social_platform === 'Instagram') {
-            const ig = igUrl(destUrl);
-            if (ig) return { kind: 'redirect', url: ig };
+          if (bizRow?.slug) {
+            slug = bizRow.slug;
           }
-          const safe = safeHttps(destUrl);
-          if (safe) return { kind: 'redirect', url: safe };
         }
+
+        return { kind: 'page', slug };
+      }
+
+      // 3. Social links for NFC Cards:
+      if (tagRow?.product_type === 'Business NFC Card' && effectiveDest === 'assigned' && tagRow.social_link) {
+        let destUrl = tagRow.social_link.trim();
+        if (tagRow.social_platform === 'WhatsApp') {
+          const wa = waUrl(destUrl);
+          if (wa) return { kind: 'redirect', url: wa };
+        } else if (tagRow.social_platform === 'Instagram') {
+          const ig = igUrl(destUrl);
+          if (ig) return { kind: 'redirect', url: ig };
+        }
+        const safe = safeHttps(destUrl);
+        if (safe) return { kind: 'redirect', url: safe };
+      }
+
+      // 4. If destination not assigned or missing:
+      if (!effectiveDest || effectiveDest === 'not_assigned' || !effectiveBusinessId) {
+        return { kind: 'unavailable', unassigned: true };
       }
     } catch (err) {
       console.warn('resolveScan: qr_nfc_tags query failed', err);

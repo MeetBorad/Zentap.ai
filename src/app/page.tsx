@@ -1,10 +1,7 @@
-/* Hallmark · macrostructure: Workbench + Bento Grid · genre: modern-minimal · theme: tactile-obsidian */
-/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Header, { ActiveView } from "@/components/Header";
+import Header, { ActiveView, LanguageCode } from "@/components/Header";
 import Footer from "@/components/Footer";
 import HomeView from "@/components/views/HomeView";
 import HowItWorksView from "@/components/views/HowItWorksView";
@@ -20,37 +17,28 @@ import AdminConsoleView from "@/components/views/AdminConsoleView";
 import AuthModal from "@/components/modals/AuthModal";
 import AdminAuthModal from "@/components/modals/AdminAuthModal";
 import TapReviewModal from "@/components/modals/TapReviewModal";
-import UpcomingServicesDrawer from "@/components/UpcomingServicesDrawer";
 import { ReviewItem } from "@/data/mockData";
 import { useAuth } from "@/context/AuthContext";
-import { 
-  Store, 
-  Sparkles, 
-  Radio, 
-  DollarSign, 
-  User,
-  MessageCircle,
-  ShieldCheck,
-  ShieldAlert
-} from "lucide-react";
-import { trackPageView, trackCtaClick } from "@/lib/analytics";
+import { MessageCircle } from "lucide-react";
+import { trackPageView, trackCtaClick, trackWhatsAppClick } from "@/lib/analytics";
 
 const VIEW_METADATA: Record<ActiveView, { title: string; path: string }> = {
-  home: { title: "ZenTap | Smart NFC & QR Google Review Standees", path: "/" },
-  pricing: { title: "Products & Pricing | ZenTap NFC Standees", path: "/?view=pricing" },
-  "how-it-works": { title: "How It Works | ZenTap Instant Tap Reviews", path: "/?view=how-it-works" },
-  features: { title: "Features & Hardware Specs | ZenTap NTAG216", path: "/?view=features" },
-  benefits: { title: "Business Benefits & ROI | ZenTap", path: "/?view=benefits" },
-  results: { title: "Verified Client Results | ZenTap", path: "/?view=results" },
-  "sample-dashboard": { title: "Sample Showcase Dashboard | ZenTap", path: "/?view=sample-dashboard" },
-  "client-proofs": { title: "Testimonials & Case Studies | ZenTap", path: "/?view=client-proofs" },
-  faq: { title: "FAQ & Support | ZenTap", path: "/?view=faq" },
+  home: { title: "ZenTap: Google Review Stand for Shops in Ahmedabad | Tap to Review", path: "/" },
+  pricing: { title: "Products & Pricing | ZenTap Google Review Stands", path: "/#products" },
+  "how-it-works": { title: "How It Works | ZenTap Instant Tap Reviews", path: "/#how-it-works" },
+  features: { title: "Features | ZenTap Google Review Stand", path: "/#products" },
+  benefits: { title: "Why It Matters | ZenTap", path: "/#why-it-matters" },
+  results: { title: "Client Results | ZenTap", path: "/" },
+  "sample-dashboard": { title: "Sample Showcase | ZenTap", path: "/" },
+  "client-proofs": { title: "How it looks on your counter | ZenTap", path: "/#photos" },
+  faq: { title: "FAQ | ZenTap Google Review Stands", path: "/#faq" },
   portal: { title: "Merchant Dashboard | ZenTap", path: "/?view=portal" },
   admin: { title: "Fleet Superadmin Console | ZenTap", path: "/?view=admin" },
 };
 
 export default function Page() {
   const { user, isAdmin, loading } = useAuth();
+  const [lang, setLang] = useState<LanguageCode>("en");
   const [currentView, setCurrentView] = useState<ActiveView>(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -58,8 +46,8 @@ export default function Page() {
       if (v === "admin") {
         return "admin";
       }
-      if (v === "pricing" || v === "how-it-works" || v === "features") {
-        return v as ActiveView;
+      if (v === "portal") {
+        return "portal";
       }
     }
     return "home";
@@ -69,8 +57,7 @@ export default function Page() {
   const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signin");
   const [tapReviewModalOpen, setTapReviewModalOpen] = useState(false);
-  const [upcomingDrawerOpen, setUpcomingDrawerOpen] = useState(false);
-  const [latestReview, setLatestReview] = useState<ReviewItem | null>(null);
+  const [, setLatestReview] = useState<ReviewItem | null>(null);
 
   const hasInitializedAuth = useRef(false);
 
@@ -81,9 +68,6 @@ export default function Page() {
       const v = params.get("view");
       if (v === "admin") {
         setCurrentView("admin");
-        hasInitializedAuth.current = true;
-      } else if (v === "pricing" || v === "how-it-works" || v === "features") {
-        setCurrentView(v as ActiveView);
         hasInitializedAuth.current = true;
       }
     }
@@ -103,7 +87,6 @@ export default function Page() {
       if (currentView === "admin" && !isAdmin) {
         setCurrentView("home");
       } else if (currentView === "portal" && !user) {
-        // If unauthenticated merchant tries to open portal, open signin modal
         setAuthInitialTab("signin");
         setAuthModalOpen(true);
       }
@@ -152,14 +135,29 @@ export default function Page() {
 
   const isDashboardView = currentView === "portal" || currentView === "admin";
 
+  // WhatsApp link and button label for sticky mobile button
+  const stickyBtnText = lang === "gu"
+    ? "WhatsApp પર ફ્રી ડેમો લો"
+    : lang === "hi"
+    ? "WhatsApp पर फ्री डेमो लें"
+    : "Get a Free Demo on WhatsApp";
+
+  const waStickyUrl = lang === "gu"
+    ? "https://wa.me/919274560880?text=નમસ્તે%20ZenTap%2C%20મને%20Google%20Review%20Standee%20નો%20WhatsApp%20પર%20ફ્રી%20ડેમો%20જોઈએ%20છે."
+    : lang === "hi"
+    ? "https://wa.me/919274560880?text=नमस्ते%20ZenTap%2C%20मुझे%20Google%20Review%20Stand%20का%20WhatsApp%20पर%20फ्री%20डेमो%20चाहिए।"
+    : "https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20get%20a%20free%20demo%20of%20the%20Google%20Review%20Stand.";
+
   return (
     <div className="flex flex-col min-h-screen bg-surface text-on-surface">
-      {/* Fixed Adaptive Header (shown on public views) */}
+      {/* Fixed Adaptive Header */}
       {!isDashboardView && (
         <Header
           currentView={currentView}
           onNavigate={handleNavigate}
           onOpenAuth={handleOpenAuth}
+          currentLang={lang}
+          onSelectLang={setLang}
         />
       )}
 
@@ -167,9 +165,8 @@ export default function Page() {
       <main className={`flex-1 flex flex-col ${!isDashboardView ? "pt-16 pb-20 md:pb-8" : "min-h-screen"}`}>
         {currentView === "home" && (
           <HomeView
+            currentLang={lang}
             onNavigate={handleNavigate}
-            onOpenAuth={handleOpenAuth}
-            onTriggerTapReviewModal={() => setTapReviewModalOpen(true)}
           />
         )}
 
@@ -218,14 +215,12 @@ export default function Page() {
           <PricingView
             onNavigate={handleNavigate}
             onOpenAuth={handleOpenAuth}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
         {currentView === "faq" && (
           <FaqView
             onNavigateToPricing={() => handleNavigate("pricing")}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
@@ -236,7 +231,6 @@ export default function Page() {
             onTriggerTapSimulator={() => setTapReviewModalOpen(true)}
             onOpenAuthModal={(tab) => handleOpenAuth(tab)}
             onNavigate={handleNavigate}
-            onOpenUpcomingDrawer={() => setUpcomingDrawerOpen(true)}
           />
         )}
 
@@ -249,90 +243,30 @@ export default function Page() {
         )}
       </main>
 
-      {/* Floating Side Icon Drawer for Upcoming Tech Projects & Services */}
-      <UpcomingServicesDrawer
-        isOpen={upcomingDrawerOpen}
-        onClose={() => setUpcomingDrawerOpen(false)}
-        onOpen={() => setUpcomingDrawerOpen(true)}
-      />
-
-      {/* Fixed Mobile Bottom Navigation Bar (Hidden when inside private dashboards) */}
+      {/* Sticky Bottom WhatsApp Button on Mobile (Rule 6: Mobile First) */}
       {!isDashboardView && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e1015]/95 backdrop-blur-xl border-t border-[#232734] shadow-lg lg:hidden">
-          <div className="h-16 px-3 flex items-center justify-around">
-            <button
-              onClick={() => handleNavigate("home")}
-              className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "home" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <Store className="w-4 h-4 mb-0.5" />
-              <span>Home</span>
-            </button>
-
-            <button
-              onClick={() => handleNavigate("how-it-works")}
-              className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "how-it-works" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <Radio className="w-4 h-4 mb-0.5" />
-              <span>Process</span>
-            </button>
-
-            <button
-              onClick={() => handleNavigate("pricing")}
-              className={`flex flex-col items-center justify-center min-w-[50px] text-[10px] font-semibold transition-colors cursor-pointer ${
-                currentView === "pricing" ? "text-[#ff7a00]" : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              <DollarSign className="w-4 h-4 mb-0.5" />
-              <span>Pricing</span>
-            </button>
-
-            {/* Instant Order on WhatsApp */}
-            <a
-              href="https://wa.me/919274560880?text=Hello%20ZenTap%2C%20I%20would%20like%20to%20know%20more%20about%20your%20QR%20and%20NFC%20digital%20solutions."
-              target="_blank"
-              rel="noreferrer"
-              className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#25D366] hover:text-[#20bd5a] transition-colors"
-            >
-              <MessageCircle className="w-4 h-4 mb-0.5 fill-[#25D366] text-[#25D366]" />
-              <span>Order</span>
-            </a>
-
-            {/* Admin Console / Login (Synced with Desktop) */}
-            {isAdmin ? (
-              <button
-                onClick={() => handleNavigate("admin")}
-                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-bold text-[#ff7a00] transition-colors cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" />
-                <span>Admin</span>
-              </button>
-            ) : (
-              <a
-                href="/admin/login"
-                className="flex flex-col items-center justify-center min-w-[50px] text-[10px] font-medium text-zinc-400 hover:text-white transition-colors"
-              >
-                <ShieldAlert className="w-4 h-4 mb-0.5 text-[#ff7a00]" />
-                <span>Admin</span>
-              </a>
-            )}
-          </div>
-        </nav>
+        <div className="fixed bottom-0 left-0 right-0 z-40 p-3 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/95 to-transparent backdrop-blur-md lg:hidden flex justify-center">
+          <a
+            href={waStickyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackWhatsAppClick("sticky_mobile_bottom")}
+            className="tactile-btn w-full max-w-md py-3.5 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold text-base flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-950/40 transition-transform active:scale-[0.978] cursor-pointer"
+          >
+            <MessageCircle className="w-5 h-5 fill-black text-black" />
+            <span>{stickyBtnText}</span>
+          </a>
+        </div>
       )}
 
       {/* Global Footer (shown on public views) */}
       {!isDashboardView && (
         <Footer
-          currentView={currentView}
-          onNavigate={handleNavigate}
-          onOpenAuth={handleOpenAuth}
+          currentLang={lang}
         />
       )}
 
-      {/* Dedicated Client Merchant Auth Modal (Sign In & Register Business) */}
+      {/* Dedicated Client Merchant Auth Modal */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
@@ -343,7 +277,7 @@ export default function Page() {
         }}
       />
 
-      {/* Dedicated Superadmin Security Modal (Restricted to Root Admin) */}
+      {/* Dedicated Superadmin Security Modal */}
       <AdminAuthModal
         isOpen={adminAuthModalOpen}
         onClose={() => setAdminAuthModalOpen(false)}
@@ -353,7 +287,7 @@ export default function Page() {
         }}
       />
 
-      {/* Interactive Standee Tap Review Simulation Modal */}
+      {/* Standee Tap Review Simulation Modal */}
       <TapReviewModal
         isOpen={tapReviewModalOpen}
         onClose={() => setTapReviewModalOpen(false)}

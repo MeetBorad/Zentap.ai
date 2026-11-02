@@ -268,6 +268,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     try {
       if (typeof window !== "undefined") {
         localStorage.removeItem("zentap_admin_supreme");
+        localStorage.removeItem("zentap_admin_authenticated");
         document.cookie = "zentap_admin=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "sb-access-token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -277,6 +278,9 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       }
     } catch (err) {
       console.warn("Exit admin session notice:", err);
+    }
+    if (onNavigate) {
+      onNavigate("home");
     }
     window.location.href = "/";
   };
@@ -1804,7 +1808,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
             </div>
 
             {/* Admin Avatar Menu */}
-            <div className="relative" ref={adminDropdownRef}>
+            <div className="relative">
               <button
                 onClick={() => {
                   setAdminDropdownOpen(!adminDropdownOpen);
@@ -1823,20 +1827,18 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
 
               {/* Admin Avatar Dropdown Popover */}
               {adminDropdownOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40 cursor-default"
-                    onClick={() => setAdminDropdownOpen(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                    <div className="px-3 py-2.5 border-b border-zinc-100">
-                      <p className="text-xs font-bold text-zinc-900 truncate">
-                        Supreme Superadmin
-                      </p>
-                      <p className="text-[11px] text-zinc-400 truncate font-mono">
-                        {user?.email || "admin@zentapdigitalsolutions.com"}
-                      </p>
-                    </div>
+                <div
+                  ref={adminDropdownRef}
+                  className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-zinc-200 p-2 z-50 animate-in fade-in slide-in-from-top-2"
+                >
+                  <div className="px-3 py-2.5 border-b border-zinc-100">
+                    <p className="text-xs font-bold text-zinc-900 truncate">
+                      Supreme Superadmin
+                    </p>
+                    <p className="text-[11px] text-zinc-400 truncate font-mono">
+                      {user?.email || "admin@zentapdigitalsolutions.com"}
+                    </p>
+                  </div>
 
                     <div className="py-1">
                       <button
@@ -1885,7 +1887,6 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                       </button>
                     </div>
                   </div>
-                </>
               )}
             </div>
 

@@ -151,13 +151,19 @@ export default async function Page({
   }
 
   // If page is explicitly pending in Page Editor, show "Business Profile Under Process"
-  if (pageConfig && pageConfig.setup_status === 'pending') {
+  if (pageConfig && pageConfig.setup_status === 'pending' && !pageConfig.config_data) {
     redirect("/unavailable");
   }
 
   // If page is configured and completed in Page Editor, render ZenTapHubPage with the custom design!
-  if (pageConfig && pageConfig.setup_status === 'completed' && pageConfig.config_data) {
-    const cfg = pageConfig.config_data;
+  if (pageConfig && (pageConfig.setup_status === 'completed' || pageConfig.config_data)) {
+    const rawCfg = pageConfig.config_data;
+    let cfg: any = {};
+    try {
+      cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : (rawCfg || {});
+    } catch {
+      cfg = rawCfg || {};
+    }
     const effectiveBiz: BusinessRecord = biz || {
       id: pageConfig.business_id || pageConfig.tag_id,
       name: pageConfig.business_name || cfg.title || "Business",

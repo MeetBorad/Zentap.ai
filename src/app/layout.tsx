@@ -28,20 +28,20 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.zentapdigitalsolutions.com"),
-  title: "ZenTap | Smart NFC & QR Google Review Standees",
+  title: "ZenTap: Google Review Stand for Shops in Ahmedabad | Tap to Review",
   description:
-    "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required, from ₹500 across India.",
+    "Get more Google reviews with a simple tap. ZenTap review stands for salons, cafes, clinics and shops in Ahmedabad. From Rs 499. No app, no monthly fee.",
   keywords: [
-    "Google Review Standee",
-    "NFC Review Standee Ahmedabad",
-    "Smart Review Card India",
-    "Tap to Review Standee",
-    "Smart NFC Google Reviews",
-    "NTAG216 NFC Card",
-    "Restaurant Google Reviews NFC",
-    "Salon Google Reviews Standee",
+    "Google Review Stand",
+    "Google Review Stand Ahmedabad",
+    "Tap to Review Stand",
+    "Google Review Card",
+    "Review Stand for Salon",
+    "Review Stand for Cafe",
+    "Review Stand for Clinic",
+    "Review Stand for Shop",
     "ZenTap Digital Solutions",
-    "Ahmedabad Gujarat Business Reviews",
+    "Ahmedabad Shop Reviews",
   ],
   authors: [{ name: "ZenTap Digital Solutions", url: "https://www.zentapdigitalsolutions.com" }],
   creator: "ZenTap Digital Solutions",
@@ -60,9 +60,9 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "ZenTap | Smart NFC & QR Google Review Standees",
+    title: "ZenTap: Google Review Stand for Shops in Ahmedabad | Tap to Review",
     description:
-      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required, from ₹500 across India.",
+      "Get more Google reviews with a simple tap. ZenTap review stands for salons, cafes, clinics and shops in Ahmedabad. From Rs 499. No app, no monthly fee.",
     url: "https://www.zentapdigitalsolutions.com",
     siteName: "ZenTap Digital Solutions",
     locale: "en_IN",
@@ -72,15 +72,15 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "ZenTap Smart NFC & QR Google Review Standees",
+        alt: "ZenTap Google Review Stand for Shops in Ahmedabad",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ZenTap | Smart NFC & QR Google Review Standees",
+    title: "ZenTap: Google Review Stand for Shops in Ahmedabad | Tap to Review",
     description:
-      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees. Zero apps needed, from ₹500 across India.",
+      "Get more Google reviews with a simple tap. ZenTap review stands for salons, cafes, clinics and shops in Ahmedabad. From Rs 499. No app, no monthly fee.",
     images: ["/og-image.png"],
     creator: "@zentap",
   },
@@ -109,10 +109,10 @@ const jsonLdData = {
       "logo": "https://www.zentapdigitalsolutions.com/icon.png",
       "image": "https://www.zentapdigitalsolutions.com/og-image.png",
       "description":
-        "Precision-crafted NFC & Dynamic QR acrylic counter standees and smart business cards for automated Google Review capture and lead generation in Ahmedabad, Gujarat, India.",
+        "Smart counter review stands and digital cards for local businesses in Ahmedabad. Customers tap their phone to open your Google review page directly.",
       "telephone": "+919274560880",
       "email": "contact@zentapdigitalsolutions.com",
-      "priceRange": "₹500 - ₹2500",
+      "priceRange": "₹499 - ₹1499",
       "currenciesAccepted": "INR",
       "paymentAccepted": "Cash, Credit Card, UPI, Net Banking",
       "address": {
@@ -144,18 +144,18 @@ const jsonLdData = {
     {
       "@type": "Product",
       "@id": "https://www.zentapdigitalsolutions.com/#product-standee",
-      "name": "ZenTap Tactile NFC & Dynamic QR Review Standee",
+      "name": "ZenTap Google Review Stand",
       "image": "https://www.zentapdigitalsolutions.com/og-image.png",
       "description":
-        "Precision-machined matte-black acrylic counter standee with embedded 13.56 MHz NTAG216 NFC chip and Level Q Laser QR Code for automated Google Review collection.",
+        "Smart acrylic counter stand. Customers tap or scan their phone to open your Google review page in 1 tap.",
       "brand": {
         "@type": "Brand",
         "name": "ZenTap",
       },
       "offers": {
         "@type": "AggregateOffer",
-        "lowPrice": "500",
-        "highPrice": "2500",
+        "lowPrice": "499",
+        "highPrice": "1499",
         "priceCurrency": "INR",
         "offerCount": "4",
         "availability": "https://schema.org/InStock",
@@ -167,34 +167,42 @@ const jsonLdData = {
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "Does ZenTap require customers to download an app?",
+          "name": "Do customers need an app?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Customers simply tap their iPhone or Android smartphone on the standee or scan the high-contrast Level Q QR code with their default camera app. The Google review screen opens in under 0.6 seconds.",
+            "text": "No. Customers just tap their phone on the stand or scan the QR code with their camera. The Google review screen opens immediately.",
           },
         },
         {
           "@type": "Question",
-          "name": "How does ZenTap assist customers in leaving reviews?",
+          "name": "Does it need charging?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "ZenTap eliminates typing friction by offering customers instant 1-tap review drafts and keyword tags directly aligned with their experience, opening straight into Google Maps for authentic review submission.",
+            "text": "No battery, no charging, no wires. It works anytime without power.",
           },
         },
         {
           "@type": "Question",
-          "name": "Can I update my Google Review link after receiving the hardware?",
+          "name": "Can I change the link later?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. All ZenTap NFC chips and QR codes route through dynamic cloud redirection. You can modify your Google Place URL, WhatsApp link, or booking page at any time via your Merchant Dashboard without replacing the physical standee.",
+            "text": "Yes. We can change your Google link anytime from the cloud without you needing a new stand.",
           },
         },
         {
           "@type": "Question",
-          "name": "How fast is delivery across India?",
+          "name": "Is it allowed by Google?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Orders are precision-encoded and dispatched via express courier within 24-48 business hours, typically delivering within 3-5 days across all metro cities and tier-1/tier-2 hubs in India.",
+            "text": "Yes. We never pay customers for reviews and never hide the Google review option from anyone. Every customer can freely share their honest experience.",
+          },
+        },
+        {
+          "@type": "Question",
+          "name": "How long does delivery take?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Delivery takes 24 to 48 hours across Ahmedabad, and 3 to 5 business days across Gujarat and India.",
           },
         },
       ],
