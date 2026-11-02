@@ -18,7 +18,7 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
       <div className={`relative w-full aspect-[1.586/1] max-w-sm rounded-2xl bg-[#141720] border border-[#232734] shadow-2xl overflow-hidden text-white flex flex-col justify-between p-5 group ${className}`}>
         {/* Real Hardware Card Image Background */}
         <div className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity">
-          <img src="/standees/Steel.png" alt="ZenTap NFC Card" className="w-full h-full object-cover scale-150 -translate-y-10" />
+          <img src="/standees/Steel.webp" alt="ZenTap NFC Card" className="w-full h-full object-cover scale-150 -translate-y-10" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#0e1015] via-[#141720]/80 to-transparent pointer-events-none" />
         
@@ -78,7 +78,7 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
         {/* Real Standee Photo Container */}
         <div className="relative w-full aspect-[3/4] max-h-56 rounded-2xl overflow-hidden bg-[#0e1015] border border-[#232734] mb-4 flex items-center justify-center p-2">
           <img
-            src="/standees/Wood Trans.png"
+            src="/standees/Wood Trans.webp"
             alt="Acrylic Review Standee with Wood Base"
             className="w-full h-full object-contain"
           />
@@ -135,19 +135,19 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
         {/* 4 Real Standee Photos Preview Grid */}
         <div className="grid grid-cols-2 gap-2 w-full mb-4">
           <div className="aspect-[3/4] rounded-xl bg-[#0e1015] border border-[#232734] overflow-hidden p-1 flex flex-col items-center justify-center">
-            <img src="/standees/Gold.png" alt="Gold Standee" className="w-full h-full object-contain" />
+            <img src="/standees/Gold.webp" alt="Gold Standee" className="w-full h-full object-contain" />
             <span className="text-[8px] font-mono font-bold text-amber-300 pb-0.5">Gold Mirror</span>
           </div>
           <div className="aspect-[3/4] rounded-xl bg-[#0e1015] border border-[#232734] overflow-hidden p-1 flex flex-col items-center justify-center">
-            <img src="/standees/Steel.png" alt="Steel Standee" className="w-full h-full object-contain" />
+            <img src="/standees/Steel.webp" alt="Steel Standee" className="w-full h-full object-contain" />
             <span className="text-[8px] font-mono font-bold text-slate-300 pb-0.5">Brushed Steel</span>
           </div>
           <div className="aspect-[3/4] rounded-xl bg-[#0e1015] border border-[#232734] overflow-hidden p-1 flex flex-col items-center justify-center">
-            <img src="/standees/Wood Trans.png" alt="Wood Standee" className="w-full h-full object-contain" />
+            <img src="/standees/Wood Trans.webp" alt="Wood Standee" className="w-full h-full object-contain" />
             <span className="text-[8px] font-mono font-bold text-amber-400 pb-0.5">Wood Base</span>
           </div>
           <div className="aspect-[3/4] rounded-xl bg-[#0e1015] border border-[#232734] overflow-hidden p-1 flex flex-col items-center justify-center">
-            <img src="/standees/Pink.png" alt="Rose Gold Standee" className="w-full h-full object-contain" />
+            <img src="/standees/Pink.webp" alt="Rose Gold Standee" className="w-full h-full object-contain" />
             <span className="text-[8px] font-mono font-bold text-rose-300 pb-0.5">Rose Gold</span>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function StandeeVisual({ type, businessName = "YOUR BUSINESS", cl
       {/* Real Standee Photo Container (Gold Mirror) */}
       <div className="relative w-full aspect-[3/4] max-h-56 rounded-2xl overflow-hidden bg-[#0e1015] border border-[#D4AF37]/40 mb-4 flex items-center justify-center p-2">
         <img
-          src="/standees/Gold.png"
+          src="/standees/Gold.webp"
           alt="Brushed Champagne Gold Standee"
           className="w-full h-full object-contain"
         />

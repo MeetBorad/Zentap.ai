@@ -14,10 +14,10 @@ interface Standee3DPreviewProps {
 }
 
 const FINISHES = [
-  { id: "gold", name: "Gold", img: "/standees/Gold.png", color: "from-[#F7E7A9] to-[#D4AF37]" },
-  { id: "steel", name: "Steel", img: "/standees/Steel.png", color: "from-slate-200 to-slate-400" },
-  { id: "wood", name: "Wood Base", img: "/standees/Wood Trans.png", color: "from-amber-200 to-amber-600" },
-  { id: "pink", name: "Blush Pink", img: "/standees/Pink.png", color: "from-pink-300 to-rose-400" },
+  { id: "gold", name: "Gold", img: "/standees/Gold.webp", color: "from-[#F7E7A9] to-[#D4AF37]" },
+  { id: "steel", name: "Steel", img: "/standees/Steel.webp", color: "from-slate-200 to-slate-400" },
+  { id: "wood", name: "Wood Base", img: "/standees/Wood Trans.webp", color: "from-amber-200 to-amber-600" },
+  { id: "pink", name: "Blush Pink", img: "/standees/Pink.webp", color: "from-pink-300 to-rose-400" },
 ];
 
 export default function Standee3DPreview({ onTapSuccess }: Standee3DPreviewProps) {

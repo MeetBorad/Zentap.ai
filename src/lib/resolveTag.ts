@@ -89,15 +89,20 @@ export async function resolveScan(
         // "when the Setup Status is Pending then it should show this page - Business Profile Under Process"
         // "Setup status pending means the customized page is not designed , Once I design and click save the changes then the it should redirect to the customized page"
         if (tagRow.destination === 'zentap_google') {
-          // Check if Page Editor config has been designed and completed
+          // Check if Page Editor config has been designed and completed (check Supabase + local cache)
           const { data: pageConfig } = await db
             .from('page_editor_configs')
             .select('setup_status, config_data')
-            .ilike('tag_id', code)
+            .or(`tag_id.ilike.${code},business_id.ilike.${tagRow.business_id || code}`)
             .is('deleted_at', null)
             .maybeSingle();
 
-          const isDesigned = pageConfig && pageConfig.setup_status === 'completed';
+          const localCfg = getAllPageEditorConfigs().find(
+            (p) => p.tag_id.toLowerCase() === code || (tagRow.business_id && p.business_id.toLowerCase() === tagRow.business_id.toLowerCase())
+          );
+
+          const effectiveStatus = pageConfig?.setup_status || localCfg?.setup_status;
+          const isDesigned = effectiveStatus === 'completed';
 
           if (!isDesigned) {
             // Setup status is Pending: show "Business Profile Under Process" (/unavailable)

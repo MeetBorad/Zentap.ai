@@ -185,6 +185,19 @@ const INITIAL_CLIENTS: ClientRecord[] = [
     city: "Vadodara",
     created_at: "2026-10-30T11:15:00Z",
   },
+  {
+    id: "cl_04",
+    business_id: "ZT-0004",
+    business_name: "XYZ",
+    owner_name: "Store Manager",
+    owner_phone: "+91 91919 19192",
+    owner_email: "contact@xyz.com",
+    whatsapp: "9191919192",
+    instagram_link: "",
+    facebook_link: "",
+    city: "Ahmedabad",
+    created_at: "2026-11-02T13:20:00Z",
+  },
 ];
 
 const INITIAL_TAGS: QrNfcTagItemRecord[] = [
@@ -222,10 +235,11 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     id: "tag_st3",
     tag_id: "ST3",
     product_type: "Counter Standee",
-    business_id: null,
-    business_name: null,
+    business_id: "ZT-0004",
+    business_name: "XYZ",
     link: `${DOMAIN_BASE}/t/ST3`,
-    scans_count: 0,
+    destination: "zentap_google",
+    scans_count: 36,
     created_at: "2026-11-01T09:00:00Z",
   },
   {
@@ -307,6 +321,18 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     total_scans: 88,
     created_at: "2026-10-28T14:35:00Z",
   },
+  {
+    id: "gl_03",
+    tag_id: "ST3",
+    business_id: "ZT-0004",
+    business_name: "XYZ",
+    link_of_tag_id: `${DOMAIN_BASE}/t/ST3`,
+    business_google_review_link: "https://search.google.com/local/writereview?placeid=ChIJudXhNva7woAR9Q9ALHZaF50",
+    destination: "zentap_google",
+    setup_status: "completed",
+    total_scans: 36,
+    created_at: "2026-11-02T04:25:00Z",
+  },
 ];
 
 const INITIAL_SOCIAL_LINKS: SocialLinkItemRecord[] = [
@@ -359,6 +385,27 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
       google_link: "https://g.page/r/CbOD_SmileDental/review",
     },
     updated_at: "2026-10-28T14:45:00Z",
+  },
+  {
+    id: "pe_03",
+    tag_id: "ST3",
+    business_id: "ZT-0004",
+    business_name: "XYZ",
+    link_url: `${DOMAIN_BASE}/t/ST3`,
+    setup_status: "completed",
+    config_data: {
+      theme: "clean_light",
+      title: "XYZ",
+      subtitle: "Ahmedabad • Customer Satisfaction Hub",
+      category: "Customer Satisfaction Hub",
+      cover_image: "/standees/standee_01.jpg",
+      logo_url: "/logo.png",
+      cta_text: "Leave a 5-Star Review on Google",
+      google_link: "https://search.google.com/local/writereview?placeid=ChIJudXhNva7woAR9Q9ALHZaF50",
+      phone: "+91 91919 19192",
+      whatsapp: "9191919192",
+    },
+    updated_at: "2026-11-02T13:22:00Z",
   },
 ];
 

@@ -549,7 +549,7 @@ export default function HomeView({
               More than reviews: Your Complete Digital Customer Front Desk
             </h2>
             <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-normal text-pretty">
-              When guests tap your standee or card, they can not only write 5-star Google reviews, but also engage directly with your brand through an app-free digital hub:
+              When guests tap your standee or card, they write 5-star Google reviews and connect directly with your business through an app-free digital hub:
             </p>
 
             <div className="space-y-3 pt-2">

@@ -54,11 +54,11 @@ export default function CardCustomizerModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MATERIAL_PHOTOS: Record<string, string> = {
-    brushed_gold: "/standees/Gold.png",
-    brushed_silver: "/standees/Steel.png",
-    acrylic_minimal: "/standees/Wood Trans.png",
-    executive_emerald: "/standees/Pink.png",
-    metal_obsidian: "/standees/3.png",
+    brushed_gold: "/standees/Gold.webp",
+    brushed_silver: "/standees/Steel.webp",
+    acrylic_minimal: "/standees/Wood Trans.webp",
+    executive_emerald: "/standees/Pink.webp",
+    metal_obsidian: "/standees/3.webp",
   };
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import { resolveScan } from "@/lib/resolveTag";
 import { getTagByCode, getBusinessBySlug, BusinessRecord } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
 import { 
@@ -133,6 +134,19 @@ export default async function Page({
       pageConfig = data;
     } catch (e) {
       console.warn('Error fetching pageConfig:', e);
+    }
+  }
+
+  if (!pageConfig) {
+    const local = getAllPageEditorConfigs().find(
+      (p) =>
+        p.tag_id.toLowerCase() === cleanCode ||
+        p.business_id.toLowerCase() === cleanCode ||
+        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
+        (biz && p.business_id.toLowerCase() === biz.id.toLowerCase())
+    );
+    if (local) {
+      pageConfig = local;
     }
   }
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getBusinessBySlug, BusinessRecord } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import { getBusinessReviewConfig } from "@/lib/reviewAssistantStore";
 import { 
   getPageDesign, 
@@ -75,6 +76,18 @@ export default async function ReviewPage({
       pageConfig = data;
     } catch (e) {
       console.warn("Error fetching pageConfig for review page:", e);
+    }
+  }
+
+  if (!pageConfig) {
+    const local = getAllPageEditorConfigs().find(
+      (p) =>
+        p.tag_id.toLowerCase() === cleanSlug ||
+        p.business_id.toLowerCase() === cleanSlug ||
+        (rawBiz && p.business_id.toLowerCase() === rawBiz.id.toLowerCase())
+    );
+    if (local) {
+      pageConfig = local;
     }
   }
 
