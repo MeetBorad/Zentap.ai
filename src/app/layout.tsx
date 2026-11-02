@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.zentapdigitalsolutions.com"),
   title: "ZenTap | Smart NFC & QR Google Review Standees",
   description:
-    "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required, from ₹500 across India.",
+    "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required. Zero apps required.",
   keywords: [
     "Google Review Standee",
     "NFC Review Standee Ahmedabad",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ZenTap | Smart NFC & QR Google Review Standees",
     description:
-      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required, from ₹500 across India.",
+      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees and smart cards. Zero apps required. Zero apps required.",
     url: "https://www.zentapdigitalsolutions.com",
     siteName: "ZenTap Digital Solutions",
     locale: "en_IN",
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ZenTap | Smart NFC & QR Google Review Standees",
     description:
-      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees. Zero apps needed, from ₹500 across India.",
+      "Turn customer footfall into 5-star Google Reviews with precision-crafted NFC acrylic standees. Zero apps needed. Zero apps required.",
     images: ["/og-image.png"],
     creator: "@zentap",
   },
@@ -112,7 +112,7 @@ const jsonLdData = {
         "Precision-crafted NFC & Dynamic QR acrylic counter standees and smart business cards for automated Google Review capture and lead generation in Ahmedabad, Gujarat, India.",
       "telephone": "+919274560880",
       "email": "contact@zentapdigitalsolutions.com",
-      "priceRange": "₹500 - ₹2500",
+      "priceRange": "Contact for pricing",
       "currenciesAccepted": "INR",
       "paymentAccepted": "Cash, Credit Card, UPI, Net Banking",
       "address": {
