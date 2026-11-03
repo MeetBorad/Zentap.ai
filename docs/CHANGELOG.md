@@ -1,5 +1,17 @@
 # ZenTap — Changelog
 
+## [1.51.0] — 2026-11-03
+### Redesigned (Super Admin Platform Settings Dashboard)
+- **5-Section Unified Settings Dashboard**:
+  - Completely overhauled `PlatformSettingsTab.tsx` with dedicated, categorized sections: **General & Routing**, **Custom Business Fields**, **Security & PIN**, **AI Models & Failover**, and **System & DB**.
+  - Added real-time quick search to filter and locate settings instantly.
+  - Added live Supabase connection status, real-time table entity counters, and diagnostic cache clear.
+- **Full Inline Editing & Field Customizer**:
+  - Added inline editing directly for every custom field (modify field display label, input type, and sample placeholder without recreating).
+  - Configurable hardware PIN lockout thresholds (3 / 5 / 10 attempts), session expiry durations (10 / 15 / 30 / 60 minutes), and initial factory PIN default.
+  - Added 1-click JSON backup export (`Export Config`) for seamless configuration portability.
+  - Added default business city, sequential ID prefix (`ZT-`), and default standee routing destination selector.
+
 ## [1.50.0] — 2026-11-03
 ### Added (Custom Business Fields & Settings Configuration)
 - **Super Admin Settings — Custom Business Fields Manager**:
