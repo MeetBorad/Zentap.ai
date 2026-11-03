@@ -17,12 +17,18 @@ import {
   X,
   CheckCircle2,
   Edit2,
+  Sliders,
+  Settings,
+  Tag,
 } from "lucide-react";
 import {
   ClientRecord,
   DeletedBusinessRecord,
+  CustomFieldDefinition,
   getAllClients,
   getAllDeletedBusinesses,
+  getCustomFieldDefinitions,
+  addCustomFieldDefinition,
   addClientServer,
   updateClientServer,
   generateNextBusinessIdCode,
@@ -34,14 +40,21 @@ import {
 
 interface ClientsWebpageTabProps {
   onShowToast: (msg: string) => void;
+  onNavigateToSettings?: () => void;
 }
 
-export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProps) {
+export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }: ClientsWebpageTabProps) {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [deletedBusinesses, setDeletedBusinesses] = useState<DeletedBusinessRecord[]>([]);
   const [viewFilter, setViewFilter] = useState<"all" | "deleted">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Custom Fields from Settings
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [showAddCustomFieldInline, setShowAddCustomFieldInline] = useState(false);
+  const [inlineFieldLabel, setInlineFieldLabel] = useState("");
+  const [inlineFieldType, setInlineFieldType] = useState<"text" | "url" | "tel" | "email" | "number">("text");
 
   // Add Business Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -53,6 +66,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   const [newInstagram, setNewInstagram] = useState("");
   const [newFacebook, setNewFacebook] = useState("");
   const [newCity, setNewCity] = useState("Ahmedabad");
+  const [newCustomFields, setNewCustomFields] = useState<Record<string, string>>({});
 
   // Edit Business Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -66,6 +80,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
   const [editCity, setEditCity] = useState("Ahmedabad");
+  const [editCustomFields, setEditCustomFields] = useState<Record<string, string>>({});
 
   // Soft delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ClientRecord | null>(null);
@@ -84,6 +99,17 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       }
     }
     refreshData();
+
+    // Load custom fields definitions
+    const loadFields = () => {
+      setCustomFieldDefs(getCustomFieldDefinitions());
+    };
+    loadFields();
+
+    window.addEventListener("zentap_custom_fields_updated", loadFields);
+    return () => {
+      window.removeEventListener("zentap_custom_fields_updated", loadFields);
+    };
   }, []);
 
   const setFilterAndUrl = (status: "all" | "deleted") => {
@@ -111,6 +137,35 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
 
   const nextIdPreview = generateNextBusinessIdCode(clients);
 
+  const activeCustomFields = customFieldDefs.filter((f) => f.is_active);
+
+  const handleSaveInlineField = () => {
+    if (!inlineFieldLabel.trim()) {
+      onShowToast("Please enter a field label");
+      return;
+    }
+    const updated = addCustomFieldDefinition({
+      label: inlineFieldLabel.trim(),
+      type: inlineFieldType,
+      is_active: true,
+    });
+    setCustomFieldDefs(updated);
+    const added = updated.find((f) => f.label.toLowerCase() === inlineFieldLabel.trim().toLowerCase());
+    const fieldId = added?.id || inlineFieldLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    
+    // Automatically focus or initialize this field for active modal
+    if (isAddModalOpen) {
+      setNewCustomFields((prev) => ({ ...prev, [fieldId]: "" }));
+    }
+    if (isEditModalOpen) {
+      setEditCustomFields((prev) => ({ ...prev, [fieldId]: "" }));
+    }
+
+    setInlineFieldLabel("");
+    setShowAddCustomFieldInline(false);
+    onShowToast(`✓ Added custom field "${inlineFieldLabel.trim()}" to forms!`);
+  };
+
   const openEditModal = (client: ClientRecord) => {
     setEditTarget(client);
     setEditBusinessId(client.business_id);
@@ -122,6 +177,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
     setEditInstagram(client.instagram_link || "");
     setEditFacebook(client.facebook_link || "");
     setEditCity(client.city || "Ahmedabad");
+    setEditCustomFields(client.custom_fields || {});
     setIsEditModalOpen(true);
   };
 
@@ -144,6 +200,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       instagram_link: editInstagram.trim() || undefined,
       facebook_link: editFacebook.trim() || undefined,
       city: editCity.trim() || "India",
+      custom_fields: editCustomFields,
     });
     setIsSubmitting(false);
 
@@ -174,6 +231,7 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       instagram_link: newInstagram.trim() || undefined,
       facebook_link: newFacebook.trim() || undefined,
       city: newCity.trim() || "India",
+      custom_fields: newCustomFields,
     });
     setIsSubmitting(false);
 
@@ -188,9 +246,11 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
       setNewWhatsapp("");
       setNewInstagram("");
       setNewFacebook("");
+      setNewCity("Ahmedabad");
+      setNewCustomFields({});
       await refreshData();
     } else {
-      onShowToast(res.error || "Failed to save business to database");
+      onShowToast(res.error || "Failed to register business in database");
     }
   };
 
@@ -378,6 +438,38 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                           <span className="block text-[10px] font-normal text-zinc-400">
                             {client.city}
                           </span>
+                        )}
+                        {client.custom_fields && Object.keys(client.custom_fields).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
+                            {Object.entries(client.custom_fields)
+                              .filter(([_, val]) => val && String(val).trim())
+                              .map(([key, val]) => {
+                                const def = customFieldDefs.find((f) => f.id === key);
+                                const label = def?.label || key;
+                                const isLink = def?.type === "url" || String(val).startsWith("http");
+                                return isLink ? (
+                                  <a
+                                    key={key}
+                                    href={String(val)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                    title={`${label}: ${val}`}
+                                  >
+                                    <span>{label}</span>
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                ) : (
+                                  <span
+                                    key={key}
+                                    className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200"
+                                    title={`${label}: ${val}`}
+                                  >
+                                    {label}: {String(val)}
+                                  </span>
+                                );
+                              })}
+                          </div>
                         )}
                       </td>
 
@@ -711,6 +803,137 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                 />
               </div>
 
+              {/* Custom Business Details & Extended Options */}
+              <div className="pt-3 border-t border-zinc-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-zinc-600" />
+                    <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
+                    {activeCustomFields.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                        {activeCustomFields.length} active
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomFieldInline(!showAddCustomFieldInline)}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{showAddCustomFieldInline ? "Close" : "+ Add Field"}</span>
+                    </button>
+
+                    {onNavigateToSettings && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddModalOpen(false);
+                          onNavigateToSettings();
+                        }}
+                        className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                        title="Configure custom fields in Settings"
+                      >
+                        <Settings className="w-3 h-3" />
+                        <span>Settings</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline mini-creator */}
+                {showAddCustomFieldInline && (
+                  <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2.5 animate-in fade-in duration-150">
+                    <span className="text-[11px] font-bold text-zinc-700 block">Add New Custom Field:</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Field Label (e.g. Website URL)"
+                        value={inlineFieldLabel}
+                        onChange={(e) => setInlineFieldLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
+                      />
+                      <select
+                        value={inlineFieldType}
+                        onChange={(e) => setInlineFieldType(e.target.value as any)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
+                      >
+                        <option value="text">Standard Text</option>
+                        <option value="url">Link / URL</option>
+                        <option value="tel">Phone</option>
+                        <option value="email">Email</option>
+                        <option value="number">Number</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomFieldInline(false)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] text-zinc-500 hover:bg-zinc-200 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveInlineField}
+                        className="px-3 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-bold cursor-pointer"
+                      >
+                        Add to Form
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Custom Fields Inputs */}
+                {activeCustomFields.length === 0 && !showAddCustomFieldInline && (
+                  <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
+                    <span>No custom fields configured yet.</span>
+                    {onNavigateToSettings ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddModalOpen(false);
+                          onNavigateToSettings();
+                        }}
+                        className="font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Configure in Settings &rarr;
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomFieldInline(true)}
+                        className="font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        + Add Custom Field
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {activeCustomFields.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {activeCustomFields.map((field) => (
+                      <div key={field.id} className={field.type === "url" || field.id.includes("address") ? "sm:col-span-2" : ""}>
+                        <label className="block text-xs font-bold text-zinc-800 mb-1 flex items-center justify-between">
+                          <span>{field.label}</span>
+                          <span className="text-[10px] font-mono text-zinc-400">({field.type})</span>
+                        </label>
+                        <input
+                          type={field.type === "url" ? "url" : field.type === "email" ? "email" : field.type === "tel" ? "tel" : field.type === "number" ? "number" : "text"}
+                          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                          value={newCustomFields[field.id] || ""}
+                          onChange={(e) => setNewCustomFields({ ...newCustomFields, [field.id]: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
                 <button
                   type="button"
@@ -853,6 +1076,137 @@ export default function ClientsWebpageTab({ onShowToast }: ClientsWebpageTabProp
                   onChange={(e) => setEditCity(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                 />
+              </div>
+
+              {/* Custom Business Details & Extended Options */}
+              <div className="pt-3 border-t border-zinc-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
+                    {activeCustomFields.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                        {activeCustomFields.length} active
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomFieldInline(!showAddCustomFieldInline)}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{showAddCustomFieldInline ? "Close" : "+ Add Field"}</span>
+                    </button>
+
+                    {onNavigateToSettings && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          onNavigateToSettings();
+                        }}
+                        className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                        title="Configure custom fields in Settings"
+                      >
+                        <Settings className="w-3 h-3" />
+                        <span>Settings</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Inline mini-creator */}
+                {showAddCustomFieldInline && (
+                  <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2.5 animate-in fade-in duration-150">
+                    <span className="text-[11px] font-bold text-zinc-700 block">Add New Custom Field:</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Field Label (e.g. Website URL)"
+                        value={inlineFieldLabel}
+                        onChange={(e) => setInlineFieldLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
+                      />
+                      <select
+                        value={inlineFieldType}
+                        onChange={(e) => setInlineFieldType(e.target.value as any)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
+                      >
+                        <option value="text">Standard Text</option>
+                        <option value="url">Link / URL</option>
+                        <option value="tel">Phone</option>
+                        <option value="email">Email</option>
+                        <option value="number">Number</option>
+                      </select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomFieldInline(false)}
+                        className="px-2.5 py-1 rounded-lg text-[11px] text-zinc-500 hover:bg-zinc-200 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveInlineField}
+                        className="px-3 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-bold cursor-pointer"
+                      >
+                        Add to Form
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Custom Fields Inputs */}
+                {activeCustomFields.length === 0 && !showAddCustomFieldInline && (
+                  <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
+                    <span>No custom fields configured yet.</span>
+                    {onNavigateToSettings ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          onNavigateToSettings();
+                        }}
+                        className="font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Configure in Settings &rarr;
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomFieldInline(true)}
+                        className="font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        + Add Custom Field
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {activeCustomFields.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {activeCustomFields.map((field) => (
+                      <div key={field.id} className={field.type === "url" || field.id.includes("address") ? "sm:col-span-2" : ""}>
+                        <label className="block text-xs font-bold text-zinc-800 mb-1 flex items-center justify-between">
+                          <span>{field.label}</span>
+                          <span className="text-[10px] font-mono text-zinc-400">({field.type})</span>
+                        </label>
+                        <input
+                          type={field.type === "url" ? "url" : field.type === "email" ? "email" : field.type === "tel" ? "tel" : field.type === "number" ? "number" : "text"}
+                          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                          value={editCustomFields[field.id] || ""}
+                          onChange={(e) => setEditCustomFields({ ...editCustomFields, [field.id]: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">

@@ -594,6 +594,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     "deleted_at",
     "deleted_by",
     "google_review_link",
+    "custom_fields",
   ],
   payments: [
     "id",

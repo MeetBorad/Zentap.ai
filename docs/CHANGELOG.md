@@ -1,5 +1,22 @@
 # ZenTap — Changelog
 
+## [1.50.0] — 2026-11-03
+### Added (Custom Business Fields & Settings Configuration)
+- **Super Admin Settings — Custom Business Fields Manager**:
+  - Added a dedicated "Custom Business Fields" sub-tab inside Super Admin Settings (`PlatformSettingsTab.tsx`).
+  - Enables administrators to configure arbitrary custom options (Website URL, Google Maps / Place Link, GST / Tax ID, Full Address, LinkedIn, YouTube, UPI ID, Secondary Contact, or custom text/links/numbers).
+  - Included 1-click Quick-Add presets for recommended business attributes.
+  - Provided live toggle switches to activate or disable custom fields in registration dialogs.
+- **Dynamic Custom Details in Business Creation & Edit Forms**:
+  - Updated "Add New Business" modal (`ClientsWebpageTab.tsx`) with an expandable "Custom Business Details" section displaying all active custom fields.
+  - Added an inline "+ Add Field" creator right inside the dialog for on-the-fly custom property creation.
+  - Added a direct 1-click navigation shortcut to Settings.
+  - Updated "Edit Business Entry" modal to view and update existing custom field values per client.
+- **Client Records & API Store Synchronization**:
+  - Extended `ClientRecord` and `DeletedBusinessRecord` with `custom_fields?: Record<string, string>`.
+  - Added `custom_fields` column to allowed database tables in `/api/admin/platform` and Supabase migration `014_custom_fields_migration.sql`.
+  - Displayed custom field tags and external links on the Clients table view.
+
 ## [1.49.0] — 2026-11-03
 ### Updated (Footer Navigation Label)
 - Renamed the button in the Google Review Transparency banner in `Footer.tsx` from **"Explore Hardware & Pricing"** to **"Products & Pricing"** for unified site navigation nomenclature.

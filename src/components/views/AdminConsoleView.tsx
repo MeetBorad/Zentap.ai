@@ -1905,7 +1905,10 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
           
           {/* 1. Clients Webpage */}
           {adminMenu === "clients" && (
-            <ClientsWebpageTab onShowToast={showToast} />
+            <ClientsWebpageTab
+              onShowToast={showToast}
+              onNavigateToSettings={() => handleSelectTab("settings")}
+            />
           )}
 
           {/* 2. Payments Webpage */}

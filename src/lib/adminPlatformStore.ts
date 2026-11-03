@@ -2,6 +2,16 @@
 // Unified store for ZenTap Admin Webpages Redesign:
 // Clients, Payments, QR/NFC Generator, Google Links, Social Links, and Page Editor
 
+export interface CustomFieldDefinition {
+  id: string; // unique slug e.g. "website_url", "google_maps_link"
+  label: string; // display label e.g. "Website URL"
+  type: "text" | "url" | "tel" | "email" | "number";
+  placeholder?: string;
+  category?: "contact" | "social" | "location" | "billing" | "general";
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface ClientRecord {
   id: string;
   business_id: string; // e.g. ZT-0001
@@ -14,6 +24,7 @@ export interface ClientRecord {
   facebook_link: string;
   google_review_link?: string;
   city: string;
+  custom_fields?: Record<string, string>;
   created_at: string;
 }
 
@@ -29,6 +40,7 @@ export interface DeletedBusinessRecord {
   facebook_link: string;
   google_review_link?: string;
   city: string;
+  custom_fields?: Record<string, string>;
   deleted_at: string;
   deleted_by: string;
   notes?: string;
@@ -629,6 +641,76 @@ export async function permanentDeleteClientServer(businessId: string, confirmati
   return serverPermanentDelete("clients", "business_id", businessId, confirmationName);
 }
 
+export const DEFAULT_CUSTOM_FIELD_PRESETS: CustomFieldDefinition[] = [
+  { id: "website_url", label: "Website URL", type: "url", placeholder: "https://mybusiness.com", category: "contact", is_active: false },
+  { id: "google_maps_link", label: "Google Maps / Place Link", type: "url", placeholder: "https://maps.google.com/...", category: "location", is_active: false },
+  { id: "gst_number", label: "GST / Tax ID", type: "text", placeholder: "24AAAAA0000A1Z5", category: "billing", is_active: false },
+  { id: "full_address", label: "Full Address / Street", type: "text", placeholder: "Shop 12, Ground Floor, Sunrise Mall", category: "location", is_active: false },
+  { id: "linkedin_link", label: "LinkedIn Profile", type: "url", placeholder: "https://linkedin.com/company/...", category: "social", is_active: false },
+  { id: "youtube_link", label: "YouTube Channel", type: "url", placeholder: "https://youtube.com/@...", category: "social", is_active: false },
+  { id: "upi_id", label: "Business UPI ID", type: "text", placeholder: "business@upi", category: "billing", is_active: false },
+];
+
+export function getCustomFieldDefinitions(): CustomFieldDefinition[] {
+  if (typeof window === "undefined") return DEFAULT_CUSTOM_FIELD_PRESETS;
+  try {
+    const raw = localStorage.getItem("zentap_custom_field_definitions");
+    if (!raw) {
+      localStorage.setItem("zentap_custom_field_definitions", JSON.stringify(DEFAULT_CUSTOM_FIELD_PRESETS));
+      return DEFAULT_CUSTOM_FIELD_PRESETS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CUSTOM_FIELD_PRESETS;
+  } catch {
+    return DEFAULT_CUSTOM_FIELD_PRESETS;
+  }
+}
+
+export function saveCustomFieldDefinitions(defs: CustomFieldDefinition[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("zentap_custom_field_definitions", JSON.stringify(defs));
+    window.dispatchEvent(new CustomEvent("zentap_custom_fields_updated", { detail: defs }));
+  } catch (err) {
+    console.error("Failed to save custom field definitions:", err);
+  }
+}
+
+export function addCustomFieldDefinition(def: Omit<CustomFieldDefinition, "id"> & { id?: string }): CustomFieldDefinition[] {
+  const current = getCustomFieldDefinitions();
+  const slug = def.id || def.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || `field_${Date.now()}`;
+  const existingIdx = current.findIndex((f) => f.id === slug);
+  const newDef: CustomFieldDefinition = {
+    ...def,
+    id: slug,
+    is_active: def.is_active ?? true,
+    created_at: new Date().toISOString(),
+  };
+  let updated: CustomFieldDefinition[];
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = { ...updated[existingIdx], ...newDef, is_active: true };
+  } else {
+    updated = [...current, newDef];
+  }
+  saveCustomFieldDefinitions(updated);
+  return updated;
+}
+
+export function toggleCustomFieldDefinition(id: string): CustomFieldDefinition[] {
+  const current = getCustomFieldDefinitions();
+  const updated = current.map((f) => (f.id === id ? { ...f, is_active: !f.is_active } : f));
+  saveCustomFieldDefinitions(updated);
+  return updated;
+}
+
+export function removeCustomFieldDefinition(id: string): CustomFieldDefinition[] {
+  const current = getCustomFieldDefinitions();
+  const updated = current.filter((f) => f.id !== id);
+  saveCustomFieldDefinitions(updated);
+  return updated;
+}
+
 // Server-side Client Creation (Direct to Supabase with auto UUID)
 export async function addClientServer(params: {
   business_name: string;
@@ -640,6 +722,7 @@ export async function addClientServer(params: {
   facebook_link?: string;
   city?: string;
   google_review_link?: string;
+  custom_fields?: Record<string, string>;
 }): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
   try {
     const current = getAllClients();
@@ -656,6 +739,7 @@ export async function addClientServer(params: {
       facebook_link: params.facebook_link?.trim() || null,
       city: params.city?.trim() || "India",
       google_review_link: params.google_review_link?.trim() || null,
+      custom_fields: params.custom_fields || {},
     };
 
     const res = await fetch("/api/admin/platform", {
