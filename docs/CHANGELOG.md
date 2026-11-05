@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.54.6] — 2026-11-05
+### Fixed (Category Reflection on Review Page, Client Profile Auto-Fetch & Live Theme Presets)
+- **Review Page Categories Matching Editor ("What stood out?")**:
+  - Re-architected category extraction in `ZenTapReviewAssistant.tsx` and `PageEditorWebpageTab.tsx` so that categories entered or toggled in the Editor (e.g., `Customer Satisfaction Hub`, `Ahmedabad`, `Restaurant & Cafe`, `Salon & Spa`, etc.) directly reflect on the Google Review page under *"What stood out?"*.
+  - Configured automatic pre-selection of the business's actual categories instead of hardcoded generic tags.
+  - Automatically synchronized `Category / Subtitle` chips with `page_editor_configs.categories` and `tags`.
+- **Auto-Fetch Data from Client Profile Button**:
+  - Upgraded `handleFetchFromClient` to comprehensively locate the matching registered client across business ID, tag ID, connected tags in `qr_nfc_tags`, Google Review links in `google_review_links`, and database records.
+  - Automatically populates all empty fields: Business Title, City/Subtitle, Phone, WhatsApp, Instagram, Facebook, Website, Google Maps link, Google Review link, and About Us.
+- **Theme Preset Live Phone Mockup & Page Reflection**:
+  - Connected the Phone Mockup on the right of the Page Editor to live theme palettes (`obsidian`, `slate`, `emerald`, `sunset`, `clean_light`). Clicking any theme preset immediately updates the mockup preview.
+  - Enhanced both the Business Page (`ZenTapHubPage.tsx`) and the Review Assistant (`ZenTapReviewAssistant.tsx`) to dynamically apply the saved Theme Preset colors, cards, and accent buttons.
+- **Destination Redirection Integrity**:
+  - Removed destination overwriting bug in `savePageEditorConfigServer` to strictly preserve each tag's destination (`business_page`, `zentap_google`, `direct_google`).
+  - Maintained exact destination routing across `/t/[code]`, `/r/[slug]`, and `/r/[slug]/review`.
+
 ## [1.54.5] — 2026-11-05
 ### Added (Humanized Review Suggestions & Short Experience Input Field)
 - **2-3 Unique Humanized Google Review Suggestions**:
