@@ -109,27 +109,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   };
 
   const handleDestinationChange = async (
-    tagId: string,
-    businessId: string,
-    businessName: string,
+    item: PageEditorConfigItemRecord,
     newDest: "not_assigned" | "direct_google" | "zentap_google" | "business_page"
   ) => {
-    // Optimistic UI state update for googleLinks
+    // Optimistic UI state update for googleLinks and local configs
     setGoogleLinks((prev) =>
-      prev.map((l) => (l.tag_id === tagId ? { ...l, destination: newDest } : l))
+      prev.map((l) => (l.tag_id.toLowerCase() === item.tag_id.toLowerCase() ? { ...l, destination: newDest } : l))
+    );
+    setEditorConfigs((prev) =>
+      prev.map((c) => (c.tag_id.toLowerCase() === item.tag_id.toLowerCase() ? { ...c, destination: newDest } : c))
     );
 
-    const matching = googleLinks.find((g) => g.tag_id === tagId);
-    const res = await updateGoogleReviewLinkServer(tagId, {
+    const matching = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+    const res = await updateGoogleReviewLinkServer(item.tag_id, {
       destination: newDest,
-      business_id: businessId,
-      business_name: businessName,
+      business_id: item.business_id,
+      business_name: item.business_name,
       business_google_review_link: matching?.business_google_review_link,
     });
 
     if (res.success) {
       onShowToast(
-        `✓ Synced destination for ${businessName} (${tagId}) to ${
+        `✓ Synced destination for ${item.business_name} (${item.tag_id}) to ${
           newDest === "business_page"
             ? "Business Page"
             : newDest === "zentap_google"
@@ -517,10 +518,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     };
 
     setIsSubmitting(true);
+    const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase());
+    const currentDest = matchingGLink?.destination || activeItem.destination || "business_page";
+
     const res = await savePageEditorConfigServer(activeItem.tag_id, newConfigData, {
       business_id: activeItem.business_id,
       business_name: activeItem.business_name,
       link_url: activeItem.link_url,
+      destination: currentDest,
     });
     setIsSubmitting(false);
 
@@ -636,10 +641,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     if (!editWholeTarget) return;
 
     setIsSubmitting(true);
+    const catList = editWholeCategory.split(/[•|,]/).map((s) => s.trim()).filter(Boolean);
     const updatedConfigData = {
       ...(editWholeTarget.config_data || {}),
       category: editWholeCategory.trim() || "Customer Satisfaction Hub",
       subtitle: editWholeCategory.trim() || "Customer Satisfaction Hub",
+      categories: catList.length > 0 ? catList : ["Customer Satisfaction Hub"],
+      tags: catList.length > 0 ? catList : ["Customer Satisfaction Hub"],
     };
 
     try {
@@ -1029,9 +1037,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             value={currentDest}
                             onChange={(e) =>
                               handleDestinationChange(
-                                item.tag_id,
-                                item.business_id,
-                                item.business_name,
+                                item,
                                 e.target.value as any
                               )
                             }

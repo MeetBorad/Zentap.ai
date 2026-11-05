@@ -172,11 +172,11 @@ export default async function ReviewPage({
 
   const effectiveDest =
     grlRow?.destination ||
-    localGrl?.destination ||
     tagRow?.destination ||
+    localGrl?.destination ||
     localTag?.destination ||
     pageConfig?.destination ||
-    (cleanSlug === "zentap" ? "business_page" : "business_page");
+    "business_page";
 
   // Rule: When destination is strictly 'zentap_google', do NOT give access to the Business Page
   const allowBusinessPageAccess = effectiveDest !== "zentap_google";

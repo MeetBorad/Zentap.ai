@@ -251,7 +251,7 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     business_id: "ZT-0004",
     business_name: "XYZ",
     link: `${DOMAIN_BASE}/t/ST3`,
-    destination: "zentap_google",
+    destination: "business_page",
     scans_count: 36,
     created_at: "2026-11-01T09:00:00Z",
   },
@@ -341,7 +341,7 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     business_name: "XYZ",
     link_of_tag_id: `${DOMAIN_BASE}/t/ST3`,
     business_google_review_link: "https://search.google.com/local/writereview?placeid=ChIJudXhNva7woAR9Q9ALHZaF50",
-    destination: "zentap_google",
+    destination: "business_page",
     setup_status: "completed",
     total_scans: 36,
     created_at: "2026-11-02T04:25:00Z",
@@ -1185,7 +1185,7 @@ export async function permanentDeleteSocialLinkServer(tagId: string, confirmatio
 export async function savePageEditorConfigServer(
   tagId: string,
   configData: Record<string, any>,
-  extra?: { business_id?: string; business_name?: string; link_url?: string }
+  extra?: { business_id?: string; business_name?: string; link_url?: string; destination?: string }
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const payload: any = {
@@ -1222,7 +1222,7 @@ export async function savePageEditorConfigServer(
       // Preserve existing destination if already configured (do NOT force zentap_google)
       const existingGLink = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === tagId.toLowerCase());
       const existingTag = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === tagId.toLowerCase());
-      const preservedDest = existingGLink?.destination || existingTag?.destination || "business_page";
+      const preservedDest = extra?.destination || existingGLink?.destination || existingTag?.destination || "business_page";
 
       await fetch("/api/admin/platform", {
         method: "POST",
@@ -1253,6 +1253,7 @@ export async function savePageEditorConfigServer(
           data: {
             tag_id: tagId,
             google_review_link: cleanGoogleUrl,
+            destination: preservedDest,
             updated_at: new Date().toISOString(),
           },
           onConflict: "tag_id",

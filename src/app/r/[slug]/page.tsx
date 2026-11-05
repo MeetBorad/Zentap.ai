@@ -8,7 +8,7 @@ import { resolveScan } from "@/lib/resolveTag";
 import { getTagByCode, getBusinessBySlug, BusinessRecord, SAMPLE_DEMO_BUSINESS } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllPageEditorConfigs, getAllGoogleReviewLinks } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags } from "@/lib/adminPlatformStore";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
 import { 
@@ -195,13 +195,26 @@ export default async function Page({
           .is('deleted_at', null)
           .maybeSingle();
         dest = grlRow?.destination;
+
+        if (!dest) {
+          const { data: tagRow } = await db
+            .from('qr_nfc_tags')
+            .select('destination')
+            .or(`tag_id.ilike.${via || cleanCode},business_id.ilike.${cleanCode}`)
+            .is('deleted_at', null)
+            .maybeSingle();
+          dest = tagRow?.destination;
+        }
       } catch {}
     }
     if (!dest) {
       const localGrl = getAllGoogleReviewLinks().find(
         (g) => g.tag_id.toLowerCase() === (via || cleanCode) || g.business_id.toLowerCase() === cleanCode
       );
-      dest = localGrl?.destination;
+      const localTag = getAllQrNfcTags().find(
+        (t) => t.tag_id.toLowerCase() === (via || cleanCode) || (t.business_id && t.business_id.toLowerCase() === cleanCode)
+      );
+      dest = localGrl?.destination || localTag?.destination || "business_page";
     }
 
     if (dest === 'zentap_google') {

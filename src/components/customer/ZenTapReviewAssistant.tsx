@@ -176,6 +176,18 @@ export default function ZenTapReviewAssistant({
       ? pageConfig.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
       : [];
 
+    const singleCat = typeof pageConfig?.category === "string"
+      ? pageConfig.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    const bizCat = typeof business?.category === "string"
+      ? business.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
+      : [];
+
+    const bizChips = Array.isArray((business as any)?.custom_chips)
+      ? (business as any).custom_chips
+      : [];
+
     // Also extract categories from subtitle if entered as "City • Category" or "Category, Category"
     const subtitleCategories = pageConfig?.subtitle
       ? String(pageConfig.subtitle)
@@ -184,7 +196,7 @@ export default function ZenTapReviewAssistant({
           .filter((s: string) => s && !s.toLowerCase().includes("welcome") && !s.toLowerCase().includes("official digital hub"))
       : [];
 
-    const userDefined = Array.from(new Set([...customCats, ...customTags, ...subtitleCategories])).filter(Boolean);
+    const userDefined = Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
 
     // If the user has custom categories or tags entered in Editor, show EXACTLY those!
     if (userDefined.length > 0) {
@@ -192,7 +204,7 @@ export default function ZenTapReviewAssistant({
     }
 
     return Array.from(DEFAULT_REVIEW_TAGS);
-  }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.subtitle]);
+  }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, business?.category, (business as any)?.custom_chips]);
 
   // Auto-select first 1-2 tags from allTags when they load or change
   useEffect(() => {
@@ -279,7 +291,8 @@ export default function ZenTapReviewAssistant({
   const ratingMeta = REVIEW_RATING_METAS[currentRating] || REVIEW_RATING_METAS[5];
 
   // Back URL to Business Page
-  const backToProfileUrl = `/r/${business.slug}${isPreview ? "?preview=1" : ""}${tagCode ? `${isPreview ? "&" : "?"}via=${tagCode}` : ""}`;
+  const targetProfileSlug = (tagCode || business.slug || "zentap").toLowerCase();
+  const backToProfileUrl = `/r/${targetProfileSlug}${isPreview ? "?preview=1" : ""}${tagCode && tagCode.toLowerCase() !== targetProfileSlug ? `${isPreview ? "&" : "?"}via=${tagCode}` : ""}`;
 
   return (
     <div className={`${themeClasses.wrapper} font-sans min-h-screen selection:bg-amber-500 selection:text-black transition-colors duration-300`}>

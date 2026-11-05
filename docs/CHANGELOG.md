@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.7] — 2026-11-05
+### Fixed (Destination Hierarchy Routing, Tag Link Redirection & Category Reflection)
+- **Destination Hierarchy Routing (`business_page` vs `zentap_google` vs `direct_google`)**:
+  - Fixed argument mismatch bug in `handleDestinationChange` inside `PageEditorWebpageTab.tsx` where changing the destination dropdown passed arguments incorrectly and prevented database synchronization.
+  - Updated `savePageEditorConfigServer` in `adminPlatformStore.ts` to accept explicit `destination` and preserve existing destination configurations in both `google_review_links` and `qr_nfc_tags`.
+  - Updated `resolveScan` in `src/lib/resolveTag.ts` to prioritize Supabase database records (`grlRow.destination`, `tagRow.destination`) over local cache and default completed page setups to `business_page` rather than forcing `zentap_google`.
+  - Configured `/t/[code]` physical scan links:
+    - **`business_page`**: Directs visitors to the full Interactive Business Profile (`/r/[slug]`) first, displaying business details, social links, and the primary CTA button which seamlessly opens the review generator (`/r/[slug]/review`).
+    - **`zentap_google`**: Directs visitors straight to the ZenTap Google Review generator page (`/r/[slug]/review`), strictly isolating access from the business profile.
+    - **`direct_google`**: Instantly 302 redirects visitors directly to the customer's live Google Review page (`https://g.page/r/...`).
+- **Review Page Categories Reflection ("What stood out?")**:
+  - Enhanced category chip resolution in `ZenTapReviewAssistant.tsx` to include `pageConfig.category`, `pageConfig.categories`, `business.category`, and `custom_chips`.
+  - Ensured `handleSaveWholeEdit` in `PageEditorWebpageTab.tsx` saves `categories` and `tags` lists so any category edits in the admin directory immediately match on the live review page.
+  - Updated `backToProfileUrl` to point to `/r/[tagCode]` or `/r/[slug]` so visitors can cleanly return from the review generator back to the business page.
+
 ## [1.54.6] — 2026-11-05
 ### Fixed (Category Reflection on Review Page, Client Profile Auto-Fetch & Live Theme Presets)
 - **Review Page Categories Matching Editor ("What stood out?")**:

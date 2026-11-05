@@ -83,9 +83,9 @@ export async function resolveScan(
 
       const effectiveDest =
         grlRow?.destination ||
-        localGrl?.destination ||
         tagRow?.destination ||
-        (pageConfig?.setup_status === 'completed' || localCfg?.setup_status === 'completed' ? 'zentap_google' : null) ||
+        localGrl?.destination ||
+        (pageConfig?.setup_status === 'completed' || localCfg?.setup_status === 'completed' ? 'business_page' : null) ||
         'not_assigned';
 
       const effectiveGoogleLink =
