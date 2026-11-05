@@ -20,13 +20,18 @@ import {
   Sliders,
   Settings,
   Tag,
+  Star,
+  MapPin,
+  Calendar,
 } from "lucide-react";
 import {
   ClientRecord,
   DeletedBusinessRecord,
   CustomFieldDefinition,
+  QrNfcTagItemRecord,
   getAllClients,
   getAllDeletedBusinesses,
+  getAllQrNfcTags,
   getCustomFieldDefinitions,
   addCustomFieldDefinition,
   addClientServer,
@@ -46,6 +51,7 @@ interface ClientsWebpageTabProps {
 export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }: ClientsWebpageTabProps) {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [deletedBusinesses, setDeletedBusinesses] = useState<DeletedBusinessRecord[]>([]);
+  const [tags, setTags] = useState<QrNfcTagItemRecord[]>([]);
   const [viewFilter, setViewFilter] = useState<"all" | "deleted">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,6 +69,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [newOwnerPhone, setNewOwnerPhone] = useState("");
   const [newOwnerEmail, setNewOwnerEmail] = useState("");
   const [newWhatsapp, setNewWhatsapp] = useState("");
+  const [newGoogleReviewLink, setNewGoogleReviewLink] = useState("");
   const [newInstagram, setNewInstagram] = useState("");
   const [newFacebook, setNewFacebook] = useState("");
   const [newCity, setNewCity] = useState("Ahmedabad");
@@ -77,6 +84,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [editOwnerPhone, setEditOwnerPhone] = useState("");
   const [editOwnerEmail, setEditOwnerEmail] = useState("");
   const [editWhatsapp, setEditWhatsapp] = useState("");
+  const [editGoogleReviewLink, setEditGoogleReviewLink] = useState("");
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
   const [editCity, setEditCity] = useState("Ahmedabad");
@@ -107,8 +115,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     loadFields();
 
     window.addEventListener("zentap_custom_fields_updated", loadFields);
+    window.addEventListener("zentap_platform_updated", refreshData);
     return () => {
       window.removeEventListener("zentap_custom_fields_updated", loadFields);
+      window.removeEventListener("zentap_platform_updated", refreshData);
     };
   }, []);
 
@@ -128,10 +138,14 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const refreshData = async () => {
     setClients(getAllClients());
     setDeletedBusinesses(getAllDeletedBusinesses());
+    setTags(getAllQrNfcTags());
     const res = await serverFetchPlatformData();
     if (res.success && res.data) {
       setClients(res.data.clients || []);
       setDeletedBusinesses(res.data.deletedBusinesses || []);
+      if (res.data.tags) {
+        setTags(res.data.tags || []);
+      }
     }
   };
 
@@ -174,6 +188,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditOwnerPhone(client.owner_phone || "");
     setEditOwnerEmail(client.owner_email || "");
     setEditWhatsapp(client.whatsapp || "");
+    setEditGoogleReviewLink(client.google_review_link || "");
     setEditInstagram(client.instagram_link || "");
     setEditFacebook(client.facebook_link || "");
     setEditCity(client.city || "Ahmedabad");
@@ -198,6 +213,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       owner_phone: editOwnerPhone.trim() || undefined,
       owner_email: editOwnerEmail.trim() || undefined,
       whatsapp: editWhatsapp.trim() || undefined,
+      google_review_link: editGoogleReviewLink.trim() || undefined,
       instagram_link: editInstagram.trim() || undefined,
       facebook_link: editFacebook.trim() || undefined,
       city: editCity.trim() || "India",
@@ -229,6 +245,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       owner_phone: newOwnerPhone.trim() || undefined,
       owner_email: newOwnerEmail.trim() || undefined,
       whatsapp: newWhatsapp.trim() || newOwnerPhone.trim() || undefined,
+      google_review_link: newGoogleReviewLink.trim() || undefined,
       instagram_link: newInstagram.trim() || undefined,
       facebook_link: newFacebook.trim() || undefined,
       city: newCity.trim() || "India",
@@ -245,6 +262,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       setNewOwnerPhone("");
       setNewOwnerEmail("");
       setNewWhatsapp("");
+      setNewGoogleReviewLink("");
       setNewInstagram("");
       setNewFacebook("");
       setNewCity("Ahmedabad");
@@ -404,44 +422,197 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold tracking-wider uppercase text-[10px]">
-                  <th className="py-3.5 px-4">Business ID</th>
-                  <th className="py-3.5 px-4">Business Name</th>
-                  <th className="py-3.5 px-4">Owner Name</th>
-                  <th className="py-3.5 px-4">Owner Phone</th>
-                  <th className="py-3.5 px-4">Owner Email</th>
-                  <th className="py-3.5 px-4">WhatsApp</th>
-                  <th className="py-3.5 px-4">Instagram Link</th>
-                  <th className="py-3.5 px-4">Facebook Link</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Business ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Business Name</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">City / Location</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Owner Name</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Owner Phone</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Owner Email</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">WhatsApp</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Google Review Link</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Instagram Link</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Facebook Link</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Hardware / Tags</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Custom Fields</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap sticky right-0 bg-zinc-50 shadow-xs">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={14} className="py-12 text-center text-zinc-500 font-medium">
                       No clients found matching &ldquo;{searchQuery}&rdquo;.
                     </td>
                   </tr>
                 ) : (
                   filteredClients.map((client) => (
                     <tr key={client.id} className="hover:bg-zinc-50/70 transition-colors">
-                      {/* Business ID */}
+                      {/* 1. Business ID */}
                       <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px]">
+                        <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px] font-bold">
                           {client.business_id}
                         </span>
                       </td>
 
-                      {/* Business Name */}
+                      {/* 2. Business Name */}
                       <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
-                        {client.business_name}
-                        {client.city && (
-                          <span className="block text-[10px] font-normal text-zinc-400">
-                            {client.city}
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span>{client.business_name}</span>
+                        </div>
+                      </td>
+
+                      {/* 3. City / Location */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
+                        {client.city ? (
+                          <span className="inline-flex items-center gap-1 text-zinc-700 bg-zinc-50 border border-zinc-200/80 px-2 py-0.5 rounded text-[11px]">
+                            <MapPin className="w-3 h-3 text-zinc-400" />
+                            <span>{client.city}</span>
                           </span>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
                         )}
-                        {client.custom_fields && Object.keys(client.custom_fields).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1 max-w-[220px]">
+                      </td>
+
+                      {/* 4. Owner Name */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
+                        {client.owner_name || <span className="text-zinc-400">—</span>}
+                      </td>
+
+                      {/* 5. Owner Phone */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.owner_phone ? (
+                          <a
+                            href={`tel:${client.owner_phone}`}
+                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>{client.owner_phone}</span>
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 6. Owner Email */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.owner_email ? (
+                          <a
+                            href={`mailto:${client.owner_email}`}
+                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>{client.owner_email}</span>
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 7. WhatsApp */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.whatsapp ? (
+                          <a
+                            href={`https://wa.me/${client.whatsapp.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold hover:bg-emerald-100"
+                          >
+                            <MessageCircle className="w-3 h-3 text-emerald-600" />
+                            <span>{client.whatsapp}</span>
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 8. Google Review Link */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.google_review_link ? (
+                          <a
+                            href={client.google_review_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold hover:bg-amber-100"
+                            title={client.google_review_link}
+                          >
+                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                            <span>Review Link</span>
+                            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 9. Instagram Link */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.instagram_link ? (
+                          <a
+                            href={client.instagram_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-900 font-semibold"
+                          >
+                            <Instagram className="w-3.5 h-3.5 text-pink-600" />
+                            <span className="truncate max-w-[120px]">Profile</span>
+                            <ExternalLink className="w-3 h-3 opacity-60" />
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 10. Facebook Link */}
+                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                        {client.facebook_link ? (
+                          <a
+                            href={client.facebook_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-semibold"
+                          >
+                            <Facebook className="w-3.5 h-3.5 text-blue-600" />
+                            <span className="truncate max-w-[120px]">Page</span>
+                            <ExternalLink className="w-3 h-3 opacity-60" />
+                          </a>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 11. Hardware / Tags Assigned */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {(() => {
+                          const bizTags = tags.filter((t) => t.business_id === client.business_id);
+                          if (bizTags.length === 0) {
+                            return <span className="text-zinc-400 text-[11px]">—</span>;
+                          }
+                          return (
+                            <div className="flex flex-wrap items-center gap-1 max-w-[190px]">
+                              {bizTags.map((t) => (
+                                <a
+                                  key={t.tag_id}
+                                  href={t.link || `/t/${t.tag_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200 font-mono text-[10px] font-bold"
+                                  title={`${t.product_type} • ${t.destination || "Not Assigned"}`}
+                                >
+                                  <Tag className="w-2.5 h-2.5 text-zinc-500" />
+                                  <span>{t.tag_id}</span>
+                                </a>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </td>
+
+                      {/* 12. Custom Fields */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {client.custom_fields && Object.keys(client.custom_fields).some((k) => client.custom_fields![k]?.trim()) ? (
+                          <div className="flex flex-wrap gap-1 max-w-[220px]">
                             {Object.entries(client.custom_fields)
                               .filter(([_, val]) => val && String(val).trim())
                               .map(([key, val]) => {
@@ -471,99 +642,31 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                                 );
                               })}
                           </div>
-                        )}
-                      </td>
-
-                      {/* Owner Name */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
-                        {client.owner_name || <span className="text-zinc-400">—</span>}
-                      </td>
-
-                      {/* Owner Phone */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.owner_phone ? (
-                          <a
-                            href={`tel:${client.owner_phone}`}
-                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
-                          >
-                            <Phone className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{client.owner_phone}</span>
-                          </a>
                         ) : (
                           <span className="text-zinc-400">—</span>
                         )}
                       </td>
 
-                      {/* Owner Email */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.owner_email ? (
-                          <a
-                            href={`mailto:${client.owner_email}`}
-                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
-                          >
-                            <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{client.owner_email}</span>
-                          </a>
+                      {/* 13. Registered Date */}
+                      <td className="py-3 px-4 text-zinc-600 whitespace-nowrap font-mono text-[11px]">
+                        {client.created_at ? (
+                          <span className="inline-flex items-center gap-1 text-zinc-600">
+                            <Calendar className="w-3 h-3 text-zinc-400" />
+                            <span>
+                              {new Date(client.created_at).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </span>
                         ) : (
                           <span className="text-zinc-400">—</span>
                         )}
                       </td>
 
-                      {/* WhatsApp */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.whatsapp ? (
-                          <a
-                            href={`https://wa.me/${client.whatsapp.replace(/\D/g, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold hover:bg-emerald-100"
-                          >
-                            <MessageCircle className="w-3 h-3 text-emerald-600" />
-                            <span>{client.whatsapp}</span>
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Instagram Link */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.instagram_link ? (
-                          <a
-                            href={client.instagram_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-900 font-semibold"
-                          >
-                            <Instagram className="w-3.5 h-3.5 text-pink-600" />
-                            <span className="truncate max-w-[120px]">Profile</span>
-                            <ExternalLink className="w-3 h-3 opacity-60" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Facebook Link */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.facebook_link ? (
-                          <a
-                            href={client.facebook_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-semibold"
-                          >
-                            <Facebook className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="truncate max-w-[120px]">Page</span>
-                            <ExternalLink className="w-3 h-3 opacity-60" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                      {/* 14. Actions */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-xs">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openEditModal(client)}
@@ -793,15 +896,27 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ahmedabad, Gujarat"
-                  value={newCity}
-                  onChange={(e) => setNewCity(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ahmedabad, Gujarat"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <input
+                    type="url"
+                    placeholder="https://search.google.com/... or g.page/r/..."
+                    value={newGoogleReviewLink}
+                    onChange={(e) => setNewGoogleReviewLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
               </div>
 
               {/* Custom Business Details & Extended Options */}
@@ -1069,14 +1184,26 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
-                <input
-                  type="text"
-                  value={editCity}
-                  onChange={(e) => setEditCity(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <input
+                    type="url"
+                    placeholder="https://search.google.com/... or g.page/r/..."
+                    value={editGoogleReviewLink}
+                    onChange={(e) => setEditGoogleReviewLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
               </div>
 
               {/* Custom Business Details & Extended Options */}

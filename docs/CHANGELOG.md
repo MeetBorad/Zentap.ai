@@ -1,5 +1,26 @@
 # ZenTap — Changelog
 
+## [1.54.2] — 2026-11-05
+### Added (Clients Directory Full Available Data Columns Display)
+- **Comprehensive Columns in Clients Directory (`ClientsWebpageTab.tsx`)**:
+  - Upgraded table to display all 14 available data dimensions for registered businesses:
+    1. **Business ID** (e.g. `ZT-0001` badge)
+    2. **Business Name** (with building icon)
+    3. **City / Location** (with location pin badge)
+    4. **Owner Name**
+    5. **Owner Phone** (clickable tel link)
+    6. **Owner Email** (clickable mailto link)
+    7. **WhatsApp** (clickable `wa.me` badge)
+    8. **Google Review Link** (clickable amber badge)
+    9. **Instagram Link** (clickable profile link)
+    10. **Facebook Link** (clickable page link)
+    11. **Hardware / Tags Assigned** (interactive chips linking directly to `/t/[tag_id]` with product & destination tooltip)
+    12. **Custom Fields** (interactive badges for Website, GST, Address, UPI, etc.)
+    13. **Registered Date** (formatted date with calendar icon)
+    14. **Actions** (sticky right column for seamless edit and delete access)
+  - Enhanced Add and Edit modals to include Google Review Link alongside City / Location inputs.
+  - Wired live event listener (`zentap_platform_updated`) so tag assignments and client changes update table data in real time.
+
 ## [1.54.1] — 2026-11-05
 ### Fixed (Client Directory Persistence, Editing & Real-Time Sync)
 - **Resolved Business Edit & Creation Persistence**:
