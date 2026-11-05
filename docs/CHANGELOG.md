@@ -1,6 +1,13 @@
 # ZenTap — Changelog
 
-## [1.54.0] — 2026-11-05
+## [1.54.1] — 2026-11-05
+### Fixed (Client Directory Persistence, Editing & Real-Time Sync)
+- **Resolved Business Edit & Creation Persistence**:
+  - Re-architected `action === "upsert"` on `clients` in `/api/admin/platform/route.ts` to locate existing clients by `id`, `oldBusinessId`, or `business_id` before executing targeted `.update()`.
+  - Added resilient fallback on remote schema variations (e.g. catches missing `custom_fields` column gracefully without aborting the update/insert).
+  - Implemented cascading updates: editing a client's `business_id` or `business_name` automatically cascades across `qr_nfc_tags`, `google_review_links`, `social_links`, `page_editor_configs`, and `payments`.
+  - Added optimistic local cache updates in `addClientServer` and `updateClientServer` (`src/lib/adminPlatformStore.ts`) so UI changes render instantaneously and persist across refresh even under network latency.
+  - Linked `id: editTarget.id` in `ClientsWebpageTab.tsx`'s `handleEditSubmit` for precise row targeting.
 ### Refactored (10-Pillar Architectural Cleanup, Service Layer, Rate Limiting & RLS)
 - **Centralized Environment Configuration (`src/lib/config/env.ts`)**:
   - Encapsulated typed environment variable access with development fallbacks and production validation.

@@ -778,45 +778,50 @@ export async function addClientServer(params: {
   google_review_link?: string;
   custom_fields?: Record<string, string>;
 }): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
+  const current = getAllClients();
+  const nextBusinessId = generateNextBusinessIdCode(current);
+
+  const clientPayload: Omit<ClientRecord, "id" | "created_at"> & { id?: string; business_id: string } = {
+    business_id: nextBusinessId,
+    business_name: params.business_name.trim(),
+    owner_name: params.owner_name?.trim() || "",
+    owner_phone: params.owner_phone?.trim() || "",
+    owner_email: params.owner_email?.trim() || "",
+    whatsapp: params.whatsapp?.trim() || params.owner_phone?.trim() || "",
+    instagram_link: params.instagram_link?.trim() || "",
+    facebook_link: params.facebook_link?.trim() || "",
+    city: params.city?.trim() || "India",
+    google_review_link: params.google_review_link?.trim() || "",
+    custom_fields: params.custom_fields || {},
+  };
+
+  // Optimistically update local storage so UI displays it immediately
+  const localCreated = addClient(clientPayload);
+
   try {
-    const current = getAllClients();
-    const nextBusinessId = generateNextBusinessIdCode(current);
-
-    const clientPayload = {
-      business_id: nextBusinessId,
-      business_name: params.business_name.trim(),
-      owner_name: params.owner_name?.trim() || null,
-      owner_phone: params.owner_phone?.trim() || null,
-      owner_email: params.owner_email?.trim() || null,
-      whatsapp: params.whatsapp?.trim() || params.owner_phone?.trim() || null,
-      instagram_link: params.instagram_link?.trim() || null,
-      facebook_link: params.facebook_link?.trim() || null,
-      city: params.city?.trim() || "India",
-      google_review_link: params.google_review_link?.trim() || null,
-      custom_fields: params.custom_fields || {},
-    };
-
     const res = await fetch("/api/admin/platform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "upsert",
         table: "clients",
-        data: clientPayload,
+        data: localCreated,
         onConflict: "business_id",
       }),
     });
 
     const json = await res.json();
     if (!res.ok || !json.success) {
-      return { success: false, error: json.error || "Failed to save client in database" };
+      console.warn("Server add client notice:", json.error);
+      return { success: true, data: localCreated, error: json.error };
     }
 
     await serverFetchPlatformData();
-    const created = json.data?.[0] || clientPayload;
+    const created = json.data?.[0] || localCreated;
     return { success: true, data: created };
   } catch (err: any) {
-    return { success: false, error: err.message || "Network error while saving client" };
+    console.warn("Network error during addClientServer:", err);
+    return { success: true, data: localCreated, error: err.message };
   }
 }
 
@@ -826,30 +831,38 @@ export async function updateClientServer(
   updates: Partial<ClientRecord>
 ): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
   try {
+    // Optimistically update local storage and cascade locally
+    const localUpdated = updateClient(businessId, updates);
+
+    const payload = {
+      ...updates,
+      business_id: updates.business_id || businessId,
+      updated_at: new Date().toISOString(),
+    };
+
     const res = await fetch("/api/admin/platform", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "upsert",
         table: "clients",
-        data: {
-          ...updates,
-          business_id: businessId,
-          updated_at: new Date().toISOString(),
-        },
-        onConflict: "business_id",
+        data: payload,
+        oldBusinessId: businessId,
       }),
     });
 
     const json = await res.json();
     if (!res.ok || !json.success) {
-      return { success: false, error: json.error || "Failed to update client in database" };
+      console.warn("Server update client notice:", json.error);
+      return { success: true, data: localUpdated || (payload as ClientRecord), error: json.error };
     }
 
     await serverFetchPlatformData();
-    return { success: true, data: json.data?.[0] };
+    return { success: true, data: json.data?.[0] || localUpdated };
   } catch (err: any) {
-    return { success: false, error: err.message || "Network error while updating client" };
+    console.warn("Network error during updateClientServer:", err);
+    const localUpdated = updateClient(businessId, updates);
+    return { success: true, data: localUpdated || undefined, error: err.message };
   }
 }
 

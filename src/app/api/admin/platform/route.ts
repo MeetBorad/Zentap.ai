@@ -698,25 +698,130 @@ function sanitizeRowForTable(item: any, table: string) {
         return NextResponse.json({ error: "Missing table or data" }, { status: 400 });
       }
 
-      // If table is clients and business_id is missing or clashing, generate next available
+      // If table is clients: handle both update and insert with error resilience & cascade
       if (table === "clients") {
         const checkItem = Array.isArray(data) ? data[0] : data;
-        if (!checkItem.business_id) {
-          const { data: allBiz } = await (supabase as any).from("clients").select("business_id");
-          let max = 0;
-          (allBiz || []).forEach((b: any) => {
-            const match = (b.business_id || "").match(/ZT-(\d+)/i);
-            if (match) {
-              const num = parseInt(match[1], 10);
-              if (num > max) max = num;
-            }
-          });
-          const nextBid = `ZT-${String(max + 1).padStart(4, "0")}`;
-          if (Array.isArray(data)) {
-            data[0].business_id = nextBid;
-          } else {
-            data.business_id = nextBid;
+        const oldBizId = body.oldBusinessId || checkItem.business_id;
+
+        // 1. Try to find existing client by id, oldBusinessId, or business_id
+        let existingClient: any = null;
+        if (checkItem.id && UUID_REGEX.test(checkItem.id)) {
+          const { data: byId } = await (supabase as any)
+            .from("clients")
+            .select("id, business_id, business_name")
+            .eq("id", checkItem.id)
+            .maybeSingle();
+          if (byId) existingClient = byId;
+        }
+
+        if (!existingClient && oldBizId) {
+          const { data: byOldBiz } = await (supabase as any)
+            .from("clients")
+            .select("id, business_id, business_name")
+            .eq("business_id", oldBizId)
+            .maybeSingle();
+          if (byOldBiz) existingClient = byOldBiz;
+        }
+
+        if (!existingClient && checkItem.business_id) {
+          const { data: byBiz } = await (supabase as any)
+            .from("clients")
+            .select("id, business_id, business_name")
+            .eq("business_id", checkItem.business_id)
+            .maybeSingle();
+          if (byBiz) existingClient = byBiz;
+        }
+
+        if (existingClient) {
+          // UPDATE EXISTING CLIENT
+          const clean = sanitizeRowForTable(checkItem, "clients");
+          delete clean.id; // Do not overwrite primary key UUID
+          clean.updated_at = new Date().toISOString();
+
+          let updateRes = await (supabase as any)
+            .from("clients")
+            .update(clean)
+            .eq("id", existingClient.id)
+            .select();
+
+          // If custom_fields column is missing in remote DB, strip and retry
+          if (updateRes.error && updateRes.error.message?.includes("custom_fields")) {
+            delete clean.custom_fields;
+            updateRes = await (supabase as any)
+              .from("clients")
+              .update(clean)
+              .eq("id", existingClient.id)
+              .select();
           }
+
+          if (updateRes.error) {
+            console.error("Client update error:", updateRes.error);
+            return NextResponse.json({ error: updateRes.error.message }, { status: 500 });
+          }
+
+          // If business_id or business_name changed, cascade to all dependent tables
+          const targetBizId = existingClient.business_id;
+          const newBizId = clean.business_id || targetBizId;
+          const newName = clean.business_name || existingClient.business_name;
+
+          if (targetBizId !== newBizId || existingClient.business_name !== newName) {
+            const cascadePayload: any = {};
+            if (newBizId) cascadePayload.business_id = newBizId;
+            if (newName) cascadePayload.business_name = newName;
+
+            await Promise.allSettled([
+              (supabase as any).from("qr_nfc_tags").update(cascadePayload).eq("business_id", targetBizId),
+              (supabase as any).from("google_review_links").update(cascadePayload).eq("business_id", targetBizId),
+              (supabase as any).from("social_links").update(cascadePayload).eq("business_id", targetBizId),
+              (supabase as any).from("page_editor_configs").update(cascadePayload).eq("business_id", targetBizId),
+              (supabase as any).from("payments").update(cascadePayload).eq("business_id", targetBizId),
+            ]);
+          }
+
+          return NextResponse.json({ success: true, data: updateRes.data });
+        } else {
+          // INSERT NEW CLIENT
+          let targetBid = checkItem.business_id;
+          if (!targetBid) {
+            const { data: allBiz } = await (supabase as any).from("clients").select("business_id");
+            let max = 0;
+            (allBiz || []).forEach((b: any) => {
+              const match = (b.business_id || "").match(/ZT-(\d+)/i);
+              if (match) {
+                const num = parseInt(match[1], 10);
+                if (num > max) max = num;
+              }
+            });
+            targetBid = `ZT-${String(max + 1).padStart(4, "0")}`;
+          }
+
+          const clean = sanitizeRowForTable({ ...checkItem, business_id: targetBid }, "clients");
+          if (clean.id && !UUID_REGEX.test(clean.id)) {
+            delete clean.id; // Let Postgres generate UUID
+          }
+          clean.created_at = clean.created_at || new Date().toISOString();
+          clean.updated_at = new Date().toISOString();
+
+          let insertRes = await (supabase as any)
+            .from("clients")
+            .insert(clean)
+            .select();
+
+          // If custom_fields column is missing in remote DB, strip and retry
+          if (insertRes.error && insertRes.error.message?.includes("custom_fields")) {
+            delete clean.custom_fields;
+            insertRes = await (supabase as any)
+              .from("clients")
+              .insert(clean)
+              .select();
+          }
+
+          if (insertRes.error) {
+            console.error("Client insert error:", insertRes.error);
+            return NextResponse.json({ error: insertRes.error.message }, { status: 500 });
+          }
+
+          return NextResponse.json({ success: true, data: insertRes.data });
         }
       }
 

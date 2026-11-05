@@ -191,6 +191,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
     setIsSubmitting(true);
     const res = await updateClientServer(editTarget.business_id, {
+      id: editTarget.id,
       business_id: editBusinessId.trim() || editTarget.business_id,
       business_name: editBizName.trim(),
       owner_name: editOwnerName.trim() || undefined,
