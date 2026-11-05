@@ -65,17 +65,27 @@ export default async function ReviewPage({
 
   if (db) {
     try {
-      const q = db
+      const tagQuery = via || cleanSlug;
+      const { data: vData } = await db
         .from("page_editor_configs")
         .select("*")
-        .or(`business_id.ilike.${cleanSlug},tag_id.ilike.${cleanSlug}${via ? `,tag_id.ilike.${via}` : ""}`)
+        .ilike("tag_id", tagQuery)
         .is("deleted_at", null)
         .maybeSingle();
-      const { data } = await q;
-      pageConfig = data;
+      if (vData) {
+        pageConfig = vData;
+      } else {
+        const q = db
+          .from("page_editor_configs")
+          .select("*")
+          .or(`tag_id.ilike.${cleanSlug},business_id.ilike.${cleanSlug}`)
+          .is("deleted_at", null)
+          .maybeSingle();
+        const { data } = await q;
+        pageConfig = data;
+      }
 
       // Query tag and google review links to determine effective destination
-      const tagQuery = via || cleanSlug;
       const { data: tData } = await db
         .from("qr_nfc_tags")
         .select("*")
@@ -99,9 +109,9 @@ export default async function ReviewPage({
   if (!pageConfig) {
     const local = getAllPageEditorConfigs().find(
       (p) =>
+        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
         p.tag_id.toLowerCase() === cleanSlug ||
         p.business_id.toLowerCase() === cleanSlug ||
-        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
         (rawBiz && p.business_id.toLowerCase() === rawBiz.id.toLowerCase()) ||
         (cleanSlug === "zentap" && (p.tag_id.toLowerCase() === "zentap" || p.business_id.toLowerCase() === "sample-demo-biz-01" || p.tag_id.toLowerCase() === "st1"))
     );
@@ -188,7 +198,7 @@ export default async function ReviewPage({
   return (
     <ZenTapReviewAssistant
       business={biz}
-      pageConfig={cfg}
+      pageConfig={{ ...pageConfig, ...cfg }}
       tagCode={via || cleanSlug}
       googleReviewUrl={effectiveGoogleLink}
       allowBusinessPageAccess={allowBusinessPageAccess}

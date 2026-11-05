@@ -1218,6 +1218,12 @@ export async function savePageEditorConfigServer(
     // Keep google_review_links & qr_nfc_tags in sync (Two-way connected)
     if (configData?.google_link !== undefined) {
       const cleanGoogleUrl = (configData.google_link || "").trim();
+      
+      // Preserve existing destination if already configured (do NOT force zentap_google)
+      const existingGLink = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === tagId.toLowerCase());
+      const existingTag = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === tagId.toLowerCase());
+      const preservedDest = existingGLink?.destination || existingTag?.destination || "business_page";
+
       await fetch("/api/admin/platform", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1230,7 +1236,7 @@ export async function savePageEditorConfigServer(
             business_name: extra?.business_name,
             link_of_tag_id: `${DOMAIN_BASE}/t/${tagId}`,
             business_google_review_link: cleanGoogleUrl,
-            destination: "zentap_google",
+            destination: preservedDest,
             setup_status: cleanGoogleUrl ? "completed" : "pending",
             updated_at: new Date().toISOString(),
           },

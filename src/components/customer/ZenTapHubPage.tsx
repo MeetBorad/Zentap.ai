@@ -1,7 +1,7 @@
 // src/components/customer/ZenTapHubPage.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   Star, 
@@ -197,9 +197,74 @@ export default function ZenTapHubPage({
   const availableTags: string[] = 
     Array.isArray(cfg.tags) && cfg.tags.length > 0
       ? cfg.tags
+      : Array.isArray(cfg.categories) && cfg.categories.length > 0
+      ? cfg.categories
       : Array.isArray(business.custom_chips) && business.custom_chips.length > 0
       ? business.custom_chips
       : DEFAULT_TAGS;
+
+  const effectiveTheme = cfg.theme || (
+    design.theme_preset === 'emerald_luxe' ? 'emerald' :
+    design.theme_preset === 'midnight_amber' ? 'sunset' :
+    design.theme_preset === 'clean_minimal' ? 'clean_light' :
+    design.theme_preset === 'modern_slate' ? 'slate' : 'obsidian'
+  );
+
+  const hubTheme = useMemo(() => {
+    switch (effectiveTheme) {
+      case "slate":
+        return {
+          wrapper: "bg-[#0f172a] text-[#f8fafc]",
+          card: "bg-[#1e293b]/90 border-sky-500/20",
+          inner: "bg-[#334155]",
+          accentText: "text-[#38bdf8]",
+          rim: "via-[#38bdf8]",
+          glow1: "bg-[#38bdf8]/15",
+          btnGradient: "from-sky-500 via-sky-400 to-sky-500",
+        };
+      case "emerald":
+        return {
+          wrapper: "bg-[#062016] text-[#f0fdf4]",
+          card: "bg-[#0d3326]/90 border-emerald-500/20",
+          inner: "bg-[#134e3a]",
+          accentText: "text-[#34d399]",
+          rim: "via-[#10b981]",
+          glow1: "bg-[#10b981]/15",
+          btnGradient: "from-emerald-500 via-emerald-400 to-emerald-500",
+        };
+      case "sunset":
+        return {
+          wrapper: "bg-[#1c0d06] text-[#fff7ed]",
+          card: "bg-[#2e170c]/90 border-orange-500/20",
+          inner: "bg-[#452210]",
+          accentText: "text-[#fb923c]",
+          rim: "via-[#f97316]",
+          glow1: "bg-[#f97316]/15",
+          btnGradient: "from-orange-500 via-amber-400 to-orange-500",
+        };
+      case "clean_light":
+        return {
+          wrapper: "bg-[#f8fafc] text-slate-900",
+          card: "bg-white border-slate-200 shadow-xl",
+          inner: "bg-slate-100",
+          accentText: "text-amber-600",
+          rim: "via-amber-500",
+          glow1: "bg-amber-500/10",
+          btnGradient: "from-amber-500 via-amber-400 to-amber-500",
+        };
+      case "obsidian":
+      default:
+        return {
+          wrapper: "bg-[#0B0F17] text-[#dfe2ee]",
+          card: "bg-[#121824]/90 border-white/5",
+          inner: "bg-[#1B2232]",
+          accentText: "text-[#ffc174]",
+          rim: "via-[#f59e0b]",
+          glow1: "bg-[#f59e0b]/10",
+          btnGradient: "from-amber-500 via-amber-400 to-amber-500",
+        };
+    }
+  }, [effectiveTheme]);
 
   // Modal & Interactive Review States
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -348,7 +413,7 @@ export default function ZenTapHubPage({
 
   return (
     <div 
-      className="bg-[#0B0F17] text-[#dfe2ee] min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden"
+      className={`${hubTheme.wrapper} min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden`}
       style={{ fontFamily: "'Outfit', sans-serif" }}
     >
       <main className="w-full min-h-screen pt-4 relative">

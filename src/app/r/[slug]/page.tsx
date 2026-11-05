@@ -208,6 +208,12 @@ export default async function Page({
       const destUrl = `/r/${cleanCode}/review${via ? `?via=${via}` : ''}${source ? `${via ? '&' : '?'}s=${source}` : ''}`;
       redirect(destUrl);
     }
+    if (dest === 'direct_google' || dest === 'google_direct') {
+      const gLink = cfg.google_link || effectiveBiz.google_review_link || effectiveBiz.review_url;
+      if (gLink) {
+        redirect(gLink);
+      }
+    }
   }
 
   // If preview mode, always render the Hub Page with latest parsed config!

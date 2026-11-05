@@ -49,6 +49,7 @@ import {
   getAllPageEditorConfigs,
   getAllDeletedPageEditorConfigs,
   getAllGoogleReviewLinks,
+  getAllQrNfcTags,
   getAllClients,
   savePageEditorConfig,
   savePageEditorConfigServer,
@@ -191,36 +192,109 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     reader.readAsDataURL(file);
   };
 
-  const handleFetchFromClient = (businessId: string) => {
-    const allC = getAllClients();
-    const client = allC.find((c) => c.business_id.toLowerCase() === businessId.toLowerCase());
+  const handleFetchFromClient = async (businessId: string) => {
+    let allC = getAllClients();
+    const cleanBId = (businessId || "").toLowerCase().trim();
+    const cleanTagId = (activeItem?.tag_id || "").toLowerCase().trim();
+    const cleanBName = (activeItem?.business_name || "").toLowerCase().trim();
+
+    // 1. Try finding by business_id, id, tag_id, or business_name in local store
+    let client = allC.find((c) => {
+      const cBid = (c.business_id || "").toLowerCase().trim();
+      const cId = (c.id || "").toLowerCase().trim();
+      const cName = (c.business_name || "").toLowerCase().trim();
+      return (
+        (cleanBId && (cBid === cleanBId || cId === cleanBId)) ||
+        (cleanTagId && (cBid === cleanTagId || cId === cleanTagId)) ||
+        (cleanBName && cName === cleanBName)
+      );
+    });
+
+    // 2. If not found, look up linked tag in qr_nfc_tags
+    if (!client && cleanTagId) {
+      const allTags = getAllQrNfcTags();
+      const matchingTag = allTags.find((t) => t.tag_id.toLowerCase().trim() === cleanTagId);
+      if (matchingTag?.business_id) {
+        const mBid = matchingTag.business_id.toLowerCase().trim();
+        client = allC.find((c) => (c.business_id || "").toLowerCase().trim() === mBid || (c.id || "").toLowerCase().trim() === mBid);
+      }
+    }
+
+    // 3. If not found, look up in google_review_links
+    if (!client && cleanTagId) {
+      const allG = getAllGoogleReviewLinks();
+      const matchingG = allG.find((g) => g.tag_id.toLowerCase().trim() === cleanTagId);
+      if (matchingG?.business_id) {
+        const mBid = matchingG.business_id.toLowerCase().trim();
+        client = allC.find((c) => (c.business_id || "").toLowerCase().trim() === mBid || (c.id || "").toLowerCase().trim() === mBid);
+      }
+    }
+
+    // 4. If still not found, fetch fresh from server API
     if (!client) {
-      onShowToast(`No client profile found for ${businessId}`);
+      try {
+        await serverFetchPlatformData();
+        allC = getAllClients();
+        client = allC.find((c: any) => {
+          const cBid = (c.business_id || "").toLowerCase().trim();
+          const cId = (c.id || "").toLowerCase().trim();
+          const cName = (c.business_name || "").toLowerCase().trim();
+          return (
+            (cleanBId && (cBid === cleanBId || cId === cleanBId)) ||
+            (cleanTagId && (cBid === cleanTagId || cId === cleanTagId)) ||
+            (cleanBName && cName === cleanBName)
+          );
+        });
+      } catch (e) {
+        console.warn("Error fetching clients from server:", e);
+      }
+    }
+
+    if (!client) {
+      onShowToast(`No client profile found for ${businessId || activeItem?.tag_id}. Please ensure the client is registered in Clients Directory.`);
       return;
     }
 
-    if (client.business_name) setEditTitle(client.business_name);
-    if (client.city) {
-      setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
-      setEditAddress(client.city);
+    // Auto-fill all blank or default fields from Client profile
+    if (client.business_name) {
+      setEditTitle(client.business_name);
     }
-    if (client.owner_phone) setEditPhone(client.owner_phone);
-    if (client.whatsapp || client.owner_phone) setEditWhatsapp(client.whatsapp || client.owner_phone);
-    if (client.instagram_link) setEditInstagram(client.instagram_link);
-    if (client.facebook_link) setEditFacebook(client.facebook_link);
-    if (client.owner_email) setEditEmail(client.owner_email);
-    if (client.custom_fields?.website_url || client.custom_fields?.website) {
+    if (client.city) {
+      if (!editSubtitle || editSubtitle === "Customer Satisfaction Hub") {
+        setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
+      }
+      if (!editAddress) {
+        setEditAddress(client.city);
+      }
+    }
+    if (client.owner_phone && (!editPhone || editPhone.includes("98250 12345"))) {
+      setEditPhone(client.owner_phone);
+    }
+    const targetWa = client.whatsapp || client.owner_phone;
+    if (targetWa && (!editWhatsapp || editWhatsapp.includes("919825012345"))) {
+      setEditWhatsapp(targetWa);
+    }
+    if (client.instagram_link && !editInstagram) {
+      setEditInstagram(client.instagram_link);
+    }
+    if (client.facebook_link && !editFacebook) {
+      setEditFacebook(client.facebook_link);
+    }
+    if (client.owner_email && !editEmail) {
+      setEditEmail(client.owner_email);
+    }
+    if ((client.custom_fields?.website_url || client.custom_fields?.website) && !editWebsite) {
       setEditWebsite(client.custom_fields.website_url || client.custom_fields.website);
     }
-    if (client.custom_fields?.google_maps_link || client.custom_fields?.maps_link) {
+    if ((client.custom_fields?.google_maps_link || client.custom_fields?.maps_link) && !editMapsLink) {
       setEditMapsLink(client.custom_fields.google_maps_link || client.custom_fields.maps_link);
     }
-    if (client.custom_fields?.about_us) {
+    if (client.custom_fields?.about_us && !editAboutUs) {
       setEditAboutUs(client.custom_fields.about_us);
     }
-    if (client.google_review_link) {
+    if (client.google_review_link && !editGoogleLink) {
       setEditGoogleLink(client.google_review_link);
-    } else if (activeItem) {
+    } else if (activeItem && !editGoogleLink) {
       const matchingG = googleLinks.find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase()) ||
         getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase());
       if (matchingG?.business_google_review_link) {
@@ -228,7 +302,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       }
     }
 
-    onShowToast(`✓ Auto-fetched data from Client profile (${client.business_name})!`);
+    onShowToast(`✓ Auto-fetched data from Client profile: ${client.business_name} (${client.business_id})! Click Save & Publish.`);
   };
 
   // Edit Whole Entry Modal
@@ -399,7 +473,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     ] : []));
     setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
     setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : ""));
-    setEditTags(Array.isArray(cfg.tags) ? cfg.tags.join(", ") : (cfg.tags || "Cleanliness, Nice Staff, Good Behaviour, Excellent Quality, Fair Pricing, Fast Service, Good Ambience, Value for Money, Hygiene, Professional Team, On-time Delivery, Easy Parking"));
+    const initialTags = Array.isArray(cfg.tags) && cfg.tags.length > 0
+      ? cfg.tags.join(", ")
+      : Array.isArray(cfg.categories) && cfg.categories.length > 0
+      ? cfg.categories.join(", ")
+      : (typeof cfg.tags === "string" ? cfg.tags : "");
+    setEditTags(initialTags);
     setEditTagLink(resolvedTagLink);
   };
 
@@ -412,6 +491,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       title: editTitle.trim(),
       subtitle: editSubtitle.trim(),
       category: editSubtitle.trim(),
+      categories: currentDesignerCategories,
       address: editAddress.trim(),
       maps_link: editMapsLink.trim(),
       cover_image: editBannerUrl.trim(),
@@ -430,7 +510,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       faqs: editFaqs,
       location_image: editLocationImage.trim(),
       location_title: editLocationTitle.trim(),
-      tags: editTags ? editTags.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      tags: editTags
+        ? Array.from(new Set([...currentDesignerCategories, ...editTags.split(",").map((s) => s.trim()).filter(Boolean)]))
+        : currentDesignerCategories,
       link_url: editTagLink.trim(),
     };
 
@@ -1652,6 +1734,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             );
                           })}
                         </div>
+                        <p className="text-[10.5px] text-zinc-500 mt-1.5 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-purple-600 shrink-0" />
+                          <span>Categories added here automatically appear under <strong>&quot;What stood out?&quot;</strong> on your Google Review page.</span>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2230,30 +2316,117 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   editEmail.trim()
                 );
 
+                const themePalettes: Record<string, {
+                  containerBg: string;
+                  cardBg: string;
+                  innerBg: string;
+                  borderColor: string;
+                  textColor: string;
+                  textMuted: string;
+                  accentText: string;
+                  accentCircle: string;
+                  accentGlow: string;
+                  notchBg: string;
+                  themeName: string;
+                }> = {
+                  obsidian: {
+                    containerBg: "bg-[#0B0F17]",
+                    cardBg: "bg-[#121824]",
+                    innerBg: "bg-[#1B2232]",
+                    borderColor: "border-white/5",
+                    textColor: "text-[#F8FAFC]",
+                    textMuted: "text-[#94A3B8]",
+                    accentText: "text-[#ffb95f]",
+                    accentCircle: "bg-[#f59e0b]",
+                    accentGlow: "bg-amber-500/15",
+                    notchBg: "bg-[#0B0F17]",
+                    themeName: "Obsidian Dark",
+                  },
+                  slate: {
+                    containerBg: "bg-[#0f172a]",
+                    cardBg: "bg-[#1e293b]",
+                    innerBg: "bg-[#334155]",
+                    borderColor: "border-sky-500/15",
+                    textColor: "text-[#f8fafc]",
+                    textMuted: "text-[#94a3b8]",
+                    accentText: "text-[#38bdf8]",
+                    accentCircle: "bg-[#38bdf8]",
+                    accentGlow: "bg-sky-500/15",
+                    notchBg: "bg-[#0f172a]",
+                    themeName: "Slate Minimal",
+                  },
+                  emerald: {
+                    containerBg: "bg-[#062016]",
+                    cardBg: "bg-[#0d3326]",
+                    innerBg: "bg-[#134e3a]",
+                    borderColor: "border-emerald-500/15",
+                    textColor: "text-[#f0fdf4]",
+                    textMuted: "text-[#86efac]",
+                    accentText: "text-[#34d399]",
+                    accentCircle: "bg-[#10b981]",
+                    accentGlow: "bg-emerald-500/15",
+                    notchBg: "bg-[#062016]",
+                    themeName: "Emerald Luxe",
+                  },
+                  sunset: {
+                    containerBg: "bg-[#1c0d06]",
+                    cardBg: "bg-[#2e170c]",
+                    innerBg: "bg-[#452210]",
+                    borderColor: "border-orange-500/15",
+                    textColor: "text-[#fff7ed]",
+                    textMuted: "text-[#fdba74]",
+                    accentText: "text-[#fb923c]",
+                    accentCircle: "bg-[#f97316]",
+                    accentGlow: "bg-orange-500/15",
+                    notchBg: "bg-[#1c0d06]",
+                    themeName: "Sunset Amber",
+                  },
+                  clean_light: {
+                    containerBg: "bg-[#f8fafc]",
+                    cardBg: "bg-white",
+                    innerBg: "bg-slate-100",
+                    borderColor: "border-slate-200",
+                    textColor: "text-slate-900",
+                    textMuted: "text-slate-500",
+                    accentText: "text-amber-600",
+                    accentCircle: "bg-amber-500",
+                    accentGlow: "bg-amber-500/10",
+                    notchBg: "bg-[#f8fafc]",
+                    themeName: "Pure Light",
+                  },
+                };
+
+                const currentP = themePalettes[editTheme] || themePalettes.obsidian;
+
                 return (
                   <div className="lg:col-span-5 p-6 bg-[#07090e] flex flex-col items-center justify-center overflow-y-auto">
+                    <div className="flex items-center gap-1.5 mb-2.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-zinc-300">
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <span>Live Theme Preview • <strong>{currentP.themeName}</strong></span>
+                    </div>
+
                     <div 
-                      className="w-[290px] max-h-[700px] overflow-y-auto bg-[#0B0F17] rounded-[36px] border-[5px] border-zinc-800 shadow-2xl flex flex-col relative transition-all duration-200 select-none pb-4"
+                      className={`w-[290px] max-h-[700px] overflow-y-auto ${currentP.containerBg} ${currentP.textColor} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl flex flex-col relative transition-all duration-300 select-none pb-4`}
                       style={{
                         fontFamily: "'Outfit', sans-serif"
                       }}
                     >
                       {/* Ambient Mesh Glows in Phone */}
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-36 h-36 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+                      <div className={`absolute -top-10 left-1/2 -translate-x-1/2 w-36 h-36 ${currentP.accentGlow} rounded-full blur-2xl pointer-events-none`} />
                       <div className="absolute top-44 -left-10 w-28 h-28 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
 
                       {/* Notch */}
-                      <div className="h-4.5 bg-[#0B0F17] flex justify-center items-center relative z-20 shrink-0 sticky top-0">
+                      <div className={`h-4.5 ${currentP.notchBg} flex justify-center items-center relative z-20 shrink-0 sticky top-0`}>
                         <div className="w-16 h-2 bg-zinc-900 rounded-full" />
                       </div>
 
                       <div className="px-3 pt-2 space-y-2.5 relative z-10">
                         {/* Profile & NFC Hero Card */}
-                        <div className="relative overflow-hidden rounded-xl bg-[#121824] p-3 shadow-md border border-white/5 space-y-2">
+                        <div className={`relative overflow-hidden rounded-xl ${currentP.cardBg} p-3 shadow-md border ${currentP.borderColor} space-y-2`}>
                           <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-80" />
                           
                           <div className="flex items-center gap-2.5">
-                            <div className="relative shrink-0 w-11 h-11 rounded-lg bg-[#121824] p-0.5 shadow border border-amber-500/20 flex items-center justify-center">
+                            <div className={`relative shrink-0 w-11 h-11 rounded-lg ${currentP.cardBg} p-0.5 shadow border ${currentP.borderColor} flex items-center justify-center`}>
                               <img 
                                 src={editLogoUrl || "/logo.png"} 
                                 alt="Logo" 
@@ -2265,14 +2438,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               </div>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-xs text-[#F8FAFC] leading-snug truncate">
+                              <h4 className={`font-bold text-xs ${currentP.textColor} leading-snug truncate`}>
                                 {editTitle || "Business Name"}
                               </h4>
                               {editSubtitle && (
-                                <p className="text-[10px] text-[#94A3B8] truncate">{editSubtitle}</p>
+                                <p className={`text-[10px] ${currentP.textMuted} truncate`}>{editSubtitle}</p>
                               )}
                               {editAddress && (
-                                <p className="text-[9px] text-[#ffb95f] truncate flex items-center gap-0.5 mt-0.5">
+                                <p className={`text-[9px] ${currentP.accentText} truncate flex items-center gap-0.5 mt-0.5`}>
                                   <MapPin className="w-2.5 h-2.5 shrink-0" />
                                   <span>{editAddress}</span>
                                 </p>
@@ -2284,13 +2457,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           {hasQuickActions && (
                             <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                               {editPhone.trim() && (
-                                <div className="py-1 px-2 rounded-lg bg-[#1B2232] text-[9px] font-bold text-[#F8FAFC] flex items-center justify-center gap-1 border border-white/5">
+                                <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
                                   <Phone className="w-2.5 h-2.5 text-[#ffc174]" />
                                   <span>Call Us</span>
                                 </div>
                               )}
                               {(editMapsLink.trim() || editAddress.trim()) && (
-                                <div className="py-1 px-2 rounded-lg bg-[#1B2232] text-[9px] font-bold text-[#F8FAFC] flex items-center justify-center gap-1 border border-white/5">
+                                <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
                                   <Navigation className="w-2.5 h-2.5 text-[#4cd7f6]" />
                                   <span>Directions</span>
                                 </div>
@@ -2300,21 +2473,21 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         </div>
 
                         {/* Loved your visit? Banner */}
-                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#121824] via-[#1c2230] to-[#121824] p-3 shadow border border-white/5 flex items-center justify-between">
+                        <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${currentP.cardBg} p-3 shadow border ${currentP.borderColor} flex items-center justify-between`}>
                           <div>
                             <div className="flex items-center gap-1">
                               <Sparkles className="w-3.5 h-3.5 text-[#ffc174] fill-[#ffc174]" />
-                              <span className="text-xs font-bold text-[#F8FAFC]">Loved your visit?</span>
+                              <span className={`text-xs font-bold ${currentP.textColor}`}>Loved your visit?</span>
                             </div>
-                            <p className="text-[9px] text-[#94A3B8] mt-0.5">{editCtaText || "Tap to write a rapid 5-Star Review"}</p>
+                            <p className={`text-[9px] ${currentP.textMuted} mt-0.5`}>{editCtaText || "Tap to write a rapid 5-Star Review"}</p>
                             <div className="flex items-center gap-0.5 mt-1 text-[#ffc174]">
                               {[1, 2, 3, 4, 5].map((s) => (
                                 <Star key={s} className="w-2.5 h-2.5 fill-[#ffc174] text-[#ffc174]" />
                               ))}
-                              <span className="text-[9px] text-[#ffb95f] ml-1 font-bold">5.0</span>
+                              <span className={`text-[9px] ${currentP.accentText} ml-1 font-bold`}>5.0</span>
                             </div>
                           </div>
-                          <div className="w-8 h-8 rounded-full bg-[#f59e0b] flex items-center justify-center shrink-0 shadow">
+                          <div className={`w-8 h-8 rounded-full ${currentP.accentCircle} flex items-center justify-center shrink-0 shadow`}>
                             <Star className="w-4 h-4 fill-black text-black" />
                           </div>
                         </div>
@@ -2322,44 +2495,44 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         {/* Connect & Social Channels (Live conditional hiding of blanks!) */}
                         {hasSocials && (
                           <div className="space-y-1">
-                            <span className="text-[9px] uppercase font-bold text-[#94A3B8] tracking-wider block px-1">
+                            <span className={`text-[9px] uppercase font-bold ${currentP.textMuted} tracking-wider block px-1`}>
                               Connect Channels
                             </span>
                             <div className="grid grid-cols-2 gap-1.5">
                               {editWhatsapp.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">WhatsApp</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>WhatsApp</span>
                                 </div>
                               )}
                               {editInstagram.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Instagram className="w-3.5 h-3.5 text-pink-400 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Instagram</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Instagram</span>
                                 </div>
                               )}
                               {editPhone.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Phone className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Call Office</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Call Office</span>
                                 </div>
                               )}
                               {editFacebook.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Facebook className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Facebook</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Facebook</span>
                                 </div>
                               )}
                               {editWebsite.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Globe className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Website</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Website</span>
                                 </div>
                               )}
                               {editEmail.trim() && (
-                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Mail className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Email</span>
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Email</span>
                                 </div>
                               )}
                             </div>
@@ -2368,23 +2541,23 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                         {/* About Us (Only if not blank) */}
                         {editAboutUs.trim() && (
-                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
-                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                          <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1`}>
+                            <span className={`text-[10px] font-bold ${currentP.textColor} flex items-center gap-1`}>
                               <Info className="w-3 h-3 text-[#ffc174]" />
                               <span>About Us</span>
                             </span>
-                            <p className="text-[9px] text-[#dfe2ee] leading-relaxed line-clamp-2">{editAboutUs}</p>
+                            <p className={`text-[9px] ${currentP.textMuted} leading-relaxed line-clamp-2`}>{editAboutUs}</p>
                           </div>
                         )}
 
                         {/* Opening Hours (Only if not blank) */}
                         {editOpeningHours.trim() && (
-                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
-                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                          <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1`}>
+                            <span className={`text-[10px] font-bold ${currentP.textColor} flex items-center gap-1`}>
                               <Clock className="w-3 h-3 text-[#4cd7f6]" />
                               <span>Opening Hours</span>
                             </span>
-                            <div className="text-[9px] text-[#ffddb8] font-mono leading-tight">
+                            <div className="text-[9px] text-amber-300 font-mono leading-tight">
                               {editOpeningHours.split("\n").slice(0, 2).map((l, i) => (
                                 <p key={i} className="truncate">{l}</p>
                               ))}
@@ -2394,12 +2567,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                         {/* FAQs (Only if not blank) */}
                         {editFaqs.length > 0 && (
-                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
-                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                          <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1`}>
+                            <span className={`text-[10px] font-bold ${currentP.textColor} flex items-center gap-1`}>
                               <HelpCircle className="w-3 h-3 text-[#c7c8ff]" />
                               <span>FAQs ({editFaqs.length})</span>
                             </span>
-                            <div className="p-1.5 rounded-lg bg-[#1B2232] text-[9px] text-[#F8FAFC] font-medium truncate">
+                            <div className={`p-1.5 rounded-lg ${currentP.innerBg} text-[9px] ${currentP.textColor} font-medium truncate`}>
                               {editFaqs[0].question || "Sample Question"}
                             </div>
                           </div>
@@ -2407,7 +2580,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                         {/* Location Card (Only if not blank) */}
                         {(editAddress.trim() || editLocationImage.trim()) && (
-                          <div className="rounded-xl overflow-hidden relative h-20 bg-zinc-800 flex items-end p-2 border border-white/5">
+                          <div className={`rounded-xl overflow-hidden relative h-20 bg-zinc-800 flex items-end p-2 border ${currentP.borderColor}`}>
                             <img 
                               src={editLocationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}
                               alt="Location"
@@ -2419,7 +2592,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                                 <MapPin className="w-2.5 h-2.5 text-amber-400" />
                                 <span>{editLocationTitle || editAddress || "Location"}</span>
                               </span>
-                              <span className="px-1.5 py-0.5 rounded-full bg-[#1B2232] text-[8px] font-bold text-white border border-white/10">
+                              <span className={`px-1.5 py-0.5 rounded-full ${currentP.innerBg} text-[8px] font-bold text-white border border-white/10`}>
                                 NFC Station
                               </span>
                             </div>
