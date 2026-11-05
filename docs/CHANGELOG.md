@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.5] — 2026-11-05
+### Added (Humanized Review Suggestions & Short Experience Input Field)
+- **2-3 Unique Humanized Google Review Suggestions**:
+  - Implemented `generateReviewSuggestions` in `reviewService.ts` producing 3 distinct narrative angles:
+    1. **Option 1 (Experience & Purchase Focus)**: Centered around specific items, dishes, services, or visit highlights.
+    2. **Option 2 (Staff & Hospitality Focus)**: Emphasizing warm team reception, ambience, and respectful service.
+    3. **Option 3 (Value & Recommendation Focus)**: Highlighting transparent pricing, fast delivery, and enthusiastic repeat endorsement.
+  - Positioned above the `Generated Review Draft` box with tactile cards allowing visitors to tap and immediately load their favorite variation into the editable draft box.
+- **Short Experience Custom Text Input**:
+  - Added an intuitive text field below the review length switch: *"Write about your experience in short"* (e.g. `bought purse nice`, `bought 2 pairs of clothes`, `unique design nice staff`).
+  - Suggestions and the generated draft dynamically weave this customer experience naturally into genuine first-person review sentences.
+- **Resilient AI Model Architecture & SuperAdmin Visibility**:
+  - Maintained multi-model failover support (`modelManager.ts`) with priority queues across Gemini, Claude Haiku, OpenAI, and Synthesizer fallbacks for 100% uptime.
+  - Documented SuperAdmin visibility under **Admin Console -> Settings -> AI Models & Failover** (`AiModelManagerTab.tsx`).
+
 ## [1.54.4] — 2026-11-05
 ### Enhanced (Showcase Page Social Handles, Mobile Contact & Interactive CTAs)
 - **Direct Instagram Handle Display**:
