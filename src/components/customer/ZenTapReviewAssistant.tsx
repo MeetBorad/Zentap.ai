@@ -258,11 +258,50 @@ export default function ZenTapReviewAssistant({
     });
   };
 
-  // Recreate 2-3 other unique reviews
-  const handleRecreateReviews = () => {
+  // Recreate 2-3 other unique reviews & stream from review writer API
+  const handleRecreateReviews = async () => {
     setIsRotating(true);
-    setVariationSeed((prev) => prev + 1);
-    setTimeout(() => setIsRotating(false), 450);
+    const nextSeed = variationSeed + 1;
+    setVariationSeed(nextSeed);
+
+    try {
+      const resp = await fetch("/api/review/writer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName,
+          category: pageConfig?.category || business.category || "local business",
+          stars: currentRating,
+          highlights: Array.from(selectedTags),
+          note: customExperience,
+          variation: nextSeed,
+        }),
+      });
+
+      if (resp.ok && resp.body) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let streamedText = "";
+        let isFirstChunk = true;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          if (isFirstChunk) {
+            streamedText = chunk;
+            isFirstChunk = false;
+          } else {
+            streamedText += chunk;
+          }
+          setReviewDraft(streamedText);
+        }
+      }
+    } catch {
+      // Local synthesizer will have already populated the draft smoothly
+    } finally {
+      setTimeout(() => setIsRotating(false), 450);
+    }
   };
 
   const handlePostReview = (e: React.MouseEvent) => {

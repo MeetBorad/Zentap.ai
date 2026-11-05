@@ -1,5 +1,16 @@
 # ZenTap — Changelog
 
+## [1.54.9] — 2026-11-05
+### Added (Vercel AI SDK Streaming Review Writer Route & Client Integration)
+- **AI SDK Review Writer Endpoint (`/api/review/writer`)**:
+  - Implemented streaming review writer using `ai` (`streamText`), `@ai-sdk/google`, and `@ai-sdk/openai`.
+  - Configured prompt rules: matches tone to star rating, length guide (`short`, `medium`, `long`), strictly uses customer's highlights and note without hallucinations, first-person voice.
+  - Multi-provider failover: primary provider with fallback to backup (`gemini` $\leftrightarrow$ `openai`).
+  - Model resilience: handles candidate model IDs (`gemini-2.5-flash`, `gemini-1.5-flash`, `gpt-4o-mini`, etc.) and automatically maps `GEMINI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`.
+  - Zero-downtime synthesizer fallback: when external API keys are unset or network is offline, safely responds with natural review drafts rather than throwing 503 errors.
+- **Client Live Streaming Integration (`ZenTapReviewAssistant.tsx`)**:
+  - Connected "Change Reviews (Generate New Ideas)" button to call `/api/review/writer` with `TextDecoder` streaming directly into the editable draft box with a live typewriter effect.
+
 ## [1.54.8] — 2026-11-05
 ### Refactored (Streamlined Review Assistant Flow, Horizontal Suggestions & Dual Actions)
 - **Sequential Review Experience Streamlining**:

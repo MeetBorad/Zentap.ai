@@ -11,10 +11,14 @@
     "test": "node tests/audit_scenarios.test.mjs"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.112",
+    "@ai-sdk/groq": "^4.0.77",
+    "@ai-sdk/openai": "^4.0.109",
     "@gsap/react": "^2.1.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@types/qrcode": "^1.5.6",
+    "ai": "^7.0.163",
     "clsx": "^2.1.1",
     "framer-motion": "^14.9.0",
     "gsap": "^3.15.0",
