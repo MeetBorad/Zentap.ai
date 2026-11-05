@@ -1,5 +1,12 @@
 # ZenTap — Changelog
 
+## [1.54.3] — 2026-11-05
+### Configured (ZenTap Sample Showcase Direct Google Review Link)
+- **Configured Exact Showcase Review URL**:
+  - Bound `https://g.page/r/CdJX2OGu1yhoEAI/review` as the designated Google Review redirection target for the sample showcase link (`/r/zentap/review?preview=1` and `/r/zentap?preview=1`).
+  - Updated `SAMPLE_DEMO_BUSINESS` (`businessStore.ts`), `INITIAL_GOOGLE_LINKS` (`adminPlatformStore.ts`), and `INITIAL_PAGE_EDITOR_CONFIGS`.
+  - Added dedicated sample showcase routing in `ZenTapReviewAssistant.tsx` and `src/app/r/[slug]/review/page.tsx` so clicking **"Post the Review on Google Page"** seamlessly copies the draft to clipboard and redirects to `https://g.page/r/CdJX2OGu1yhoEAI/review`.
+
 ## [1.54.2] — 2026-11-05
 ### Added (Clients Directory Full Available Data Columns Display)
 - **Comprehensive Columns in Clients Directory (`ClientsWebpageTab.tsx`)**:

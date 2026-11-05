@@ -172,14 +172,18 @@ export default async function ReviewPage({
   const allowBusinessPageAccess = effectiveDest !== "zentap_google";
 
   // Effective Google Review link (Link of Tag ID)
-  const effectiveGoogleLink =
+  let effectiveGoogleLink =
     (grlRow?.business_google_review_link || "").trim() ||
     (localGrl?.business_google_review_link || "").trim() ||
     (tagRow?.google_review_link || "").trim() ||
     (cfg.google_link || "").trim() ||
     (biz.google_review_link || "").trim() ||
     (biz.review_url || "").trim() ||
-    "https://www.google.com/maps/place//@23.0393793,72.6446507,17z";
+    "https://g.page/r/CdJX2OGu1yhoEAI/review";
+
+  if (cleanSlug === "zentap" || cleanSlug === "sample" || isPreview) {
+    effectiveGoogleLink = "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  }
 
   return (
     <ZenTapReviewAssistant

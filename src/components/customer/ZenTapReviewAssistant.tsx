@@ -57,14 +57,23 @@ export default function ZenTapReviewAssistant({
   const logoUrl = pageConfig?.logo_url || business.logo_url || "/logo.png";
   const locationImg = pageConfig?.location_image || business.location_image || "https://lh3.googleusercontent.com/aida-public/AB6AXuBn_TEaXs-VF4rFe0stnQgCYg0MynH2oOZeU9dQHGHuoFh5E1v447bVapRPDHEz1ipdX4vPRxNVokhF77GwXNQOBUmj2bF9oe3C9v4c8fmxU_3FFVdsBS5kiipfsNb3M4Va0GalihDkxwsGJYQ1UAhu0dnfybRD-0AXXNrCoLX5185-7q2BnTbJiEPNztNk2SqgMiYh9fYG9ajLfLogd4E4g_d8_f6s0AfohHb_Em7G";
 
-  // Google review link (priority: googleReviewUrl passed, pageConfig.google_link, business.google_review_link, business.review_url)
+  // Google review link (guarantees sample showcase redirect for zentap)
   const finalGoogleLink = useMemo(() => {
+    const isZenTapSample =
+      (business.slug || "").toLowerCase() === "zentap" ||
+      (tagCode || "").toLowerCase() === "zentap" ||
+      business.id === "sample-demo-biz-01";
+
+    if (isZenTapSample) {
+      return "https://g.page/r/CdJX2OGu1yhoEAI/review";
+    }
+
     let link = (googleReviewUrl || pageConfig?.google_link || business.google_review_link || business.review_url || "").trim();
     if (link && !link.startsWith("http://") && !link.startsWith("https://")) {
       link = `https://${link}`;
     }
-    return link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z";
-  }, [googleReviewUrl, pageConfig?.google_link, business.google_review_link, business.review_url]);
+    return link || "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  }, [googleReviewUrl, pageConfig?.google_link, business.google_review_link, business.review_url, business.slug, business.id, tagCode]);
 
   // Combine default tags with custom tags from config if present
   const allTags = useMemo(() => {

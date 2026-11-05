@@ -128,8 +128,8 @@ export default function ZenTapHubPage({
   const subtitle = cfg.subtitle || cfg.category || business.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
   const address = cfg.address || business.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
-  const mapsUrl = cfg.maps_link || business.maps_link || business.gbp_link || business.google_review_link || business.review_url || (isZenTapDemo ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : "");
-  const googleReviewLink = cfg.google_link || business.google_review_link || business.review_url || mapsUrl || "";
+  const mapsUrl = cfg.maps_link || business.maps_link || business.gbp_link || business.google_review_link || business.review_url || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
+  const googleReviewLink = (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || cfg.google_link || business.google_review_link || business.review_url || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
 
   const phone = cfg.phone || business.phone || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
