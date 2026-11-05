@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { invalidateCachedTag } from "@/lib/tagCache";
 
 export const dynamic = "force-dynamic";
 
@@ -944,6 +945,7 @@ function sanitizeRowForTable(item: any, table: string) {
               console.error("page_editor_configs update error:", upErr);
               return NextResponse.json({ error: upErr.message }, { status: 500 });
             }
+            invalidateCachedTag(checkItem.tag_id);
             return NextResponse.json({ success: true, data: updated });
           }
         }
@@ -964,6 +966,12 @@ function sanitizeRowForTable(item: any, table: string) {
       if (error) {
         console.error(`Upsert error on ${table}:`, error);
         return NextResponse.json({ error: error.message || `Failed to save to ${table}` }, { status: 500 });
+      }
+
+      // Invalidate tag resolution cache if a tag or page was modified
+      if (table === "page_editor_configs" || table === "google_review_links" || table === "qr_nfc_tags") {
+        const item = Array.isArray(data) ? data[0] : data;
+        invalidateCachedTag(item?.tag_id || item?.business_id);
       }
 
       return NextResponse.json({ success: true, data: res });

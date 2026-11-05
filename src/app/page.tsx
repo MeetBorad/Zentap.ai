@@ -4,6 +4,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import Header, { ActiveView } from "@/components/Header";
 import Footer from "@/components/Footer";
 import HomeView from "@/components/views/HomeView";
@@ -11,15 +12,28 @@ import HowItWorksView from "@/components/views/HowItWorksView";
 import FeaturesView from "@/components/views/FeaturesView";
 import BenefitsView from "@/components/views/BenefitsView";
 import ResultsView from "@/components/views/ResultsView";
-import SampleDashboardView from "@/components/views/SampleDashboardView";
 import ClientProofsView from "@/components/views/ClientProofsView";
 import PricingView from "@/components/views/PricingView";
 import FaqView from "@/components/views/FaqView";
-import ClientPortalView from "@/components/views/ClientPortalView";
-import AdminConsoleView from "@/components/views/AdminConsoleView";
-import AuthModal from "@/components/modals/AuthModal";
-import AdminAuthModal from "@/components/modals/AdminAuthModal";
-import TapReviewModal from "@/components/modals/TapReviewModal";
+
+// Lazy-load heavy dashboard & console views to keep initial landing page bundle lightweight and fast
+const SampleDashboardView = dynamic(() => import("@/components/views/SampleDashboardView"), {
+  loading: () => <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center text-amber-500 font-mono text-xs">Loading Showcase...</div>,
+  ssr: false,
+});
+const ClientPortalView = dynamic(() => import("@/components/views/ClientPortalView"), {
+  loading: () => <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center text-amber-500 font-mono text-xs">Loading Merchant Portal...</div>,
+  ssr: false,
+});
+const AdminConsoleView = dynamic(() => import("@/components/views/AdminConsoleView"), {
+  loading: () => <div className="min-h-screen bg-[#07090e] flex items-center justify-center text-amber-500 font-mono text-xs">Loading Admin Console...</div>,
+  ssr: false,
+});
+
+// Lazy-load on-demand modals
+const AuthModal = dynamic(() => import("@/components/modals/AuthModal"), { ssr: false });
+const AdminAuthModal = dynamic(() => import("@/components/modals/AdminAuthModal"), { ssr: false });
+const TapReviewModal = dynamic(() => import("@/components/modals/TapReviewModal"), { ssr: false });
 import { ReviewItem } from "@/data/mockData";
 import { useAuth } from "@/context/AuthContext";
 import { 

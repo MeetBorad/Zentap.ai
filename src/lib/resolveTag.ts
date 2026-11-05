@@ -2,6 +2,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getTagByCode, getAllBusinesses, logScan } from '@/lib/businessStore';
 import { getAllQrNfcTags, getAllGoogleReviewLinks, getAllSocialLinks, getAllPageEditorConfigs } from '@/lib/adminPlatformStore';
+import { getCachedTagData, setCachedTagData } from '@/lib/tagCache';
 
 export type Resolution =
   | { kind: 'redirect'; url: string }
@@ -49,32 +50,37 @@ export async function resolveScan(
   const code = rawCode.toLowerCase().trim();
   if (!CODE_RE.test(code)) return { kind: 'unavailable' };
 
-  // 1. Direct Supabase Query against qr_nfc_tags and connected tables
+  // 0. Fast In-Memory Cache: if recently resolved, return immediately without network round trip
+  const cached = getCachedTagData(code);
+  if (cached) {
+    if (cached.destination === 'direct_google' && cached.googleLink) {
+      const formatted = cached.googleLink.startsWith('http://') || cached.googleLink.startsWith('https://')
+        ? cached.googleLink
+        : `https://${cached.googleLink}`;
+      return { kind: 'redirect', url: formatted };
+    }
+    if (cached.destination === 'business_page' || cached.destination === 'zentap_google') {
+      return {
+        kind: 'page',
+        slug: cached.businessId?.toLowerCase() || code,
+        target: cached.destination === 'zentap_google' ? 'review' : 'business_page',
+      };
+    }
+  }
+
+  // 1. Direct Supabase Query in Parallel (eliminating sequential waterfalls)
   const db = createAdminClient();
   if (db) {
     try {
-      const { data: tagRow } = await db
-        .from('qr_nfc_tags')
-        .select('*')
-        .ilike('tag_id', code)
-        .is('deleted_at', null)
-        .maybeSingle();
+      const [tagRes, grlRes, pageConfigRes] = await Promise.all([
+        db.from('qr_nfc_tags').select('*').ilike('tag_id', code).is('deleted_at', null).maybeSingle(),
+        db.from('google_review_links').select('*').ilike('tag_id', code).is('deleted_at', null).maybeSingle(),
+        db.from('page_editor_configs').select('*').or(`tag_id.ilike.${code},business_id.ilike.${code}`).is('deleted_at', null).maybeSingle(),
+      ]);
 
-      // Check linked google_review_links table as well
-      const { data: grlRow } = await db
-        .from('google_review_links')
-        .select('*')
-        .ilike('tag_id', code)
-        .is('deleted_at', null)
-        .maybeSingle();
-
-      // Check page_editor_configs table as well
-      const { data: pageConfig } = await db
-        .from('page_editor_configs')
-        .select('*')
-        .or(`tag_id.ilike.${code}${tagRow?.business_id ? `,business_id.ilike.${tagRow.business_id}` : ''}${grlRow?.business_id ? `,business_id.ilike.${grlRow.business_id}` : ''}`)
-        .is('deleted_at', null)
-        .maybeSingle();
+      const tagRow = tagRes?.data;
+      const grlRow = grlRes?.data;
+      const pageConfig = pageConfigRes?.data;
 
       const localGrl = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === code);
       const localCfg = getAllPageEditorConfigs().find(
@@ -100,6 +106,15 @@ export async function resolveScan(
         grlRow?.business_id ||
         pageConfig?.business_id ||
         localCfg?.business_id;
+
+      // Cache resolved tag data for instant subsequent requests (e.g. /t/[code] -> /r/[slug] handover)
+      setCachedTagData(code, {
+        tagId: code,
+        businessId: effectiveBusinessId,
+        destination: effectiveDest,
+        googleLink: effectiveGoogleLink,
+        pageConfig: pageConfig || localCfg,
+      });
 
       if (tagRow) {
         // Increment scans_count asynchronously

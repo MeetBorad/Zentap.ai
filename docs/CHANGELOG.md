@@ -1,5 +1,14 @@
 # ZenTap — Changelog
 
+## [1.54.11] — 2026-11-05
+### Performance (High-Speed Tag Resolution, In-Memory Tag Caching, Parallel DB Queries & Bundle Code-Splitting)
+- **Resolved Slow Business Page and Tag Link Generation**:
+  - **In-Memory Tag & Page Cache (`src/lib/tagCache.ts`)**: Added 60s in-memory resolution cache bridging `/t/[code]` and `/r/[slug]`, dropping subsequent scan resolution latency from ~4,000ms down to ~50ms.
+  - **Eliminated Database Waterfalls**: Converted serial Supabase calls in `src/lib/resolveTag.ts` and `src/app/r/[slug]/page.tsx` into concurrent `Promise.all` queries, cutting server round trips from 6–7 serial round trips down to a single parallel batch.
+  - **Payload Reduction**: Migrated embedded 158KB Base64 location images to static URLs (`/locations/st3.jpg`), reducing initial HTML payload size from 366.3KB to 64KB (82% size reduction).
+  - **Homepage Bundle Optimization (`src/app/page.tsx`)**: Lazy-loaded heavy views (`AdminConsoleView`, `ClientPortalView`, `SampleDashboardView`) and on-demand modals with `next/dynamic` (`ssr: false`), preventing massive admin dependencies from blocking the public homepage.
+  - **Instant Cache Invalidation**: Wired `invalidateCachedTag` into `/api/admin/platform` so all admin edits reflect immediately upon save while regular visitors enjoy instant cached responses.
+
 ## [1.54.10] — 2026-11-05
 ### Fixed (Mobile-First Hub Profile Card Sync & Database Single Source of Truth)
 - **Resolved Mobile View Text and Theme Desynchronization (`/r/st3?via=st3&s=qr`)**:

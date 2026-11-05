@@ -9,6 +9,7 @@ import { getTagByCode, getBusinessBySlug, BusinessRecord, SAMPLE_DEMO_BUSINESS }
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags } from "@/lib/adminPlatformStore";
+import { getCachedTagData, setCachedTagData } from "@/lib/tagCache";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
 import { 
@@ -80,23 +81,51 @@ export default async function Page({
   const isPreview = resolvedSearchParams.preview === "1";
 
   const cleanCode = slug.toLowerCase().trim();
-  const rawBiz = getBusinessBySlug(cleanCode) || (await fetchPublicBusinessBySlug(cleanCode));
-  const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
+  const lookupKey = via || cleanCode;
 
-  // 1. Fetch Page Editor Config early (for both preview mode and live view)
+  // 0. Fast Memory Cache lookup (from /t/[code] handover or recent scan)
+  const cached = getCachedTagData(lookupKey);
   const db = createAdminClient();
-  let pageConfig: any = null;
-  if (db) {
+
+  let pageConfig: any = cached?.pageConfig || null;
+  let rawBiz: any = cached?.business || null;
+  let cachedDest: string | undefined = cached?.destination;
+
+  // If not cached, fetch all required records in a single parallel round trip (eliminating waterfalls)
+  if (!pageConfig && db) {
     try {
-      const q = via 
-        ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).maybeSingle()
-        : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}${biz ? `,business_id.eq.${biz.id}` : ''}`).is('deleted_at', null).maybeSingle();
-      const { data } = await q;
-      pageConfig = data;
+      const isLikelyTag = cleanCode.startsWith('st') || cleanCode.startsWith('tag_') || cleanCode.length <= 6;
+      const [pageConfigRes, bizFetchRes, grlRes, tagRes] = await Promise.all([
+        via
+          ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).maybeSingle()
+          : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
+        isLikelyTag ? Promise.resolve(null) : fetchPublicBusinessBySlug(cleanCode),
+        db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
+        db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
+      ]);
+
+      pageConfig = pageConfigRes?.data || null;
+      rawBiz = bizFetchRes || getBusinessBySlug(cleanCode);
+      cachedDest = grlRes?.data?.destination || tagRes?.data?.destination;
+
+      if (pageConfig) {
+        setCachedTagData(lookupKey, {
+          tagId: pageConfig.tag_id || lookupKey,
+          businessId: pageConfig.business_id,
+          destination: cachedDest || 'business_page',
+          pageConfig,
+          business: rawBiz,
+        });
+      }
     } catch (e) {
-      console.warn('Error fetching pageConfig:', e);
+      console.warn('Error fetching parallel page data:', e);
     }
   }
+
+  if (!rawBiz) {
+    rawBiz = getBusinessBySlug(cleanCode);
+  }
+  const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
 
   if (!pageConfig) {
     const local = getAllPageEditorConfigs().find(
@@ -185,7 +214,7 @@ export default async function Page({
   // If not preview mode, check if destination is strictly 'zentap_google'
   // Rule: "when the destination is only Zentap Google Review it will not give access to Business Page"
   if (!isPreview) {
-    let dest = pageConfig?.destination;
+    let dest = pageConfig?.destination || cachedDest;
     if (!dest && db) {
       try {
         const { data: grlRow } = await db
