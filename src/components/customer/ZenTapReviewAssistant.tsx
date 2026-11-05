@@ -501,7 +501,7 @@ export default function ZenTapReviewAssistant({
                     value={customExperience}
                     onChange={(e) => setCustomExperience(e.target.value)}
                     placeholder="e.g., bought purse nice, bought 2 pairs of clothes, unique design nice staff"
-                    className={`w-full ${themeClasses.inner} rounded-xl px-3.5 py-2.5 text-xs placeholder:opacity-40 border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner`}
+                    className={`w-full ${themeClasses.inner} rounded-xl px-3.5 py-2.5 text-base sm:text-xs placeholder:opacity-40 border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner`}
                   />
                 </div>
                 <p className="text-[10.5px] opacity-60 leading-tight">
@@ -523,7 +523,7 @@ export default function ZenTapReviewAssistant({
                 </div>
 
                 {/* Horizontal Scrolling Review Cards */}
-                <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-1 px-1 scrollbar-thin snap-x snap-mandatory">
+                <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
                   {suggestions.map((sug, idx) => {
                     const isSelected = selectedSuggestionIndex === idx;
                     const labels = [
@@ -603,7 +603,7 @@ export default function ZenTapReviewAssistant({
                     onChange={(e) => setReviewDraft(e.target.value)}
                     rows={4}
                     placeholder="Select an option above or type your customized review here..."
-                    className={`w-full ${themeClasses.inner} rounded-xl p-3 text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
+                    className={`w-full ${themeClasses.inner} rounded-xl p-3 text-base sm:text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
                   />
                   <div className="absolute bottom-2.5 right-3 flex items-center gap-1 opacity-40 text-[10px] pointer-events-none">
                     <Edit3 className="w-3 h-3" />

@@ -18,9 +18,12 @@
    - Offer private feedback for ratings $\le$ 2 stars with a single "Post" button (no redirect).
    - Offer AI review drafts and direct Google posting for ratings $\ge$ 3 stars.
    - Maintain a discreet secondary option for all visitors to access Google directly to prevent policy penalties.
-4. **OpenDesign Craftsmanship**:
-   - Consult skills in `.agents/skills/` (`emil-design-eng`, `taste-skill`, `ui-animation`, `redesign-skill`, `brandkit`).
+4. **OpenDesign Craftsmanship & Mobile-First Synchronization**:
+   - Over 95% of real visitors access ZenTap from smartphones via physical NFC & QR taps.
+   - Always design, test, and sync mobile-first (360px–430px smartphone viewports).
+   - Consult skills in `.agents/skills/` (`mobile-first-sync`, `emil-design-eng`, `taste-skill`, `ui-animation`, `redesign-skill`, `brandkit`).
    - Every redesigned component or CTA must strictly comply with `design.md` and Emil Kowalski's tactile microinteractions (`.tactile-btn`, physical press scale `0.978`, explicit property transitions).
+   - Enforce 44px minimum touch targets, prevent iOS auto-zoom (`text-base sm:text-xs` on inputs), and guarantee zero horizontal viewport overflow.
 5. **Documentation**:
    - Consult files in `docs/` before making major changes.
    - Update `docs/CHANGELOG.md` and `docs/FEATURE_STATUS.md` after adding or modifying features.

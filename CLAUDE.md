@@ -28,9 +28,12 @@ ZenTap.ai is an intelligent NFC & QR-powered Google review acceleration and smar
    - Ratings $\le$ 2 stars: Private feedback with direct submit (no redirect).
    - Ratings $\ge$ 3 stars: AI review drafts + direct Google review link.
    - Always retain a discreet secondary direct Google access option to prevent Google policy violations.
-4. **Design & Tactile Craftsmanship**:
-   - Consult skills in `.claude/skills/` (`emil-design-eng`, `taste-skill`, `ui-animation`, `redesign-skill`).
+4. **Design, Tactile Craftsmanship & Mobile-First Sync**:
+   - Over 95% of visitors tap physical NFC & QR hardware on mobile phones.
+   - Always build, test, and sync mobile-first (360px–430px viewports).
+   - Consult skills in `.claude/skills/` (`mobile-first-sync`, `emil-design-eng`, `taste-skill`, `ui-animation`, `redesign-skill`).
    - Redesigned components must follow tactile microinteractions (`.tactile-btn`, physical press scale `0.978`, explicit transitions).
+   - Enforce 44px minimum touch targets, prevent iOS zoom (`text-base sm:text-xs` on inputs), and avoid horizontal page overflow.
 5. **Documentation**:
    - Update `docs/CHANGELOG.md` and `docs/FEATURE_STATUS.md` after adding or modifying features.
    - Never commit API keys, service role keys, or secrets into git or documentation.
