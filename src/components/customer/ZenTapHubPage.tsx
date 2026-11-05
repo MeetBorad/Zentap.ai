@@ -90,35 +90,39 @@ export default function ZenTapHubPage({
   const [design, setDesign] = useState<PageDesignRecord>(initialDesign);
   const [localConfig, setLocalConfig] = useState<any>(initialPageConfig || {});
 
-  // Client hydration to fetch latest saved config & design from stores
+  // Client hydration: fetch latest config from local storage ONLY when in admin preview mode
+  // or when initialPageConfig was not preloaded by the server. On live public scans (mobile NFC/QR),
+  // initialPageConfig from the database is the authoritative single source of truth.
   useEffect(() => {
     if (typeof window !== "undefined" && business?.id) {
-      try {
-        const localDesign = getPageDesign(business.id);
-        if (localDesign) setDesign(localDesign);
+      if (isPreview || !initialPageConfig || Object.keys(initialPageConfig).length === 0) {
+        try {
+          const localDesign = getPageDesign(business.id);
+          if (localDesign) setDesign(localDesign);
 
-        const allEditorConfigs = getAllPageEditorConfigs();
-        const cleanSlug = (business.slug || "").toLowerCase();
-        const bizId = (business.id || "").toLowerCase();
+          const allEditorConfigs = getAllPageEditorConfigs();
+          const cleanSlug = (business.slug || "").toLowerCase();
+          const bizId = (business.id || "").toLowerCase();
 
-        const matchingConfig = allEditorConfigs.find(
-          (c) =>
-            c.tag_id.toLowerCase() === cleanSlug ||
-            c.business_id.toLowerCase() === bizId ||
-            (cleanSlug === "zentap" && (c.tag_id.toLowerCase() === "zentap" || c.business_id.toLowerCase() === "sample-demo-biz-01" || c.tag_id.toLowerCase() === "st1"))
-        );
+          const matchingConfig = allEditorConfigs.find(
+            (c) =>
+              c.tag_id.toLowerCase() === cleanSlug ||
+              c.business_id.toLowerCase() === bizId ||
+              (cleanSlug === "zentap" && (c.tag_id.toLowerCase() === "zentap" || c.business_id.toLowerCase() === "sample-demo-biz-01" || c.tag_id.toLowerCase() === "st1"))
+          );
 
-        if (matchingConfig?.config_data) {
-          const parsed = typeof matchingConfig.config_data === "string" 
-            ? JSON.parse(matchingConfig.config_data) 
-            : matchingConfig.config_data;
-          setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
+          if (matchingConfig?.config_data) {
+            const parsed = typeof matchingConfig.config_data === "string" 
+              ? JSON.parse(matchingConfig.config_data) 
+              : matchingConfig.config_data;
+            setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
+          }
+        } catch (e) {
+          console.warn("Hydrating hub design error:", e);
         }
-      } catch (e) {
-        console.warn("Hydrating hub design error:", e);
       }
     }
-  }, [business?.id, business?.slug]);
+  }, [business?.id, business?.slug, isPreview, initialPageConfig]);
 
   // Merge attributes from page config, business record, or default showcase
   const cfg = localConfig || {};
@@ -215,8 +219,10 @@ export default function ZenTapHubPage({
       case "slate":
         return {
           wrapper: "bg-[#0f172a] text-[#f8fafc]",
-          card: "bg-[#1e293b]/90 border-sky-500/20",
-          inner: "bg-[#334155]",
+          card: "bg-[#1e293b]/90 border-sky-500/20 text-[#f8fafc]",
+          inner: "bg-[#334155] text-[#f8fafc] border border-white/5",
+          textColor: "text-[#f8fafc]",
+          textMuted: "text-slate-400",
           accentText: "text-[#38bdf8]",
           rim: "via-[#38bdf8]",
           glow1: "bg-[#38bdf8]/15",
@@ -225,8 +231,10 @@ export default function ZenTapHubPage({
       case "emerald":
         return {
           wrapper: "bg-[#062016] text-[#f0fdf4]",
-          card: "bg-[#0d3326]/90 border-emerald-500/20",
-          inner: "bg-[#134e3a]",
+          card: "bg-[#0d3326]/90 border-emerald-500/20 text-[#f0fdf4]",
+          inner: "bg-[#134e3a] text-[#f0fdf4] border border-white/5",
+          textColor: "text-[#f0fdf4]",
+          textMuted: "text-[#86efac]",
           accentText: "text-[#34d399]",
           rim: "via-[#10b981]",
           glow1: "bg-[#10b981]/15",
@@ -235,8 +243,10 @@ export default function ZenTapHubPage({
       case "sunset":
         return {
           wrapper: "bg-[#1c0d06] text-[#fff7ed]",
-          card: "bg-[#2e170c]/90 border-orange-500/20",
-          inner: "bg-[#452210]",
+          card: "bg-[#2e170c]/90 border-orange-500/20 text-[#fff7ed]",
+          inner: "bg-[#452210] text-[#fff7ed] border border-white/5",
+          textColor: "text-[#fff7ed]",
+          textMuted: "text-[#fdba74]",
           accentText: "text-[#fb923c]",
           rim: "via-[#f97316]",
           glow1: "bg-[#f97316]/15",
@@ -245,8 +255,10 @@ export default function ZenTapHubPage({
       case "clean_light":
         return {
           wrapper: "bg-[#f8fafc] text-slate-900",
-          card: "bg-white border-slate-200 shadow-xl",
-          inner: "bg-slate-100",
+          card: "bg-white border-slate-200 shadow-xl text-slate-900",
+          inner: "bg-slate-100 text-slate-800 border border-slate-200/80",
+          textColor: "text-slate-900",
+          textMuted: "text-slate-500",
           accentText: "text-amber-600",
           rim: "via-amber-500",
           glow1: "bg-amber-500/10",
@@ -256,9 +268,11 @@ export default function ZenTapHubPage({
       default:
         return {
           wrapper: "bg-[#0B0F17] text-[#dfe2ee]",
-          card: "bg-[#121824]/90 border-white/5",
-          inner: "bg-[#1B2232]",
-          accentText: "text-[#ffc174]",
+          card: "bg-[#121824]/90 border-white/5 text-[#F8FAFC]",
+          inner: "bg-[#1B2232] text-[#F8FAFC] border border-white/5",
+          textColor: "text-[#F8FAFC]",
+          textMuted: "text-[#94A3B8]",
+          accentText: "text-[#ffb95f]",
           rim: "via-[#f59e0b]",
           glow1: "bg-[#f59e0b]/10",
           btnGradient: "from-amber-500 via-amber-400 to-amber-500",
@@ -430,15 +444,15 @@ export default function ZenTapHubPage({
           <div className="relative z-10 max-w-[480px] w-full mx-auto px-4 pb-8 flex flex-col gap-4">
             
             {/* 1. Profile & NFC Hero Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-[#121824]/90 backdrop-blur-2xl shadow-2xl p-4 sm:p-5 flex flex-col gap-3.5 border border-white/5">
+            <div className={`relative overflow-hidden rounded-2xl ${hubTheme.card} backdrop-blur-2xl shadow-2xl p-4 sm:p-5 flex flex-col gap-3.5 border`}>
               {/* Glow Accent Rim */}
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-60" />
+              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${hubTheme.rim} to-transparent opacity-75`} />
               
               {/* Identity Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   {/* Monogram / Logo */}
-                  <div className="relative shrink-0 w-16 h-16 rounded-xl bg-[#121824] p-1 shadow-lg border border-[#ffc174]/20 flex items-center justify-center">
+                  <div className={`relative shrink-0 w-16 h-16 rounded-xl ${hubTheme.inner} p-1 shadow-lg border border-amber-500/20 flex items-center justify-center`}>
                     <img 
                       src={logoUrl} 
                       alt={businessName} 
@@ -453,17 +467,17 @@ export default function ZenTapHubPage({
                   </div>
 
                   <div className="flex flex-col min-w-0">
-                    <h1 className="font-bold text-base sm:text-lg text-[#F8FAFC] leading-snug">
+                    <h1 className={`font-bold text-base sm:text-lg ${hubTheme.textColor || "text-white"} leading-snug`}>
                       {businessName}
                     </h1>
                     {subtitle && (
-                      <span className="text-xs text-[#94A3B8] line-clamp-1 mt-0.5">
+                      <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"} line-clamp-1 mt-0.5`}>
                         {subtitle}
                       </span>
                     )}
                     {address && (
                       <a 
-                        className="mt-1 inline-flex items-center gap-1 text-[#ffb95f] hover:text-[#ffc174] text-[11px] font-medium transition-colors"
+                        className={`mt-1 inline-flex items-center gap-1 ${hubTheme.accentText} hover:opacity-80 text-[11px] font-medium transition-colors`}
                         href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
                         rel="noopener noreferrer" 
                         target="_blank"
@@ -482,7 +496,7 @@ export default function ZenTapHubPage({
                 <div className={`grid ${cleanPhone && mapsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
                   {cleanPhone && (
                     <a 
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#1B2232] hover:bg-[#262a33] text-[#F8FAFC] text-xs font-semibold transition-all active:scale-[0.98] shadow-md border border-white/5 cursor-pointer"
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
                       href={`tel:${cleanPhone}`}
                       onClick={() => trackClick("call_quick")}
                     >
@@ -492,7 +506,7 @@ export default function ZenTapHubPage({
                   )}
                   {mapsUrl && (
                     <a 
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#1B2232] hover:bg-[#262a33] text-[#F8FAFC] text-xs font-semibold transition-all active:scale-[0.98] shadow-md border border-white/5 cursor-pointer"
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
                       href={mapsUrl}
                       rel="noopener noreferrer" 
                       target="_blank"

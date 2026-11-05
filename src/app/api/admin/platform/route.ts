@@ -909,19 +909,31 @@ function sanitizeRowForTable(item: any, table: string) {
         }
       }
 
-      // If table is page_editor_configs and updating existing config by tag_id, use update
+      // If table is page_editor_configs and updating existing config by tag_id, use update with deep config_data merge
       if (table === "page_editor_configs") {
         const checkItem = Array.isArray(data) ? data[0] : data;
         if (checkItem.tag_id) {
           const { data: existingCfg } = await (supabase as any)
             .from("page_editor_configs")
-            .select("id")
+            .select("id, config_data")
             .eq("tag_id", checkItem.tag_id)
             .maybeSingle();
 
           if (existingCfg) {
             const clean = sanitizeRowForTable(checkItem, "page_editor_configs");
             delete clean.id;
+
+            // Merge config_data to prevent wiping out other customized fields on partial updates
+            if (clean.config_data && typeof clean.config_data === "object") {
+              const existingData = typeof existingCfg.config_data === "string"
+                ? JSON.parse(existingCfg.config_data)
+                : (existingCfg.config_data || {});
+              clean.config_data = {
+                ...existingData,
+                ...clean.config_data,
+              };
+            }
+
             const { data: updated, error: upErr } = await (supabase as any)
               .from("page_editor_configs")
               .update(clean)

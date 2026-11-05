@@ -523,7 +523,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     const res = await savePageEditorConfigServer(activeItem.tag_id, newConfigData, {
       business_id: activeItem.business_id,
-      business_name: activeItem.business_name,
+      business_name: editTitle.trim() || activeItem.business_name,
       link_url: activeItem.link_url,
       destination: currentDest,
     });

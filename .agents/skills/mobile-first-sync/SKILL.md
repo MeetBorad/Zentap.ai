@@ -68,3 +68,4 @@ Before concluding any task involving UI:
 3. [ ] Are review cards swipeable side-by-side with snap alignment?
 4. [ ] Are inputs styled with `text-base sm:text-xs` to prevent iOS zoom?
 5. [ ] Is the primary action CTA clearly visible and thumb-tappable?
+

@@ -126,7 +126,7 @@ export default async function Page({
 
   const effectiveBiz: BusinessRecord = biz || {
     id: pageConfig?.business_id || pageConfig?.tag_id || "sample-demo-biz-01",
-    name: pageConfig?.business_name || cfg.title || "ZenTap Digital Solutions",
+    name: cfg.title || pageConfig?.business_name || "ZenTap Digital Solutions",
     slug: (pageConfig?.business_id || pageConfig?.tag_id || "zentap").toLowerCase(),
     review_url: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
     google_review_link: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",

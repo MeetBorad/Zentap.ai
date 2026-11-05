@@ -1,5 +1,15 @@
 # ZenTap — Changelog
 
+## [1.54.10] — 2026-11-05
+### Fixed (Mobile-First Hub Profile Card Sync & Database Single Source of Truth)
+- **Resolved Mobile View Text and Theme Desynchronization (`/r/st3?via=st3&s=qr`)**:
+  - **Client Hydration Guard**: Prevented client-side `localStorage` (`getPageDesign()` and `getAllPageEditorConfigs()`) from overwriting server-rendered database values (`initialPageConfig`) on real mobile scans where device storage is empty.
+  - **Title Precedence**: Fixed `src/app/r/[slug]/page.tsx` where `pageConfig?.business_name` previously took precedence over `cfg.title`, preventing user-customized business titles from displaying.
+  - **Admin Save Synchronization**: Updated `handleSaveDesign` in `PageEditorWebpageTab.tsx` and `savePageEditorConfigServer` in `adminPlatformStore.ts` to transmit the newly edited title (`newConfigData.title`) rather than the stale client business name.
+  - **Dynamic Theme Reflection**: Replaced hardcoded `#121824` dark styles in `ZenTapHubPage.tsx` with dynamic `hubTheme.card`, `hubTheme.inner`, and `hubTheme.textColor` tokens, ensuring the profile card and quick actions (Call Us, Directions) strictly match the configured theme preset.
+  - **Partial Update Merging**: Updated `/api/admin/platform` for `page_editor_configs` to deep-merge `config_data`, safeguarding titles and theme configurations from being clobbered during link updates.
+  - **Database Alignment**: Verified and synchronized `ST3` in Supabase with `Zentap Digital Solutions kk`, `Service`, `Ahmedabad`, and `obsidian` theme.
+
 ## [1.54.9] — 2026-11-05
 ### Added (Vercel AI SDK Streaming Review Writer Route & Client Integration)
 - **AI SDK Review Writer Endpoint (`/api/review/writer`)**:

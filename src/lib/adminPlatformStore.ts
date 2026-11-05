@@ -1195,7 +1195,7 @@ export async function savePageEditorConfigServer(
       updated_at: new Date().toISOString(),
     };
     if (extra?.business_id) payload.business_id = extra.business_id;
-    if (extra?.business_name) payload.business_name = extra.business_name;
+    payload.business_name = configData?.title || extra?.business_name;
     // Link URL is always the Link of Tag ID from Google Links & QR Sharing
     payload.link_url = extra?.link_url || `${DOMAIN_BASE}/t/${tagId}`;
 
@@ -2163,6 +2163,7 @@ export function savePageEditorConfig(tagId: string, configData: Record<string, a
   // When saved from page editor, status changes to Completed in Green!
   const updatedItem: PageEditorConfigItemRecord = {
     ...current[index],
+    business_name: configData?.title || current[index].business_name,
     link_url: `${DOMAIN_BASE}/t/${tagId}`,
     config_data: { ...current[index].config_data, ...configData },
     setup_status: "completed",
