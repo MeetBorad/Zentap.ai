@@ -160,9 +160,9 @@ export async function GET(req: Request) {
     const deletedGoogleLinks = deletedGoogleLinksRes.data || [];
     const deletedSocialLinks = deletedSocialLinksRes.data || [];
 
-    // Page Editor configs: strictly derived from Standees whose Destination is 'zentap_google' and has assigned business
+    // Page Editor configs: strictly derived from Standees whose Destination is 'zentap_google' or 'business_page' and has assigned business
     const pageEditorFromTags = tags
-      .filter((t) => t.product_type === "Counter Standee" && t.business_id && t.destination === "zentap_google")
+      .filter((t) => t.product_type === "Counter Standee" && t.business_id && (t.destination === "zentap_google" || t.destination === "business_page"))
       .map((t) => {
         const client = clientMap.get(t.business_id);
         const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
@@ -175,7 +175,7 @@ export async function GET(req: Request) {
           business_id: t.business_id,
           business_name: client?.business_name || t.business_name || "Assigned Business",
           link_url: t.link,
-          destination: "zentap_google",
+          destination: t.destination || "business_page",
           setup_status,
           config_data: existingConfig?.config_data || {
             theme: "obsidian",
@@ -199,11 +199,11 @@ export async function GET(req: Request) {
       if (!pageEditorConfigs.some((p) => p.tag_id === row.tag_id)) {
         const matchingTag = tags.find((t) => t.tag_id.toLowerCase() === row.tag_id.toLowerCase());
         const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
-        const dest = matchingTag?.destination || matchingGLink?.destination;
-        if (dest === "zentap_google") {
+        const dest = matchingTag?.destination || matchingGLink?.destination || row.destination;
+        if (dest === "zentap_google" || dest === "business_page") {
           pageEditorConfigs.push({
             ...row,
-            destination: "zentap_google",
+            destination: dest,
             setup_status: row.setup_status === "completed" ? "completed" : "pending",
           });
         }

@@ -161,7 +161,18 @@ export interface BusinessRecord {
   portfolio_url?: string;
   instagram?: string;
   instagram_url?: string;
+  instagram_handle?: string;
+  facebook?: string;
+  facebook_url?: string;
   website_url?: string;
+  website?: string;
+  logo_url?: string;
+  about_us?: string;
+  opening_hours?: string;
+  faqs?: { question: string; answer: string }[];
+  location_image?: string;
+  location_title?: string;
+  maps_link?: string;
   redirect_mode?: "direct_review" | "interactive_profile";
   pin_hash?: string | null;
   password_hash?: string | null;
@@ -333,40 +344,69 @@ export const SAMPLE_DEMO_BUSINESS: BusinessRecord = {
   owner_user_id: "demo-owner",
   name: "ZenTap Digital Solutions",
   email: "contact@zentapdigitalsolutions.com",
-  phone: "+91 92745 60880",
+  phone: "+919274560880",
   city: "Ahmedabad",
   state: "Gujarat",
   country: "India",
   pincode: "380001",
-  gbp_link: "https://share.google/9PoGc4WwJpFoTgAMh",
+  gbp_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
   slug: "zentap",
   plan: "metal_reply",
   payment_status: "paid",
-  review_url: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z/data=!3m1!4b1!4m3!3m2!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!12e1?entry=ttu&g_ep=EgoyMDI2MTAyNy4wIKXMDSoASAFQAw%3D%3D",
+  review_url: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+  google_review_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
   active: true,
   address: "Ahmedabad, Gujarat, India",
-  category: "NFC & Dynamic QR Smart Hardware Solutions",
+  maps_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+  category: "Ahmedabad • Welcome to our official digital hub",
   whatsapp_number: "919274560880",
-  whatsapp_message: "Hello ZenTap Team! I scanned your standee and would like to inquire about NFC products for my business.",
+  whatsapp: "919274560880",
+  whatsapp_message: "Hi ZenTap Digital Solutions",
   booking_url: "https://calendly.com",
-  portfolio_url: "https://www.zentapdigitalsolutions.com/#products",
-  instagram_url: "https://www.instagram.com/zentapdigitalsolutions",
-  website_url: "https://www.zentapdigitalsolutions.com",
+  portfolio_url: "https://zentapdigitalsolutions.com",
+  instagram: "https://instagram.com",
+  instagram_url: "https://instagram.com",
+  instagram_handle: "@zentapdigital",
+  facebook: "https://facebook.com",
+  facebook_url: "https://facebook.com",
+  website: "https://zentapdigitalsolutions.com",
+  website_url: "https://zentapdigitalsolutions.com",
+  logo_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A",
+  about_us: "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor.",
+  opening_hours: "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM",
+  faqs: [
+    {
+      question: "Do you offer parking?",
+      answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises.",
+    },
+    {
+      question: "What payment modes are accepted?",
+      answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash.",
+    },
+  ],
+  location_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc",
+  location_title: "Ahmedabad Central Hub",
   redirect_mode: "interactive_profile",
   custom_design: {
     format: "standee",
     material: "metal_obsidian",
-    business_name: "ZenTap Digital",
-    tagline: "Tap Phone or Scan QR to Connect & Review",
-    accent_color: "#D94826",
+    business_name: "ZenTap Digital Solutions",
+    tagline: "Ahmedabad • Welcome to our official digital hub",
+    accent_color: "#ffc174",
   },
   custom_chips: [
-    "Instant NFC Phone Tap",
-    "Dynamic QR Standee",
-    "Fast 5-Star Reviews",
-    "Laser-Engraved Standee Quality",
-    "Prompt Customer Support",
-    "Verified Google Maps Boost",
+    "Cleanliness",
+    "Nice Staff",
+    "Good Behaviour",
+    "Excellent Quality",
+    "Fair Pricing",
+    "Fast Service",
+    "Good Ambience",
+    "Value for Money",
+    "Hygiene",
+    "Professional Team",
+    "On-time Delivery",
+    "Easy Parking",
   ],
   created_at: "2026-09-01T10:00:00.000Z",
 };

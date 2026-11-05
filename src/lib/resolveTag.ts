@@ -5,7 +5,7 @@ import { getAllQrNfcTags, getAllGoogleReviewLinks, getAllSocialLinks, getAllPage
 
 export type Resolution =
   | { kind: 'redirect'; url: string }
-  | { kind: 'page'; slug: string }
+  | { kind: 'page'; slug: string; target?: 'business_page' | 'review' }
   | { kind: 'unavailable'; unassigned?: boolean };
 
 const CODE_RE = /^[a-z0-9][a-z0-9-]{1,63}$/;
@@ -121,13 +121,13 @@ export async function resolveScan(
         return { kind: 'unavailable', unassigned: true };
       }
 
-      // 2. Zentap Google Review (Standee Review Assistant):
-      if (effectiveDest === 'zentap_google') {
+      // 2. Business Page or ZenTap Google Review:
+      if (effectiveDest === 'business_page' || effectiveDest === 'zentap_google') {
         const effectiveStatus = pageConfig?.setup_status || localCfg?.setup_status;
         const isDesigned = effectiveStatus === 'completed' || Boolean(pageConfig?.config_data || localCfg?.config_data);
 
-        if (!isDesigned) {
-          // Setup status is Pending: show "Business Profile Under Process" (/unavailable)
+        if (!isDesigned && effectiveDest === 'business_page') {
+          // Setup status is Pending for Business Page: show "Business Profile Under Process" (/unavailable)
           return { kind: 'unavailable', unassigned: false };
         }
 
@@ -143,7 +143,11 @@ export async function resolveScan(
           }
         }
 
-        return { kind: 'page', slug };
+        return { 
+          kind: 'page', 
+          slug, 
+          target: effectiveDest === 'zentap_google' ? 'review' : 'business_page' 
+        };
       }
 
       // 3. Social links for NFC Cards:
@@ -185,13 +189,24 @@ export async function resolveScan(
           const direct = safeHttps(gLink.business_google_review_link);
           if (direct) return { kind: 'redirect', url: direct };
         }
-        if (gLink.destination === 'zentap_google') {
+        if (gLink.destination === 'business_page' || gLink.destination === 'zentap_google') {
           const peConfigs = getAllPageEditorConfigs();
           const pe = peConfigs.find((p) => p.tag_id.toLowerCase() === code);
           if (pe && pe.setup_status === 'completed') {
-            return { kind: 'page', slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap' };
+            return { 
+              kind: 'page', 
+              slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap',
+              target: gLink.destination === 'zentap_google' ? 'review' : 'business_page'
+            };
           }
-          return { kind: 'unavailable', unassigned: false };
+          if (gLink.destination === 'business_page') {
+            return { kind: 'unavailable', unassigned: false };
+          }
+          return { 
+            kind: 'page', 
+            slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap',
+            target: 'review'
+          };
         }
       }
     } else if (matchedPlatformTag.product_type === 'Business NFC Card') {

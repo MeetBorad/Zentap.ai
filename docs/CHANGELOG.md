@@ -1,5 +1,58 @@
 # ZenTap — Changelog
 
+## [1.54.0] — 2026-11-05
+### Refactored (10-Pillar Architectural Cleanup, Service Layer, Rate Limiting & RLS)
+- **Centralized Environment Configuration (`src/lib/config/env.ts`)**:
+  - Encapsulated typed environment variable access with development fallbacks and production validation.
+  - Hardened `.env*` git exclusion in `.gitignore` and updated `.env.example` with non-sensitive documentation.
+- **API Rate Leveling & Limiting (`src/lib/rateLimit.ts` & `src/middleware.ts`)**:
+  - Implemented an in-memory sliding window rate limiter integrated directly into Edge middleware.
+  - Three tiers: Sensitive (`/api/ai/*`, `/api/checkout/*` @ 10 req/min), Standard (`/api/*` @ 60 req/min), and Telemetry (`/api/hub/click`, `/api/review/event` @ 180 req/min).
+  - Emits standard `X-RateLimit-*` and `Retry-After` headers on 429 responses.
+- **Dedicated Business Service Layer (`src/services/`)**:
+  - Separated business logic from UI components: `reviewService.ts` (draft generation, sentiments), `paymentService.ts` (HMAC verification, ledger balance calculations), and `tagRouterService.ts` (URL sanitization, tag validation).
+  - Connected `ZenTapReviewAssistant` to consume pure service functions.
+- **Dead & Duplicate Code Pruning**:
+  - Removed 8 unused orphaned components (`QrNfcDirectoryTab.tsx`, `PageDesignerTab.tsx`, `PrivateFeedbackTab.tsx`, `RequestsTab.tsx`, `ReviewAssistantTab.tsx`, `QuickTagSetupModal.tsx`, `UpcomingServicesDrawer.tsx`, `SentimentSimulator.tsx`).
+- **Standardized API Structure & Error Handling (`src/lib/api/response.ts`)**:
+  - Standardized JSON responses with `apiSuccess`, `apiError`, and `withErrorHandler` route wrappers.
+- **PostgreSQL Row Level Security (RLS) Migration (`015_enforce_rls_policies_and_rate_limits.sql`)**:
+  - Hardened RLS policies across all 20+ tables enforcing multi-tenant isolation (`auth.uid() = owner_user_id`), public read restrictions, and strict admin lockdowns.
+- **Codebase Architecture Blueprint (`docs/ARCHITECTURE.md`)**:
+  - Published comprehensive architectural blueprint detailing directory structure, service separation, security protocols, and state management.
+
+## [1.53.0] — 2026-11-05
+### Added (Business Page Destination & ZenTap Google Review Flow)
+- **New Standee Destination: "Business Page (Blue)" (`business_page`)**:
+  - Added `business_page` destination across Google Links & QR Sharing (`GoogleLinksWebpageTab.tsx`), Page Editor (`PageEditorWebpageTab.tsx`), and the Platform API store (`adminPlatformStore.ts`, `/api/admin/platform`).
+  - Added blue badges and informative guidance cards for `Business Page (Blue)`.
+  - Updated Page Editor filter so both `business_page` and `zentap_google` standees are designable and editable.
+- **Dedicated ZenTap Google Review Assistant (`ZenTapReviewAssistant.tsx` & `/r/[slug]/review`)**:
+  - Implemented the full dark-mode living-mesh review generator based on the reference code with Outfit typography, glowing amber accent lines, and ambient glow mesh orbs.
+  - Interactive 1–5 star rating with glow drop-shadows and semantic titles ("Loved it! (5 Stars)", "Satisfactory (3 Stars)", "Needs Improvement (1 Star)").
+  - Multi-select experience tags (Cleanliness, Nice Staff, Excellent Quality, Fast Service, etc.) with dynamic selection counter.
+  - 3-mode length selector (Short 1–2, Medium 3–4, Detailed 5+) driving dynamic review draft generation customized with business name and location.
+  - 1-click "Copy text" button with clipboard feedback and editable textarea draft.
+  - Primary CTA **"Post the Review on Google Page"**: Automatically copies review draft to clipboard and redirects to the business's Google Review link (Link of Tag ID).
+  - Preserved Google Review Anti-Gating compliance with private WhatsApp resolution options for $\le$ 2 stars.
+  - Micro-trust indicators ("15 Seconds — Quick tap workflow", "100% Genuine — Direct Google Maps link") and business context banner with photo, WhatsApp support, and Call Us buttons.
+- **Access Control & Routing Isolation**:
+  - **`business_page`**: Scans open the Business Page (`/r/[slug]`). Clicking the "Loved your visit?" banner opens the review page with a "Back to Business Profile" breadcrumb.
+  - **`zentap_google`**: Scans and direct navigation route straight to `/r/[slug]/review` without access to the Business Page (back button omitted and `/r/[slug]` redirects to review).
+
+## [1.52.0] — 2026-11-05
+### Redesigned (Living Mesh Digital Hub & Conditional Page Editor)
+- **ZenTap Digital Card & Feedback Portal (`/r/zentap?preview=1` & `/r/[slug]`)**:
+  - Completely redesigned `ZenTapHubPage.tsx` with ambient living-mesh backdrop glows, Outfit typography, and dark card architecture (`#121824`).
+  - Added verified badge on business emblem, quick action bar (Call Us, Directions), and "Loved your visit?" 5-star Google Review trigger banner.
+  - Integrated interactive review assistant modal with 1–5 star ratings, feedback tag chips, length selectors, real-time draft generation, and 1-tap Google Maps review redirection.
+  - Retained Google Anti-Gating compliance with private feedback flow for $\le$ 2 stars while offering an accessible secondary route to Google Reviews.
+  - **Strict Conditional Visibility**: Enforced strict conditional omission across all sections and buttons—if any field (WhatsApp, Instagram, Facebook, Website, Email, Phone, Address, About Us, Hours, FAQs, Location) is empty or unconfigured, it is completely hidden.
+- **Admin Page Editor & Live Mockup Synchronization**:
+  - Overhauled `PageEditorWebpageTab.tsx` with dedicated inputs for Website, Email, Address, Google Maps URL, About Us story, Opening Hours, FAQs, Location card, and Review Tags.
+  - Added one-click "Auto-Fetch From Client Profile" to populate all business contact details and addresses seamlessly.
+  - Updated the right-column Live Phone Mockup to accurately render the new living-mesh dark card interface with real-time conditional field reflection.
+
 ## [1.51.0] — 2026-11-03
 ### Redesigned (Super Admin Platform Settings Dashboard)
 - **5-Section Unified Settings Dashboard**:

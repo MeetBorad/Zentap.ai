@@ -69,7 +69,7 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
   const [manualBusinessId, setManualBusinessId] = useState("");
   const [manualTagId, setManualTagId] = useState("");
   const [manualGoogleUrl, setManualGoogleUrl] = useState("");
-  const [manualDestination, setManualDestination] = useState<"not_assigned" | "direct_google" | "zentap_google">("not_assigned");
+  const [manualDestination, setManualDestination] = useState<"not_assigned" | "direct_google" | "zentap_google" | "business_page">("not_assigned");
 
   // QR Modal
   const [qrModalItem, setQrModalItem] = useState<GoogleReviewLinkItemRecord | null>(null);
@@ -148,7 +148,7 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
   // Change destination directly from the table dropdown
   const handleDestinationChange = async (
     item: GoogleReviewLinkItemRecord,
-    newDest: "not_assigned" | "direct_google" | "zentap_google"
+    newDest: "not_assigned" | "direct_google" | "zentap_google" | "business_page"
   ) => {
     // Optimistic UI state update
     setLinks((prev) =>
@@ -164,7 +164,9 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
 
     if (res.success) {
       const destLabel =
-        newDest === "direct_google"
+        newDest === "business_page"
+          ? "Business Page"
+          : newDest === "direct_google"
           ? "Direct Google Review"
           : newDest === "zentap_google"
           ? "ZenTap Google Review"
@@ -353,7 +355,10 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
                 <span className="font-bold text-orange-700">Direct Google Review (Orange):</span> Standee QR/NFC directly redirects to the business&apos;s Google Review posting page.
               </li>
               <li>
-                <span className="font-bold text-emerald-800">ZenTap Google Review (Green):</span> Redirects to the customized ZenTap Google Review Assistant with AI drafting.
+                <span className="font-bold text-emerald-800">ZenTap Google Review (Green):</span> Redirects directly to the customized ZenTap Google Review Assistant with AI drafting (no access to Business Page).
+              </li>
+              <li>
+                <span className="font-bold text-blue-700">Business Page (Blue):</span> Standee QR/NFC redirects to the interactive Business Page (Digital Card &amp; Feedback Portal). Clicking &quot;Loved your visit?&quot; opens the Smart Review Assistant.
               </li>
             </ul>
           </div>
@@ -555,11 +560,13 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
                             onChange={(e) =>
                               handleDestinationChange(
                                 item,
-                                e.target.value as "not_assigned" | "direct_google" | "zentap_google"
+                                e.target.value as "not_assigned" | "direct_google" | "zentap_google" | "business_page"
                               )
                             }
                             className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer outline-none focus:ring-2 focus:ring-offset-1 ${
-                              item.destination === "zentap_google"
+                              item.destination === "business_page"
+                                ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100 focus:ring-blue-500"
+                                : item.destination === "zentap_google"
                                 ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 focus:ring-emerald-500"
                                 : item.destination === "direct_google"
                                 ? "bg-orange-50 text-orange-900 border-orange-300 hover:bg-orange-100 focus:ring-orange-500"
@@ -574,6 +581,9 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
                             </option>
                             <option value="zentap_google" className="bg-white text-emerald-800 font-medium">
                               ZenTap Google Review (Green)
+                            </option>
+                            <option value="business_page" className="bg-white text-blue-800 font-medium">
+                              Business Page (Blue)
                             </option>
                           </select>
                         </td>
@@ -936,6 +946,7 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
                   <option value="not_assigned">Not Assigned (Red - Setup Pending)</option>
                   <option value="direct_google">Direct Google Review (Orange)</option>
                   <option value="zentap_google">ZenTap Google Review (Green)</option>
+                  <option value="business_page">Business Page (Blue)</option>
                 </select>
               </div>
 

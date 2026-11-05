@@ -81,7 +81,7 @@ export interface GoogleReviewLinkItemRecord {
   business_name: string;
   link_of_tag_id: string;
   business_google_review_link: string;
-  destination: "not_assigned" | "direct_google" | "zentap_google";
+  destination: "not_assigned" | "direct_google" | "zentap_google" | "business_page";
   setup_status: "pending" | "completed"; // completed if destination !== 'not_assigned'
   total_scans: number;
   created_at: string;
@@ -218,8 +218,9 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     tag_id: "ST1",
     product_type: "Counter Standee",
     business_id: "ZT-0001",
-    business_name: "Café Aroma Bodakdev",
+    business_name: "ZenTap Digital Solutions",
     link: `${DOMAIN_BASE}/t/ST1`,
+    destination: "business_page",
     scans_count: 142,
     created_at: "2026-10-25T10:05:00Z",
   },
@@ -313,10 +314,10 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     id: "gl_01",
     tag_id: "ST1",
     business_id: "ZT-0001",
-    business_name: "Café Aroma Bodakdev",
+    business_name: "ZenTap Digital Solutions",
     link_of_tag_id: `${DOMAIN_BASE}/t/ST1`,
-    business_google_review_link: "https://g.page/r/CbOD_Cafearoma/review",
-    destination: "zentap_google",
+    business_google_review_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+    destination: "business_page",
     setup_status: "completed",
     total_scans: 142,
     created_at: "2026-10-25T10:05:00Z",
@@ -364,6 +365,59 @@ const INITIAL_SOCIAL_LINKS: SocialLinkItemRecord[] = [
 ];
 
 const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
+  {
+    id: "pe_zentap",
+    tag_id: "zentap",
+    business_id: "ZT-0001",
+    business_name: "ZenTap Digital Solutions",
+    link_url: `${DOMAIN_BASE}/r/zentap?preview=1`,
+    setup_status: "completed",
+    config_data: {
+      theme: "obsidian",
+      title: "ZenTap Digital Solutions",
+      subtitle: "Ahmedabad • Welcome to our official digital hub",
+      address: "Ahmedabad, Gujarat, India",
+      maps_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+      logo_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A",
+      cta_text: "Loved your visit? Tap to write a rapid 5-Star Google Review",
+      google_link: "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+      phone: "+919274560880",
+      whatsapp: "919274560880",
+      instagram: "https://instagram.com",
+      facebook: "https://facebook.com",
+      website: "https://zentapdigitalsolutions.com",
+      email: "contact@zentapdigitalsolutions.com",
+      about_us: "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor.",
+      opening_hours: "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM",
+      faqs: [
+        {
+          question: "Do you offer parking?",
+          answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises.",
+        },
+        {
+          question: "What payment modes are accepted?",
+          answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash.",
+        },
+      ],
+      location_image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc",
+      location_title: "Ahmedabad Central Hub",
+      tags: [
+        "Cleanliness",
+        "Nice Staff",
+        "Good Behaviour",
+        "Excellent Quality",
+        "Fair Pricing",
+        "Fast Service",
+        "Good Ambience",
+        "Value for Money",
+        "Hygiene",
+        "Professional Team",
+        "On-time Delivery",
+        "Easy Parking",
+      ],
+    },
+    updated_at: "2026-11-05T12:00:00Z",
+  },
   {
     id: "pe_01",
     tag_id: "ST1",

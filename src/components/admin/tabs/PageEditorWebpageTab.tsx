@@ -32,6 +32,14 @@ import {
   Share2,
   Radio,
   Tag,
+  Globe,
+  Mail,
+  MapPin,
+  Clock,
+  HelpCircle,
+  Plus,
+  FileText,
+  Info,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -103,7 +111,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     tagId: string,
     businessId: string,
     businessName: string,
-    newDest: "not_assigned" | "direct_google" | "zentap_google"
+    newDest: "not_assigned" | "direct_google" | "zentap_google" | "business_page"
   ) => {
     // Optimistic UI state update for googleLinks
     setGoogleLinks((prev) =>
@@ -121,7 +129,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     if (res.success) {
       onShowToast(
         `✓ Synced destination for ${businessName} (${tagId}) to ${
-          newDest === "zentap_google"
+          newDest === "business_page"
+            ? "Business Page"
+            : newDest === "zentap_google"
             ? "ZenTap Google Review"
             : newDest === "direct_google"
             ? "Direct Google Review"
@@ -148,11 +158,22 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editWhatsapp, setEditWhatsapp] = useState("919825012345");
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editMapsLink, setEditMapsLink] = useState("");
+  const [editAboutUs, setEditAboutUs] = useState("");
+  const [editOpeningHours, setEditOpeningHours] = useState("");
+  const [editFaqs, setEditFaqs] = useState<{ question: string; answer: string }[]>([]);
+  const [editLocationImage, setEditLocationImage] = useState("");
+  const [editLocationTitle, setEditLocationTitle] = useState("");
+  const [editTags, setEditTags] = useState("");
   const [editTagLink, setEditTagLink] = useState("");
 
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
+  const locationImgInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileToUrl = (file: File, setter: (url: string) => void, label: string) => {
     if (!file) return;
@@ -179,11 +200,24 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     }
 
     if (client.business_name) setEditTitle(client.business_name);
-    if (client.city) setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
+    if (client.city) {
+      setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
+      setEditAddress(client.city);
+    }
     if (client.owner_phone) setEditPhone(client.owner_phone);
     if (client.whatsapp || client.owner_phone) setEditWhatsapp(client.whatsapp || client.owner_phone);
     if (client.instagram_link) setEditInstagram(client.instagram_link);
     if (client.facebook_link) setEditFacebook(client.facebook_link);
+    if (client.owner_email) setEditEmail(client.owner_email);
+    if (client.custom_fields?.website_url || client.custom_fields?.website) {
+      setEditWebsite(client.custom_fields.website_url || client.custom_fields.website);
+    }
+    if (client.custom_fields?.google_maps_link || client.custom_fields?.maps_link) {
+      setEditMapsLink(client.custom_fields.google_maps_link || client.custom_fields.maps_link);
+    }
+    if (client.custom_fields?.about_us) {
+      setEditAboutUs(client.custom_fields.about_us);
+    }
     if (client.google_review_link) {
       setEditGoogleLink(client.google_review_link);
     } else if (activeItem) {
@@ -339,18 +373,33 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     const resolvedTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
     const resolvedGoogleLink = cfg.google_link || matchingGLink?.business_google_review_link || client?.google_review_link || "";
 
+    const isZenTap = item.tag_id.toLowerCase() === "zentap" || item.business_id.toLowerCase() === "sample-demo-biz-01";
+
     setEditTheme(cfg.theme || "obsidian");
-    setEditTitle(cfg.title || item.business_name || client?.business_name || "Business Name");
-    setEditSubtitle(cfg.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : "Customer Satisfaction Hub"));
+    setEditTitle(cfg.title || item.business_name || client?.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
+    setEditSubtitle(cfg.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : (isZenTap ? "Ahmedabad • Welcome to our official digital hub" : "Customer Satisfaction Hub")));
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
-    setEditLogoUrl(cfg.logo_url || "/logo.png");
+    setEditLogoUrl(cfg.logo_url || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png"));
     setEditWallpaperUrl(cfg.wallpaper_url || "");
-    setEditCtaText(cfg.cta_text || "Leave a 5-Star Review on Google");
-    setEditGoogleLink(resolvedGoogleLink);
-    setEditPhone(cfg.phone || client?.owner_phone || "+91 98250 12345");
-    setEditWhatsapp(cfg.whatsapp || client?.whatsapp || client?.owner_phone || "919825012345");
-    setEditInstagram(cfg.instagram || client?.instagram_link || "");
-    setEditFacebook(cfg.facebook || client?.facebook_link || "");
+    setEditCtaText(cfg.cta_text || (isZenTap ? "Loved your visit? Tap to write a rapid 5-Star Google Review" : "Leave a 5-Star Review on Google"));
+    setEditGoogleLink(resolvedGoogleLink || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
+    setEditPhone(cfg.phone || client?.owner_phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
+    setEditWhatsapp(cfg.whatsapp || client?.whatsapp || client?.owner_phone || (isZenTap ? "919274560880" : "919825012345"));
+    setEditInstagram(cfg.instagram || client?.instagram_link || (isZenTap ? "https://instagram.com" : ""));
+    setEditFacebook(cfg.facebook || client?.facebook_link || (isZenTap ? "https://facebook.com" : ""));
+    setEditWebsite(cfg.website || client?.custom_fields?.website_url || client?.custom_fields?.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
+    setEditEmail(cfg.email || client?.owner_email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
+    setEditAddress(cfg.address || client?.city || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
+    setEditMapsLink(cfg.maps_link || client?.custom_fields?.google_maps_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
+    setEditAboutUs(cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
+    setEditOpeningHours(cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
+    setEditFaqs(Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
+      { question: "Do you offer parking?", answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises." },
+      { question: "What payment modes are accepted?", answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash." },
+    ] : []));
+    setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
+    setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : ""));
+    setEditTags(Array.isArray(cfg.tags) ? cfg.tags.join(", ") : (cfg.tags || "Cleanliness, Nice Staff, Good Behaviour, Excellent Quality, Fair Pricing, Fast Service, Good Ambience, Value for Money, Hygiene, Professional Team, On-time Delivery, Easy Parking"));
     setEditTagLink(resolvedTagLink);
   };
 
@@ -363,6 +412,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       title: editTitle.trim(),
       subtitle: editSubtitle.trim(),
       category: editSubtitle.trim(),
+      address: editAddress.trim(),
+      maps_link: editMapsLink.trim(),
       cover_image: editBannerUrl.trim(),
       logo_url: editLogoUrl.trim(),
       wallpaper_url: editWallpaperUrl.trim(),
@@ -372,6 +423,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       whatsapp: editWhatsapp.trim(),
       instagram: editInstagram.trim(),
       facebook: editFacebook.trim(),
+      website: editWebsite.trim(),
+      email: editEmail.trim(),
+      about_us: editAboutUs.trim(),
+      opening_hours: editOpeningHours.trim(),
+      faqs: editFaqs,
+      location_image: editLocationImage.trim(),
+      location_title: editLocationTitle.trim(),
+      tags: editTags ? editTags.split(",").map((s) => s.trim()).filter(Boolean) : [],
       link_url: editTagLink.trim(),
     };
 
@@ -630,11 +689,11 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   // Destination filter state
   const [destFilter, setDestFilter] = useState<"all" | "zentap">("all");
 
-  // Filter to entries whose Destination in Google Links & QR sharing is "zentap_google"
+  // Filter to entries whose Destination in Google Links & QR sharing is "zentap_google" or "business_page"
   const zentapOnlyConfigs = editorConfigs.filter((item) => {
     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
     const dest = matchingGLink?.destination || item.destination;
-    return dest === "zentap_google";
+    return dest === "zentap_google" || dest === "business_page";
   });
 
   const activeConfigsList = destFilter === "zentap" ? zentapOnlyConfigs : editorConfigs;
@@ -895,13 +954,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               )
                             }
                             className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
-                              currentDest === "zentap_google"
+                              currentDest === "business_page"
+                                ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
+                                : currentDest === "zentap_google"
                                 ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
                                 : currentDest === "direct_google"
                                 ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
                                 : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
                             }`}
                           >
+                            <option value="business_page">Business Page (Blue)</option>
                             <option value="zentap_google">ZenTap Google Review (Green)</option>
                             <option value="direct_google">Direct Google Review (Amber)</option>
                             <option value="not_assigned">Not Assigned (Grey)</option>
@@ -1431,6 +1493,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       if (file) handleFileToUrl(file, setEditWallpaperUrl, "Page Wallpaper");
                     }}
                   />
+                  <input
+                    type="file"
+                    ref={locationImgInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileToUrl(file, setEditLocationImage, "Studio Location Banner");
+                    }}
+                  />
 
                   {/* Theme Presets */}
                   <div>
@@ -1821,22 +1893,35 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     </div>
                   </div>
 
-                  {/* Direct Contact Links: Phone, WhatsApp, Instagram, Facebook */}
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-900 mb-1.5">Direct Contact &amp; Social Links</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* Direct Contact Links: Phone, WhatsApp, Instagram, Facebook, Website, Email */}
+                  <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Direct Contact &amp; Social Channels</span>
+                      </label>
+                      <span className="text-[10px] text-zinc-500 font-medium">
+                        *Blank buttons are automatically hidden from the card
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {/* Phone */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
                           <Phone className="w-3 h-3 text-emerald-600" />
-                          <span>Phone</span>
+                          <span>Phone / Call</span>
                         </label>
                         <input
                           type="tel"
+                          placeholder="+91 92745 60880"
                           value={editPhone}
                           onChange={(e) => setEditPhone(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
+
+                      {/* WhatsApp */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
                           <MessageCircle className="w-3 h-3 text-emerald-500" />
@@ -1844,23 +1929,29 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         </label>
                         <input
                           type="text"
+                          placeholder="919274560880"
                           value={editWhatsapp}
                           onChange={(e) => setEditWhatsapp(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
+
+                      {/* Instagram */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
                           <Instagram className="w-3 h-3 text-pink-500" />
-                          <span>Instagram URL</span>
+                          <span>Instagram (URL or @)</span>
                         </label>
                         <input
                           type="text"
+                          placeholder="@zentapdigital"
                           value={editInstagram}
                           onChange={(e) => setEditInstagram(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
+
+                      {/* Facebook */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
                           <Facebook className="w-3 h-3 text-blue-500" />
@@ -1868,11 +1959,228 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         </label>
                         <input
                           type="text"
+                          placeholder="https://facebook.com/..."
                           value={editFacebook}
                           onChange={(e) => setEditFacebook(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
+
+                      {/* Website */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Globe className="w-3 h-3 text-amber-500" />
+                          <span>Website URL</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://zentapdigitalsolutions.com"
+                          value={editWebsite}
+                          onChange={(e) => setEditWebsite(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-cyan-500" />
+                          <span>Email Address</span>
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="contact@zentapdigitalsolutions.com"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address & Studio Location */}
+                  <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Address &amp; Studio Location</span>
+                      </label>
+                      <span className="text-[10px] text-zinc-500 font-medium">
+                        *Powers Directions button and Location card
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                          Address Text (Pill display)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ahmedabad, Gujarat, India"
+                          value={editAddress}
+                          onChange={(e) => setEditAddress(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                          Google Maps URL (Directions Target)
+                        </label>
+                        <input
+                          type="url"
+                          placeholder="https://www.google.com/maps/place/..."
+                          value={editMapsLink}
+                          onChange={(e) => setEditMapsLink(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono text-[11px]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                          Studio Location Title
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Ahmedabad Central Hub"
+                          value={editLocationTitle}
+                          onChange={(e) => setEditLocationTitle(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-medium text-zinc-700">
+                            Studio Location Photo / Map URL
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => locationImgInputRef.current?.click()}
+                            className="text-[10px] text-purple-600 hover:text-purple-700 font-bold cursor-pointer"
+                          >
+                            Upload Photo
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Image URL..."
+                          value={editLocationImage}
+                          onChange={(e) => setEditLocationImage(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* About Us & Opening Hours */}
+                  <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-3 shadow-2xs">
+                    <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-purple-600" />
+                      <span>About Us &amp; Opening Hours</span>
+                    </label>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                        About Us Description (Leave blank to hide section)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Welcome to our business! We take pride in delivering premier service..."
+                        value={editAboutUs}
+                        onChange={(e) => setEditAboutUs(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                        Opening Hours Matrix (One per line e.g. Monday – Saturday: 10:00 AM – 09:00 PM)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder={"Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM"}
+                        value={editOpeningHours}
+                        onChange={(e) => setEditOpeningHours(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Review Modal Tags & FAQs */}
+                  <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-3 shadow-2xs">
+                    <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Google Review Modal Tags &amp; FAQs</span>
+                    </label>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-700 mb-1">
+                        &quot;What Stood Out?&quot; Tag Chips (Comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Cleanliness, Nice Staff, Fast Service, Great Ambience..."
+                        value={editTags}
+                        onChange={(e) => setEditTags(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      />
+                    </div>
+
+                    {/* FAQs Manager */}
+                    <div className="space-y-2 pt-1 border-t border-zinc-100">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-zinc-800">
+                          Frequently Asked Questions ({editFaqs.length})
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setEditFaqs((prev) => [...prev, { question: "", answer: "" }])}
+                          className="text-[11px] font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Question</span>
+                        </button>
+                      </div>
+
+                      {editFaqs.map((faq, fIdx) => (
+                        <div key={fIdx} className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-1.5 relative">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase">Q{fIdx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => setEditFaqs((prev) => prev.filter((_, i) => i !== fIdx))}
+                              className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
+                              title="Delete Question"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Question (e.g. Do you offer parking?)"
+                            value={faq.question}
+                            onChange={(e) => {
+                              const updated = [...editFaqs];
+                              updated[fIdx].question = e.target.value;
+                              setEditFaqs(updated);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none"
+                          />
+                          <textarea
+                            rows={2}
+                            placeholder="Answer text..."
+                            value={faq.answer}
+                            onChange={(e) => {
+                              const updated = [...editFaqs];
+                              updated[fIdx].answer = e.target.value;
+                              setEditFaqs(updated);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -1910,147 +2218,218 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                 </form>
               </div>
 
-              {/* Live Interactive Phone Mockup (5 Cols) with Instant Theme Reflection */}
+              {/* Live Interactive Phone Mockup (5 Cols) with Instant Theme & Field Reflection */}
               {(() => {
-                const mockupStyle = (() => {
-                  switch (editTheme) {
-                    case "slate":
-                      return {
-                        bg: "bg-slate-900",
-                        text: "text-slate-100",
-                        subtext: "text-slate-400",
-                        btn: "bg-gradient-to-r from-slate-700 to-slate-800 border border-slate-600 text-white",
-                        cover: "bg-gradient-to-r from-slate-800 to-slate-700",
-                      };
-                    case "emerald":
-                      return {
-                        bg: "bg-[#062016]",
-                        text: "text-emerald-50",
-                        subtext: "text-emerald-300/70",
-                        btn: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-950/50",
-                        cover: "bg-gradient-to-r from-emerald-800 to-teal-800",
-                      };
-                    case "sunset":
-                      return {
-                        bg: "bg-[#200e06]",
-                        text: "text-orange-50",
-                        subtext: "text-orange-300/70",
-                        btn: "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-orange-950/50",
-                        cover: "bg-gradient-to-r from-orange-800 to-amber-700",
-                      };
-                    case "clean_light":
-                      return {
-                        bg: "bg-white",
-                        text: "text-zinc-900",
-                        subtext: "text-zinc-500",
-                        btn: "bg-zinc-900 text-white shadow-zinc-400/30",
-                        cover: "bg-gradient-to-r from-zinc-200 to-zinc-300",
-                      };
-                    case "obsidian":
-                    default:
-                      return {
-                        bg: "bg-[#0e1015]",
-                        text: "text-white",
-                        subtext: "text-zinc-400",
-                        btn: "bg-gradient-to-br from-orange-500 to-amber-600 text-white",
-                        cover: "bg-gradient-to-r from-orange-500 to-amber-500",
-                      };
-                  }
-                })();
+                const hasQuickActions = !!(editPhone.trim() || editMapsLink.trim() || editAddress.trim());
+                const hasSocials = !!(
+                  editWhatsapp.trim() || 
+                  editInstagram.trim() || 
+                  editPhone.trim() || 
+                  editFacebook.trim() || 
+                  editWebsite.trim() || 
+                  editEmail.trim()
+                );
 
                 return (
-                  <div className="lg:col-span-5 p-6 bg-zinc-900 flex flex-col items-center justify-center overflow-y-auto">
+                  <div className="lg:col-span-5 p-6 bg-[#07090e] flex flex-col items-center justify-center overflow-y-auto">
                     <div 
-                      className={`w-[280px] ${mockupStyle.bg} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl overflow-hidden flex flex-col relative transition-colors duration-200`}
+                      className="w-[290px] max-h-[700px] overflow-y-auto bg-[#0B0F17] rounded-[36px] border-[5px] border-zinc-800 shadow-2xl flex flex-col relative transition-all duration-200 select-none pb-4"
                       style={{
-                        backgroundImage: editWallpaperUrl ? `url(${editWallpaperUrl})` : undefined,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
+                        fontFamily: "'Outfit', sans-serif"
                       }}
                     >
-                      {editWallpaperUrl && (
-                        <div className="absolute inset-0 bg-black/60 pointer-events-none" />
-                      )}
+                      {/* Ambient Mesh Glows in Phone */}
+                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-36 h-36 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+                      <div className="absolute top-44 -left-10 w-28 h-28 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
 
                       {/* Notch */}
-                      <div className="h-4 bg-zinc-900 flex justify-center items-center relative z-10">
-                        <div className="w-16 h-2.5 bg-zinc-950 rounded-full" />
+                      <div className="h-4.5 bg-[#0B0F17] flex justify-center items-center relative z-20 shrink-0 sticky top-0">
+                        <div className="w-16 h-2 bg-zinc-900 rounded-full" />
                       </div>
 
-                      {/* Cover Banner */}
-                      <div className={`h-22 ${mockupStyle.cover} relative flex items-center justify-center overflow-hidden transition-all duration-200`}>
-                        {editBannerUrl ? (
-                          <img src={editBannerUrl} alt="Cover Banner" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-[#ff7a00]/30 to-black/60 flex items-center justify-center text-[10px] text-white/70 font-bold uppercase tracking-wider">
-                            {editTitle || "Banner"}
+                      <div className="px-3 pt-2 space-y-2.5 relative z-10">
+                        {/* Profile & NFC Hero Card */}
+                        <div className="relative overflow-hidden rounded-xl bg-[#121824] p-3 shadow-md border border-white/5 space-y-2">
+                          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-80" />
+                          
+                          <div className="flex items-center gap-2.5">
+                            <div className="relative shrink-0 w-11 h-11 rounded-lg bg-[#121824] p-0.5 shadow border border-amber-500/20 flex items-center justify-center">
+                              <img 
+                                src={editLogoUrl || "/logo.png"} 
+                                alt="Logo" 
+                                className="w-full h-full object-contain rounded-md"
+                                onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
+                              />
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                                <Check className="w-2 h-2 text-black font-black stroke-[3]" />
+                              </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-xs text-[#F8FAFC] leading-snug truncate">
+                                {editTitle || "Business Name"}
+                              </h4>
+                              {editSubtitle && (
+                                <p className="text-[10px] text-[#94A3B8] truncate">{editSubtitle}</p>
+                              )}
+                              {editAddress && (
+                                <p className="text-[9px] text-[#ffb95f] truncate flex items-center gap-0.5 mt-0.5">
+                                  <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                  <span>{editAddress}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quick Actions (Call / Directions) */}
+                          {hasQuickActions && (
+                            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                              {editPhone.trim() && (
+                                <div className="py-1 px-2 rounded-lg bg-[#1B2232] text-[9px] font-bold text-[#F8FAFC] flex items-center justify-center gap-1 border border-white/5">
+                                  <Phone className="w-2.5 h-2.5 text-[#ffc174]" />
+                                  <span>Call Us</span>
+                                </div>
+                              )}
+                              {(editMapsLink.trim() || editAddress.trim()) && (
+                                <div className="py-1 px-2 rounded-lg bg-[#1B2232] text-[9px] font-bold text-[#F8FAFC] flex items-center justify-center gap-1 border border-white/5">
+                                  <Navigation className="w-2.5 h-2.5 text-[#4cd7f6]" />
+                                  <span>Directions</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Loved your visit? Banner */}
+                        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#121824] via-[#1c2230] to-[#121824] p-3 shadow border border-white/5 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-[#ffc174] fill-[#ffc174]" />
+                              <span className="text-xs font-bold text-[#F8FAFC]">Loved your visit?</span>
+                            </div>
+                            <p className="text-[9px] text-[#94A3B8] mt-0.5">{editCtaText || "Tap to write a rapid 5-Star Review"}</p>
+                            <div className="flex items-center gap-0.5 mt-1 text-[#ffc174]">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} className="w-2.5 h-2.5 fill-[#ffc174] text-[#ffc174]" />
+                              ))}
+                              <span className="text-[9px] text-[#ffb95f] ml-1 font-bold">5.0</span>
+                            </div>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-[#f59e0b] flex items-center justify-center shrink-0 shadow">
+                            <Star className="w-4 h-4 fill-black text-black" />
+                          </div>
+                        </div>
+
+                        {/* Connect & Social Channels (Live conditional hiding of blanks!) */}
+                        {hasSocials && (
+                          <div className="space-y-1">
+                            <span className="text-[9px] uppercase font-bold text-[#94A3B8] tracking-wider block px-1">
+                              Connect Channels
+                            </span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {editWhatsapp.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <MessageCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">WhatsApp</span>
+                                </div>
+                              )}
+                              {editInstagram.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <Instagram className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Instagram</span>
+                                </div>
+                              )}
+                              {editPhone.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <Phone className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Call Office</span>
+                                </div>
+                              )}
+                              {editFacebook.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <Facebook className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Facebook</span>
+                                </div>
+                              )}
+                              {editWebsite.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <Globe className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Website</span>
+                                </div>
+                              )}
+                              {editEmail.trim() && (
+                                <div className="p-2 rounded-lg bg-[#121824] border border-white/5 flex items-center gap-1.5">
+                                  <Mail className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                                  <span className="text-[10px] font-bold text-[#F8FAFC] truncate">Email</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-                        {/* Round Cover Profile (Logo) */}
-                        <div className="absolute -bottom-6 w-14 h-14 rounded-full border-2 border-zinc-900 bg-white overflow-hidden shadow-lg flex items-center justify-center z-10">
-                          <img 
-                            src={editLogoUrl || "/logo.png"} 
-                            alt="Round Logo" 
-                            className="w-full h-full object-cover rounded-full" 
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/logo.png";
-                            }}
-                          />
-                        </div>
-                      </div>
+                        {/* About Us (Only if not blank) */}
+                        {editAboutUs.trim() && (
+                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
+                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                              <Info className="w-3 h-3 text-[#ffc174]" />
+                              <span>About Us</span>
+                            </span>
+                            <p className="text-[9px] text-[#dfe2ee] leading-relaxed line-clamp-2">{editAboutUs}</p>
+                          </div>
+                        )}
 
-                      {/* Body Content */}
-                      <div className="pt-8 px-4 pb-4 text-center space-y-3 relative z-10">
-                        <div>
-                          <h4 className={`font-extrabold text-xs ${mockupStyle.text} leading-tight`}>
-                            {editTitle || "Business Name"}
-                          </h4>
-                          <p className={`text-[10px] ${mockupStyle.subtext} mt-0.5 line-clamp-1`}>{editSubtitle}</p>
-                        </div>
+                        {/* Opening Hours (Only if not blank) */}
+                        {editOpeningHours.trim() && (
+                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
+                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#4cd7f6]" />
+                              <span>Opening Hours</span>
+                            </span>
+                            <div className="text-[9px] text-[#ffddb8] font-mono leading-tight">
+                              {editOpeningHours.split("\n").slice(0, 2).map((l, i) => (
+                                <p key={i} className="truncate">{l}</p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                        {/* Quick Call & Directions */}
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="px-2.5 py-1 rounded-md bg-zinc-800/80 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
-                            <Phone className="w-2.5 h-2.5 text-emerald-400" />
-                            <span>Call</span>
+                        {/* FAQs (Only if not blank) */}
+                        {editFaqs.length > 0 && (
+                          <div className="p-2.5 rounded-xl bg-[#121824] border border-white/5 space-y-1">
+                            <span className="text-[10px] font-bold text-[#F8FAFC] flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3 text-[#c7c8ff]" />
+                              <span>FAQs ({editFaqs.length})</span>
+                            </span>
+                            <div className="p-1.5 rounded-lg bg-[#1B2232] text-[9px] text-[#F8FAFC] font-medium truncate">
+                              {editFaqs[0].question || "Sample Question"}
+                            </div>
                           </div>
-                          <div className="px-2.5 py-1 rounded-md bg-zinc-800/80 text-[9px] font-bold text-zinc-300 flex items-center gap-1">
-                            <Navigation className="w-2.5 h-2.5 text-blue-400" />
-                            <span>Directions</span>
-                          </div>
-                        </div>
+                        )}
 
-                        {/* Primary Review Hero Button */}
-                        <div className={`p-3 rounded-xl ${mockupStyle.btn} shadow-sm text-center transition-all duration-200`}>
-                          <div className="flex items-center justify-center gap-0.5 mb-1">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star key={s} className="w-3 h-3 fill-current text-current" />
-                            ))}
+                        {/* Location Card (Only if not blank) */}
+                        {(editAddress.trim() || editLocationImage.trim()) && (
+                          <div className="rounded-xl overflow-hidden relative h-20 bg-zinc-800 flex items-end p-2 border border-white/5">
+                            <img 
+                              src={editLocationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}
+                              alt="Location"
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                            <div className="relative z-10 flex items-center justify-between w-full">
+                              <span className="text-[9px] font-bold text-white truncate flex items-center gap-1">
+                                <MapPin className="w-2.5 h-2.5 text-amber-400" />
+                                <span>{editLocationTitle || editAddress || "Location"}</span>
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-full bg-[#1B2232] text-[8px] font-bold text-white border border-white/10">
+                                NFC Station
+                              </span>
+                            </div>
                           </div>
-                          <span className="block text-[10px] font-extrabold leading-snug">
-                            {editCtaText}
-                          </span>
-                        </div>
-
-                        {/* Social Shortcuts: WhatsApp, Instagram, Facebook */}
-                        <div className="flex items-center justify-center gap-2 pt-1">
-                          <div className="w-7 h-7 rounded-full bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center" title="WhatsApp">
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                          </div>
-                          <div className="w-7 h-7 rounded-full bg-pink-600/30 border border-pink-500/40 flex items-center justify-center" title="Instagram">
-                            <Instagram className="w-3.5 h-3.5 text-pink-400" />
-                          </div>
-                          <div className="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center" title="Facebook">
-                            <Facebook className="w-3.5 h-3.5 text-blue-400" />
-                          </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* Home Bar */}
-                      <div className="py-2 flex justify-center relative z-10">
-                        <div className="w-20 h-1 bg-zinc-700 rounded-full" />
+                      <div className="py-2 flex justify-center relative z-10 mt-auto">
+                        <div className="w-16 h-1 bg-zinc-700 rounded-full" />
                       </div>
                     </div>
                   </div>

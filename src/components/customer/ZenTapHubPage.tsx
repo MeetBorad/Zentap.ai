@@ -7,48 +7,35 @@ import {
   Star, 
   Phone, 
   MapPin, 
-  MessageCircle, 
-  Instagram, 
-  Facebook, 
-  Youtube, 
+  Navigation,
   Globe, 
   Mail, 
   Clock, 
-  Calendar, 
   ChevronDown, 
-  ChevronUp, 
-  ExternalLink, 
-  X, 
-  ShieldCheck, 
-  Tag, 
   Sparkles,
-  Play,
   Copy,
   Check,
-  RefreshCw,
-  Mic,
-  MicOff,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle
+  X,
+  Info,
+  HelpCircle,
+  ShieldCheck,
+  ExternalLink,
+  MessageCircle,
+  Instagram,
+  Facebook
 } from "lucide-react";
-import { 
-  ReviewOptionRecord, 
-  ReviewLength,
-  PRESET_ASPECTS,
-} from "@/lib/reviewAssistantStore";
 import { BusinessRecord } from "@/lib/businessStore";
 import { 
   PageDesignRecord, 
   PageButtonRecord, 
   PageSectionRecord, 
   PagePhotoRecord,
-  THEME_PRESET_CONFIGS,
   getPageDesign,
   getPageButtons,
   getPageSections,
   getPagePhotos
 } from "@/lib/hubDesignStore";
+import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
 interface ZenTapHubPageProps {
@@ -59,7 +46,35 @@ interface ZenTapHubPageProps {
   photos: PagePhotoRecord[];
   source?: "qr" | "nfc" | "web";
   isPreview?: boolean;
+  pageConfig?: any;
+  via?: string;
 }
+
+const DEFAULT_TAGS = [
+  "Cleanliness",
+  "Nice Staff",
+  "Good Behaviour",
+  "Excellent Quality",
+  "Fair Pricing",
+  "Fast Service",
+  "Good Ambience",
+  "Value for Money",
+  "Hygiene",
+  "Professional Team",
+  "On-time Delivery",
+  "Easy Parking",
+];
+
+const DEFAULT_FAQS = [
+  {
+    question: "Do you offer parking?",
+    answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises.",
+  },
+  {
+    question: "What payment modes are accepted?",
+    answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash.",
+  },
+];
 
 export default function ZenTapHubPage({
   business,
@@ -69,215 +84,237 @@ export default function ZenTapHubPage({
   photos: initialPhotos,
   source = "web",
   isPreview = false,
+  pageConfig: initialPageConfig,
+  via,
 }: ZenTapHubPageProps) {
   const [design, setDesign] = useState<PageDesignRecord>(initialDesign);
-  const [buttons, setButtons] = useState<PageButtonRecord[]>(initialButtons);
-  const [sections, setSections] = useState<PageSectionRecord[]>(initialSections);
-  const [photos, setPhotos] = useState<PagePhotoRecord[]>(initialPhotos);
+  const [localConfig, setLocalConfig] = useState<any>(initialPageConfig || {});
 
-  // Client hydration to fetch latest saved design from localStorage
+  // Client hydration to fetch latest saved config & design from stores
   useEffect(() => {
     if (typeof window !== "undefined" && business?.id) {
       try {
         const localDesign = getPageDesign(business.id);
-        const localButtons = getPageButtons(business.id);
-        const localSections = getPageSections(business.id);
-        const localPhotos = getPagePhotos(business.id);
         if (localDesign) setDesign(localDesign);
-        if (localButtons && localButtons.length > 0) setButtons(localButtons);
-        if (localSections && localSections.length > 0) setSections(localSections);
-        if (localPhotos) setPhotos(localPhotos);
+
+        const allEditorConfigs = getAllPageEditorConfigs();
+        const cleanSlug = (business.slug || "").toLowerCase();
+        const bizId = (business.id || "").toLowerCase();
+
+        const matchingConfig = allEditorConfigs.find(
+          (c) =>
+            c.tag_id.toLowerCase() === cleanSlug ||
+            c.business_id.toLowerCase() === bizId ||
+            (cleanSlug === "zentap" && (c.tag_id.toLowerCase() === "zentap" || c.business_id.toLowerCase() === "sample-demo-biz-01" || c.tag_id.toLowerCase() === "st1"))
+        );
+
+        if (matchingConfig?.config_data) {
+          const parsed = typeof matchingConfig.config_data === "string" 
+            ? JSON.parse(matchingConfig.config_data) 
+            : matchingConfig.config_data;
+          setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
+        }
       } catch (e) {
         console.warn("Hydrating hub design error:", e);
       }
     }
-  }, [business?.id]);
-  // Lightbox state for gallery photos
-  const [activePhoto, setActivePhoto] = useState<PagePhotoRecord | null>(null);
+  }, [business?.id, business?.slug]);
 
-  // FAQ accordion state
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  // Merge attributes from page config, business record, or default showcase
+  const cfg = localConfig || {};
+  const isZenTapDemo = (business.slug || "").toLowerCase() === "zentap" || business.id === "sample-demo-biz-01";
 
-  // Owner Access Modal
-  const [ownerModalOpen, setOwnerModalOpen] = useState(false);
+  const businessName = cfg.title || business.name || "ZenTap Digital Solutions";
+  const subtitle = cfg.subtitle || cfg.category || business.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
+  const address = cfg.address || business.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
-  // Interactive Star Rating & AI Review Assistant State
-  const [stars, setStars] = useState<number | null>(null);
-  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
-  const [reviewLength, setReviewLength] = useState<ReviewLength>("medium");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [drafts, setDrafts] = useState<{ id: string; text: string }[]>([]);
-  const [selectedDraftIndex, setSelectedDraftIndex] = useState<number>(0);
-  const [copiedSuccess, setCopiedSuccess] = useState<boolean>(false);
+  const mapsUrl = cfg.maps_link || business.maps_link || business.gbp_link || business.google_review_link || business.review_url || (isZenTapDemo ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : "");
+  const googleReviewLink = cfg.google_link || business.google_review_link || business.review_url || mapsUrl || "";
 
-  // Private feedback modal for <= 3 stars
-  const [privateFeedbackOpen, setPrivateFeedbackOpen] = useState(false);
-  const [fbText, setFbText] = useState("");
-  const [fbName, setFbName] = useState("");
-  const [fbPhone, setFbPhone] = useState("");
-  const [fbSubmitting, setFbSubmitting] = useState(false);
-  const [fbSuccess, setFbSuccess] = useState(false);
+  const phone = cfg.phone || business.phone || (isZenTapDemo ? "+91 92745 60880" : "");
+  const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
 
-  // Speech-to-text
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [voiceNotes, setVoiceNotes] = useState("");
+  const whatsapp = cfg.whatsapp || business.whatsapp || business.whatsapp_number || (isZenTapDemo ? "919274560880" : "");
+  const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      setSpeechSupported(true);
-    }
-  }, []);
-
-  const toggleListening = () => {
-    if (!speechSupported || typeof window === "undefined") return;
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-    try {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-IN";
-      recognition.onstart = () => setIsListening(true);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setVoiceNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
-        setIsListening(false);
-      };
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
-      recognition.start();
-    } catch {
-      setIsListening(false);
-    }
-  };
-
-  const toggleOption = (id: string) => {
-    setSelectedOptionIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const handleGenerateReviews = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/review/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          business_id: business.id,
-          stars: stars || 5,
-          length: reviewLength,
-          selected_options: selectedOptionIds,
-          language: "en",
-          voice_notes: voiceNotes.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.drafts && data.drafts.length > 0) {
-        setDrafts(data.drafts);
-        setSelectedDraftIndex(0);
-      } else {
-        const aspectText = selectedOptionIds.length > 0 ? selectedOptionIds.join(", ") : "exceptional service";
-        setDrafts([
-          { id: "d1", text: `Really impressed with ${business.name}! ${aspectText.charAt(0).toUpperCase() + aspectText.slice(1)} was standout. Highly recommend!` },
-          { id: "d2", text: `Great experience at ${business.name}. Loved the ${aspectText} and overall high quality.` },
-          { id: "d3", text: `5-star visit to ${business.name}. Very professional and ${aspectText}. Will definitely come back!` },
-        ]);
-        setSelectedDraftIndex(0);
+  const instagramRaw = cfg.instagram || business.instagram || business.instagram_url || (isZenTapDemo ? "https://instagram.com" : "");
+  let instagramUrl = instagramRaw;
+  let instagramHandle = business.instagram_handle || (isZenTapDemo ? "@zentapdigital" : "");
+  if (instagramRaw) {
+    if (!instagramRaw.startsWith("http")) {
+      instagramHandle = instagramRaw.startsWith("@") ? instagramRaw : `@${instagramRaw}`;
+      instagramUrl = `https://instagram.com/${instagramRaw.replace(/^@/, "")}`;
+    } else {
+      const match = instagramRaw.match(/instagram\.com\/([a-zA-Z0-9._]+)/);
+      if (match && match[1]) {
+        instagramHandle = `@${match[1]}`;
+      } else if (!instagramHandle) {
+        instagramHandle = "@instagram";
       }
-    } catch {
-      setDrafts([
-        { id: "d1", text: `Had a wonderful experience at ${business.name}! Exceptional quality and very friendly staff. Highly recommend!` },
-        { id: "d2", text: `Top-tier service from ${business.name}. Truly satisfied with my visit!` },
-      ]);
-      setSelectedDraftIndex(0);
-    } finally {
-      setLoading(false);
+    }
+  }
+
+  const facebookUrl = cfg.facebook || business.facebook || business.facebook_url || (isZenTapDemo ? "https://facebook.com" : "");
+
+  const websiteRaw = cfg.website || business.website || business.website_url || business.portfolio_url || (isZenTapDemo ? "https://zentapdigitalsolutions.com" : "");
+  const websiteUrl = websiteRaw ? (websiteRaw.startsWith("http") ? websiteRaw : `https://${websiteRaw}`) : "";
+  const displayWebsite = websiteRaw ? websiteRaw.replace(/^https?:\/\//i, "").replace(/\/$/, "") : "";
+
+  const email = cfg.email || business.email || (isZenTapDemo ? "contact@zentapdigitalsolutions.com" : "");
+
+  const logoUrl = cfg.logo_url || design.logo_url || business.logo_url || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png");
+
+  const aboutUsText = cfg.about_us || business.about_us || (isZenTapDemo ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : "");
+
+  const openingHoursRaw = cfg.opening_hours || business.opening_hours || (isZenTapDemo ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : "");
+  const openingHoursList = openingHoursRaw
+    ? openingHoursRaw.split("\n").map((line: string) => line.trim()).filter(Boolean)
+    : [];
+
+  const rawFaqs = cfg.faqs || business.faqs;
+  const faqsList: { question: string; answer: string }[] = 
+    Array.isArray(rawFaqs) && rawFaqs.length > 0 
+      ? rawFaqs 
+      : isZenTapDemo 
+      ? DEFAULT_FAQS 
+      : [];
+
+  const locationImage = cfg.location_image || business.location_image || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : "");
+  const locationTitle = cfg.location_title || business.location_title || (isZenTapDemo ? "Ahmedabad Central Hub" : address);
+
+  const availableTags: string[] = 
+    Array.isArray(cfg.tags) && cfg.tags.length > 0
+      ? cfg.tags
+      : Array.isArray(business.custom_chips) && business.custom_chips.length > 0
+      ? business.custom_chips
+      : DEFAULT_TAGS;
+
+  // Modal & Interactive Review States
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [ownerModalOpen, setOwnerModalOpen] = useState(false);
+  const [currentRating, setCurrentRating] = useState<number>(5);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set(["Nice Staff", "Excellent Quality"]));
+  const [selectedLength, setSelectedLength] = useState<"short" | "medium" | "detailed">("medium");
+  const [generatedReview, setGeneratedReview] = useState<string>("");
+  const [showReviewBox, setShowReviewBox] = useState<boolean>(false);
+  const [copiedReview, setCopiedReview] = useState<boolean>(false);
+
+  // Private feedback state for ratings <= 2
+  const [privateFeedbackText, setPrivateFeedbackText] = useState("");
+  const [privateFeedbackName, setPrivateFeedbackName] = useState("");
+  const [privateFeedbackPhone, setPrivateFeedbackPhone] = useState("");
+  const [privateFeedbackSubmitting, setPrivateFeedbackSubmitting] = useState(false);
+  const [privateFeedbackSent, setPrivateFeedbackSent] = useState(false);
+
+  const ratingDescriptions: Record<number, string> = {
+    1: "Disappointing (1 Star)",
+    2: "Could be better (2 Stars)",
+    3: "Average (3 Stars)",
+    4: "Great experience! (4 Stars)",
+    5: "Loved it! (5 Stars)",
+  };
+
+  const generateReviewContent = (rating: number, tags: Set<string>, length: "short" | "medium" | "detailed") => {
+    const tagsArr = Array.from(tags);
+    const tagsSentence = tagsArr.length > 0 ? tagsArr.join(", ") : "superb hospitality";
+    
+    if (rating <= 2) {
+      if (length === "short") {
+        return `Visited ${businessName}. While the location was accessible, the overall experience needed improvement.`;
+      } else if (length === "medium") {
+        return `Had a visit to ${businessName}. A few areas around ${tagsSentence} could be significantly better. Sharing feedback for improvement.`;
+      } else {
+        return `My visit to ${businessName} fell below expectations today. Specifically regarding ${tagsSentence}, there is clear room for operational improvement. Hope the management addresses this proactively.`;
+      }
+    }
+
+    if (length === "short") {
+      return `Had an outstanding experience at ${businessName}! Loved the ${tagsSentence}. Highly recommended!`;
+    } else if (length === "medium") {
+      return `I am truly pleased with the exceptional service at ${businessName}${address ? ` in ${address.split(",")[0]}` : ""}. The ${tagsSentence} really stood out during my visit. Fast, transparent, and top-tier professionalism!`;
+    } else {
+      return `${businessName} exceeded my expectations on every level. From the very beginning, their ${tagsSentence} made an enormous impression. The staff is welcoming, the environment is pristine, and their digital solutions are unmatched. 5/5 stars without hesitation!`;
     }
   };
 
-  const handleCopyAndPost = () => {
-    if (drafts.length === 0) return;
-    const selected = drafts[selectedDraftIndex];
-    navigator.clipboard.writeText(selected.text);
-    setCopiedSuccess(true);
-    setTimeout(() => setCopiedSuccess(false), 2500);
+  // Keep generated review live
+  useEffect(() => {
+    const text = generateReviewContent(currentRating, selectedTags, selectedLength);
+    setGeneratedReview(text);
+  }, [currentRating, selectedTags, selectedLength, businessName, address]);
 
-    fetch("/api/review/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        business_id: business.id,
-        event: "copied",
-        generation_id: selected.id,
-      }),
-    }).catch(() => {});
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(tag)) {
+        next.delete(tag);
+      } else {
+        next.add(tag);
+      }
+      return next;
+    });
+  };
 
-    const targetUrl = reviewBtn?.url_or_value || (business as any).google_review_link || business.review_url || "";
-    if (targetUrl) {
+  const handleCopyReview = () => {
+    if (!generatedReview) return;
+    navigator.clipboard.writeText(generatedReview);
+    setCopiedReview(true);
+    setTimeout(() => setCopiedReview(false), 2000);
+  };
+
+  const handleSubmitReview = () => {
+    setShowReviewBox(true);
+    if (generatedReview) {
+      navigator.clipboard.writeText(generatedReview);
+    }
+
+    // Analytics click tracking
+    if (!isPreview) {
+      try {
+        fetch("/api/hub/click", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_id: business.id,
+            button_type: "google_review_submit",
+            source,
+          }),
+        }).catch(() => {});
+      } catch {}
+    }
+
+    // Redirect to Google Reviews URL
+    if (googleReviewLink) {
       setTimeout(() => {
-        window.open(targetUrl, "_blank", "noopener,noreferrer");
-      }, 350);
+        window.open(googleReviewLink, "_blank", "noopener,noreferrer");
+      }, 1000);
     }
   };
 
   const handleSendPrivateFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fbText.trim()) return;
-    setFbSubmitting(true);
+    if (!privateFeedbackText.trim()) return;
+    setPrivateFeedbackSubmitting(true);
     try {
       await fetch("/api/review/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           business_id: business.id,
-          stars: stars || 3,
-          feedback_text: fbText.trim(),
-          customer_name: fbName.trim() || undefined,
-          customer_phone: fbPhone.trim().replace(/\D/g, "") || undefined,
+          stars: currentRating,
+          feedback_text: privateFeedbackText.trim(),
+          customer_name: privateFeedbackName.trim() || undefined,
+          customer_phone: privateFeedbackPhone.trim().replace(/\D/g, "") || undefined,
           tag_code: business.slug,
         }),
       });
-      setFbSuccess(true);
+      setPrivateFeedbackSent(true);
     } catch {
+      setPrivateFeedbackSent(true);
     } finally {
-      setFbSubmitting(false);
+      setPrivateFeedbackSubmitting(false);
     }
   };
-
-  // Theme settings
-  const primaryColor = design.primary_color || "#ff7a00";
-  const accentColor = design.accent_color || "#ff7a00";
-  const bgColor = design.bg_color || "#0e1015";
-  const isDark = design.dark_mode !== "light";
-  const cardStyle = design.card_style || "glass";
-  const buttonStyle = design.button_style || "rounded";
-
-  // Card classes based on style
-  const cardClass = 
-    cardStyle === "flat"
-      ? isDark ? "bg-zinc-900 border border-zinc-800" : "bg-white border border-zinc-200 shadow-xs"
-      : cardStyle === "elevated"
-      ? isDark ? "bg-zinc-900/90 shadow-xl border border-zinc-800/80" : "bg-white shadow-xl border border-zinc-100"
-      : cardStyle === "bordered"
-      ? isDark ? "bg-transparent border-2 border-zinc-800" : "bg-white border-2 border-zinc-200"
-      : isDark 
-      ? "bg-zinc-900/60 backdrop-blur-md border border-white/10 shadow-lg" 
-      : "bg-white/80 backdrop-blur-md border border-black/5 shadow-lg";
-
-  const btnRoundClass = 
-    buttonStyle === "pill" 
-      ? "rounded-full" 
-      : buttonStyle === "square" 
-      ? "rounded-md" 
-      : "rounded-2xl";
 
   const trackClick = (btnType: string) => {
     if (isPreview) return;
@@ -294,882 +331,691 @@ export default function ZenTapHubPage({
     } catch {}
   };
 
-  // Helper for visible buttons
-  const visibleButtons = buttons.filter((b) => b.visible && b.url_or_value);
-  const callBtn = visibleButtons.find((b) => b.type === "call");
-  const directionsBtn = visibleButtons.find((b) => b.type === "directions" || b.type === "maps");
-  const reviewBtn = visibleButtons.find((b) => b.type === "review");
-
-  // Social buttons
-  const socialButtons = visibleButtons.filter((b) =>
-    ["whatsapp", "instagram", "facebook", "youtube", "website", "email"].includes(b.type)
-  );
-
-  // Other custom buttons
-  const customButtons = visibleButtons.filter((b) =>
-    ["menu", "booking", "custom"].includes(b.type)
-  );
-
-  // Format URLs
-  const getCallHref = (val: string) => `tel:${val.replace(/[^0-9+]/g, "")}`;
-  const getMapsHref = (val: string) => {
-    if (val.startsWith("http")) return val;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(val)}`;
-  };
-  const getReviewHref = () => `/r/${business.slug}/review?s=${source}`;
-
-  const getSocialHref = (b: PageButtonRecord) => {
-    const val = b.url_or_value.trim();
-    if (b.type === "whatsapp") {
-      const cleanNum = val.replace(/[^0-9]/g, "");
-      return `/w/${business.slug}?s=${source}`;
-    }
-    if (b.type === "instagram") {
-      return `/i/${business.slug}?s=${source}`;
-    }
-    if (b.type === "facebook") {
-      return `/f/${business.slug}?s=${source}`;
-    }
-    if (b.type === "youtube") {
-      return `/y/${business.slug}?s=${source}`;
-    }
-    if (b.type === "email") {
-      return `mailto:${val}`;
-    }
-    return val.startsWith("http") ? val : `https://${val}`;
-  };
-
-  const getSocialIcon = (type: string) => {
-    switch (type) {
-      case "whatsapp": return <MessageCircle className="w-5 h-5 text-emerald-400" />;
-      case "instagram": return <Instagram className="w-5 h-5 text-pink-400" />;
-      case "facebook": return <Facebook className="w-5 h-5 text-blue-400" />;
-      case "youtube": return <Youtube className="w-5 h-5 text-red-500" />;
-      case "website": return <Globe className="w-5 h-5 text-cyan-400" />;
-      case "email": return <Mail className="w-5 h-5 text-amber-400" />;
-      default: return <ExternalLink className="w-5 h-5 text-zinc-300" />;
-    }
-  };
+  // Has at least one social / contact channel
+  const hasSocialChannels = !!(cleanWhatsApp || instagramUrl || phone || facebookUrl || websiteUrl || email);
 
   return (
     <div 
-      className={`min-h-screen ${isDark ? "text-white" : "text-zinc-900"} transition-colors relative`}
-      style={{ 
-        backgroundColor: bgColor,
-        backgroundImage: design.wallpaper_url ? `url(${design.wallpaper_url})` : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        fontFamily: design.font && design.font !== "Inter" ? `'${design.font}', sans-serif` : "'Outfit', sans-serif"
-      }}
+      className="bg-[#0B0F17] text-[#dfe2ee] min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden"
+      style={{ fontFamily: "'Outfit', sans-serif" }}
     >
-      {design.wallpaper_url && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] pointer-events-none" />
-      )}
-      <div className="max-w-md mx-auto min-h-screen flex flex-col relative pb-12">
+      <main className="w-full min-h-screen pt-4 relative">
+        <div className="flex flex-col w-full relative">
+          
+          {/* Ambient Living Mesh Backdrops */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+            <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#f59e0b]/10 rounded-full blur-[110px] animate-pulse" />
+            <div className="absolute top-[480px] -left-20 w-[360px] h-[360px] bg-[#03b5d3]/10 rounded-full blur-[90px]" />
+            <div className="absolute bottom-20 -right-20 w-[420px] h-[420px] bg-[#ffc174]/10 rounded-full blur-[100px]" />
+          </div>
 
-        {/* 1. COVER BANNER */}
-        <div className="relative h-44 sm:h-52 w-full bg-gradient-to-r from-zinc-800 to-zinc-900 overflow-hidden">
-          {design.cover_url ? (
-            <img 
-              src={design.cover_url} 
-              alt={`${business.name} cover`}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#ff7a00]/30 via-zinc-900 to-black flex items-center justify-center">
-              <span className="text-zinc-200 font-bold uppercase tracking-widest text-xs drop-shadow">
-                {business.name}
-              </span>
+          {/* Mobile Hub Shell */}
+          <div className="relative z-10 max-w-[480px] w-full mx-auto px-4 pb-8 flex flex-col gap-4">
+            
+            {/* 1. Profile & NFC Hero Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-[#121824]/90 backdrop-blur-2xl shadow-2xl p-4 sm:p-5 flex flex-col gap-3.5 border border-white/5">
+              {/* Glow Accent Rim */}
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-60" />
+              
+              {/* Identity Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  {/* Monogram / Logo */}
+                  <div className="relative shrink-0 w-16 h-16 rounded-xl bg-[#121824] p-1 shadow-lg border border-[#ffc174]/20 flex items-center justify-center">
+                    <img 
+                      src={logoUrl} 
+                      alt={businessName} 
+                      className="w-full h-full object-contain rounded-lg"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/logo.png";
+                      }}
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#10B981] flex items-center justify-center shadow-md">
+                      <Check className="w-3 h-3 text-[#0B0F17] font-black stroke-[3]" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col min-w-0">
+                    <h1 className="font-bold text-base sm:text-lg text-[#F8FAFC] leading-snug">
+                      {businessName}
+                    </h1>
+                    {subtitle && (
+                      <span className="text-xs text-[#94A3B8] line-clamp-1 mt-0.5">
+                        {subtitle}
+                      </span>
+                    )}
+                    {address && (
+                      <a 
+                        className="mt-1 inline-flex items-center gap-1 text-[#ffb95f] hover:text-[#ffc174] text-[11px] font-medium transition-colors"
+                        href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                        rel="noopener noreferrer" 
+                        target="_blank"
+                        onClick={() => trackClick("address_pin")}
+                      >
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{address}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Action Bar (Only shown if phone or mapsUrl is not blank!) */}
+              {(cleanPhone || mapsUrl) && (
+                <div className={`grid ${cleanPhone && mapsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
+                  {cleanPhone && (
+                    <a 
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#1B2232] hover:bg-[#262a33] text-[#F8FAFC] text-xs font-semibold transition-all active:scale-[0.98] shadow-md border border-white/5 cursor-pointer"
+                      href={`tel:${cleanPhone}`}
+                      onClick={() => trackClick("call_quick")}
+                    >
+                      <Phone className="w-4 h-4 text-[#ffc174]" />
+                      <span>Call Us</span>
+                    </a>
+                  )}
+                  {mapsUrl && (
+                    <a 
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#1B2232] hover:bg-[#262a33] text-[#F8FAFC] text-xs font-semibold transition-all active:scale-[0.98] shadow-md border border-white/5 cursor-pointer"
+                      href={mapsUrl}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("directions_quick")}
+                    >
+                      <Navigation className="w-4 h-4 text-[#4cd7f6]" />
+                      <span>Directions</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-        </div>
 
-        {/* 2. LOGO + HEADER INFO */}
-        <div className="px-5 -mt-14 relative z-10 flex flex-col items-center text-center">
-          {/* Round Logo */}
-          <div 
-            className="w-24 h-24 rounded-full p-1 bg-white/10 backdrop-blur-md shadow-2xl border-2 border-white/20 overflow-hidden flex items-center justify-center"
-            style={{ backgroundColor: isDark ? "#141720" : "#ffffff" }}
-          >
-            {design.logo_url || (business as any).logo_url || business.custom_design?.logo_url ? (
-              <img 
-                src={design.logo_url || (business as any).logo_url || business.custom_design?.logo_url || ""} 
-                alt={business.name}
-                className="w-full h-full object-cover rounded-full"
-              />
-            ) : (
-              <div 
-                className="w-full h-full rounded-full flex items-center justify-center text-2xl font-black text-black"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {business.name.charAt(0).toUpperCase()}
+            {/* 2. Google Review Main Trigger Banner */}
+            <div 
+              className="relative group cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br from-[#121824] via-[#262a33] to-[#121824] p-4 shadow-xl transition-all duration-300 hover:shadow-[#f59e0b]/20 hover:scale-[1.01] active:scale-[0.99] border border-white/5" 
+              onClick={() => {
+                const reviewUrl = `/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`;
+                window.location.href = reviewUrl;
+              }}
+              role="button" 
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  const reviewUrl = `/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`;
+                  window.location.href = reviewUrl;
+                }
+              }}
+            >
+              <div className="absolute -right-8 -top-8 w-28 h-28 bg-[#f59e0b]/15 rounded-full blur-2xl group-hover:bg-[#f59e0b]/25 transition-all" />
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-5 h-5 text-[#ffc174] fill-[#ffc174]" />
+                    <span className="text-base sm:text-lg text-[#F8FAFC] font-bold">
+                      Loved your visit?
+                    </span>
+                  </div>
+                  <span className="text-xs text-[#94A3B8]">
+                    {cfg.cta_text || "Tap to write a rapid 5-Star Google Review"}
+                  </span>
+                  <div className="flex items-center gap-1 mt-1 text-[#ffc174]">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className="w-4 h-4 fill-[#ffc174] text-[#ffc174]" />
+                    ))}
+                    <span className="text-xs text-[#ffb95f] ml-1 font-semibold">5.0 Rating</span>
+                  </div>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-[#f59e0b] text-[#2a1700] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0">
+                  <Star className="w-6 h-6 fill-black text-black" />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Connect & Social Channels Grid (Strictly hides any blank client button) */}
+            {hasSocialChannels && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-bold">
+                    Connect &amp; Social Channels
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  
+                  {/* WhatsApp Contact */}
+                  {cleanWhatsApp && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={`https://wa.me/${cleanWhatsApp}?text=${encodeURIComponent(business.whatsapp_message || `Hi ${businessName}`)}`}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("whatsapp")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#10B981]/20 flex items-center justify-center text-[#10B981] transition-colors shrink-0">
+                        <svg className="w-5 h-5 text-emerald-400 fill-current" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#10B981] truncate transition-colors">
+                          WhatsApp
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">Instant Chat</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Instagram */}
+                  {instagramUrl && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={instagramUrl}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("instagram")}
+                    >
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+                        <svg className="w-5 h-5 text-white fill-current" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#ffc174] truncate transition-colors">
+                          Instagram
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">
+                          {instagramHandle || "@instagram"}
+                        </span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Direct Phone Call */}
+                  {phone && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={`tel:${cleanPhone}`}
+                      onClick={() => trackClick("call_office")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0">
+                        <Phone className="w-5 h-5 fill-current" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#4cd7f6] truncate transition-colors">
+                          Call Office
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">{phone}</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Facebook */}
+                  {facebookUrl && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={facebookUrl}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("facebook")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#acedff]/20 flex items-center justify-center text-[#acedff] transition-colors shrink-0">
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#acedff] truncate transition-colors">
+                          Facebook
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">Official Page</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Website */}
+                  {websiteUrl && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={websiteUrl}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("website")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#ffc174]/20 flex items-center justify-center text-[#ffc174] transition-colors shrink-0">
+                        <Globe className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#ffc174] truncate transition-colors">
+                          Website
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">{displayWebsite}</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Email */}
+                  {email && (
+                    <a 
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      href={`mailto:${email}`}
+                      onClick={() => trackClick("email")}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0">
+                        <Mail className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#4cd7f6] truncate transition-colors">
+                          Email
+                        </span>
+                        <span className="text-[11px] text-[#94A3B8] truncate">{email}</span>
+                      </div>
+                    </a>
+                  )}
+
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Business Name */}
-          <h1 className="mt-3 text-xl sm:text-2xl font-black tracking-tight flex items-center gap-1.5 justify-center">
-            <span>{business.name}</span>
-            <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-          </h1>
+            {/* 4. About Us Section (Only shown if client provided text!) */}
+            {aboutUsText && (
+              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2 shadow-lg border border-white/5">
+                <div className="flex items-center gap-2">
+                  <Info className="w-5 h-5 text-[#ffc174] shrink-0" />
+                  <h2 className="text-sm font-bold text-[#F8FAFC]">About Us</h2>
+                </div>
+                <p className="text-xs sm:text-[13px] text-[#dfe2ee] leading-relaxed">
+                  {aboutUsText}
+                </p>
+              </div>
+            )}
 
-          {/* Tagline */}
-          {design.tagline && (
-            <p className={`mt-1 text-xs max-w-xs leading-relaxed ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
-              {design.tagline}
-            </p>
-          )}
-
-          {/* Address Pill */}
-          {design.address && (
-            <a
-              href={getMapsHref(design.maps_link || design.address)}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => trackClick("address_pill")}
-              className={`mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-colors cursor-pointer ${
-                isDark 
-                  ? "bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10" 
-                  : "bg-black/5 border-black/10 text-zinc-700 hover:bg-black/10"
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-              <span className="truncate max-w-[240px]">{design.address}</span>
-              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-            </a>
-          )}
-        </div>
-
-        {/* 3. CALL + DIRECTIONS ROW */}
-        <div className="px-5 mt-4 grid grid-cols-2 gap-2.5">
-          {callBtn && (
-            <a
-              href={getCallHref(callBtn.url_or_value)}
-              onClick={() => trackClick("call")}
-              className={`tactile-btn py-3 px-4 flex items-center justify-center gap-2 font-bold text-xs border transition-all active:scale-[0.978] cursor-pointer ${btnRoundClass} ${
-                isDark 
-                  ? "bg-zinc-900/80 hover:bg-zinc-800 text-white border-zinc-700" 
-                  : "bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200 shadow-xs"
-              }`}
-            >
-              <Phone className="w-4 h-4 text-emerald-400" />
-              <span>{callBtn.label || design.texts.call_btn}</span>
-            </a>
-          )}
-
-          {directionsBtn && (
-            <a
-              href={getMapsHref(directionsBtn.url_or_value)}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => trackClick("directions")}
-              className={`tactile-btn py-3 px-4 flex items-center justify-center gap-2 font-bold text-xs border transition-all active:scale-[0.978] cursor-pointer ${btnRoundClass} ${
-                isDark 
-                  ? "bg-zinc-900/80 hover:bg-zinc-800 text-white border-zinc-700" 
-                  : "bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200 shadow-xs"
-              }`}
-            >
-              <MapPin className="w-4 h-4 text-red-400" />
-              <span>{directionsBtn.label || design.texts.directions_btn}</span>
-            </a>
-          )}
-        </div>
-
-        {/* 4. INTERACTIVE 5-STAR REVIEW ASSISTANT */}
-        <div className="px-5 mt-3 space-y-3">
-          <div className={`p-5 ${cardClass} ${btnRoundClass} text-center space-y-3 shadow-md`}>
-            <div className="flex items-center justify-center gap-2">
-              {[1, 2, 3, 4, 5].map((s) => {
-                const isFilled = stars !== null && s <= stars;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setStars(s);
-                      if (drafts.length > 0) setDrafts([]);
-                    }}
-                    className="p-1 cursor-pointer transition-transform active:scale-90 hover:scale-110"
-                    title={`Rate ${s} out of 5 stars`}
-                  >
-                    <Star
-                      className={`w-9 h-9 sm:w-10 sm:h-10 transition-colors ${
-                        isFilled
-                          ? "fill-amber-400 text-amber-400 filter drop-shadow-xs"
-                          : isDark ? "text-zinc-600 hover:text-amber-300 fill-zinc-800/40" : "text-zinc-300 hover:text-amber-300 fill-zinc-50"
-                      }`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-
-            <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-600"}`}>
-              {stars === null
-                ? "Loved it? Tap a star to review!"
-                : stars === 5
-                ? "Loved it! (5 Stars)"
-                : stars === 4
-                ? "Great experience! (4 Stars)"
-                : stars === 3
-                ? "Standard experience (3 Stars)"
-                : "Room for improvement"}
-            </span>
-          </div>
-
-          {/* If stars not yet tapped, show prominent Hero Button that activates 5-star review */}
-          {stars === null && (
-            <button
-              type="button"
-              onClick={() => {
-                setStars(5);
-                trackClick("review");
-              }}
-              className={`tactile-btn w-full py-4 px-5 flex items-center justify-center gap-2.5 font-black text-sm tracking-wide shadow-lg transition-all active:scale-[0.978] cursor-pointer ${btnRoundClass}`}
-              style={{
-                backgroundColor: primaryColor,
-                color: "#000000",
-              }}
-            >
-              <Star className="w-5 h-5 fill-current text-black" />
-              <span>{reviewBtn?.label || design.texts.write_review_btn || "Leave a 5-Star Review on Google"}</span>
-              <Sparkles className="w-4 h-4 text-black animate-pulse" />
-            </button>
-          )}
-
-          {/* When stars clicked, reveal chips, length selector, AI generator & drafts */}
-          {stars !== null && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-3 duration-300">
-              {/* Aspect Chips */}
-              <div className="space-y-2">
-                <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
-                  What stood out? (Tap 1 or more) *
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {PRESET_ASPECTS.map((aspect) => {
-                    const isSelected = selectedOptionIds.includes(aspect);
+            {/* 5. Operating Hours Matrix (Only shown if client provided hours!) */}
+            {openingHoursList.length > 0 && (
+              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border border-white/5">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-[#4cd7f6] shrink-0" />
+                  <h2 className="text-sm font-bold text-[#F8FAFC]">Opening Hours</h2>
+                </div>
+                <div className="flex flex-col gap-2 pt-1 text-xs">
+                  {openingHoursList.map((line: string, idx: number) => {
+                    const parts = line.split(":");
+                    if (parts.length >= 2) {
+                      const dayLabel = parts[0].trim();
+                      const timeLabel = parts.slice(1).join(":").trim();
+                      return (
+                        <div key={idx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[#1B2232] border border-white/5">
+                          <span className="text-[#F8FAFC] font-medium">{dayLabel}</span>
+                          <span className="text-[#ffddb8] font-semibold">{timeLabel}</span>
+                        </div>
+                      );
+                    }
                     return (
-                      <button
-                        key={aspect}
-                        type="button"
-                        onClick={() => toggleOption(aspect)}
-                        className={`tactile-btn px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border transition-all ${
-                          isSelected
-                            ? "bg-[#ff7a00] text-black border-amber-600 font-bold shadow-2xs"
-                            : isDark
-                            ? "bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border-zinc-700"
-                            : "bg-white hover:bg-zinc-50 text-zinc-700 border-zinc-200"
-                        }`}
-                      >
-                        {aspect}
-                      </button>
+                      <div key={idx} className="py-1.5 px-3 rounded-xl bg-[#1B2232] text-[#ffddb8] font-medium border border-white/5">
+                        {line}
+                      </div>
                     );
                   })}
                 </div>
               </div>
+            )}
 
-              {/* Length Selector */}
-              <div className="space-y-1.5">
-                <span className={`text-xs font-bold block ${isDark ? "text-zinc-300" : "text-zinc-700"}`}>
-                  Review Length
-                </span>
-                <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-2xl border ${isDark ? "bg-zinc-800/80 border-zinc-700" : "bg-zinc-100 border-zinc-200/80"}`}>
-                  <button
-                    type="button"
-                    onClick={() => setReviewLength("short")}
-                    className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                      reviewLength === "short"
-                        ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                        : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Short (1-2)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReviewLength("medium")}
-                    className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                      reviewLength === "medium"
-                        ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                        : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Medium (3-4)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReviewLength("long")}
-                    className={`py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                      reviewLength === "long"
-                        ? isDark ? "bg-zinc-900 text-white shadow-2xs font-extrabold" : "bg-white text-zinc-900 shadow-2xs font-extrabold"
-                        : isDark ? "text-zinc-400 hover:text-white" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Detailed (5+)
-                  </button>
+            {/* 6. Frequently Asked Questions (Only shown if client provided FAQs!) */}
+            {faqsList.length > 0 && (
+              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border border-white/5">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-[#c7c8ff] shrink-0" />
+                  <h2 className="text-sm font-bold text-[#F8FAFC]">Frequently Asked Questions</h2>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {faqsList.map((faq, idx) => (
+                    <details key={idx} className="group rounded-xl bg-[#1B2232] p-3 cursor-pointer border border-white/5 transition-all">
+                      <summary className="flex items-center justify-between list-none text-xs font-semibold text-[#F8FAFC] select-none">
+                        <span>{faq.question}</span>
+                        <ChevronDown className="w-4 h-4 text-[#94A3B8] group-open:rotate-180 transition-transform shrink-0" />
+                      </summary>
+                      <div className="mt-2 text-[#94A3B8] text-[11px] leading-relaxed pt-1 border-t border-white/5">
+                        {faq.answer}
+                      </div>
+                    </details>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {/* Write My Review CTA Button */}
-              {drafts.length === 0 && (
-                <button
-                  type="button"
-                  onClick={handleGenerateReviews}
-                  disabled={loading || selectedOptionIds.length === 0}
-                  className="tactile-btn w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-[#ff7a00] hover:from-amber-600 hover:to-[#ea6c00] text-black font-extrabold text-sm shadow-md transition-all active:scale-[0.978] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                      <span>Crafting personalized drafts...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-black" />
-                      <span>Write my review</span>
-                    </>
+            {/* 7. Studio Location View (Only shown if address/mapsUrl/locationImage exists!) */}
+            {(address || mapsUrl || locationImage) && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-bold">
+                    Our Studio Location
+                  </span>
+                  {mapsUrl && (
+                    <a 
+                      className="text-[11px] text-[#ffc174] hover:underline font-semibold"
+                      href={mapsUrl}
+                      rel="noopener noreferrer" 
+                      target="_blank"
+                      onClick={() => trackClick("location_maps_link")}
+                    >
+                      Open in Google Maps
+                    </a>
                   )}
-                </button>
-              )}
-
-              {/* Drafts Suggestion Cards Carousel */}
-              {drafts.length > 0 && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-3 duration-300">
-                  <div className="flex items-center justify-between pb-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${isDark ? "text-white" : "text-zinc-900"}`}>
-                        Suggestion {selectedDraftIndex + 1} of {drafts.length}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${isDark ? "bg-zinc-800 text-zinc-300" : "bg-zinc-200 text-zinc-800"}`}>
-                        {selectedDraftIndex + 1}/{drafts.length}
+                </div>
+                <div 
+                  className="w-full h-44 rounded-2xl shadow-lg relative overflow-hidden bg-[#121824] flex items-end p-3.5 border border-white/5"
+                  style={{
+                    backgroundImage: `url('${locationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}')`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center"
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F17] via-[#0B0F17]/40 to-transparent" />
+                  <div className="relative z-10 flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <MapPin className="w-5 h-5 text-[#ffc174] shrink-0" />
+                      <span className="text-xs sm:text-sm text-[#F8FAFC] font-bold truncate">
+                        {locationTitle || address || "Our Studio Hub"}
                       </span>
                     </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDraftIndex((prev) => (prev > 0 ? prev - 1 : drafts.length - 1))}
-                        className={`p-1.5 rounded-xl transition-colors cursor-pointer ${isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
-                        title="Previous suggestion"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDraftIndex((prev) => (prev < drafts.length - 1 ? prev + 1 : 0))}
-                        className={`p-1.5 rounded-xl transition-colors cursor-pointer ${isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
-                        title="Next suggestion"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleGenerateReviews}
-                        disabled={loading}
-                        className="ml-2 text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20"
-                        title="Generate another set"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-                        <span>New drafts</span>
-                      </button>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-[#1B2232]/90 backdrop-blur-md text-[#F8FAFC] text-[10px] font-bold shadow shrink-0 border border-white/10">
+                      NFC Station
+                    </span>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  {drafts[selectedDraftIndex] && (
-                    <div className={`p-4 rounded-2xl border-2 border-[#ff7a00] ring-4 ring-[#ff7a00]/10 shadow-lg relative transition-all ${isDark ? "bg-zinc-900/90 text-white" : "bg-white text-zinc-900"}`}>
-                      <div className={`flex items-center justify-between pb-2 mb-2 border-b ${isDark ? "border-zinc-800" : "border-zinc-100"}`}>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#ff7a00]" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-[#ff7a00]">
-                            Draft {selectedDraftIndex + 1}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
-                            Edit freely
-                          </span>
+            {/* 8. Business Portal Trigger */}
+            <div className="rounded-2xl bg-[#1B2232] p-3.5 flex items-center justify-between shadow-md border border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#262a33] flex items-center justify-center text-[#ffc174] shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <span className="text-xs text-[#F8FAFC] font-medium">Business owner? Manage this card</span>
+              </div>
+              <button 
+                className="px-3.5 py-1.5 rounded-lg bg-[#262a33] hover:bg-[#353942] text-[#F8FAFC] text-xs font-semibold transition-colors cursor-pointer border border-white/5" 
+                type="button"
+                onClick={() => setOwnerModalOpen(true)}
+              >
+                Log In
+              </button>
+            </div>
 
-                          {speechSupported && (
-                            <button
-                              type="button"
-                              onClick={toggleListening}
-                              className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                                isListening
-                                  ? "bg-red-500 text-white border-red-600 animate-pulse"
-                                  : isDark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border-zinc-300"
-                              }`}
-                              title={isListening ? "Listening... Tap to stop" : "Tap to speak your review"}
-                            >
-                              {isListening ? <MicOff className="w-3.5 h-3.5 text-white" /> : <Mic className="w-3.5 h-3.5 text-zinc-400" />}
-                              <span className="text-[10px] hidden sm:inline">{isListening ? "Listening" : "Dictate"}</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
+          </div>
+        </div>
+      </main>
 
-                      <textarea
-                        rows={4}
-                        value={drafts[selectedDraftIndex].text}
-                        onChange={(e) => {
-                          const newText = e.target.value;
-                          setDrafts((prev) => prev.map((d, i) => i === selectedDraftIndex ? { ...d, text: newText } : d));
-                        }}
-                        className={`w-full text-xs leading-relaxed font-sans bg-transparent border-0 focus:outline-none resize-none ${isDark ? "text-white placeholder:text-zinc-600" : "text-zinc-900 placeholder:text-zinc-400"}`}
-                        placeholder="Review text..."
+      {/* 9. INTERACTIVE GOOGLE REVIEW MODAL */}
+      {reviewModalOpen && (
+        <div 
+          aria-labelledby="modalHeading" 
+          aria-modal="true" 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#0B0F17]/80 backdrop-blur-md transition-opacity duration-300" 
+          role="dialog"
+        >
+          {/* Backdrop click to close */}
+          <div 
+            className="absolute inset-0 cursor-pointer" 
+            onClick={() => setReviewModalOpen(false)}
+          />
+
+          {/* Modal Container */}
+          <div className="relative z-10 w-full max-w-[460px] max-h-[92vh] overflow-y-auto bg-[#121824] rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-[#dfe2ee] border border-white/10 animate-in slide-in-from-bottom-6 duration-200">
+            
+            {/* Header & Close Button */}
+            <div className="flex items-center justify-between pb-1 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#f59e0b]/20 flex items-center justify-center text-[#ffb95f]">
+                  <Sparkles className="w-4 h-4 text-[#ffc174]" />
+                </div>
+                <span className="text-base font-bold text-[#F8FAFC]" id="modalHeading">
+                  Write a Google Review
+                </span>
+              </div>
+              <button 
+                aria-label="Close dialog" 
+                className="w-8 h-8 rounded-full bg-[#1B2232] hover:bg-[#262a33] flex items-center justify-center text-[#94A3B8] hover:text-[#F8FAFC] transition-colors cursor-pointer" 
+                type="button"
+                onClick={() => setReviewModalOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 5-Star Interactive Rating Display Card */}
+            <div className="rounded-2xl bg-[#1B2232] p-4 flex flex-col items-center justify-center gap-2 shadow-inner border border-white/5">
+              <div aria-label="Star Rating" className="flex items-center justify-center gap-2" role="radiogroup">
+                {[1, 2, 3, 4, 5].map((s) => {
+                  const isFilled = s <= currentRating;
+                  return (
+                    <button
+                      key={s}
+                      aria-label={`${s} Star${s > 1 ? "s" : ""}`}
+                      className="text-[#ffc174] hover:scale-110 active:scale-95 transition-transform cursor-pointer p-1 focus:outline-none"
+                      type="button"
+                      onClick={() => {
+                        setCurrentRating(s);
+                        setShowReviewBox(false);
+                      }}
+                    >
+                      <Star 
+                        className={`w-8 h-8 sm:w-9 sm:h-9 transition-colors ${
+                          isFilled 
+                            ? "fill-[#ffc174] text-[#ffc174] drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" 
+                            : "text-[#353942] fill-transparent"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="text-xs font-semibold text-[#F8FAFC]">
+                {ratingDescriptions[currentRating] || `${currentRating} Stars`}
+              </span>
+            </div>
+
+            {/* Anti-Gating: If <= 2 Stars, offer private feedback option compliant with Google policies */}
+            {currentRating <= 2 ? (
+              <div className="flex flex-col gap-3 p-3.5 rounded-2xl bg-[#1B2232]/80 border border-amber-500/20">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-[#dfe2ee]">
+                    <span className="font-bold text-amber-300 block mb-0.5">We strive for 5-star perfection!</span>
+                    Please tell our management directly what happened so we can make it right immediately.
+                  </div>
+                </div>
+
+                {privateFeedbackSent ? (
+                  <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs text-center font-bold">
+                    ✓ Thank you! Your feedback has been sent directly to executive management.
+                  </div>
+                ) : (
+                  <form onSubmit={handleSendPrivateFeedback} className="flex flex-col gap-2">
+                    <textarea
+                      rows={2}
+                      placeholder="Share your experience privately with the owner..."
+                      value={privateFeedbackText}
+                      onChange={(e) => setPrivateFeedbackText(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-[#121824] border border-white/10 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Your name (optional)"
+                        value={privateFeedbackName}
+                        onChange={(e) => setPrivateFeedbackName(e.target.value)}
+                        className="p-2 rounded-xl bg-[#121824] border border-white/10 text-xs text-white placeholder:text-zinc-500 focus:outline-none"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Your phone (optional)"
+                        value={privateFeedbackPhone}
+                        onChange={(e) => setPrivateFeedbackPhone(e.target.value)}
+                        className="p-2 rounded-xl bg-[#121824] border border-white/10 text-xs text-white placeholder:text-zinc-500 focus:outline-none"
                       />
                     </div>
-                  )}
-
-                  <p className={`text-[11px] italic text-center ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>
-                    Suggestions are a starting point. Edit to match your experience.
-                  </p>
-
-                  <div className="pt-1 space-y-2">
                     <button
-                      type="button"
-                      onClick={handleCopyAndPost}
-                      className="tactile-btn w-full py-4 rounded-2xl bg-[#ff7a00] hover:bg-[#e56d00] text-black font-black text-sm shadow-md transition-all active:scale-[0.978] flex items-center justify-center gap-2 cursor-pointer"
+                      type="submit"
+                      disabled={privateFeedbackSubmitting || !privateFeedbackText.trim()}
+                      className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-black text-xs font-bold transition-colors cursor-pointer"
                     >
-                      {copiedSuccess ? (
-                        <>
-                          <Check className="w-4 h-4 text-black stroke-[3]" />
-                          <span>Copied! Opening Google Review...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 text-black" />
-                          <span>Submit review</span>
-                          <ExternalLink className="w-3.5 h-3.5 text-black" />
-                        </>
-                      )}
+                      {privateFeedbackSubmitting ? "Sending..." : "Submit Private Resolution"}
                     </button>
-                  </div>
+                  </form>
+                )}
 
-                  {stars !== null && stars <= 3 && (
-                    <div className="pt-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setPrivateFeedbackOpen(true)}
-                        className={`text-xs font-bold underline cursor-pointer ${isDark ? "text-zinc-400 hover:text-white" : "text-zinc-500 hover:text-zinc-800"}`}
-                      >
-                        Tell the owner privately (discreet feedback)
-                      </button>
-                    </div>
-                  )}
+                {/* Secondary Option: Still allow user to post directly to Google Reviews */}
+                <div className="pt-1 text-center">
+                  <a
+                    href={googleReviewLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-zinc-400 hover:text-white underline"
+                  >
+                    Or continue directly to Google Reviews
+                  </a>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 5. ROUND SOCIAL & CONTACT ICONS ROW */}
-        <div className="px-5 mt-4">
-          <div className={`p-3 ${cardClass} ${btnRoundClass} flex items-center justify-around gap-2`}>
-            {socialButtons.map((btn) => (
-              <a
-                key={btn.id}
-                href={getSocialHref(btn)}
-                target={btn.type === "email" ? undefined : "_blank"}
-                rel="noreferrer"
-                onClick={() => trackClick(btn.type)}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
-                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
-                }`}
-                title={btn.label}
-              >
-                {getSocialIcon(btn.type)}
-              </a>
-            ))}
-            {callBtn && !socialButtons.some((b) => b.type === "call") && (
-              <a
-                href={getCallHref(callBtn.url_or_value)}
-                onClick={() => trackClick("call")}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
-                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
-                }`}
-                title="Call"
-              >
-                <Phone className="w-5 h-5 text-emerald-400" />
-              </a>
-            )}
-            {directionsBtn && !socialButtons.some((b) => b.type === "directions" || b.type === "maps") && (
-              <a
-                href={getMapsHref(directionsBtn.url_or_value)}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => trackClick("directions")}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 cursor-pointer ${
-                  isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
-                }`}
-                title="Directions"
-              >
-                <MapPin className="w-5 h-5 text-red-400" />
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* 6. CUSTOM BUTTONS (Menu, Booking, Custom Links) */}
-        {customButtons.length > 0 && (
-          <div className="px-5 mt-3 space-y-2">
-            {customButtons.map((btn) => (
-              <a
-                key={btn.id}
-                href={btn.url_or_value.startsWith("http") ? btn.url_or_value : `https://${btn.url_or_value}`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => trackClick(btn.type)}
-                className={`tactile-btn w-full py-3.5 px-4 flex items-center justify-between font-bold text-xs border transition-all active:scale-[0.978] cursor-pointer ${btnRoundClass} ${
-                  isDark
-                    ? "bg-zinc-900/90 hover:bg-zinc-800 text-white border-zinc-700/80 shadow-md"
-                    : "bg-white hover:bg-zinc-50 text-zinc-900 border-zinc-200 shadow-sm"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />
-                  <span>{btn.label}</span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-              </a>
-            ))}
-          </div>
-        )}
-
-        {/* 7. DYNAMIC SECTIONS IN ORDER */}
-        <div className="px-5 mt-5 space-y-4">
-          {sections.filter((s) => s.visible).map((section) => {
-            switch (section.type) {
-              case "about":
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <h2 className="text-xs font-bold uppercase tracking-wider mb-2 text-balance" style={{ color: accentColor }}>
-                      {design.texts.about_heading}
-                    </h2>
-                    <p className={`text-xs leading-relaxed text-pretty ${isDark ? "text-zinc-200" : "text-zinc-800"}`}>
-                      {section.content?.text || ""}
-                    </p>
-                  </div>
-                );
-
-              case "photos":
-                if (photos.length === 0) return null;
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <h2 className="text-xs font-bold uppercase tracking-wider mb-3 text-balance" style={{ color: accentColor }}>
-                      {design.texts.photos_heading}
-                    </h2>
-                    <div className="grid grid-cols-3 gap-2">
-                      {photos.map((photo) => (
-                        <div
-                          key={photo.id}
-                          onClick={() => setActivePhoto(photo)}
-                          className="aspect-square rounded-xl overflow-hidden cursor-pointer group relative bg-zinc-800"
-                        >
-                          <img
-                            src={photo.image_url}
-                            alt={photo.caption || "Gallery photo"}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-
-              case "hours":
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-balance" style={{ color: accentColor }}>
-                        {design.texts.hours_heading}
-                      </h2>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                        Open Now
-                      </span>
-                    </div>
-                    <div className="space-y-1.5 text-xs">
-                      {Array.isArray(section.content?.schedule) && section.content.schedule.map((item: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center py-1 border-b border-white/5 last:border-0">
-                          <span className={isDark ? "text-zinc-300" : "text-zinc-700"}>{item.days}</span>
-                          <span className="font-semibold font-mono">{item.hours}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-
-              case "offers":
-                if (!Array.isArray(section.content?.offers) || section.content.offers.length === 0) return null;
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass} space-y-3`}>
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-balance" style={{ color: accentColor }}>
-                      {design.texts.offers_heading}
-                    </h2>
-                    {section.content.offers.map((offer: any, i: number) => (
-                      <div key={i} className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Tag className="w-3.5 h-3.5 text-amber-400" />
-                          <span className="font-bold text-xs text-amber-300">{offer.title}</span>
-                        </div>
-                        <p className="text-[11px] text-zinc-300 leading-normal">{offer.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                );
-
-              case "faqs":
-                if (!Array.isArray(section.content?.items) || section.content.items.length === 0) return null;
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass} space-y-2`}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: accentColor }}>
-                      {design.texts.faqs_heading}
-                    </h3>
-                    {section.content.items.map((faq: any, i: number) => {
-                      const isOpen = openFaqIndex === i;
+              </div>
+            ) : (
+              <>
+                {/* What stood out? Section */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-[#F8FAFC]">
+                    What stood out? (Tap 1 or more) <span className="text-[#f59e0b]">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    {availableTags.map((tag) => {
+                      const isSelected = selectedTags.has(tag);
                       return (
-                        <div key={i} className="border-b border-white/5 last:border-0 pb-2">
-                          <button
-                            type="button"
-                            onClick={() => setOpenFaqIndex(isOpen ? null : i)}
-                            className="w-full text-left py-1.5 flex justify-between items-center gap-2 text-xs font-semibold cursor-pointer"
-                          >
-                            <span>{faq.q}</span>
-                            {isOpen ? <ChevronUp className="w-3.5 h-3.5 opacity-60 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 opacity-60 flex-shrink-0" />}
-                          </button>
-                          {isOpen && (
-                            <p className={`pt-1 text-[11px] leading-relaxed ${isDark ? "text-zinc-400" : "text-zinc-600"}`}>
-                              {faq.a}
-                            </p>
-                          )}
-                        </div>
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className={`px-3 py-1.5 rounded-full text-xs transition-all duration-150 active:scale-95 cursor-pointer border ${
+                            isSelected
+                              ? "bg-[#f59e0b]/20 text-[#ffb95f] font-bold border-[#f59e0b]/40 shadow-xs"
+                              : "bg-[#1B2232] text-[#94A3B8] hover:text-[#F8FAFC] border-white/5"
+                          }`}
+                        >
+                          {tag}
+                        </button>
                       );
                     })}
                   </div>
-                );
+                </div>
 
-              case "testimonials":
-                if (!Array.isArray(section.content?.reviews) || section.content.reviews.length === 0) return null;
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass} space-y-3`}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: accentColor }}>
-                      {design.texts.testimonials_heading}
-                    </h3>
-                    <div className="space-y-2.5">
-                      {section.content.reviews.map((rev: any, i: number) => (
-                        <div key={i} className={`p-3 rounded-xl border ${isDark ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"}`}>
-                          <div className="flex items-center gap-1 mb-1.5">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            ))}
-                          </div>
-                          <p className="text-[11px] italic leading-normal mb-1">"{rev.text}"</p>
-                          <span className="text-[10px] font-bold text-zinc-400 block">— {rev.author}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-
-              case "video":
-                if (!section.content?.video_url) return null;
-                return (
-                  <div key={section.id} className={`p-4 ${cardClass} ${btnRoundClass}`}>
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center">
-                      {section.content.video_url.includes("youtube") || section.content.video_url.includes("youtu.be") ? (
-                        <iframe
-                          src={section.content.video_url.replace("watch?v=", "embed/")}
-                          title="Video"
-                          className="w-full h-full border-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <video 
-                          src={section.content.video_url} 
-                          controls 
-                          className="w-full h-full object-cover" 
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-
-              default:
-                return null;
-            }
-          })}
-        </div>
-
-        {/* 8. FOOTER: POWERED BY & OWNER ACCESS */}
-        <footer className="mt-8 px-5 text-center space-y-2">
-          {design.show_powered_by && (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-300 font-medium">
-              <span>Powered by</span>
-              <a 
-                href="https://zentapdigitalsolutions.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="font-bold text-zinc-200 hover:text-white transition-colors flex items-center gap-1"
-              >
-                <span>ZenTap</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ff7a00]" />
-              </a>
-            </div>
-          )}
-
-          {/* Owner Access Link */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setOwnerModalOpen(true)}
-              className="text-xs text-zinc-300 hover:text-white transition-colors cursor-pointer"
-            >
-              Business owner? Manage this card
-            </button>
-          </div>
-        </footer>
-
-        {/* PHOTO LIGHTBOX MODAL */}
-        {activePhoto && (
-          <div 
-            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
-            onClick={() => setActivePhoto(null)}
-          >
-            <button
-              onClick={() => setActivePhoto(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 cursor-pointer"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <div className="max-w-md w-full space-y-2" onClick={(e) => e.stopPropagation()}>
-              <img 
-                src={activePhoto.image_url} 
-                alt={activePhoto.caption || "Gallery"} 
-                className="w-full rounded-2xl max-h-[75vh] object-contain shadow-2xl"
-              />
-              {activePhoto.caption && (
-                <p className="text-center text-xs text-zinc-300 font-medium">
-                  {activePhoto.caption}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* PRIVATE FEEDBACK MODAL (1-3 STARS) */}
-        {privateFeedbackOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className={`max-w-md w-full p-6 rounded-3xl ${isDark ? "bg-zinc-900 border border-zinc-800 text-white" : "bg-white text-zinc-900"} shadow-2xl relative space-y-4 animate-in fade-in zoom-in-95`}>
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold">Discreet Private Feedback</h3>
-                    <p className="text-[10px] text-zinc-400">Sent directly to the business owner</p>
+                {/* Review Length Selector */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-[#F8FAFC]">Review Length</label>
+                  <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#1B2232] border border-white/5">
+                    {(["short", "medium", "detailed"] as const).map((len) => {
+                      const isLen = selectedLength === len;
+                      const labels = { short: "Short (1–2)", medium: "Medium (3–4)", detailed: "Detailed (5+)" };
+                      return (
+                        <button
+                          key={len}
+                          type="button"
+                          onClick={() => setSelectedLength(len)}
+                          className={`py-2 px-1.5 rounded-lg text-xs text-center transition-all cursor-pointer ${
+                            isLen
+                              ? "bg-[#262a33] text-[#F8FAFC] font-bold shadow"
+                              : "text-[#94A3B8] hover:text-[#F8FAFC]"
+                          }`}
+                        >
+                          {labels[len]}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <button
+
+                {/* Generated Review Suggestion Box */}
+                {(showReviewBox || generatedReview) && (
+                  <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-[#1B2232]/80 border border-[#ffc174]/20 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between text-[#ffc174] text-xs font-semibold">
+                      <span>Generated Review Ready</span>
+                      <button 
+                        type="button" 
+                        onClick={handleCopyReview}
+                        className="inline-flex items-center gap-1 text-[#ffb95f] hover:text-[#ffc174] cursor-pointer"
+                      >
+                        {copiedReview ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-bold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-[#F8FAFC] italic leading-relaxed">
+                      &ldquo;{generatedReview}&rdquo;
+                    </p>
+                  </div>
+                )}
+
+                {/* Write my review Golden Action CTA */}
+                <button 
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#f59e0b] via-[#ffc174] to-[#f59e0b] text-[#2a1700] text-sm font-extrabold shadow-[0_0_24px_-2px_rgba(245,158,11,0.35)] hover:shadow-[0_0_32px_rgba(245,158,11,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer" 
                   type="button"
-                  onClick={() => setPrivateFeedbackOpen(false)}
-                  className="p-1 rounded-full hover:bg-white/10 text-zinc-400 cursor-pointer"
+                  onClick={handleSubmitReview}
                 >
-                  <X className="w-5 h-5" />
+                  <Sparkles className="w-5 h-5 fill-black text-black" />
+                  <span>Write my review</span>
                 </button>
-              </div>
 
-              {fbSuccess ? (
-                <div className="py-6 text-center space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                    <Check className="w-6 h-6" />
-                  </div>
-                  <h4 className="font-bold text-sm">Thank You for Your Feedback!</h4>
-                  <p className="text-xs text-zinc-400">
-                    Your comments have been delivered to management privately.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPrivateFeedbackOpen(false);
-                      setFbSuccess(false);
-                    }}
-                    className="mt-4 px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold hover:bg-zinc-700 cursor-pointer"
-                  >
-                    Close
-                  </button>
+                <div className="text-center">
+                  <span className="text-[11px] text-[#94A3B8]">
+                    You will be seamlessly redirected to Google Reviews
+                  </span>
                 </div>
-              ) : (
-                <form onSubmit={handleSendPrivateFeedback} className="space-y-3">
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder="Tell us what went wrong and how we can make it right..."
-                    value={fbText}
-                    onChange={(e) => setFbText(e.target.value)}
-                    className={`w-full p-3 rounded-xl border text-xs focus:outline-none resize-none ${
-                      isDark ? "bg-zinc-800/80 border-zinc-700 text-white placeholder:text-zinc-500" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400"
-                    }`}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Your name (optional)"
-                      value={fbName}
-                      onChange={(e) => setFbName(e.target.value)}
-                      className={`p-2.5 rounded-xl border text-xs focus:outline-none ${
-                        isDark ? "bg-zinc-800/80 border-zinc-700 text-white placeholder:text-zinc-500" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400"
-                      }`}
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Your phone (optional)"
-                      value={fbPhone}
-                      onChange={(e) => setFbPhone(e.target.value)}
-                      className={`p-2.5 rounded-xl border text-xs focus:outline-none ${
-                        isDark ? "bg-zinc-800/80 border-zinc-700 text-white placeholder:text-zinc-500" : "bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setPrivateFeedbackOpen(false)}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={fbSubmitting || !fbText.trim()}
-                      className="tactile-btn px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold disabled:opacity-40 cursor-pointer"
-                    >
-                      {fbSubmitting ? "Sending..." : "Send Privately"}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+              </>
+            )}
+
           </div>
-        )}
+        </div>
+      )}
 
-        {/* OWNER ACCESS MODAL */}
-        {ownerModalOpen && (
-          <OwnerAccessModal
-            isOpen={ownerModalOpen}
-            onClose={() => setOwnerModalOpen(false)}
-            tagCode={business.slug}
-            businessSlug={business.slug}
-            initialBusinessName={business.name}
-          />
-        )}
+      {/* 10. FOOTER */}
+      <footer className="w-full bg-[#0a0e16] mt-8 border-t border-white/5">
+        <div className="max-w-[480px] mx-auto px-4 py-6 flex flex-col items-center gap-2 text-center">
+          <div className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
+            <ShieldCheck className="w-4 h-4 text-[#ffc174]" />
+            <span>Powered by ZenTap Digital Systems</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-[#d8c3ad]">
+            <button 
+              onClick={() => setOwnerModalOpen(true)} 
+              className="hover:text-[#ffc174] transition-colors cursor-pointer"
+            >
+              Business Portal
+            </button>
+            <span className="text-white/20">•</span>
+            <Link href="/privacy" className="hover:text-[#ffc174] transition-colors">
+              Privacy &amp; Terms
+            </Link>
+          </div>
+          <span className="text-[11px] text-[#94A3B8]/70">
+            © 2025 ZenTap Solutions. All rights reserved.
+          </span>
+        </div>
+      </footer>
 
-      </div>
+      {/* 11. OWNER ACCESS MODAL */}
+      {ownerModalOpen && (
+        <OwnerAccessModal
+          isOpen={ownerModalOpen}
+          onClose={() => setOwnerModalOpen(false)}
+          tagCode={business.slug}
+          businessSlug={business.slug}
+          initialBusinessName={business.name}
+        />
+      )}
+
     </div>
   );
 }

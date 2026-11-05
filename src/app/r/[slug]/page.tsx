@@ -5,10 +5,10 @@
 
 import { redirect } from "next/navigation";
 import { resolveScan } from "@/lib/resolveTag";
-import { getTagByCode, getBusinessBySlug, BusinessRecord } from "@/lib/businessStore";
+import { getTagByCode, getBusinessBySlug, BusinessRecord, SAMPLE_DEMO_BUSINESS } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllGoogleReviewLinks } from "@/lib/adminPlatformStore";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
 import { 
@@ -44,10 +44,25 @@ function toBusinessRecord(raw: any): BusinessRecord {
     created_at: raw.created_at || new Date().toISOString(),
     redirect_mode: raw.redirect_mode,
     address: raw.address,
+    category: raw.category,
     whatsapp_number: raw.whatsapp_number,
-    whatsapp: raw.whatsapp,
-    instagram: raw.instagram,
+    whatsapp: raw.whatsapp || raw.whatsapp_number,
+    instagram: raw.instagram || raw.instagram_url,
+    instagram_url: raw.instagram_url || raw.instagram,
+    instagram_handle: raw.instagram_handle,
+    facebook: raw.facebook || raw.facebook_url,
+    facebook_url: raw.facebook_url || raw.facebook,
+    website: raw.website || raw.website_url,
+    website_url: raw.website_url || raw.website,
+    logo_url: raw.logo_url,
+    about_us: raw.about_us,
+    opening_hours: raw.opening_hours,
+    faqs: raw.faqs,
+    location_image: raw.location_image,
+    location_title: raw.location_title,
+    maps_link: raw.maps_link || raw.gbp_link || raw.review_url,
     custom_design: raw.custom_design,
+    custom_chips: raw.custom_chips,
   };
 }
 
@@ -68,26 +83,151 @@ export default async function Page({
   const rawBiz = getBusinessBySlug(cleanCode) || (await fetchPublicBusinessBySlug(cleanCode));
   const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
 
-  // If preview mode, always render the Hub Page for live simulation of saved design
-  if (isPreview) {
-    if (biz) {
-      const design = getPageDesign(biz.id);
-      return (
-        <ZenTapHubPage
-          business={biz}
-          design={design}
-          buttons={getPageButtons(biz.id)}
-          sections={getPageSections(biz.id)}
-          photos={getPagePhotos(biz.id)}
-          source={source}
-          isPreview={true}
-        />
-      );
+  // 1. Fetch Page Editor Config early (for both preview mode and live view)
+  const db = createAdminClient();
+  let pageConfig: any = null;
+  if (db) {
+    try {
+      const q = via 
+        ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).maybeSingle()
+        : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}${biz ? `,business_id.eq.${biz.id}` : ''}`).is('deleted_at', null).maybeSingle();
+      const { data } = await q;
+      pageConfig = data;
+    } catch (e) {
+      console.warn('Error fetching pageConfig:', e);
     }
-    return <ReviewAssistantClient />;
   }
 
-  // 1. Check if a legacy tag with code = slug exists (strictly when not arriving via a tag router and not a registered business)
+  if (!pageConfig) {
+    const local = getAllPageEditorConfigs().find(
+      (p) =>
+        p.tag_id.toLowerCase() === cleanCode ||
+        p.business_id.toLowerCase() === cleanCode ||
+        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
+        (biz && p.business_id.toLowerCase() === biz.id.toLowerCase()) ||
+        (cleanCode === "zentap" && (p.tag_id.toLowerCase() === "zentap" || p.business_id.toLowerCase() === "sample-demo-biz-01" || p.tag_id.toLowerCase() === "st1"))
+    );
+    if (local) {
+      pageConfig = local;
+    }
+  }
+
+  // Parse config_data
+  let cfg: any = {};
+  if (pageConfig?.config_data) {
+    try {
+      cfg = typeof pageConfig.config_data === 'string' 
+        ? JSON.parse(pageConfig.config_data) 
+        : (pageConfig.config_data || {});
+    } catch {
+      cfg = pageConfig.config_data || {};
+    }
+  }
+
+  const effectiveBiz: BusinessRecord = biz || {
+    id: pageConfig?.business_id || pageConfig?.tag_id || "sample-demo-biz-01",
+    name: pageConfig?.business_name || cfg.title || "ZenTap Digital Solutions",
+    slug: (pageConfig?.business_id || pageConfig?.tag_id || "zentap").toLowerCase(),
+    review_url: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+    google_review_link: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+    active: true,
+    is_deleted: false,
+    owner_user_id: "",
+    email: cfg.email || "contact@zentapdigitalsolutions.com",
+    phone: cfg.phone || "+91 92745 60880",
+    city: "Ahmedabad",
+    state: "Gujarat",
+    country: "India",
+    pincode: "380001",
+    address: cfg.address || "Ahmedabad, Gujarat, India",
+    category: cfg.subtitle || cfg.category || "Ahmedabad • Welcome to our official digital hub",
+    gbp_link: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+    plan: "metal_reply",
+    payment_status: "paid",
+    created_at: pageConfig?.created_at || new Date().toISOString(),
+    redirect_mode: "interactive_profile",
+    whatsapp_number: cfg.whatsapp || cfg.phone || "919274560880",
+    whatsapp: cfg.whatsapp || cfg.phone || "919274560880",
+    instagram: cfg.instagram || "https://instagram.com",
+    instagram_url: cfg.instagram || "https://instagram.com",
+    facebook: cfg.facebook || "https://facebook.com",
+    website: cfg.website || "https://zentapdigitalsolutions.com",
+    about_us: cfg.about_us,
+    opening_hours: cfg.opening_hours,
+    faqs: cfg.faqs,
+    location_image: cfg.location_image,
+    location_title: cfg.location_title,
+    logo_url: cfg.logo_url,
+  };
+
+  const defaultDesign = getPageDesign(effectiveBiz.id);
+  const customDesign: PageDesignRecord = {
+    ...defaultDesign,
+    hub_enabled: true,
+    theme_preset: cfg.theme === 'slate' ? 'modern_slate'
+                : cfg.theme === 'emerald' ? 'emerald_luxe'
+                : cfg.theme === 'sunset' ? 'midnight_amber'
+                : cfg.theme === 'clean_light' ? 'clean_minimal'
+                : 'modern_slate',
+    primary_color: cfg.theme === 'sunset' ? '#ea580c' : cfg.theme === 'emerald' ? '#059669' : '#ffc174',
+    bg_color: cfg.theme === 'clean_light' ? '#ffffff' : cfg.theme === 'slate' ? '#0f172a' : cfg.theme === 'emerald' ? '#062016' : '#0B0F17',
+    dark_mode: cfg.theme === 'clean_light' ? 'light' : 'dark',
+    cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
+    logo_url: cfg.logo_url || defaultDesign.logo_url,
+    wallpaper_url: cfg.wallpaper_url,
+    tagline: cfg.subtitle || defaultDesign.tagline,
+    texts: {
+      ...defaultDesign.texts,
+      write_review_btn: cfg.cta_text || "Loved your visit? Tap to write a rapid 5-Star Google Review",
+    },
+  };
+
+  // If not preview mode, check if destination is strictly 'zentap_google'
+  // Rule: "when the destination is only Zentap Google Review it will not give access to Business Page"
+  if (!isPreview) {
+    let dest = pageConfig?.destination;
+    if (!dest && db) {
+      try {
+        const { data: grlRow } = await db
+          .from('google_review_links')
+          .select('destination')
+          .or(`tag_id.ilike.${via || cleanCode},business_id.ilike.${cleanCode}`)
+          .is('deleted_at', null)
+          .maybeSingle();
+        dest = grlRow?.destination;
+      } catch {}
+    }
+    if (!dest) {
+      const localGrl = getAllGoogleReviewLinks().find(
+        (g) => g.tag_id.toLowerCase() === (via || cleanCode) || g.business_id.toLowerCase() === cleanCode
+      );
+      dest = localGrl?.destination;
+    }
+
+    if (dest === 'zentap_google') {
+      const destUrl = `/r/${cleanCode}/review${via ? `?via=${via}` : ''}${source ? `${via ? '&' : '?'}s=${source}` : ''}`;
+      redirect(destUrl);
+    }
+  }
+
+  // If preview mode, always render the Hub Page with latest parsed config!
+  if (isPreview) {
+    return (
+      <ZenTapHubPage
+        business={effectiveBiz}
+        design={customDesign}
+        buttons={getPageButtons(effectiveBiz.id)}
+        sections={getPageSections(effectiveBiz.id)}
+        photos={getPagePhotos(effectiveBiz.id)}
+        source={source}
+        isPreview={true}
+        pageConfig={cfg}
+        via={via}
+      />
+    );
+  }
+
+  // 2. Check if a legacy tag with code = slug exists (strictly when not arriving via a tag router and not a registered business)
   const legacyTag = (!via && !biz) ? getTagByCode(cleanCode) : null;
 
   if (legacyTag) {
@@ -114,39 +254,12 @@ export default async function Page({
               sections={getPageSections(tagBiz.id)}
               photos={getPagePhotos(tagBiz.id)}
               source={source}
+              pageConfig={cfg}
             />
           );
         }
       }
       return <ReviewAssistantClient />;
-    }
-  }
-
-  // Check if customized in Page Editor (page_editor_configs)
-  const db = createAdminClient();
-  let pageConfig: any = null;
-  if (db) {
-    try {
-      const q = via 
-        ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).maybeSingle()
-        : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}${biz ? `,business_id.eq.${biz.id}` : ''}`).is('deleted_at', null).maybeSingle();
-      const { data } = await q;
-      pageConfig = data;
-    } catch (e) {
-      console.warn('Error fetching pageConfig:', e);
-    }
-  }
-
-  if (!pageConfig) {
-    const local = getAllPageEditorConfigs().find(
-      (p) =>
-        p.tag_id.toLowerCase() === cleanCode ||
-        p.business_id.toLowerCase() === cleanCode ||
-        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
-        (biz && p.business_id.toLowerCase() === biz.id.toLowerCase())
-    );
-    if (local) {
-      pageConfig = local;
     }
   }
 
@@ -157,119 +270,6 @@ export default async function Page({
 
   // If page is configured and completed in Page Editor, render ZenTapHubPage with the custom design!
   if (pageConfig && (pageConfig.setup_status === 'completed' || pageConfig.config_data)) {
-    const rawCfg = pageConfig.config_data;
-    let cfg: any = {};
-    try {
-      cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : (rawCfg || {});
-    } catch {
-      cfg = rawCfg || {};
-    }
-    const effectiveBiz: BusinessRecord = biz || {
-      id: pageConfig.business_id || pageConfig.tag_id,
-      name: pageConfig.business_name || cfg.title || "Business",
-      slug: (pageConfig.business_id || pageConfig.tag_id).toLowerCase(),
-      review_url: cfg.google_link || "",
-      google_review_link: cfg.google_link || "",
-      active: true,
-      is_deleted: false,
-      owner_user_id: "",
-      email: "",
-      phone: cfg.phone || "",
-      city: "Ahmedabad",
-      state: "Gujarat",
-      country: "India",
-      pincode: "",
-      address: "",
-      category: cfg.category || cfg.subtitle || "Service",
-      gbp_link: cfg.google_link || "",
-      plan: "standee_1500",
-      payment_status: "paid",
-      created_at: pageConfig.created_at || new Date().toISOString(),
-      redirect_mode: "interactive_profile",
-      whatsapp_number: cfg.whatsapp || cfg.phone || "",
-      whatsapp: cfg.whatsapp || cfg.phone || "",
-      instagram: cfg.instagram || "",
-    };
-
-    const defaultDesign = getPageDesign(effectiveBiz.id);
-    const customDesign: PageDesignRecord = {
-      ...defaultDesign,
-      hub_enabled: true,
-      theme_preset: cfg.theme === 'slate' ? 'modern_slate'
-                  : cfg.theme === 'emerald' ? 'emerald_luxe'
-                  : cfg.theme === 'sunset' ? 'midnight_amber'
-                  : cfg.theme === 'clean_light' ? 'clean_minimal'
-                  : 'emerald_luxe',
-      primary_color: cfg.theme === 'sunset' ? '#ea580c' : cfg.theme === 'emerald' ? '#059669' : '#ff7a00',
-      bg_color: cfg.theme === 'clean_light' ? '#ffffff' : cfg.theme === 'slate' ? '#0f172a' : cfg.theme === 'emerald' ? '#062016' : '#0e1015',
-      dark_mode: cfg.theme === 'clean_light' ? 'light' : 'dark',
-      cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
-      logo_url: cfg.logo_url || defaultDesign.logo_url,
-      wallpaper_url: cfg.wallpaper_url,
-      tagline: cfg.subtitle || defaultDesign.tagline,
-      texts: {
-        ...defaultDesign.texts,
-        write_review_btn: cfg.cta_text || "Leave a 5-Star Review on Google",
-      },
-    };
-
-    const customButtons: PageButtonRecord[] = [
-      {
-        id: `btn_review_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'review',
-        label: cfg.cta_text || 'Leave a 5-Star Review on Google',
-        url_or_value: cfg.google_link || effectiveBiz.google_review_link || effectiveBiz.review_url || '',
-        sort_order: 1,
-        visible: true,
-      },
-      ...(cfg.phone ? [{
-        id: `btn_call_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'call' as const,
-        label: 'Call',
-        url_or_value: cfg.phone,
-        sort_order: 2,
-        visible: true,
-      }] : []),
-      {
-        id: `btn_maps_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'directions' as const,
-        label: 'Directions',
-        url_or_value: cfg.google_link || effectiveBiz.google_review_link || effectiveBiz.address || '',
-        sort_order: 3,
-        visible: true,
-      },
-      ...(cfg.whatsapp ? [{
-        id: `btn_wa_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'whatsapp' as const,
-        label: 'WhatsApp',
-        url_or_value: cfg.whatsapp,
-        sort_order: 4,
-        visible: true,
-      }] : []),
-      ...(cfg.instagram ? [{
-        id: `btn_ig_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'instagram' as const,
-        label: 'Instagram',
-        url_or_value: cfg.instagram,
-        sort_order: 5,
-        visible: true,
-      }] : []),
-      ...(cfg.facebook ? [{
-        id: `btn_fb_${effectiveBiz.id}`,
-        business_id: effectiveBiz.id,
-        type: 'facebook' as const,
-        label: 'Facebook',
-        url_or_value: cfg.facebook,
-        sort_order: 6,
-        visible: true,
-      }] : []),
-    ];
-
     return (
       <ZenTapHubPage
         business={{
@@ -277,15 +277,17 @@ export default async function Page({
           name: cfg.title || effectiveBiz.name,
         }}
         design={customDesign}
-        buttons={customButtons}
+        buttons={getPageButtons(effectiveBiz.id)}
         sections={getPageSections(effectiveBiz.id)}
         photos={getPagePhotos(effectiveBiz.id)}
         source={source}
+        pageConfig={cfg}
+        via={via}
       />
     );
   }
 
-  // 2. Fall back to business record lookup if no completed page config was found
+  // 3. Fall back to business record lookup if no completed page config was found
   // Enforce active link, deletion state, and payment confirmation gate
   if (!biz || !biz.active || biz.is_deleted || biz.payment_status === "pending") {
     redirect("/unavailable");
@@ -308,6 +310,8 @@ export default async function Page({
         sections={getPageSections(biz.id)}
         photos={getPagePhotos(biz.id)}
         source={source}
+        pageConfig={cfg}
+        via={via}
       />
     );
   }

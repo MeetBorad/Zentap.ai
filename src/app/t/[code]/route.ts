@@ -26,7 +26,8 @@ export async function GET(
     return NextResponse.redirect(result.url, init);
   }
   if (result.kind === 'page') {
-    const url = new URL(`/r/${result.slug}`, req.url);
+    const basePath = result.target === 'review' ? `/r/${result.slug}/review` : `/r/${result.slug}`;
+    const url = new URL(basePath, req.url);
     url.searchParams.set('via', code.toLowerCase()); // /r page must NOT double-log when `via` is present
     url.searchParams.set('s', source);
     return NextResponse.redirect(url, init);
