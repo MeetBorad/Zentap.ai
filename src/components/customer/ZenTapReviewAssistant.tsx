@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { BusinessRecord } from "@/lib/businessStore";
 import { 
   generateReviewDraft, 
+  generateReviewSuggestions,
   REVIEW_RATING_METAS, 
   DEFAULT_REVIEW_TAGS 
 } from "@/services/reviewService";
@@ -19,7 +20,9 @@ import {
   Phone, 
   ArrowLeft,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw,
+  ShoppingBag
 } from "lucide-react";
 
 interface ZenTapReviewAssistantProps {
@@ -46,6 +49,9 @@ export default function ZenTapReviewAssistant({
   const [selectedTags, setSelectedTags] = useState<Set<string>>(
     new Set(["Cleanliness", "Excellent Quality", "Fast Service"])
   );
+  const [customExperience, setCustomExperience] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(0);
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -86,17 +92,22 @@ export default function ZenTapReviewAssistant({
     return combined;
   }, [pageConfig?.tags]);
 
-  // Generate dynamic draft using isolated reviewService
+  // Generate dynamic 2-3 unique suggestions whenever inputs change
   useEffect(() => {
-    const text = generateReviewDraft({
+    const list = generateReviewSuggestions({
       businessName,
       city,
       rating: currentRating,
       length: currentLength,
       selectedTags: Array.from(selectedTags),
+      customNotes: customExperience,
     });
-    setReviewDraft(text);
-  }, [currentRating, currentLength, selectedTags, businessName, city]);
+    setSuggestions(list);
+
+    // Sync draft with currently selected option index
+    const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, list.length - 1));
+    setReviewDraft(list[safeIdx] || list[0] || "");
+  }, [currentRating, currentLength, selectedTags, customExperience, businessName, city, selectedSuggestionIndex]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -313,8 +324,94 @@ export default function ZenTapReviewAssistant({
                 </div>
               </div>
 
-              {/* AI Review Preview Box */}
+              {/* Short Experience Custom Text Field */}
               <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Write about your experience in short</span>
+                    <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                  </label>
+                  {customExperience && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomExperience("")}
+                      className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={customExperience}
+                    onChange={(e) => setCustomExperience(e.target.value)}
+                    placeholder="e.g., bought purse nice, bought 2 pairs of clothes, unique design nice staff"
+                    className="w-full bg-[#181c24] rounded-xl px-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 border border-white/5 focus:outline-none focus:border-amber-500/50 focus:bg-[#1B2232] transition-all shadow-inner"
+                  />
+                </div>
+                <p className="text-[10.5px] text-slate-400 leading-tight">
+                  Type what you bought, ordered, or noticed — review suggestions will instantly adapt!
+                </p>
+              </div>
+
+              {/* 2-3 Unique Humanized Review Suggestions */}
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Review Suggestions <span className="text-slate-400 font-normal">(Tap one to use)</span>
+                  </span>
+                  <span className="text-[10.5px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    {suggestions.length} options
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {suggestions.map((sug, idx) => {
+                    const isSelected = selectedSuggestionIndex === idx;
+                    const labels = [
+                      "Experience & Purchase Focus",
+                      "Staff & Hospitality Focus",
+                      "Value & Recommendation Focus",
+                    ];
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSuggestionIndex(idx);
+                          setReviewDraft(sug);
+                        }}
+                        className={`p-3 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative active:scale-[0.985] ${
+                          isSelected
+                            ? "bg-amber-500/15 border-amber-500/60 shadow-[0_0_16px_rgba(245,158,11,0.2)] text-white ring-1 ring-amber-500/40"
+                            : "bg-[#181c24] border-white/5 text-slate-300 hover:border-white/20 hover:bg-[#1B2232]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-white/5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            <span>Option {idx + 1}</span>
+                            <span className="text-slate-400 font-normal">• {labels[idx] || "Variation"}</span>
+                          </span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                            isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/5 text-slate-400"
+                          }`}>
+                            {isSelected ? "Selected" : "Tap to use"}
+                          </span>
+                        </div>
+                        <p className="line-clamp-3 leading-relaxed text-slate-200">
+                          {sug}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Editable Generated Review Draft Box */}
+              <div className="flex flex-col gap-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
