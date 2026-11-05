@@ -134,22 +134,34 @@ export default function ZenTapHubPage({
   const phone = cfg.phone || business.phone || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
 
-  const whatsapp = cfg.whatsapp || business.whatsapp || business.whatsapp_number || (isZenTapDemo ? "919274560880" : "");
+  const whatsapp = cfg.whatsapp || business.whatsapp || business.whatsapp_number || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
+  const displayWhatsApp = cleanWhatsApp.length === 12 && cleanWhatsApp.startsWith("91")
+    ? `+91 ${cleanWhatsApp.slice(2, 7)} ${cleanWhatsApp.slice(7)}`
+    : cleanWhatsApp.length === 10
+    ? `+91 ${cleanWhatsApp.slice(0, 5)} ${cleanWhatsApp.slice(5)}`
+    : (whatsapp.startsWith("+") ? whatsapp : (cleanWhatsApp ? `+${cleanWhatsApp}` : "+91 92745 60880"));
 
-  const instagramRaw = cfg.instagram || business.instagram || business.instagram_url || (isZenTapDemo ? "https://instagram.com" : "");
+  const instagramRaw = cfg.instagram || business.instagram || business.instagram_url || (isZenTapDemo ? "https://instagram.com/zentapdigitalsolutions" : "");
   let instagramUrl = instagramRaw;
-  let instagramHandle = business.instagram_handle || (isZenTapDemo ? "@zentapdigital" : "");
+  let instagramHandle = business.instagram_handle || (isZenTapDemo ? "@zentapdigitalsolutions" : "");
+
+  if (isZenTapDemo && (!instagramUrl || instagramUrl === "https://instagram.com" || instagramUrl === "https://instagram.com/")) {
+    instagramUrl = "https://instagram.com/zentapdigitalsolutions";
+    instagramHandle = "@zentapdigitalsolutions";
+  }
+
   if (instagramRaw) {
     if (!instagramRaw.startsWith("http")) {
-      instagramHandle = instagramRaw.startsWith("@") ? instagramRaw : `@${instagramRaw}`;
-      instagramUrl = `https://instagram.com/${instagramRaw.replace(/^@/, "")}`;
+      const handleClean = instagramRaw.replace(/^@/, "");
+      instagramHandle = `@${handleClean}`;
+      instagramUrl = `https://instagram.com/${handleClean}`;
     } else {
       const match = instagramRaw.match(/instagram\.com\/([a-zA-Z0-9._]+)/);
       if (match && match[1]) {
         instagramHandle = `@${match[1]}`;
-      } else if (!instagramHandle) {
-        instagramHandle = "@instagram";
+      } else if (!instagramHandle || instagramHandle === "@instagram") {
+        instagramHandle = isZenTapDemo ? "@zentapdigitalsolutions" : `@${business.slug || "instagram"}`;
       }
     }
   }
@@ -430,21 +442,10 @@ export default function ZenTapHubPage({
             </div>
 
             {/* 2. Google Review Main Trigger Banner */}
-            <div 
-              className="relative group cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br from-[#121824] via-[#262a33] to-[#121824] p-4 shadow-xl transition-all duration-300 hover:shadow-[#f59e0b]/20 hover:scale-[1.01] active:scale-[0.99] border border-white/5" 
-              onClick={() => {
-                const reviewUrl = `/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`;
-                window.location.href = reviewUrl;
-              }}
-              role="button" 
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  const reviewUrl = `/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`;
-                  window.location.href = reviewUrl;
-                }
-              }}
+            <a 
+              href={`/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`}
+              className="relative group cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br from-[#121824] via-[#262a33] to-[#121824] p-4 shadow-xl transition-all duration-300 hover:shadow-[#f59e0b]/20 hover:scale-[1.01] active:scale-[0.99] border border-white/5 block text-left" 
+              onClick={() => trackClick("review_banner")}
             >
               <div className="absolute -right-8 -top-8 w-28 h-28 bg-[#f59e0b]/15 rounded-full blur-2xl group-hover:bg-[#f59e0b]/25 transition-all" />
               <div className="flex items-center justify-between relative z-10">
@@ -469,7 +470,7 @@ export default function ZenTapHubPage({
                   <Star className="w-6 h-6 fill-black text-black" />
                 </div>
               </div>
-            </div>
+            </a>
 
             {/* 3. Connect & Social Channels Grid (Strictly hides any blank client button) */}
             {hasSocialChannels && (
@@ -484,7 +485,7 @@ export default function ZenTapHubPage({
                   {/* WhatsApp Contact */}
                   {cleanWhatsApp && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5 cursor-pointer"
                       href={`https://wa.me/${cleanWhatsApp}?text=${encodeURIComponent(business.whatsapp_message || `Hi ${businessName}`)}`}
                       rel="noopener noreferrer" 
                       target="_blank"
@@ -499,7 +500,9 @@ export default function ZenTapHubPage({
                         <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#10B981] truncate transition-colors">
                           WhatsApp
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">Instant Chat</span>
+                        <span className="text-[11px] text-[#94A3B8] truncate font-medium">
+                          {displayWhatsApp}
+                        </span>
                       </div>
                     </a>
                   )}
@@ -507,7 +510,7 @@ export default function ZenTapHubPage({
                   {/* Instagram */}
                   {instagramUrl && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5 cursor-pointer"
                       href={instagramUrl}
                       rel="noopener noreferrer" 
                       target="_blank"
@@ -522,8 +525,8 @@ export default function ZenTapHubPage({
                         <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#ffc174] truncate transition-colors">
                           Instagram
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">
-                          {instagramHandle || "@instagram"}
+                        <span className="text-[11px] text-[#94A3B8] truncate font-medium">
+                          {instagramHandle || "@zentapdigitalsolutions"}
                         </span>
                       </div>
                     </a>

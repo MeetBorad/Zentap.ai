@@ -1,5 +1,17 @@
 # ZenTap — Changelog
 
+## [1.54.4] — 2026-11-05
+### Enhanced (Showcase Page Social Handles, Mobile Contact & Interactive CTAs)
+- **Direct Instagram Handle Display**:
+  - Configured Instagram social link to clearly display the active username `@zentapdigitalsolutions` beneath the Instagram icon.
+  - Set direct URL to `https://instagram.com/zentapdigitalsolutions` opening in a new tab.
+- **Direct WhatsApp Mobile Number Display**:
+  - Configured WhatsApp contact card to clearly display the direct business phone number `+91 92745 60880` beneath the WhatsApp icon instead of generic text.
+  - Linked to `https://wa.me/919274560880` with pre-filled greeting message.
+- **Accessible & Robust Action Buttons**:
+  - Re-architected "Loved your visit? Tap to write a rapid 5-Star Google Review" trigger into an accessible `<a>` link to `/r/[slug]/review` for instant, non-blocking navigation.
+  - Verified and ensured all buttons (Call Us, Directions, WhatsApp, Instagram, Call Office, Facebook, Website, Email, Google Maps location, and Owner Log In) have working links, active press states, and target configurations.
+
 ## [1.54.3] — 2026-11-05
 ### Configured (ZenTap Sample Showcase Direct Google Review Link)
 - **Configured Exact Showcase Review URL**:
