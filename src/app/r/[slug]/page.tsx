@@ -260,6 +260,9 @@ export default async function Page({
       redirect("/unavailable");
     }
     if (res.kind === "page") {
+      if (res.target === "review") {
+        redirect(`/r/${res.slug}/review${via ? `?via=${via}` : ""}`);
+      }
       const tagRawBiz = getBusinessBySlug(res.slug) || (await fetchPublicBusinessBySlug(res.slug));
       if (tagRawBiz) {
         const tagBiz = toBusinessRecord(tagRawBiz);

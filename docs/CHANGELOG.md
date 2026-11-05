@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.54.8] — 2026-11-05
+### Refactored (Streamlined Review Assistant Flow, Horizontal Suggestions & Dual Actions)
+- **Sequential Review Experience Streamlining**:
+  - Re-ordered the customer review page to strictly adhere to the ideal sequential flow:
+    1. **Step 1: Star Rating**: User selects 1–5 stars with animated golden stars and instant sentiment label (`Loved it! (5 Stars)`). Maintained private WhatsApp feedback notification for ratings $\le$ 2 stars (anti-gating compliance).
+    2. **Step 2: "What stood out?"**: Multi-tag category pills reflecting the exact business categories configured in the Page Editor.
+    3. **Step 3: "Write about your experience in short (Optional)"**: Input field where visitors can type what they purchased or experienced (e.g. `bought purse nice`, `fast setup`).
+    4. **Step 4: Horizontal Review Cards (2–3 suggestions)**: Eliminated large vertical card stacking and replaced with a modern horizontal swipeable carousel (`min-w-[250px]` snap cards). Tapping any card selects it and immediately loads the full text into the box below.
+    5. **Step 5: Selected Review in Editable Box**: Clean textarea displaying the chosen review with an inline `Editable` indicator and `Copy text` utility.
+    6. **Step 6: Dual Action Buttons**:
+       - **Button 1 (Recreate Reviews)**: Tactile button `Change Reviews (Generate New Ideas)` with an animated `RefreshCw` icon that cycles through multiple unique variation seeds, generating 2–3 fresh, diverse reviews every click.
+       - **Button 2 (Post on Google)**: Primary CTA `Post the Review on Google Page` which copies the review from the box to the clipboard, displays instant feedback (`Copied! Opening Google Reviews...`), tracks telemetry, and opens the Google review link in a new tab.
+  - Removed the bulky "Review Length" segmented selector between tags and short experience to keep the customer flow fast and friction-free.
+- **Service Seeded Variety (`reviewService.ts`)**:
+  - Expanded `generateReviewSuggestions` with multi-set variation pools for 4–5 star ratings, 3-star neutral reviews, and 1–2 star feedback, allowing endless unique variations without repetitive phrases.
+
 ## [1.54.7] — 2026-11-05
 ### Fixed (Destination Hierarchy Routing, Tag Link Redirection & Category Reflection)
 - **Destination Hierarchy Routing (`business_page` vs `zentap_google` vs `direct_google`)**:

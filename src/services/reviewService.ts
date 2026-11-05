@@ -10,9 +10,10 @@ export interface ReviewDraftOptions {
   businessName: string;
   city?: string;
   rating: number;
-  length: "short" | "medium" | "detailed";
+  length?: "short" | "medium" | "detailed";
   selectedTags: string[];
   customNotes?: string;
+  seed?: number;
 }
 
 export interface ReviewSentiment {
@@ -87,92 +88,190 @@ export function generateReviewSuggestions({
   length,
   selectedTags,
   customNotes,
+  seed = 0,
 }: ReviewDraftOptions): string[] {
   const tagsText = formatTagsSentence(selectedTags);
   const clampedRating = Math.max(1, Math.min(5, Math.round(rating))) as 1 | 2 | 3 | 4 | 5;
   const noteObj = cleanExperienceNote(customNotes);
+  const cleanSeed = Math.abs(Math.floor(seed || 0));
 
   // When rating is 1 or 2 stars (Google Anti-Gating compliant polite feedback)
   if (clampedRating <= 2) {
     if (noteObj) {
-      return [
-        `Visited ${businessName} for ${noteObj.clause}. Service had notable areas to improve, particularly regarding ${tagsText}.`,
-        `Regarding ${noteObj.clause} at ${businessName}, the overall experience fell below expectations around ${tagsText}. Hope management addresses this.`,
-        `Encountered difficulties at ${businessName} with ${noteObj.clause}. Communication and ${tagsText} could definitely be improved for future clients.`
+      const sets = [
+        [
+          `Visited ${businessName} for ${noteObj.clause}. Service had notable areas to improve, particularly regarding ${tagsText}.`,
+          `Regarding ${noteObj.clause} at ${businessName}, the overall experience fell below expectations around ${tagsText}. Hope management addresses this.`,
+          `Encountered difficulties at ${businessName} with ${noteObj.clause}. Communication and ${tagsText} could definitely be improved for future clients.`
+        ],
+        [
+          `Had an unsatisfactory encounter at ${businessName} regarding ${noteObj.clause}. The ${tagsText} was not up to the mark.`,
+          `Expected much better support for ${noteObj.clause} at ${businessName}. Significant improvements needed in ${tagsText}.`,
+          `My visit to ${businessName} for ${noteObj.clause} fell short of expectations, especially concerning ${tagsText}.`
+        ]
       ];
+      return sets[cleanSeed % sets.length];
     }
-    return [
-      `Service at ${businessName} had several points to improve, especially around ${tagsText}.`,
-      `Had an underwhelming experience with ${businessName} regarding ${tagsText}. Hope to see better standards next time.`,
-      `The visit fell below expectations. While the concept is clear, execution regarding ${tagsText} needs more attention.`
+    const sets = [
+      [
+        `Service at ${businessName} had several points to improve, especially around ${tagsText}.`,
+        `Had an underwhelming experience with ${businessName} regarding ${tagsText}. Hope to see better standards next time.`,
+        `The visit fell below expectations. While the concept is clear, execution regarding ${tagsText} needs more attention.`
+      ],
+      [
+        `Disappointed with the recent service at ${businessName}. Found ${tagsText} lacking and hope management takes note.`,
+        `Overall interaction at ${businessName} was below standard. Room for serious refinement in ${tagsText}.`,
+        `Hoped for a better standard at ${businessName}. Quality of ${tagsText} needs re-evaluation.`
+      ]
     ];
+    return sets[cleanSeed % sets.length];
   }
 
   // 3 Stars (Neutral / Satisfactory)
   if (clampedRating === 3) {
     if (noteObj) {
-      return [
-        `${businessName} provides decent service. ${noteObj.sentence} Experience with ${tagsText} was average but acceptable.`,
-        `Visited for ${noteObj.clause}. Overall okay experience at ${businessName}; ${tagsText} were standard with room to improve.`,
-        `Fair experience at ${businessName} regarding ${noteObj.clause}. Staff was okay and ${tagsText} was reasonable.`
+      const sets = [
+        [
+          `${businessName} provides decent service. ${noteObj.sentence} Experience with ${tagsText} was average but acceptable.`,
+          `Visited for ${noteObj.clause}. Overall okay experience at ${businessName}; ${tagsText} were standard with room to improve.`,
+          `Fair experience at ${businessName} regarding ${noteObj.clause}. Staff was okay and ${tagsText} was reasonable.`
+        ],
+        [
+          `Standard visit to ${businessName} for ${noteObj.clause}. Satisfactory ${tagsText}, though there is scope for better consistency.`,
+          `Decent interaction at ${businessName}. ${noteObj.sentence} The ${tagsText} met baseline expectations.`,
+          `Okay visit overall. Had ${noteObj.clause} at ${businessName}; ${tagsText} was acceptable.`
+        ]
       ];
+      return sets[cleanSeed % sets.length];
     }
-    return [
-      `${businessName} provides decent assistance. Experience with ${tagsText} was okay.`,
-      `Average experience visiting ${businessName}. The ${tagsText} were standard. Hoping to see more feature updates in the near future.`,
-      `Fair service at ${businessName}. Good base setup and acceptable ${tagsText}, with room for further refinement.`
+    const sets = [
+      [
+        `${businessName} provides decent assistance. Experience with ${tagsText} was okay.`,
+        `Average experience visiting ${businessName}. The ${tagsText} were standard. Hoping to see more feature updates in the near future.`,
+        `Fair service at ${businessName}. Good base setup and acceptable ${tagsText}, with room for further refinement.`
+      ],
+      [
+        `Satisfactory experience at ${businessName}. Service around ${tagsText} was acceptable.`,
+        `Standard visit to ${businessName} in ${city}. The ${tagsText} was okay, with potential for more polish.`,
+        `Balanced service at ${businessName}. Good effort with ${tagsText}, though could be improved.`
+      ]
     ];
+    return sets[cleanSeed % sets.length];
   }
 
-  // 4 & 5 Stars: Generate 3 unique humanized angles
-  // ANGLE 1: Experience & Purchase Focus
-  // ANGLE 2: Hospitality, Staff & Atmosphere Focus
-  // ANGLE 3: Quality, Speed & Repeat Recommendation Focus
-
+  // 4 & 5 Stars: Generate 3 unique humanized reviews per set
   if (length === "short") {
     if (noteObj) {
-      return [
-        `Loved my experience at ${businessName}! ${noteObj.sentence} The ${tagsText} was truly impressive.`,
-        `Super friendly staff at ${businessName}. ${noteObj.sentence} Really appreciated their ${tagsText}!`,
-        `Great value and top quality at ${businessName}. ${noteObj.sentence} 10/10 for ${tagsText}!`,
+      const sets = [
+        [
+          `Loved my experience at ${businessName}! ${noteObj.sentence} The ${tagsText} was truly impressive.`,
+          `Super friendly staff at ${businessName}. ${noteObj.sentence} Really appreciated their ${tagsText}!`,
+          `Great value and top quality at ${businessName}. ${noteObj.sentence} 10/10 for ${tagsText}!`,
+        ],
+        [
+          `Had a wonderful visit to ${businessName}! ${noteObj.sentence} Loved the quick ${tagsText}.`,
+          `Delighted with ${businessName}. ${noteObj.sentence} Special shoutout for their great ${tagsText}!`,
+          `Smooth experience at ${businessName}. ${noteObj.sentence} Can't beat their ${tagsText}!`,
+        ]
       ];
+      return sets[cleanSeed % sets.length];
     }
-    return [
-      `Loved the service at ${businessName}! Highlight was definitely the ${tagsText}. Highly recommend!`,
-      `Great overall experience at ${businessName}. Really appreciated the polite staff and ${tagsText}.`,
-      `Super fast, reliable, and convenient. The ${tagsText} at ${businessName} was top-notch!`,
+    const sets = [
+      [
+        `Loved the service at ${businessName}! Highlight was definitely the ${tagsText}. Highly recommend!`,
+        `Great overall experience at ${businessName}. Really appreciated the polite staff and ${tagsText}.`,
+        `Super fast, reliable, and convenient. The ${tagsText} at ${businessName} was top-notch!`,
+      ],
+      [
+        `Really pleased with ${businessName} in ${city}! Top marks for their ${tagsText}.`,
+        `Fantastic experience at ${businessName}. Impressive ${tagsText} and warm people!`,
+        `Cannot fault the service at ${businessName}. 10/10 for their ${tagsText}!`,
+      ]
     ];
+    return sets[cleanSeed % sets.length];
   }
 
   if (length === "detailed") {
     if (noteObj) {
-      return [
-        `${businessName} in ${city} delivered an outstanding customer experience! ${noteObj.sentence} From the moment I arrived, the emphasis on ${tagsText} was clearly evident. Everything was handled with utmost care and transparency. Would recommend them without any hesitation!`,
-        `Cannot say enough good things about ${businessName}. ${noteObj.sentence} Their team went above and beyond with exceptional ${tagsText} and genuine hospitality. It is rare to see this level of dedication and attention to customer comfort in ${city}. Truly worth every star!`,
-        `If you are looking for exceptional quality and reliability in ${city}, ${businessName} is the best place to choose. ${noteObj.sentence} Their commitment to ${tagsText} is second to none, making the entire interaction smooth and completely hassle-free. Five stars all the way!`,
+      const sets = [
+        [
+          `${businessName} in ${city} delivered an outstanding customer experience! ${noteObj.sentence} From the moment I arrived, the emphasis on ${tagsText} was clearly evident. Everything was handled with utmost care and transparency. Would recommend them without any hesitation!`,
+          `Cannot say enough good things about ${businessName}. ${noteObj.sentence} Their team went above and beyond with exceptional ${tagsText} and genuine hospitality. It is rare to see this level of dedication and attention to customer comfort in ${city}. Truly worth every star!`,
+          `If you are looking for exceptional quality and reliability in ${city}, ${businessName} is the best place to choose. ${noteObj.sentence} Their commitment to ${tagsText} is second to none, making the entire interaction smooth and completely hassle-free. Five stars all the way!`,
+        ],
+        [
+          `My visit to ${businessName} completely surpassed expectations! ${noteObj.sentence} What stood out most was their meticulous approach to ${tagsText}. The staff was incredibly knowledgeable, attentive, and welcoming. Truly one of the finest service teams in ${city}!`,
+          `From start to finish, ${businessName} provided exceptional quality. ${noteObj.sentence} Their outstanding ${tagsText} and seamless coordination made everything feel effortless. Highly impressed and looking forward to returning!`,
+          `A stellar experience with ${businessName} in ${city}! ${noteObj.sentence} It's so refreshing to see such dedication to customer satisfaction and premium ${tagsText}. An absolute pleasure from beginning to end!`,
+        ]
       ];
+      return sets[cleanSeed % sets.length];
     }
-    return [
-      `${businessName} in ${city} is setting a benchmark for quality and customer service. My experience was exceptional, characterized by notable ${tagsText}. The entire interaction was completely frictionless, and the team provided thorough guidance. Excellent value, top-tier professionalism, and highly recommended!`,
-      `Highly satisfied with ${businessName}. What stood out most was the warm, welcoming environment and outstanding ${tagsText}. Every inquiry was answered promptly and courteously, making this one of our best service experiences in ${city}.`,
-      `Phenomenal standard of work by ${businessName} in ${city}. Their proactive approach, attention to detail, and ${tagsText} make them a standout choice. A flawless experience from start to finish that I will gladly recommend to friends and colleagues!`,
+    const sets = [
+      [
+        `${businessName} in ${city} is setting a benchmark for quality and customer service. My experience was exceptional, characterized by notable ${tagsText}. The entire interaction was completely frictionless, and the team provided thorough guidance. Excellent value, top-tier professionalism, and highly recommended!`,
+        `Highly satisfied with ${businessName}. What stood out most was the warm, welcoming environment and outstanding ${tagsText}. Every inquiry was answered promptly and courteously, making this one of our best service experiences in ${city}.`,
+        `Phenomenal standard of work by ${businessName} in ${city}. Their proactive approach, attention to detail, and ${tagsText} make them a standout choice. A flawless experience from start to finish that I will gladly recommend to friends and colleagues!`,
+      ],
+      [
+        `An absolute pleasure visiting ${businessName} in ${city}. Their remarkable dedication to ${tagsText} and genuine customer care truly make them shine. The entire process was seamless and efficient. 5 stars well deserved!`,
+        `Top marks for ${businessName}! The attention given to ${tagsText} created a stress-free and very pleasant experience. Extremely courteous professionals and outstanding quality throughout.`,
+        `Cannot recommend ${businessName} highly enough. Every detail regarding ${tagsText} was addressed with perfection. A shining example of customer-first service in ${city}!`,
+      ]
     ];
+    return sets[cleanSeed % sets.length];
   }
 
-  // Default: Medium (3-4 natural sentences)
+  // Default: Medium (3-4 natural sentences) — 4 distinct sets for rich cycling
   if (noteObj) {
-    return [
-      `I had a wonderful experience at ${businessName} in ${city}! ${noteObj.sentence} The team displayed utmost ${tagsText} throughout. Fast response and friendly support made everything completely seamless. Highly recommended!`,
-      `Very impressed with the hospitality and service at ${businessName}. ${noteObj.sentence} The staff showed great ${tagsText} and answered every query patiently. Definitely coming back again!`,
-      `Top-notch quality and fantastic service at ${businessName}! ${noteObj.sentence} You can really feel their dedication to ${tagsText} and fair pricing. One of the best places in ${city}!`,
+    const sets = [
+      [
+        `I had a wonderful experience at ${businessName} in ${city}! ${noteObj.sentence} The team displayed utmost ${tagsText} throughout. Fast response and friendly support made everything completely seamless. Highly recommended!`,
+        `Very impressed with the hospitality and service at ${businessName}. ${noteObj.sentence} The staff showed great ${tagsText} and answered every query patiently. Definitely coming back again!`,
+        `Top-notch quality and fantastic service at ${businessName}! ${noteObj.sentence} You can really feel their dedication to ${tagsText} and fair pricing. One of the best places in ${city}!`,
+      ],
+      [
+        `Genuinely delighted with my visit to ${businessName}! ${noteObj.sentence} Their attention to ${tagsText} really sets them apart. Everything was handled efficiently with a warm, welcoming attitude.`,
+        `Outstanding service from start to finish at ${businessName}. ${noteObj.sentence} The focus on ${tagsText} made all the difference. Will definitely be recommending to friends and family in ${city}!`,
+        `A truly 5-star experience at ${businessName}! ${noteObj.sentence} Super friendly people, prompt attention, and phenomenal ${tagsText}. Keep up the great work!`,
+      ],
+      [
+        `Cannot recommend ${businessName} enough! ${noteObj.sentence} Extremely satisfied with their prompt response and exceptional ${tagsText}. Everything was smooth and well-managed.`,
+        `Had a great encounter at ${businessName} today. ${noteObj.sentence} It's rare to find such high standards of ${tagsText} combined with warm customer care. Truly memorable!`,
+        `Spot-on service at ${businessName}! ${noteObj.sentence} From their welcoming attitude to the top-tier ${tagsText}, they completely exceeded my expectations.`,
+      ],
+      [
+        `Five stars all the way for ${businessName}! ${noteObj.sentence} Their dedication to ${tagsText} was evident throughout. Smooth, fast, and completely hassle-free from start to end!`,
+        `Remarkable service at ${businessName} in ${city}. ${noteObj.sentence} Appreciated their professionalism and great attention to ${tagsText}. Highly recommended!`,
+        `Loved every bit of my visit to ${businessName}. ${noteObj.sentence} The team delivered top-quality ${tagsText} without any delay. A fantastic local business!`,
+      ]
     ];
+    return sets[cleanSeed % sets.length];
   }
 
-  return [
-    `I had a wonderful experience at ${businessName} in ${city}! The team displayed utmost ${tagsText} throughout their setup. Fast response and friendly support made the entire onboarding seamless. Highly recommended for anyone looking for quality!`,
-    `Very solid experience at ${businessName}. The staff demonstrated excellent ${tagsText}. Setup was fast, welcoming, and the service works just as promised. Worth trying out!`,
-    `Great value and top-tier professionalism at ${businessName} in ${city}. Highlight was definitely the ${tagsText}. Genuine, efficient, and thoroughly satisfying customer service!`,
+  const sets = [
+    [
+      `I had a wonderful experience at ${businessName} in ${city}! The team displayed utmost ${tagsText} throughout their setup. Fast response and friendly support made the entire onboarding seamless. Highly recommended for anyone looking for quality!`,
+      `Very solid experience at ${businessName}. The staff demonstrated excellent ${tagsText}. Setup was fast, welcoming, and the service works just as promised. Worth trying out!`,
+      `Great value and top-tier professionalism at ${businessName} in ${city}. Highlight was definitely the ${tagsText}. Genuine, efficient, and thoroughly satisfying customer service!`,
+    ],
+    [
+      `Truly impressive service from the team at ${businessName}! What stood out immediately was their ${tagsText}. Friendly atmosphere and quick assistance from start to finish.`,
+      `Had a fantastic visit to ${businessName} in ${city}. They clearly take pride in their ${tagsText}. Will gladly come back and recommend to others!`,
+      `Exceptional hospitality and flawless service at ${businessName}. The ${tagsText} exceeded expectations. Definitely a 5-star experience!`,
+    ],
+    [
+      `Everything at ${businessName} was handled with genuine care and efficiency. Their focus on ${tagsText} made a noticeable positive difference.`,
+      `Super pleased with the standard of service at ${businessName}. Quick turnaround, polite team, and remarkable ${tagsText}. Five stars!`,
+      `Consistently high quality and warm guidance at ${businessName} in ${city}. Their ${tagsText} is commendable. A truly seamless experience!`,
+    ],
+    [
+      `A standout business in ${city}! The staff at ${businessName} was courteous, and their dedication to ${tagsText} is second to none.`,
+      `Great atmosphere and prompt customer support at ${businessName}. 10/10 recommendation for their ${tagsText} and fair pricing!`,
+      `Very happy with my visit to ${businessName}. They take customer satisfaction seriously, especially regarding ${tagsText}. Will return for sure!`,
+    ]
   ];
+  return sets[cleanSeed % sets.length];
 }
 
 /**
