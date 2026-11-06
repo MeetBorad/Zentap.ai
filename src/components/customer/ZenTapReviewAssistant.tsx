@@ -48,6 +48,7 @@ export default function ZenTapReviewAssistant({
   const [currentRating, setCurrentRating] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [customExperience, setCustomExperience] = useState<string>("");
+  const [hasGenerated, setHasGenerated] = useState<boolean>(false);
   const [variationSeed, setVariationSeed] = useState<number>(0);
   const [isRotating, setIsRotating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -219,21 +220,18 @@ export default function ZenTapReviewAssistant({
     return Array.from(DEFAULT_REVIEW_TAGS);
   }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, business?.category, (business as any)?.custom_chips]);
 
-  // Auto-select first 1-2 tags from allTags when they load or change
-  useEffect(() => {
-    if (allTags.length > 0) {
-      setSelectedTags((prev) => {
-        const hasOverlap = Array.from(prev).some((t) => allTags.includes(t));
-        if (!hasOverlap || prev.size === 0) {
-          return new Set(allTags.slice(0, Math.min(2, allTags.length)));
-        }
-        return prev;
-      });
-    }
-  }, [allTags]);
+  // Determine if user has provided input (tapped tags or entered short experience note)
+  const hasUserInput = selectedTags.size > 0 || customExperience.trim().length > 0;
+  const shouldShowReviews = hasUserInput || hasGenerated;
 
-  // Generate dynamic 2-3 unique suggestions whenever inputs change
+  // Generate dynamic 2-3 unique suggestions whenever inputs change or generation is requested
   useEffect(() => {
+    if (!shouldShowReviews) {
+      setSuggestions([]);
+      setReviewDraft("");
+      return;
+    }
+
     const list = generateReviewSuggestions({
       businessName,
       city,
@@ -247,7 +245,7 @@ export default function ZenTapReviewAssistant({
     // Sync draft with currently selected option index
     const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, list.length - 1));
     setReviewDraft(list[safeIdx] || list[0] || "");
-  }, [currentRating, selectedTags, customExperience, variationSeed, businessName, city, selectedSuggestionIndex]);
+  }, [shouldShowReviews, currentRating, selectedTags, customExperience, variationSeed, businessName, city, selectedSuggestionIndex]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -269,11 +267,25 @@ export default function ZenTapReviewAssistant({
     });
   };
 
-  // Recreate 2-3 other unique reviews & stream from review writer API
-  const handleRecreateReviews = async () => {
+  // Generate unique reviews based on inputs or default business features & stream from AI review writer
+  const handleGenerateReviews = async () => {
     setIsRotating(true);
+    setHasGenerated(true);
     const nextSeed = variationSeed + 1;
     setVariationSeed(nextSeed);
+
+    // Immediate local generation fallback so the user sees instant response
+    const localList = generateReviewSuggestions({
+      businessName,
+      city,
+      rating: currentRating,
+      selectedTags: Array.from(selectedTags),
+      customNotes: customExperience,
+      seed: nextSeed,
+    });
+    setSuggestions(localList);
+    setReviewDraft(localList[0] || "");
+    setSelectedSuggestionIndex(0);
 
     try {
       const resp = await fetch("/api/review/writer", {
@@ -329,10 +341,25 @@ export default function ZenTapReviewAssistant({
 
   const handlePostReview = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!reviewDraft) return;
+    let textToPost = reviewDraft;
+    if (!textToPost) {
+      // If user hasn't generated yet and clicked Post, create one immediately
+      const generatedList = generateReviewSuggestions({
+        businessName,
+        city,
+        rating: currentRating,
+        selectedTags: Array.from(selectedTags),
+        customNotes: customExperience,
+        seed: variationSeed,
+      });
+      textToPost = generatedList[0] || `Had a wonderful experience with ${businessName} in ${city}! Excellent service and highly recommended.`;
+      setReviewDraft(textToPost);
+      setSuggestions(generatedList);
+      setHasGenerated(true);
+    }
 
     // 1. Copy draft from the box to clipboard
-    navigator.clipboard.writeText(reviewDraft);
+    navigator.clipboard.writeText(textToPost);
     setCopiedText(true);
     setRedirecting(true);
 
@@ -536,7 +563,9 @@ export default function ZenTapReviewAssistant({
                   <span className="text-xs font-semibold flex items-center gap-1.5">
                     <Sparkles className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                     <span>Review Suggestions</span>
-                    <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
+                    {shouldShowReviews && suggestions.length > 0 && (
+                      <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
+                    )}
                   </span>
                   <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -544,52 +573,67 @@ export default function ZenTapReviewAssistant({
                   </span>
                 </div>
 
-                {/* Horizontal Scrolling Review Cards */}
-                <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
-                  {suggestions.map((sug, idx) => {
-                    const isSelected = selectedSuggestionIndex === idx;
-                    const labels = [
-                      "Experience Focus",
-                      "Hospitality Focus",
-                      "Recommendation Focus",
-                      "Quality Focus",
-                    ];
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSuggestionIndex(idx);
-                          setReviewDraft(sug);
-                        }}
-                        className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${isSelected
-                            ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
-                            : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
-                          }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${themeClasses.accentText} flex items-center gap-1`}>
-                              <span>Option {idx + 1}</span>
-                              <span className="opacity-60 font-normal">• {labels[idx] || "Variation"}</span>
-                            </span>
-                            <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
-                              }`}>
-                              {isSelected ? "Active" : "Tap to use"}
-                            </span>
+                {shouldShowReviews && suggestions.length > 0 ? (
+                  /* Horizontal Scrolling Review Cards */
+                  <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
+                    {suggestions.map((sug, idx) => {
+                      const isSelected = selectedSuggestionIndex === idx;
+                      const labels = [
+                        "Experience Focus",
+                        "Hospitality Focus",
+                        "Recommendation Focus",
+                        "Quality Focus",
+                      ];
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSuggestionIndex(idx);
+                            setReviewDraft(sug);
+                          }}
+                          className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${isSelected
+                              ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
+                              : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
+                            }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${themeClasses.accentText} flex items-center gap-1`}>
+                                <span>Option {idx + 1}</span>
+                                <span className="opacity-60 font-normal">• {labels[idx] || "Variation"}</span>
+                              </span>
+                              <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
+                                }`}>
+                                {isSelected ? "Active" : "Tap to use"}
+                              </span>
+                            </div>
+                            <p className="line-clamp-4 leading-relaxed text-[11.5px]">
+                              {sug}
+                            </p>
                           </div>
-                          <p className="line-clamp-4 leading-relaxed text-[11.5px]">
-                            {sug}
-                          </p>
-                        </div>
-                        <div className="pt-2.5 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
-                          <span>{isSelected ? "Shown in box below" : "Tap to load into box"}</span>
-                          {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                          <div className="pt-2.5 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
+                            <span>{isSelected ? "Shown in box below" : "Tap to load into box"}</span>
+                            {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Waiting state card before input or generation */
+                  <div className={`p-4 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-3.5`}>
+                    <div className={`w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center ${themeClasses.accentText} shrink-0`}>
+                      <Sparkles className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold">Ready to draft your review</span>
+                      <span className="text-[11px] opacity-65 leading-snug">
+                        Tap highlights in &quot;What stood out?&quot; above, write a short note, or click &quot;Generate Reviews&quot; below.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Selected Review Shown in the Box (Editable) */}
@@ -599,30 +643,36 @@ export default function ZenTapReviewAssistant({
                     <Edit3 className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                     <span>Selected Review Draft</span>
                   </span>
-                  <button
-                    onClick={handleCopy}
-                    type="button"
-                    className={`text-[11px] font-semibold ${themeClasses.accentText} hover:opacity-80 flex items-center gap-1 transition-colors cursor-pointer`}
-                  >
-                    {copiedText ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span className="text-emerald-400 font-bold">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copy text</span>
-                      </>
-                    )}
-                  </button>
+                  {reviewDraft && (
+                    <button
+                      onClick={handleCopy}
+                      type="button"
+                      className={`text-[11px] font-semibold ${themeClasses.accentText} hover:opacity-80 flex items-center gap-1 transition-colors cursor-pointer`}
+                    >
+                      {copiedText ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy text</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div className="relative">
                   <textarea
                     value={reviewDraft}
                     onChange={(e) => setReviewDraft(e.target.value)}
                     rows={4}
-                    placeholder="Select an option above or type your customized review here..."
+                    placeholder={
+                      shouldShowReviews
+                        ? "Select an option above or type your customized review here..."
+                        : "Your AI-crafted review will appear here once you pick what stood out above or click 'Generate Reviews'..."
+                    }
                     className={`w-full ${themeClasses.inner} rounded-xl p-3 text-base sm:text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
                   />
                   <div className="absolute bottom-2.5 right-3 flex items-center gap-1 opacity-40 text-[10px] pointer-events-none">
@@ -636,24 +686,25 @@ export default function ZenTapReviewAssistant({
                   <span className="inline-flex items-center gap-1.5 py-0.5 px-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
                     <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />
                     <span>
-                      Generated with <strong className="font-semibold text-amber-300">{activeAiEngine.label}</strong>{" "}
+                      {shouldShowReviews && reviewDraft ? "Generated with " : "AI Engine Ready: "}
+                      <strong className="font-semibold text-amber-300">{activeAiEngine.label}</strong>{" "}
                       <span className="text-[10px] text-amber-400/80 font-mono">({activeAiEngine.model})</span>
                     </span>
                   </span>
-                  <span className="text-[10px] text-zinc-400">Editable draft</span>
+                  <span className="text-[10px] text-zinc-400">{reviewDraft ? "Editable draft" : "Waiting for input"}</span>
                 </div>
               </div>
 
               {/* Two Buttons Below the Review Box */}
               <div className="flex flex-col gap-2.5 pt-1">
-                {/* Button 1: To change the reviews (recreates 2-3 other unique reviews) */}
+                {/* Button 1: Generate Reviews (creates tailored or unique reviews) */}
                 <button
-                  onClick={handleRecreateReviews}
+                  onClick={handleGenerateReviews}
                   type="button"
-                  className={`tactile-btn w-full h-11 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} font-semibold text-xs flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.978] transition-all cursor-pointer shadow-xs`}
+                  className={`tactile-btn w-full h-11 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} font-bold text-xs flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.978] transition-all cursor-pointer shadow-xs`}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${themeClasses.accentText} ${isRotating ? "animate-spin" : ""}`} />
-                  <span>Change Reviews (Generate New Ideas)</span>
+                  <span>{isRotating ? "Generating Reviews..." : "Generate Reviews"}</span>
                 </button>
 
                 {/* Button 2: Post the review on Google (copies text from box and opens destination to paste) */}

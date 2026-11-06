@@ -284,7 +284,7 @@ export default function ZenTapHubPage({
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [currentRating, setCurrentRating] = useState<number>(5);
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set(["Nice Staff", "Excellent Quality"]));
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [selectedLength, setSelectedLength] = useState<"short" | "medium" | "detailed">("medium");
   const [generatedReview, setGeneratedReview] = useState<string>("");
   const [showReviewBox, setShowReviewBox] = useState<boolean>(false);
