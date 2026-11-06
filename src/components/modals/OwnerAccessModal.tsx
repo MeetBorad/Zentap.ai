@@ -275,21 +275,51 @@ export default function OwnerAccessModal({
         return;
       }
 
+      const updatedPayload = {
+        name: editName.trim(),
+        city: editCity.trim(),
+        owner_name: editOwnerName.trim(),
+        phone: editPhone.trim(),
+        whatsapp_number: editWhatsapp.trim(),
+        whatsapp_message: editWhatsappMsg.trim(),
+        google_review_link: editReviewUrl.trim(),
+        review_url: editReviewUrl.trim(),
+        instagram_url: editInstagram.trim(),
+        facebook_url: editFacebook.trim(),
+        facebook_link: editFacebook.trim(),
+        website_url: editWebsite.trim(),
+        website: editWebsite.trim(),
+        address: editAddress.trim(),
+        category: editCategory.trim(),
+      };
+
       setSaveSuccess(true);
+      setBizData((prev: any) => ({ ...(prev || {}), ...updatedPayload }));
+
+      // Update cached session in sessionStorage
+      try {
+        const codeKey = (tagCode || businessSlug || loginId).toLowerCase().trim();
+        const storageKey = `zentap_owner_session_${codeKey}`;
+        const existingRaw = sessionStorage.getItem(storageKey);
+        if (existingRaw) {
+          const parsed = JSON.parse(existingRaw);
+          sessionStorage.setItem(
+            storageKey,
+            JSON.stringify({
+              ...parsed,
+              business: {
+                ...(parsed.business || {}),
+                ...updatedPayload,
+              },
+            })
+          );
+        }
+      } catch (err) {
+        console.warn("sessionStorage update notice:", err);
+      }
+
       if (onDetailsUpdated) {
-        onDetailsUpdated({
-          name: editName.trim(),
-          city: editCity.trim(),
-          phone: editPhone.trim(),
-          whatsapp_number: editWhatsapp.trim(),
-          google_review_link: editReviewUrl.trim(),
-          review_url: editReviewUrl.trim(),
-          instagram_url: editInstagram.trim(),
-          facebook_link: editFacebook.trim(),
-          website: editWebsite.trim(),
-          address: editAddress.trim(),
-          category: editCategory.trim(),
-        });
+        onDetailsUpdated(updatedPayload);
       }
 
       setTimeout(() => setSaveSuccess(false), 3500);
@@ -732,7 +762,7 @@ export default function OwnerAccessModal({
                   className="tactile-btn flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#ff7a00] hover:brightness-110 text-black text-xs font-bold cursor-pointer shadow-lg transition-transform active:scale-[0.978] disabled:opacity-50"
                 >
                   <Save className="w-3.5 h-3.5 text-black" />
-                  <span>{saving ? "Saving Changes..." : "Save & Update Live Page"}</span>
+                  <span>{saving ? "Publishing Changes..." : "Save & Publish Live"}</span>
                 </button>
               </div>
             </form>

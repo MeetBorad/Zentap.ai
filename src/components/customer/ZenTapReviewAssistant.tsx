@@ -834,6 +834,13 @@ export default function ZenTapReviewAssistant({
           businessSlug={business.slug || tagCode || "st3"}
           clientBusinessId={business.id}
           initialBusinessName={businessName}
+          onDetailsUpdated={() => {
+            if (typeof window !== "undefined") {
+              setTimeout(() => {
+                window.location.reload();
+              }, 1200);
+            }
+          }}
         />
       )}
     </div>

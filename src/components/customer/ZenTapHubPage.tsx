@@ -1105,6 +1105,13 @@ export default function ZenTapHubPage({
           businessSlug={business.slug || via || "st3"}
           clientBusinessId={business.id}
           initialBusinessName={business.name}
+          onDetailsUpdated={() => {
+            if (typeof window !== "undefined") {
+              setTimeout(() => {
+                window.location.reload();
+              }, 1200);
+            }
+          }}
         />
       )}
 

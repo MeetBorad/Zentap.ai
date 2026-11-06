@@ -85,15 +85,14 @@ export function generateOwnerSessionToken(tagCode: string, businessId?: string):
   return { token, expiresAt };
 }
 
-export function verifyOwnerSessionToken(token: string, tagCode: string): { valid: boolean; businessId?: string; remainingMs: number } {
+export function verifyOwnerSessionToken(
+  token: string, 
+  tagCode?: string
+): { valid: boolean; businessId?: string; tagCode?: string; remainingMs: number } {
   try {
     const raw = Buffer.from(token, "base64").toString("utf-8");
     const [tCode, bId, expStr, hmac] = raw.split("|");
     if (!tCode || !expStr || !hmac) return { valid: false, remainingMs: 0 };
-
-    if (tCode.toLowerCase() !== tagCode.toLowerCase().trim()) {
-      return { valid: false, remainingMs: 0 };
-    }
 
     const payload = `${tCode}|${bId}|${expStr}`;
     const expectedHmac = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
@@ -107,7 +106,12 @@ export function verifyOwnerSessionToken(token: string, tagCode: string): { valid
       return { valid: false, remainingMs: 0 };
     }
 
-    return { valid: true, businessId: bId || undefined, remainingMs: expiresAt - now };
+    return { 
+      valid: true, 
+      businessId: bId || tCode, 
+      tagCode: tCode, 
+      remainingMs: Math.max(0, expiresAt - now) 
+    };
   } catch {
     return { valid: false, remainingMs: 0 };
   }

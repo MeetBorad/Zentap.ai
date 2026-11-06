@@ -17,16 +17,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid request parameters" }, { status: 400 });
     }
 
-    const cleanCode = code.toLowerCase().trim();
+    const cleanCode = (code || "").toLowerCase().trim();
 
     // Verify 15-minute session token
-    const { valid, businessId, remainingMs } = verifyOwnerSessionToken(token, cleanCode);
+    const { valid, businessId: tokenBizId, tagCode: tokenTagCode, remainingMs } = verifyOwnerSessionToken(token, cleanCode);
     if (!valid) {
       return NextResponse.json({ error: "Session expired or invalid. Please re-authenticate." }, { status: 401 });
     }
 
     // Apply updates via businessStore
-    const result = updateTagAndBusinessFromOwner(cleanCode, {
+    const result = updateTagAndBusinessFromOwner(cleanCode || tokenTagCode || "st3", {
       name: updates.name,
       review_url: updates.google_review_link || updates.review_url,
       whatsapp_number: updates.whatsapp_number,
@@ -35,19 +35,23 @@ export async function POST(req: NextRequest) {
     });
 
     const db = createAdminClient();
-    let targetBid = businessId || result.business?.id || cleanCode.toUpperCase();
-    if (cleanCode === "st3" || cleanCode === "zentap" || targetBid === "ST3" || targetBid === "ZENTAP") {
+    const effectiveTagCode = tokenTagCode || cleanCode || "st3";
+    let targetBid = tokenBizId || cleanCode.toUpperCase();
+    if (effectiveTagCode === "st3" || effectiveTagCode === "zentap" || targetBid === "ST3" || targetBid === "ZENTAP" || cleanCode === "st3") {
       targetBid = "ZT-0004";
     }
 
     if (db) {
       try {
-        // 1. Sync to clients table (Source of Truth)
+        // 1. Sync to clients table (Master Source of Truth)
         let existingClient: any = null;
+        const candidateIds = Array.from(new Set([cleanCode, targetBid, tokenBizId, tokenTagCode, "ZT-0004"].filter(Boolean)));
+        const orFilter = candidateIds.map((id) => `business_id.ilike.${id},id.ilike.${id}`).join(",");
+        
         const { data: cData } = await db
           .from("clients")
           .select("*")
-          .or(`business_id.ilike.${cleanCode},business_id.ilike.${targetBid},id.ilike.${cleanCode},id.ilike.${targetBid}`)
+          .or(orFilter)
           .is("deleted_at", null)
           .maybeSingle();
         existingClient = cData;
@@ -56,7 +60,7 @@ export async function POST(req: NextRequest) {
           const { data: tRow } = await db
             .from("qr_nfc_tags")
             .select("business_id")
-            .ilike("tag_id", cleanCode)
+            .ilike("tag_id", effectiveTagCode)
             .is("deleted_at", null)
             .maybeSingle();
           if (tRow?.business_id) {
@@ -77,11 +81,11 @@ export async function POST(req: NextRequest) {
           const clientUpdates: any = {
             updated_at: new Date().toISOString(),
           };
-          if (updates.name) clientUpdates.business_name = updates.name.trim();
-          if (updates.city) clientUpdates.city = updates.city.trim();
-          if (updates.owner_name) clientUpdates.owner_name = updates.owner_name.trim();
-          if (updates.phone) clientUpdates.owner_phone = updates.phone.trim();
-          if (updates.whatsapp_number) clientUpdates.whatsapp = updates.whatsapp_number.trim();
+          if (updates.name !== undefined) clientUpdates.business_name = updates.name.trim();
+          if (updates.city !== undefined) clientUpdates.city = updates.city.trim();
+          if (updates.owner_name !== undefined) clientUpdates.owner_name = updates.owner_name.trim();
+          if (updates.phone !== undefined) clientUpdates.owner_phone = updates.phone.trim();
+          if (updates.whatsapp_number !== undefined) clientUpdates.whatsapp = updates.whatsapp_number.trim();
           if (updates.google_review_link || updates.review_url) {
             clientUpdates.google_review_link = (updates.google_review_link || updates.review_url).trim();
           }
@@ -93,31 +97,36 @@ export async function POST(req: NextRequest) {
           }
 
           const customFields = existingClient.custom_fields || {};
-          if (updates.website) customFields.website = updates.website.trim();
-          if (updates.address) customFields.directions = updates.address.trim();
-          if (updates.category) customFields.category = updates.category.trim();
+          if (updates.website !== undefined) customFields.website = updates.website.trim();
+          if (updates.address !== undefined) customFields.directions = updates.address.trim();
+          if (updates.category !== undefined) customFields.category = updates.category.trim();
           clientUpdates.custom_fields = customFields;
 
-          await db.from("clients").update(clientUpdates).eq("id", existingClient.id);
+          const { error: cErr } = await db.from("clients").update(clientUpdates).eq("id", existingClient.id);
+          if (cErr) {
+            console.error("clients update error:", cErr);
+          }
           try {
             updateClient(existingClient.business_id || targetBid, clientUpdates);
           } catch {}
         }
 
         // 2. Sync to page_editor_configs table
+        const pageSearch = Array.from(new Set([effectiveTagCode, cleanCode, targetBid, "st3", "ZT-0004"].filter(Boolean)));
+        const pageFilter = pageSearch.map((id) => `tag_id.ilike.${id},business_id.ilike.${id}`).join(",");
         const { data: existingPage } = await db
           .from("page_editor_configs")
           .select("*")
-          .or(`tag_id.ilike.${cleanCode},business_id.eq.${targetBid},tag_id.ilike.st3`)
+          .or(pageFilter)
           .is("deleted_at", null)
           .maybeSingle();
 
         if (existingPage) {
           const cfg = existingPage.config_data || {};
-          if (updates.name) cfg.title = updates.name.trim();
-          if (updates.city) cfg.city = updates.city.trim();
-          if (updates.phone) cfg.phone = updates.phone.trim();
-          if (updates.whatsapp_number) cfg.whatsapp = updates.whatsapp_number.trim();
+          if (updates.name !== undefined) cfg.title = updates.name.trim();
+          if (updates.city !== undefined) cfg.city = updates.city.trim();
+          if (updates.phone !== undefined) cfg.phone = updates.phone.trim();
+          if (updates.whatsapp_number !== undefined) cfg.whatsapp = updates.whatsapp_number.trim();
           if (updates.google_review_link || updates.review_url) {
             cfg.google_link = (updates.google_review_link || updates.review_url).trim();
           }
@@ -127,31 +136,50 @@ export async function POST(req: NextRequest) {
           if (updates.facebook_link || updates.facebook_url) {
             cfg.facebook = (updates.facebook_link || updates.facebook_url).trim();
           }
-          if (updates.website) cfg.website = updates.website.trim();
-          if (updates.address) cfg.address = updates.address.trim();
-          if (updates.category) cfg.category = updates.category.trim();
+          if (updates.website !== undefined) cfg.website = updates.website.trim();
+          if (updates.address !== undefined) cfg.address = updates.address.trim();
+          if (updates.category !== undefined) {
+            cfg.category = updates.category.trim();
+            cfg.subtitle = updates.category.trim();
+          }
 
-          const pageUpdates: any = {
+          const pageUpdates = {
+            business_name: updates.name ? updates.name.trim() : existingPage.business_name,
             config_data: cfg,
+            setup_status: "completed",
             updated_at: new Date().toISOString(),
           };
-          if (updates.name) pageUpdates.title = updates.name.trim();
-          if (updates.phone) pageUpdates.phone = updates.phone.trim();
-          if (updates.whatsapp_number) pageUpdates.whatsapp = updates.whatsapp_number.trim();
-          if (updates.google_review_link || updates.review_url) {
-            pageUpdates.google_link = (updates.google_review_link || updates.review_url).trim();
-          }
-          if (updates.instagram_handle || updates.instagram_url) {
-            pageUpdates.instagram = (updates.instagram_handle || updates.instagram_url).trim();
-          }
-          if (updates.facebook_link || updates.facebook_url) {
-            pageUpdates.facebook = (updates.facebook_link || updates.facebook_url).trim();
-          }
 
-          await db.from("page_editor_configs").update(pageUpdates).eq("id", existingPage.id);
+          const { error: pErr } = await db.from("page_editor_configs").update(pageUpdates).eq("id", existingPage.id);
+          if (pErr) {
+            console.error("page_editor_configs update error:", pErr);
+          }
         }
 
-        // 3. Sync to businesses table
+        // 3. Sync to qr_nfc_tags & google_review_links tables
+        const grUrl = (updates.google_review_link || updates.review_url || "").trim();
+        const tagUpdates: any = { updated_at: new Date().toISOString() };
+        if (updates.name) tagUpdates.business_name = updates.name.trim();
+        if (grUrl) tagUpdates.google_review_link = grUrl;
+
+        await db
+          .from("qr_nfc_tags")
+          .update(tagUpdates)
+          .or(`tag_id.ilike.${effectiveTagCode},business_id.ilike.${targetBid}`)
+          .is("deleted_at", null);
+
+        if (grUrl || updates.name) {
+          const grlUpdates: any = { updated_at: new Date().toISOString() };
+          if (updates.name) grlUpdates.business_name = updates.name.trim();
+          if (grUrl) grlUpdates.business_google_review_link = grUrl;
+          await db
+            .from("google_review_links")
+            .update(grlUpdates)
+            .or(`tag_id.ilike.${effectiveTagCode},business_id.ilike.${targetBid}`)
+            .is("deleted_at", null);
+        }
+
+        // 4. Sync to businesses table
         if (result.business?.id) {
           const bizUpdates: any = {
             updated_at: new Date().toISOString(),
@@ -164,8 +192,7 @@ export async function POST(req: NextRequest) {
             bizUpdates.whatsapp = updates.whatsapp_number.trim();
           }
           if (updates.whatsapp_message) bizUpdates.whatsapp_message = updates.whatsapp_message.trim();
-          if (updates.google_review_link || updates.review_url) {
-            const grUrl = (updates.google_review_link || updates.review_url).trim();
+          if (grUrl) {
             bizUpdates.review_url = grUrl;
             bizUpdates.google_review_link = grUrl;
           }
@@ -176,8 +203,13 @@ export async function POST(req: NextRequest) {
           await db.from("businesses").update(bizUpdates).eq("id", result.business.id);
         }
 
-        // 4. Invalidate Edge & Server Tag Cache
+        // 5. Invalidate Edge & Server Tag Cache
         invalidateCachedTag(cleanCode);
+        if (tokenTagCode) invalidateCachedTag(tokenTagCode);
+        if (targetBid) invalidateCachedTag(targetBid);
+        invalidateCachedTag("st3");
+        invalidateCachedTag("zentap");
+        invalidateCachedTag("zt-0004");
         if (targetBid) invalidateCachedTag(targetBid);
         invalidateCachedTag("st3");
         invalidateCachedTag("zentap");
