@@ -344,7 +344,20 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {primaryModel && (
+            <button
+              type="button"
+              onClick={() => handleTestModel(primaryModel)}
+              disabled={testingModelId === primaryModel.id}
+              className="tactile-btn px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 border border-white/10"
+              title="Test generating a live review with the active engine"
+            >
+              <Sparkles className={`w-3.5 h-3.5 text-amber-400 ${testingModelId === primaryModel.id ? "animate-spin" : ""}`} />
+              <span>{testingModelId === primaryModel.id ? "Testing Engine..." : "Test Active Engine"}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={fetchModelsAndSettings}
@@ -363,6 +376,44 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
           </button>
         </div>
       </div>
+
+      {/* Live Test Output Diagnostic Banner */}
+      {testResult && (
+        <div className={`p-4 rounded-2xl border text-xs flex items-start gap-3 animate-in fade-in duration-200 ${
+          testResult.success
+            ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-100"
+            : "bg-red-950/40 border-red-500/30 text-red-100"
+        }`}>
+          <div className="shrink-0 mt-0.5">
+            {testResult.success ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+            )}
+          </div>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="font-bold">
+                {testResult.success
+                  ? `Active AI Engine Online (${testResult.latency_ms}ms latency)`
+                  : "Engine Test Diagnostics Failed"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTestResult(null)}
+                className="text-[11px] opacity-60 hover:opacity-100 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-[11.5px] opacity-90 leading-relaxed font-mono">
+              {testResult.success
+                ? `Generated output: "${testResult.text || "OK"}"`
+                : testResult.error}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* AUTO-FAILOVER GLOBAL SETTINGS */}
       <div className="p-5 rounded-3xl bg-white border border-zinc-200/80 shadow-xs space-y-4">

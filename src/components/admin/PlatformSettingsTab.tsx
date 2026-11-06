@@ -96,6 +96,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
   // Section 3: Security & PIN Controls
   const [lockoutThreshold, setLockoutThreshold] = useState<number>(5);
   const [sessionDuration, setSessionDuration] = useState<number>(15);
+  const [adminSessionTimeout, setAdminSessionTimeout] = useState<number>(30);
   const [defaultTagPin, setDefaultTagPin] = useState("1234");
 
   // Telemetry counts for Database section
@@ -120,6 +121,8 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
       if (lock) setLockoutThreshold(parseInt(lock, 10));
       const sess = localStorage.getItem("zentap_session_duration");
       if (sess) setSessionDuration(parseInt(sess, 10));
+      const adminTimeout = localStorage.getItem("zentap_admin_session_timeout");
+      if (adminTimeout) setAdminSessionTimeout(parseInt(adminTimeout, 10));
       const pin = localStorage.getItem("zentap_default_pin");
       if (pin) setDefaultTagPin(pin);
 
@@ -156,6 +159,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
     if (typeof window !== "undefined") {
       localStorage.setItem("zentap_lockout_threshold", String(lockoutThreshold));
       localStorage.setItem("zentap_session_duration", String(sessionDuration));
+      localStorage.setItem("zentap_admin_session_timeout", String(adminSessionTimeout));
       localStorage.setItem("zentap_default_pin", defaultTagPin.trim());
     }
     setSavedSuccess(true);
@@ -989,7 +993,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Lockout Threshold */}
               <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
                 <div className="flex items-center gap-2 text-zinc-800 font-bold text-xs">
@@ -1010,11 +1014,34 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                 </select>
               </div>
 
-              {/* Session Expiry */}
+              {/* Admin Session Auto-Signout */}
+              <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <div className="flex items-center gap-2 text-zinc-900 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>Admin Session Auto-Signout</span>
+                </div>
+                <p className="text-[11px] text-zinc-600">
+                  Automatically sign out of Admin Console after idle inactivity.
+                </p>
+                <select
+                  value={adminSessionTimeout}
+                  onChange={(e) => setAdminSessionTimeout(parseInt(e.target.value, 10))}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                >
+                  <option value={15}>15 Minutes</option>
+                  <option value={30}>30 Minutes (Recommended)</option>
+                  <option value={60}>1 Hour</option>
+                  <option value={240}>4 Hours</option>
+                  <option value={480}>8 Hours</option>
+                  <option value={0}>Never (Manual Sign Out Only)</option>
+                </select>
+              </div>
+
+              {/* Card Management Expiry */}
               <div className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
                 <div className="flex items-center gap-2 text-zinc-800 font-bold text-xs">
                   <KeyRound className="w-4 h-4 text-emerald-600" />
-                  <span>Session Expiry</span>
+                  <span>Card Session Expiry</span>
                 </div>
                 <p className="text-[11px] text-zinc-500">
                   Card owner management panels automatically close after idle timeout.

@@ -242,10 +242,10 @@ export default function Header({ currentView, onNavigate, onOpenAuth }: HeaderPr
               <a
                 href="/admin/login"
                 title="Super Admin Portal Login"
-                className="tactile-btn-subtle flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] text-xs font-semibold cursor-pointer shadow-sm transition-all"
+                aria-label="Super Admin Portal Login"
+                className="tactile-btn-subtle w-8 h-8 rounded-full bg-[#141720] hover:bg-[#1c212e] text-zinc-300 hover:text-white border border-[#232734] flex items-center justify-center cursor-pointer shadow-sm transition-all active:scale-[0.978]"
               >
                 <ShieldAlert className="w-3.5 h-3.5 text-[#ff7a00]" />
-                <span>Admin Login</span>
               </a>
             </div>
           )}

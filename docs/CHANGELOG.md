@@ -1,5 +1,19 @@
 # ZenTap — Changelog
 
+## [1.54.14] — 2026-11-06
+### Security (Admin Session Auto-Signout Inactivity Policy, RLS Lockdown, Short Icon Login Button & Live Model Diagnostics)
+- **Admin Inactivity Auto-Signout Policy (`src/context/AuthContext.tsx`, `PlatformSettingsTab.tsx`, `admin/login/page.tsx`)**:
+  - Added configurable administrative inactivity session timeout (15m, 30m, 1h, 4h, 8h, or Never).
+  - Listens to active user input gestures (pointer, keyboard) to refresh activity timestamp while active, automatically terminating sessions and redirecting to login with a friendly expiry warning when left unattended.
+  - Removed obsolete development query parameter bypass (`admin=1`).
+- **Compact Admin Header Icon (`src/components/Header.tsx`)**:
+  - Converted the desktop header Admin Login button to a discreet, textless tactile icon button (`ShieldAlert`, 32px rounded-full) per founder specification.
+- **Settings AI Model Live Diagnostics (`AiModelManagerTab.tsx`, `/api/admin/models/test`)**:
+  - Added "Test Active Engine" button directly inside the Settings AI Models header card.
+  - Added automatic environment key fallback detection for Google Gemini, Groq, Cerebras, and Mistral in `/api/admin/models/test`, allowing instant real-time ping testing and latency verification directly from the settings console.
+- **Row Level Security (RLS) Verification**:
+  - Verified multi-tenant RLS isolation on Supabase: public visitors and regular business owners cannot access or modify other merchants' data or administrative tables (`clients`, `payments`, `ai_settings`, `ai_models`).
+
 ## [1.54.13] — 2026-11-06
 ### Added (Settings-Only Custom Field Governance, Dynamic Clients Table Columns, Page Cloning & Homepage Showcase CTA)
 - **Settings-Only Custom Business Fields Governance (`ClientsWebpageTab.tsx`)**:

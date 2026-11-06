@@ -32,9 +32,21 @@ export function checkIsAdmin(user: User | null): boolean {
     return false;
   }
 
-  // If no user is logged in, check standalone admin supreme session key or admin URL param
+  // Check standalone admin supreme session key with inactivity timeout enforcement
   if (typeof window !== "undefined") {
-    if (localStorage.getItem("zentap_admin_supreme") === "true" || window.location.search.includes("admin=1")) {
+    if (localStorage.getItem("zentap_admin_supreme") === "true") {
+      const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
+      if (timeoutMinutes > 0) {
+        const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
+        const now = Date.now();
+        if (lastActive > 0 && now - lastActive > timeoutMinutes * 60 * 1000) {
+          // Session expired due to inactivity
+          localStorage.removeItem("zentap_admin_supreme");
+          localStorage.removeItem("zentap_admin_last_active");
+          localStorage.setItem("zentap_admin_expired", "true");
+          return false;
+        }
+      }
       return true;
     }
   }
@@ -85,8 +97,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    // 3. User activity tracker for admin auto-signout
+    const updateActivity = () => {
+      if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
+        localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+      }
+    };
+    window.addEventListener("pointerdown", updateActivity, { passive: true });
+    window.addEventListener("keydown", updateActivity, { passive: true });
+
+    // Periodic check every 30s for session timeout
+    const checkInterval = setInterval(() => {
+      if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
+        const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
+        if (timeoutMinutes > 0) {
+          const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
+          if (lastActive > 0 && Date.now() - lastActive > timeoutMinutes * 60 * 1000) {
+            localStorage.removeItem("zentap_admin_supreme");
+            localStorage.removeItem("zentap_admin_last_active");
+            localStorage.setItem("zentap_admin_expired", "true");
+            window.location.href = "/admin/login";
+          }
+        }
+      }
+    }, 30000);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener("pointerdown", updateActivity);
+      window.removeEventListener("keydown", updateActivity);
+      clearInterval(checkInterval);
     };
   }, []);
 

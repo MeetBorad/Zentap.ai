@@ -44,6 +44,20 @@ export async function POST(req: NextRequest) {
     if (!key && modelRecord?.api_key_encrypted) {
       key = decryptApiKey(modelRecord.api_key_encrypted);
     }
+    if (!key && provider === "google") {
+      key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    }
+    if (!key && (provider === "openai_compatible" || provider === "openai")) {
+      if (baseUrl?.includes("groq.com")) {
+        key = process.env.GROQ_API_KEY;
+      } else if (baseUrl?.includes("cerebras.ai")) {
+        key = process.env.CEREBRAS_API_KEY;
+      } else if (baseUrl?.includes("mistral.ai")) {
+        key = process.env.MISTRAL_API_KEY;
+      } else {
+        key = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+      }
+    }
     if (!key && provider === "anthropic") {
       key = process.env.ANTHROPIC_API_KEY;
     }
