@@ -1069,17 +1069,26 @@ export default function ZenTapHubPage({
             <ShieldCheck className="w-4 h-4 text-[#ffc174]" />
             <span>Powered by ZenTap Digital Systems</span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-[#d8c3ad]">
-            <button 
-              onClick={() => setOwnerModalOpen(true)} 
-              className="hover:text-[#ffc174] transition-colors cursor-pointer"
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => setOwnerModalOpen(true)}
+              className="text-xs font-semibold text-[#ffc174] hover:underline transition-all cursor-pointer"
             >
-              Business Portal
+              Business owner? Manage this card
             </button>
-            <span className="text-white/20">•</span>
-            <Link href="/privacy" className="hover:text-[#ffc174] transition-colors">
-              Privacy &amp; Terms
-            </Link>
+            <div className="flex items-center gap-3 text-xs text-[#d8c3ad]">
+              <button 
+                onClick={() => setOwnerModalOpen(true)} 
+                className="hover:text-[#ffc174] transition-colors cursor-pointer"
+              >
+                Log In to Business Portal
+              </button>
+              <span className="text-white/20">•</span>
+              <Link href="/privacy" className="hover:text-[#ffc174] transition-colors">
+                Privacy &amp; Terms
+              </Link>
+            </div>
           </div>
           <span className="text-[11px] text-[#94A3B8]/70">
             © 2025 ZenTap Solutions. All rights reserved.

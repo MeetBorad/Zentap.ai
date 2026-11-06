@@ -25,6 +25,7 @@ import {
   Tag,
   RefreshCw
 } from "lucide-react";
+import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
 interface ZenTapReviewAssistantProps {
   business: BusinessRecord;
@@ -56,6 +57,7 @@ export default function ZenTapReviewAssistant({
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [activeAiEngine, setActiveAiEngine] = useState<{
     provider: string;
     label: string;
@@ -799,14 +801,40 @@ export default function ZenTapReviewAssistant({
             <ShieldCheck className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
             <span>Powered by ZenTap Digital Systems</span>
           </div>
-          <div className="flex items-center gap-3 text-xs opacity-60">
-            <a href="/" className="hover:underline transition-colors">Business Portal</a>
-            <span>•</span>
-            <a href="/" className="hover:underline transition-colors">Privacy &amp; Terms</a>
+          <div className="flex flex-col items-center gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => setOwnerModalOpen(true)}
+              className={`text-xs font-semibold ${themeClasses.accentText} hover:underline transition-all cursor-pointer`}
+            >
+              Business owner? Manage this card
+            </button>
+            <div className="flex items-center gap-3 text-[11px] opacity-60">
+              <button
+                type="button"
+                onClick={() => setOwnerModalOpen(true)}
+                className="hover:underline transition-colors cursor-pointer"
+              >
+                Log In to Business Portal
+              </button>
+              <span>•</span>
+              <a href="/privacy" className="hover:underline transition-colors">Privacy &amp; Terms</a>
+            </div>
           </div>
           <span className="text-[10px] opacity-40">© 2025 ZenTap Solutions. All rights reserved.</span>
         </div>
       </footer>
+
+      {/* Business Owner Access Modal */}
+      {ownerModalOpen && (
+        <OwnerAccessModal
+          isOpen={ownerModalOpen}
+          onClose={() => setOwnerModalOpen(false)}
+          tagCode={tagCode || business.slug || "st3"}
+          businessSlug={business.slug || tagCode || "st3"}
+          initialBusinessName={businessName}
+        />
+      )}
     </div>
   );
 }

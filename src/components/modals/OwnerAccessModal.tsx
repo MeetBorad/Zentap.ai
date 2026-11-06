@@ -20,16 +20,24 @@ import {
   Building2,
   Phone,
   Instagram,
-  QrCode
+  QrCode,
+  MapPin,
+  Globe,
+  Facebook,
+  User,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Save
 } from "lucide-react";
 
 interface OwnerAccessModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tagCode: string; // standee/card code (e.g. zt-0042 or business slug)
+  tagCode: string; // standee/card code (e.g. zt-0004, st3, or business slug)
   businessSlug?: string;
   initialBusinessName?: string;
-  onDetailsUpdated?: (updated: { name?: string; review_url?: string; whatsapp_number?: string; instagram_url?: string }) => void;
+  onDetailsUpdated?: (updated: any) => void;
 }
 
 export default function OwnerAccessModal({
@@ -41,9 +49,10 @@ export default function OwnerAccessModal({
   onDetailsUpdated,
 }: OwnerAccessModalProps) {
   // Authentication State
-  const [pin, setPin] = useState("");
+  const defaultCode = (tagCode || businessSlug || "ZT-0004").toUpperCase();
+  const [loginId, setLoginId] = useState(defaultCode);
   const [password, setPassword] = useState("");
-  const [showPasswordField, setShowPasswordField] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -63,23 +72,33 @@ export default function OwnerAccessModal({
   });
 
   const [editName, setEditName] = useState("");
-  const [editReviewUrl, setEditReviewUrl] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editOwnerName, setEditOwnerName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [editWhatsappMsg, setEditWhatsappMsg] = useState("");
+  const [editReviewUrl, setEditReviewUrl] = useState("");
   const [editInstagram, setEditInstagram] = useState("");
+  const [editFacebook, setEditFacebook] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Reset Confirmation State
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
-  const [resetLevel, setResetLevel] = useState<"off" | "needs_approval" | "direct">("off");
-  const [resetting, setResetting] = useState(false);
-  const [resetSuccessMsg, setResetSuccessMsg] = useState("");
+  // Sync default code whenever tagCode changes
+  useEffect(() => {
+    if (tagCode || businessSlug) {
+      setLoginId((tagCode || businessSlug || "ZT-0004").toUpperCase());
+    }
+  }, [tagCode, businessSlug]);
 
   // Check existing session from sessionStorage on mount / open
   useEffect(() => {
-    if (isOpen && tagCode) {
-      const storageKey = `zentap_owner_session_${tagCode.toLowerCase().trim()}`;
+    if (isOpen) {
+      const codeKey = (tagCode || businessSlug || "zt-0004").toLowerCase().trim();
+      const storageKey = `zentap_owner_session_${codeKey}`;
       try {
         const cached = sessionStorage.getItem(storageKey);
         if (cached) {
@@ -91,11 +110,7 @@ export default function OwnerAccessModal({
             if (parsed.tag) setCardData(parsed.tag);
             if (parsed.business) {
               setBizData(parsed.business);
-              setEditName(parsed.business.name || "");
-              setEditReviewUrl(parsed.business.review_url || "");
-              setEditWhatsapp(parsed.business.whatsapp_number || "");
-              setEditWhatsappMsg(parsed.business.whatsapp_message || "");
-              setEditInstagram(parsed.business.instagram_url || "");
+              populateFields(parsed.business);
             }
             if (parsed.stats) setScanStats(parsed.stats);
           } else {
@@ -106,7 +121,22 @@ export default function OwnerAccessModal({
         console.warn("Session parse notice:", err);
       }
     }
-  }, [isOpen, tagCode]);
+  }, [isOpen, tagCode, businessSlug]);
+
+  const populateFields = (b: any) => {
+    setEditName(b.name || initialBusinessName || "");
+    setEditCity(b.city || "Ahmedabad");
+    setEditOwnerName(b.owner_name || "");
+    setEditPhone(b.phone || "");
+    setEditWhatsapp(b.whatsapp_number || b.whatsapp || "");
+    setEditWhatsappMsg(b.whatsapp_message || "Hello, I am reaching out regarding your business services.");
+    setEditReviewUrl(b.google_review_link || b.review_url || "");
+    setEditInstagram(b.instagram_url || b.instagram || "");
+    setEditFacebook(b.facebook_url || b.facebook_link || "");
+    setEditWebsite(b.website_url || b.website || "");
+    setEditCategory(b.category || "");
+    setEditAddress(b.address || "");
+  };
 
   // 15-Minute Countdown Timer
   useEffect(() => {
@@ -130,11 +160,11 @@ export default function OwnerAccessModal({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Submit PIN for verification
-  const handleVerifyPin = async (e: React.FormEvent) => {
+  // Submit Login credentials for verification
+  const handleVerifyLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pin.trim()) {
-      setErrorMsg("Please enter your card PIN");
+    if (!loginId.trim() || !password.trim()) {
+      setErrorMsg("Please enter both Login ID and Password");
       return;
     }
 
@@ -146,17 +176,16 @@ export default function OwnerAccessModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code: tagCode || businessSlug,
-          pin: pin.trim(),
-          password: password.trim() || undefined,
+          code: loginId.trim(),
+          password: password.trim(),
+          pin: password.trim(),
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        // Uniform generic error
-        setErrorMsg(data.error || "PIN is incorrect");
+        setErrorMsg(data.error || "Login ID or Password is incorrect");
         return;
       }
 
@@ -169,16 +198,13 @@ export default function OwnerAccessModal({
       if (data.stats) setScanStats(data.stats);
 
       if (data.business) {
-        setEditName(data.business.name || "");
-        setEditReviewUrl(data.business.review_url || "");
-        setEditWhatsapp(data.business.whatsapp_number || "");
-        setEditWhatsappMsg(data.business.whatsapp_message || "");
-        setEditInstagram(data.business.instagram_url || "");
+        populateFields(data.business);
       }
 
       // Cache session for 15 mins
       try {
-        const storageKey = `zentap_owner_session_${tagCode.toLowerCase().trim()}`;
+        const codeKey = (tagCode || businessSlug || loginId).toLowerCase().trim();
+        const storageKey = `zentap_owner_session_${codeKey}`;
         sessionStorage.setItem(
           storageKey,
           JSON.stringify({
@@ -193,8 +219,8 @@ export default function OwnerAccessModal({
         console.warn("sessionStorage save error:", err);
       }
     } catch (err) {
-      console.warn("handleVerifyPin error:", err);
-      setErrorMsg("PIN is incorrect");
+      console.warn("handleVerifyLogin error:", err);
+      setErrorMsg("Connection error. Please try again.");
     } finally {
       setVerifying(false);
     }
@@ -215,13 +241,21 @@ export default function OwnerAccessModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token: sessionToken,
-          code: tagCode || businessSlug,
+          code: loginId || tagCode || businessSlug,
           updates: {
             name: editName.trim(),
-            review_url: editReviewUrl.trim(),
+            city: editCity.trim(),
+            owner_name: editOwnerName.trim(),
+            phone: editPhone.trim(),
             whatsapp_number: editWhatsapp.trim(),
             whatsapp_message: editWhatsappMsg.trim(),
+            google_review_link: editReviewUrl.trim(),
+            review_url: editReviewUrl.trim(),
             instagram_handle: editInstagram.trim(),
+            facebook_link: editFacebook.trim(),
+            website: editWebsite.trim(),
+            category: editCategory.trim(),
+            address: editAddress.trim(),
           },
         }),
       });
@@ -236,95 +270,60 @@ export default function OwnerAccessModal({
       if (onDetailsUpdated) {
         onDetailsUpdated({
           name: editName.trim(),
-          review_url: editReviewUrl.trim(),
+          city: editCity.trim(),
+          phone: editPhone.trim(),
           whatsapp_number: editWhatsapp.trim(),
+          google_review_link: editReviewUrl.trim(),
+          review_url: editReviewUrl.trim(),
           instagram_url: editInstagram.trim(),
+          facebook_link: editFacebook.trim(),
+          website: editWebsite.trim(),
+          address: editAddress.trim(),
+          category: editCategory.trim(),
         });
       }
-      setTimeout(() => setSaveSuccess(false), 4000);
+
+      setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err) {
       console.warn("handleSaveDetails error:", err);
-      setErrorMsg("Failed to save changes. Please try again.");
+      setErrorMsg("Failed to update details. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  // Execute card reset
-  const handleConfirmReset = async () => {
-    if (!sessionToken) return;
-
-    setResetting(true);
-    setErrorMsg("");
-
-    try {
-      const res = await fetch("/api/card/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: sessionToken,
-          code: tagCode || businessSlug,
-          resetLevel,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setErrorMsg(data.error || "Failed to reset card");
-        return;
-      }
-
-      setResetDialogOpen(false);
-      const levelLabel =
-        resetLevel === "off"
-          ? "Card turned OFF (scans show Page Unavailable)"
-          : resetLevel === "direct"
-          ? "Card switched to Direct Google Review"
-          : "Reset request submitted to Super Admin for approval (Card turned OFF)";
-
-      setResetSuccessMsg(`✓ ${levelLabel}`);
-    } catch (err) {
-      console.warn("handleConfirmReset error:", err);
-      setErrorMsg("Reset action failed. Please try again.");
-    } finally {
-      setResetting(false);
-    }
-  };
-
   const handleLockAndExit = () => {
+    const codeKey = (tagCode || businessSlug || loginId).toLowerCase().trim();
+    const storageKey = `zentap_owner_session_${codeKey}`;
     try {
-      const storageKey = `zentap_owner_session_${tagCode.toLowerCase().trim()}`;
       sessionStorage.removeItem(storageKey);
     } catch {}
     setSessionToken(null);
     setSessionExpiresAt(null);
-    setPin("");
     setPassword("");
     setErrorMsg("");
-    setResetSuccessMsg("");
+    setSaveSuccess(false);
     onClose();
   };
 
   if (!isOpen) return null;
 
-  const isMapsLink = editReviewUrl.includes("maps.app.goo.gl");
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-[#141720] text-white border border-[#2a3042] rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-[#121622] text-white border border-white/10 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
               {sessionToken ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="font-headline font-bold text-base sm:text-lg text-white">
-                {sessionToken ? "Card Owner Panel" : "Business Owner Access"}
+              <h3 className="font-bold text-base sm:text-lg text-white">
+                {sessionToken ? "Business Owner Panel" : "Business Owner Access"}
               </h3>
               <p className="text-[11px] text-gray-400 font-mono">
-                Item: {tagCode ? tagCode.toUpperCase() : businessSlug || "ZenTap Standee"}
+                Item: {loginId || defaultCode}
               </p>
             </div>
           </div>
@@ -347,14 +346,14 @@ export default function OwnerAccessModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* VIEW 1: PIN AUTHENTICATION                                                */}
+        {/* VIEW 1: LOGIN AUTHENTICATION (LOGIN ID + PASSWORD)                         */}
         {/* ========================================================================= */}
         {!sessionToken ? (
-          <form onSubmit={handleVerifyPin} className="space-y-4">
+          <form onSubmit={handleVerifyLogin} className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-gray-300 space-y-1">
               <p className="font-semibold text-white">Owner Security Check</p>
-              <p className="text-[11px] text-gray-400">
-                Enter the secret card PIN to manage this physical standee or card. Unlocks a private 15-minute session.
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Enter your unique Login ID and password to manage this physical standee or card. Unlocks a private 15-minute management session.
               </p>
             </div>
 
@@ -365,63 +364,71 @@ export default function OwnerAccessModal({
               </div>
             )}
 
+            {/* Login ID Input */}
             <div>
               <label className="block text-xs font-bold text-gray-300 mb-1">
-                Card PIN *
+                Login ID *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ZT-0004"
+                  value={loginId}
+                  onChange={(e) => {
+                    setLoginId(e.target.value);
+                    setErrorMsg("");
+                  }}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono tracking-wider focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <span className="text-[10px] text-gray-500 mt-1 block">
+                Pre-filled with your physical card / standee code.
+              </span>
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label className="block text-xs font-bold text-gray-300 mb-1">
+                Password *
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   autoFocus
-                  maxLength={12}
-                  placeholder="Enter 6-digit PIN"
-                  value={pin}
+                  placeholder="Enter your owner password"
+                  value={password}
                   onChange={(e) => {
-                    setPin(e.target.value);
+                    setPassword(e.target.value);
                     setErrorMsg("");
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm text-white font-mono tracking-widest placeholder:tracking-normal placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-black/40 border border-white/15 text-xs text-white tracking-wider focus:outline-none focus:border-amber-400"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               <div className="flex items-center justify-between text-[10px] text-gray-500 mt-1.5">
                 <span>5 wrong attempts locks card for 30 minutes.</span>
                 <a
                   href={`https://wa.me/919274560880?text=${encodeURIComponent(
-                    `Hi ZenTap Super Admin, I forgot the PIN for card: ${tagCode || businessSlug || ""}, Business: ${initialBusinessName || bizData?.name || ""}`
+                    `Hi ZenTap Super Admin, I need the password for my Business: ${initialBusinessName || ""}, ID: ${loginId}`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-amber-400 hover:text-amber-300 hover:underline inline-flex items-center gap-0.5 font-bold"
                 >
-                  <span>Forgot PIN?</span>
+                  <span>Forgot Password?</span>
                   <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               </div>
-            </div>
-
-            {/* Optional Second Secret: Business Password */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowPasswordField(!showPasswordField)}
-                className="text-[11px] text-amber-400/80 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <span>{showPasswordField ? "− Hide business password" : "+ Add business password (if configured)"}</span>
-              </button>
-
-              {showPasswordField && (
-                <div className="mt-2 animate-in slide-in-from-top-2">
-                  <input
-                    type="password"
-                    placeholder="Enter business password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="pt-2 flex justify-end gap-2 border-t border-white/10">
@@ -435,14 +442,14 @@ export default function OwnerAccessModal({
               <button
                 type="submit"
                 disabled={verifying}
-                className="tactile-btn flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black text-xs font-bold cursor-pointer shadow-lg transition-transform active:scale-[0.978] disabled:opacity-50"
+                className="tactile-btn flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#ff7a00] hover:brightness-110 text-black text-xs font-bold cursor-pointer shadow-lg transition-transform active:scale-[0.978] disabled:opacity-50"
               >
                 {verifying ? (
                   <span>Verifying...</span>
                 ) : (
                   <>
                     <Unlock className="w-3.5 h-3.5 text-black" />
-                    <span>Unlock Card Panel</span>
+                    <span>Log In &amp; Manage Business</span>
                   </>
                 )}
               </button>
@@ -450,28 +457,34 @@ export default function OwnerAccessModal({
           </form>
         ) : (
           /* ========================================================================= */
-          /* VIEW 2: 15-MINUTE SCOPED OWNER PANEL                                      */
+          /* VIEW 2: 15-MINUTE SCOPED OWNER MANAGEMENT PANEL                           */
           /* ========================================================================= */
-          <div className="space-y-5 animate-in fade-in duration-200">
+          <div className="space-y-4 animate-in fade-in duration-200">
             
             {/* Live Telemetry Card */}
-            <div className="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-black/30 border border-white/10 text-center">
+            <div className="grid grid-cols-4 gap-2 p-3 rounded-2xl bg-black/40 border border-white/10 text-center">
               <div>
-                <span className="block text-[10px] text-gray-400 uppercase font-mono">Total Scans</span>
-                <span className="font-mono text-base font-bold text-amber-400">
+                <span className="block text-[9.5px] text-gray-400 uppercase font-mono">Total Scans</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-amber-400">
                   {scanStats.totalScans}
                 </span>
               </div>
-              <div className="border-x border-white/10">
-                <span className="block text-[10px] text-gray-400 uppercase font-mono">NFC Taps</span>
-                <span className="font-mono text-base font-bold text-sky-400">
+              <div className="border-l border-white/10">
+                <span className="block text-[9.5px] text-gray-400 uppercase font-mono">NFC Taps</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-sky-400">
                   {scanStats.nfcScans}
                 </span>
               </div>
-              <div>
-                <span className="block text-[10px] text-gray-400 uppercase font-mono">QR Scans</span>
-                <span className="font-mono text-base font-bold text-purple-400">
+              <div className="border-l border-white/10">
+                <span className="block text-[9.5px] text-gray-400 uppercase font-mono">QR Scans</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-purple-400">
                   {scanStats.qrScans}
+                </span>
+              </div>
+              <div className="border-l border-white/10">
+                <span className="block text-[9.5px] text-gray-400 uppercase font-mono">Reviews</span>
+                <span className="font-mono text-sm sm:text-base font-bold text-emerald-400">
+                  {scanStats.reviewClicks}
                 </span>
               </div>
             </div>
@@ -486,32 +499,25 @@ export default function OwnerAccessModal({
             {saveSuccess && (
               <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>✓ Card details updated! Live across all physical scans instantly.</span>
-              </div>
-            )}
-
-            {resetSuccessMsg && (
-              <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <span>{resetSuccessMsg}</span>
+                <span>✓ Business details saved successfully! Your live page is updated.</span>
               </div>
             )}
 
             {/* Form: Update Details */}
-            <form onSubmit={handleSaveDetails} className="space-y-3.5">
-              <div className="flex items-center justify-between">
+            <form onSubmit={handleSaveDetails} className="space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-white/5">
                 <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                  Card Configuration
+                  Edit Business Details
                 </span>
                 <span className="text-[10px] text-gray-400 font-mono">
-                  Scoped to: {cardData?.code || tagCode}
+                  Changes go live immediately
                 </span>
               </div>
 
               {/* Business Name */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                  Business Name
+                  Business Name *
                 </label>
                 <div className="relative">
                   <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -520,8 +526,73 @@ export default function OwnerAccessModal({
                     required
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Zentap Digital Solutions"
                     className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                   />
+                </div>
+              </div>
+
+              {/* City & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    City / Location
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                    <input
+                      type="text"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="e.g. Ahmedabad"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Category / Subtitle
+                  </label>
+                  <input
+                    type="text"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    placeholder="e.g. Service • Digital Agency"
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* Owner Name & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Owner Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editOwnerName}
+                    onChange={(e) => setEditOwnerName(e.target.value)}
+                    placeholder="e.g. Meet Borad"
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Contact Phone
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="+91 92745 60880"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -545,21 +616,15 @@ export default function OwnerAccessModal({
                 </div>
                 <input
                   type="url"
-                  placeholder="https://g.page/r/.../review"
+                  placeholder="https://search.google.com/local/writereview?placeid=... or g.page/r/..."
                   value={editReviewUrl}
                   onChange={(e) => setEditReviewUrl(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                 />
-                {isMapsLink && (
-                  <p className="text-[10px] text-amber-400/90 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                    <span>Warning: maps.app.goo.gl opens profile, not direct review prompt.</span>
-                  </p>
-                )}
               </div>
 
               {/* WhatsApp Number & Message */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
                     WhatsApp Number
@@ -578,13 +643,13 @@ export default function OwnerAccessModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Instagram Handle
+                    Instagram Link / Handle
                   </label>
                   <div className="relative">
                     <Instagram className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-pink-400" />
                     <input
                       type="text"
-                      placeholder="@yourhandle"
+                      placeholder="https://instagram.com/..."
                       value={editInstagram}
                       onChange={(e) => setEditInstagram(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
@@ -593,128 +658,75 @@ export default function OwnerAccessModal({
                 </div>
               </div>
 
+              {/* Facebook & Website */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Facebook Page URL
+                  </label>
+                  <div className="relative">
+                    <Facebook className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" />
+                    <input
+                      type="url"
+                      placeholder="https://facebook.com/..."
+                      value={editFacebook}
+                      onChange={(e) => setEditFacebook(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Website / Portfolio URL
+                  </label>
+                  <div className="relative">
+                    <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                    <input
+                      type="url"
+                      placeholder="https://yourwebsite.com"
+                      value={editWebsite}
+                      onChange={(e) => setEditWebsite(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Address / Directions */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                  Default WhatsApp Chat Message
+                  Full Address / Directions Note
                 </label>
                 <input
                   type="text"
-                  placeholder="Hello, I tapped your ZenTap standee!"
-                  value={editWhatsappMsg}
-                  onChange={(e) => setEditWhatsappMsg(e.target.value)}
+                  placeholder="e.g. Ground Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               {/* Save Updates Button */}
-              <div className="pt-2 flex items-center justify-between border-t border-white/10">
+              <div className="pt-3 flex items-center justify-between border-t border-white/10">
                 <button
                   type="button"
-                  onClick={() => setResetDialogOpen(true)}
-                  className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 cursor-pointer transition-colors"
+                  onClick={handleLockAndExit}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 cursor-pointer"
                 >
-                  Reset Card
+                  Sign Out
                 </button>
 
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleLockAndExit}
-                    className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 cursor-pointer"
-                  >
-                    Lock &amp; Exit
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="tactile-btn px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold cursor-pointer shadow-md transition-transform active:scale-[0.978] disabled:opacity-50"
-                  >
-                    {saving ? "Saving..." : "Save Updates"}
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="tactile-btn flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#ff7a00] hover:brightness-110 text-black text-xs font-bold cursor-pointer shadow-lg transition-transform active:scale-[0.978] disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5 text-black" />
+                  <span>{saving ? "Saving Changes..." : "Save & Update Live Page"}</span>
+                </button>
               </div>
             </form>
-
-            {/* ========================================================================= */}
-            {/* SUB-MODAL: RESET CARD CONFIRMATION DIALOG                                */}
-            {/* ========================================================================= */}
-            {resetDialogOpen && (
-              <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/40 space-y-3 animate-in zoom-in-95">
-                <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
-                  <AlertTriangle className="w-4 h-4 text-red-400" />
-                  <span>Confirm Card Reset Action</span>
-                </div>
-                <p className="text-[11px] text-gray-300">
-                  Select the reset level for this physical standee or card:
-                </p>
-
-                <div className="space-y-2 text-xs">
-                  <label className="flex items-start gap-2 p-2 rounded-xl bg-black/30 border border-white/10 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="resetLevel"
-                      checked={resetLevel === "off"}
-                      onChange={() => setResetLevel("off")}
-                      className="mt-0.5 text-red-500 focus:ring-red-400"
-                    />
-                    <div>
-                      <span className="block font-bold text-white">Turn Off (Page Unavailable)</span>
-                      <span className="text-[10px] text-gray-400">Deactivates the card immediately. Taps display neutral "Page Unavailable".</span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start gap-2 p-2 rounded-xl bg-black/30 border border-white/10 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="resetLevel"
-                      checked={resetLevel === "direct"}
-                      onChange={() => setResetLevel("direct")}
-                      className="mt-0.5 text-blue-500 focus:ring-blue-400"
-                    />
-                    <div>
-                      <span className="block font-bold text-white">Direct Google Review</span>
-                      <span className="text-[10px] text-gray-400">Bypasses ZenTap page and redirects scans straight to your Google review link.</span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start gap-2 p-2 rounded-xl bg-black/30 border border-white/10 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="resetLevel"
-                      checked={resetLevel === "needs_approval"}
-                      onChange={() => setResetLevel("needs_approval")}
-                      className="mt-0.5 text-amber-500 focus:ring-amber-400"
-                    />
-                    <div>
-                      <span className="block font-bold text-white">Needs Approval</span>
-                      <span className="text-[10px] text-gray-400">Marks this card pending verification by admin support.</span>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 border-t border-red-500/20">
-                  <button
-                    type="button"
-                    onClick={() => setResetDialogOpen(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/10 text-xs font-semibold text-gray-300 hover:bg-white/15 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmReset}
-                    disabled={resetting}
-                    className="px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    {resetting
-                      ? "Processing..."
-                      : resetLevel === "needs_approval"
-                      ? "Submit Reset Request"
-                      : "Confirm Reset"}
-                  </button>
-                </div>
-              </div>
-            )}
 
           </div>
         )}
