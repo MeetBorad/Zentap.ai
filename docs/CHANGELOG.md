@@ -1,5 +1,16 @@
 # ZenTap — Changelog
 
+## [1.54.12] — 2026-11-06
+### Added (Live AI Model Visibility, Multi-Provider Priority Queue & Assistant Badge Display)
+- **Resolved AI Model Visibility in Super Admin Console & Customer Review Assistant**:
+  - **Dynamic Multi-Provider Priority Queue (`src/lib/ai/modelManager.ts`)**: Added `getDefaultConfiguredModels()` providing live registered models for **Google Gemini 3.5 Flash Lite** (Primary), **Groq Llama 3.3 70B** (Fast Standby), **Cerebras Llama 3.3 70B**, and **Mistral Small Latest**.
+  - **Resilient Fallback Storage**: When `public.ai_models` is dropped or empty in Supabase, `getAllAiModels()`, `upsertAiModel()`, and `deleteAiModel()` seamlessly bridge priority ordering through `ai_settings.last_failover_info` and local storage without throwing `PGRST205` errors.
+  - **Super Admin Console Alignment (`AiModelManagerTab.tsx`)**: Replaced obsolete Claude 3.5 Haiku strings with active Google Gemini (`gemini-3.5-flash-lite`) and Groq AI configurations. The Priority Queue now renders all 4 live engines with status indicators, token pricing, and priority badges.
+  - **Customer Review Assistant Model Transparency (`ZenTapReviewAssistant.tsx`)**:
+    - Embedded dynamic `activeAiEngine` state capturing model metadata directly from `/api/review/writer` HTTP headers (`X-Review-Provider`, `X-Review-Label`, `X-Review-Model`, `X-Review-Source`).
+    - Added high-visibility model badge directly above review suggestions and below the selected review draft: `✨ Generated with Google Gemini (gemini-3.5-flash-lite)`.
+  - **Review Writer Route Header Serialization (`/api/review/writer/route.ts`)**: Returns response headers `X-Review-Provider`, `X-Review-Label`, `X-Review-Model`, and `X-Review-Source` on both text/plain streams and JSON requests.
+
 ## [1.54.11] — 2026-11-05
 ### Performance (High-Speed Tag Resolution, In-Memory Tag Caching, Parallel DB Queries & Bundle Code-Splitting)
 - **Resolved Slow Business Page and Tag Link Generation**:

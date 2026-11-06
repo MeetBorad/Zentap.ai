@@ -2,22 +2,22 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { BusinessRecord } from "@/lib/businessStore";
-import { 
-  generateReviewDraft, 
+import {
+  generateReviewDraft,
   generateReviewSuggestions,
-  REVIEW_RATING_METAS, 
-  DEFAULT_REVIEW_TAGS 
+  REVIEW_RATING_METAS,
+  DEFAULT_REVIEW_TAGS
 } from "@/services/reviewService";
-import { 
-  Sparkles, 
-  Star, 
-  Check, 
-  Copy, 
-  Edit3, 
-  Clock, 
-  ShieldCheck, 
-  MessageCircle, 
-  Phone, 
+import {
+  Sparkles,
+  Star,
+  Check,
+  Copy,
+  Edit3,
+  Clock,
+  ShieldCheck,
+  MessageCircle,
+  Phone,
   ArrowLeft,
   ExternalLink,
   AlertTriangle,
@@ -55,6 +55,17 @@ export default function ZenTapReviewAssistant({
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [activeAiEngine, setActiveAiEngine] = useState<{
+    provider: string;
+    label: string;
+    model: string;
+    source: string;
+  }>({
+    provider: "gemini",
+    label: "Google Gemini",
+    model: "gemini-3.5-flash-lite",
+    source: "cloud_llm",
+  });
 
   const businessName = pageConfig?.title || business.name || "ZenTap Digital Solutions";
   const city = business.city || "Ahmedabad";
@@ -169,14 +180,14 @@ export default function ZenTapReviewAssistant({
     const customCats = Array.isArray(pageConfig?.categories)
       ? pageConfig.categories
       : typeof pageConfig?.categories === "string"
-      ? pageConfig.categories.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
-      : [];
+        ? pageConfig.categories.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
+        : [];
 
     const customTags = Array.isArray(pageConfig?.tags)
       ? pageConfig.tags
       : typeof pageConfig?.tags === "string"
-      ? pageConfig.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
-      : [];
+        ? pageConfig.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [];
 
     const singleCat = typeof pageConfig?.category === "string"
       ? pageConfig.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
@@ -193,9 +204,9 @@ export default function ZenTapReviewAssistant({
     // Also extract categories from subtitle if entered as "City • Category" or "Category, Category"
     const subtitleCategories = pageConfig?.subtitle
       ? String(pageConfig.subtitle)
-          .split(/[•|,]/)
-          .map((s: string) => s.trim())
-          .filter((s: string) => s && !s.toLowerCase().includes("welcome") && !s.toLowerCase().includes("official digital hub"))
+        .split(/[•|,]/)
+        .map((s: string) => s.trim())
+        .filter((s: string) => s && !s.toLowerCase().includes("welcome") && !s.toLowerCase().includes("official digital hub"))
       : [];
 
     const userDefined = Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
@@ -279,6 +290,18 @@ export default function ZenTapReviewAssistant({
       });
 
       if (resp.ok && resp.body) {
+        const providerHeader = resp.headers.get("X-Review-Provider") || "gemini";
+        const labelHeader = resp.headers.get("X-Review-Label") || "Google Gemini";
+        const modelHeader = resp.headers.get("X-Review-Model") || "gemini-3.5-flash-lite";
+        const sourceHeader = resp.headers.get("X-Review-Source") || "cloud_llm";
+
+        setActiveAiEngine({
+          provider: providerHeader,
+          label: labelHeader,
+          model: modelHeader,
+          source: sourceHeader,
+        });
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let streamedText = "";
@@ -325,8 +348,8 @@ export default function ZenTapReviewAssistant({
             source,
             rating: currentRating,
           }),
-        }).catch(() => {});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     }
 
     // 3. Open the destination link to paste
@@ -405,11 +428,10 @@ export default function ZenTapReviewAssistant({
                         type="button"
                       >
                         <Star
-                          className={`w-9 h-9 transition-all ${
-                            isFilled
+                          className={`w-9 h-9 transition-all ${isFilled
                               ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.65)]"
                               : "text-zinc-600 hover:text-zinc-500"
-                          }`}
+                            }`}
                         />
                       </button>
                     );
@@ -463,11 +485,10 @@ export default function ZenTapReviewAssistant({
                         key={tag}
                         onClick={() => toggleTag(tag)}
                         type="button"
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95 ${
-                          isSelected
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95 ${isSelected
                             ? themeClasses.chipActive
                             : themeClasses.chipInactive
-                        }`}
+                          }`}
                       >
                         {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
                         <span>{tag}</span>
@@ -517,8 +538,9 @@ export default function ZenTapReviewAssistant({
                     <span>Review Suggestions</span>
                     <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
                   </span>
-                  <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20`}>
-                    {suggestions.length} options
+                  <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{activeAiEngine.label}</span>
                   </span>
                 </div>
 
@@ -540,11 +562,10 @@ export default function ZenTapReviewAssistant({
                           setSelectedSuggestionIndex(idx);
                           setReviewDraft(sug);
                         }}
-                        className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
-                          isSelected
+                        className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${isSelected
                             ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
                             : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
-                        }`}
+                          }`}
                       >
                         <div>
                           <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
@@ -552,9 +573,8 @@ export default function ZenTapReviewAssistant({
                               <span>Option {idx + 1}</span>
                               <span className="opacity-60 font-normal">• {labels[idx] || "Variation"}</span>
                             </span>
-                            <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                              isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
-                            }`}>
+                            <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
+                              }`}>
                               {isSelected ? "Active" : "Tap to use"}
                             </span>
                           </div>
@@ -610,6 +630,18 @@ export default function ZenTapReviewAssistant({
                     <span>Editable</span>
                   </div>
                 </div>
+
+                {/* Active AI Model Badge Indicator */}
+                <div className="flex items-center justify-between px-1 text-[11px] pt-1">
+                  <span className="inline-flex items-center gap-1.5 py-0.5 px-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
+                    <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />
+                    <span>
+                      Generated with <strong className="font-semibold text-amber-300">{activeAiEngine.label}</strong>{" "}
+                      <span className="text-[10px] text-amber-400/80 font-mono">({activeAiEngine.model})</span>
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-zinc-400">Editable draft</span>
+                </div>
               </div>
 
               {/* Two Buttons Below the Review Box */}
@@ -662,17 +694,17 @@ export default function ZenTapReviewAssistant({
 
               {/* Business Context Banner with Photo & WhatsApp Assistance */}
               <div className={`rounded-xl ${themeClasses.inner} overflow-hidden flex flex-col border ${themeClasses.innerBorder} mt-1`}>
-                <div 
+                <div
                   className="relative h-28 w-full bg-cover bg-center"
                   style={{ backgroundImage: `url('${locationImg}')` }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                   <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <img 
-                        src={logoUrl} 
-                        alt={businessName} 
-                        className="h-8 w-8 object-contain rounded-lg bg-black/40 p-0.5 border border-white/10" 
+                      <img
+                        src={logoUrl}
+                        alt={businessName}
+                        className="h-8 w-8 object-contain rounded-lg bg-black/40 p-0.5 border border-white/10"
                       />
                       <span className="text-xs font-bold text-white truncate max-w-[200px]">
                         {businessName}

@@ -123,24 +123,109 @@ export async function saveAiSettings(patch: Partial<AiSettingsRecord>): Promise<
 }
 
 // -------------------------------------------------------------
+// Default Configured AI Waterfall Models (Env & Fast Fallbacks)
+// -------------------------------------------------------------
+export function getDefaultConfiguredModels(): AiModelRecord[] {
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
+  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+
+  return [
+    {
+      id: "model_default_gemini",
+      label: "Google Gemini 3.5 Flash Lite",
+      provider: "google",
+      model_id: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+      priority: 1,
+      enabled: true,
+      status: "active",
+      api_key_encrypted: geminiKey ? encryptApiKey(geminiKey) : null,
+      input_cost_per_1m: 0.075,
+      output_cost_per_1m: 0.30,
+      created_at: "2026-03-01T00:00:00.000Z",
+    },
+    {
+      id: "model_default_groq",
+      label: "Groq Llama 3.3 70B",
+      provider: "openai_compatible",
+      model_id: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+      base_url: "https://api.groq.com/openai/v1",
+      priority: 2,
+      enabled: true,
+      status: "standby",
+      api_key_encrypted: groqKey ? encryptApiKey(groqKey) : null,
+      input_cost_per_1m: 0.59,
+      output_cost_per_1m: 0.79,
+      created_at: "2026-03-01T00:00:00.000Z",
+    },
+    {
+      id: "model_default_cerebras",
+      label: "Cerebras Llama 3.3 70B",
+      provider: "openai_compatible",
+      model_id: process.env.CEREBRAS_MODEL || "llama-3.3-70b",
+      base_url: "https://api.cerebras.ai/v1",
+      priority: 3,
+      enabled: true,
+      status: "standby",
+      api_key_encrypted: cerebrasKey ? encryptApiKey(cerebrasKey) : null,
+      input_cost_per_1m: 0.10,
+      output_cost_per_1m: 0.10,
+      created_at: "2026-03-01T00:00:00.000Z",
+    },
+    {
+      id: "model_default_mistral",
+      label: "Mistral Small Latest",
+      provider: "openai_compatible",
+      model_id: process.env.MISTRAL_MODEL || "mistral-small-latest",
+      base_url: "https://api.mistral.ai/v1",
+      priority: 4,
+      enabled: true,
+      status: "standby",
+      api_key_encrypted: mistralKey ? encryptApiKey(mistralKey) : null,
+      input_cost_per_1m: 0.20,
+      output_cost_per_1m: 0.60,
+      created_at: "2026-03-01T00:00:00.000Z",
+    },
+  ];
+}
+
+// -------------------------------------------------------------
 // Models Management
 // -------------------------------------------------------------
 export async function getAllAiModels(): Promise<AiModelRecord[]> {
   const db = createAdminClient();
   if (db) {
     try {
-      const { data } = await db
+      const { data, error } = await db
         .from("ai_models")
         .select("*")
         .order("priority", { ascending: true })
         .order("created_at", { ascending: true });
 
-      if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
         return data;
       }
     } catch (e) {
       console.warn("Supabase ai_models lookup error:", e);
     }
+
+    // Check if custom models were stored in ai_settings.last_failover_info
+    try {
+      const { data: settingData } = await db
+        .from("ai_settings")
+        .select("last_failover_info")
+        .eq("id", "global")
+        .maybeSingle();
+
+      if (settingData?.last_failover_info?.startsWith("MODELS_STORE:")) {
+        const rawJson = settingData.last_failover_info.replace("MODELS_STORE:", "");
+        const parsed: AiModelRecord[] = JSON.parse(rawJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.sort((a, b) => a.priority - b.priority);
+        }
+      }
+    } catch {}
   }
 
   // Local storage fallback
@@ -152,26 +237,9 @@ export async function getAllAiModels(): Promise<AiModelRecord[]> {
     } catch {}
   }
 
-  // Pre-seed from env ANTHROPIC_API_KEY if present and no models exist
-  if (list.length === 0 && process.env.ANTHROPIC_API_KEY) {
-    const seedModel: AiModelRecord = {
-      id: "model_default_haiku",
-      label: "Claude 3.5 Haiku (Default)",
-      provider: "anthropic",
-      model_id: "claude-haiku-5-5",
-      api_key_encrypted: encryptApiKey(process.env.ANTHROPIC_API_KEY),
-      priority: 1,
-      enabled: true,
-      status: "active",
-      input_cost_per_1m: 0.25,
-      output_cost_per_1m: 1.25,
-      created_at: new Date().toISOString(),
-    };
-    list = [seedModel];
-
-    if (db) {
-      Promise.resolve(db.from("ai_models").upsert(seedModel)).catch(() => {});
-    }
+  // Pre-seed from default configured models (Gemini, Groq, Cerebras, Mistral) if no models exist
+  if (list.length === 0) {
+    list = getDefaultConfiguredModels();
   }
 
   return list.sort((a, b) => a.priority - b.priority);
@@ -202,19 +270,29 @@ export async function upsertAiModel(record: Partial<AiModelRecord> & { label: st
   };
 
   const db = createAdminClient();
+  const allCurrent = await getAllAiModels();
+  const updatedAll = allCurrent.filter((m) => m.id !== id);
+  updatedAll.push(model);
+  updatedAll.sort((a, b) => a.priority - b.priority);
+
   if (db) {
     try {
       await db.from("ai_models").upsert(model);
-    } catch (e) {
-      console.warn("Supabase upsert ai_models error:", e);
+    } catch {
+      // If ai_models table is missing, backup to ai_settings
+      try {
+        await db.from("ai_settings").upsert({
+          id: "global",
+          last_failover_info: `MODELS_STORE:${JSON.stringify(updatedAll)}`,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
     }
   }
 
   if (typeof window !== "undefined") {
     try {
-      const all = (await getAllAiModels()).filter((m) => m.id !== id);
-      all.push(model);
-      localStorage.setItem(LOCAL_MODELS_KEY, JSON.stringify(all));
+      localStorage.setItem(LOCAL_MODELS_KEY, JSON.stringify(updatedAll));
     } catch {}
   }
 
@@ -223,18 +301,26 @@ export async function upsertAiModel(record: Partial<AiModelRecord> & { label: st
 
 export async function deleteAiModel(id: string): Promise<boolean> {
   const db = createAdminClient();
+  const allCurrent = await getAllAiModels();
+  const updatedAll = allCurrent.filter((m) => m.id !== id);
+
   if (db) {
     try {
       await db.from("ai_models").delete().eq("id", id);
-    } catch (e) {
-      console.warn("Supabase delete ai_models error:", e);
+    } catch {
+      try {
+        await db.from("ai_settings").upsert({
+          id: "global",
+          last_failover_info: `MODELS_STORE:${JSON.stringify(updatedAll)}`,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
     }
   }
 
   if (typeof window !== "undefined") {
     try {
-      const all = (await getAllAiModels()).filter((m) => m.id !== id);
-      localStorage.setItem(LOCAL_MODELS_KEY, JSON.stringify(all));
+      localStorage.setItem(LOCAL_MODELS_KEY, JSON.stringify(updatedAll));
     } catch {}
   }
 

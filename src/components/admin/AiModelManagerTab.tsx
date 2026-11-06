@@ -2,25 +2,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Cpu, 
-  Sparkles, 
-  Check, 
-  Save, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  RefreshCw, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ShieldCheck, 
-  ArrowUp, 
-  ArrowDown, 
-  Zap, 
-  Clock, 
-  DollarSign, 
-  Mail, 
-  Sliders, 
+import {
+  Cpu,
+  Sparkles,
+  Check,
+  Save,
+  Plus,
+  Trash2,
+  Edit2,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  ArrowUp,
+  ArrowDown,
+  Zap,
+  Clock,
+  DollarSign,
+  Mail,
+  Sliders,
   ExternalLink,
   Play,
   RotateCcw,
@@ -71,14 +71,14 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
   const [modalOpen, setModalOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<AiModelItem | null>(null);
   const [formLabel, setFormLabel] = useState("");
-  const [formProvider, setFormProvider] = useState<any>("anthropic");
-  const [formModelId, setFormModelId] = useState("claude-haiku-5-5");
+  const [formProvider, setFormProvider] = useState<any>("google");
+  const [formModelId, setFormModelId] = useState("gemini-3.5-flash-lite");
   const [formBaseUrl, setFormBaseUrl] = useState("");
   const [formApiKey, setFormApiKey] = useState("");
   const [formPriority, setFormPriority] = useState(1);
   const [formBudget, setFormBudget] = useState("");
-  const [formInCost, setFormInCost] = useState("0.25");
-  const [formOutCost, setFormOutCost] = useState("1.25");
+  const [formInCost, setFormInCost] = useState("0.075");
+  const [formOutCost, setFormOutCost] = useState("0.30");
 
   // Test state
   const [testingModelId, setTestingModelId] = useState<string | null>(null);
@@ -107,14 +107,14 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
   const handleOpenAdd = () => {
     setEditingModel(null);
     setFormLabel("");
-    setFormProvider("anthropic");
-    setFormModelId("claude-haiku-5-5");
+    setFormProvider("google");
+    setFormModelId("gemini-3.5-flash-lite");
     setFormBaseUrl("");
     setFormApiKey("");
     setFormPriority(models.length + 1);
     setFormBudget("");
-    setFormInCost("0.25");
-    setFormOutCost("1.25");
+    setFormInCost("0.075");
+    setFormOutCost("0.30");
     setModalOpen(true);
   };
 
@@ -196,7 +196,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
       });
       showToast(!current ? "Model enabled" : "Model disabled");
       fetchModelsAndSettings();
-    } catch {}
+    } catch { }
   };
 
   const handleMakePrimary = async (id: string) => {
@@ -208,7 +208,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
       });
       showToast("✓ Primary model set!");
       fetchModelsAndSettings();
-    } catch {}
+    } catch { }
   };
 
   const handleResetStatus = async (id: string) => {
@@ -220,7 +220,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
       });
       showToast("✓ Model status reset to Standby");
       fetchModelsAndSettings();
-    } catch {}
+    } catch { }
   };
 
   const handleMovePriority = async (idx: number, direction: "up" | "down") => {
@@ -308,11 +308,11 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
         setSettings(data.settings);
         showToast("✓ AI settings saved!");
       }
-    } catch {}
+    } catch { }
   };
 
   // Primary model calculation
-  const primaryModel = 
+  const primaryModel =
     models.find((m) => m.id === settings?.manual_primary_id) ||
     models.find((m) => m.enabled && m.status !== "disabled") ||
     models[0];
@@ -334,7 +334,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
               </span>
             </div>
             <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">
-              {primaryModel ? `${primaryModel.label} (${primaryModel.model_id})` : "Claude 3.5 Haiku (Env fallback)"}
+              {primaryModel ? `${primaryModel.label} (${primaryModel.model_id})` : "Google Gemini 3.5 Flash Lite (gemini-3.5-flash-lite)"}
             </h3>
             {settings?.last_failover_at && (
               <p className="text-[11px] text-zinc-400 mt-0.5">
@@ -443,7 +443,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
               No custom models registered in database.
             </p>
             <p className="text-[11px] text-zinc-400">
-              Review Assistant is safely using the default Claude 3.5 Haiku from your environment key.
+              Review Assistant is safely using the default Google Gemini 3.5 Flash Lite from your environment key.
             </p>
             <button
               type="button"
@@ -524,20 +524,18 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
 
                       {/* Status */}
                       <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
-                          !m.enabled
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${!m.enabled
                             ? "bg-zinc-100 text-zinc-500"
                             : isCoolingDown
-                            ? "bg-amber-100 text-amber-800 animate-pulse"
-                            : isExhausted
-                            ? "bg-red-100 text-red-800"
-                            : m.status === "active"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            !m.enabled ? "bg-zinc-400" : isCoolingDown ? "bg-amber-500" : isExhausted ? "bg-red-500" : "bg-emerald-500"
-                          }`} />
+                              ? "bg-amber-100 text-amber-800 animate-pulse"
+                              : isExhausted
+                                ? "bg-red-100 text-red-800"
+                                : m.status === "active"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-blue-100 text-blue-800"
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${!m.enabled ? "bg-zinc-400" : isCoolingDown ? "bg-amber-500" : isExhausted ? "bg-red-500" : "bg-emerald-500"
+                            }`} />
                           <span>{!m.enabled ? "Disabled" : isCoolingDown ? "Cooldown" : isExhausted ? "Exhausted" : m.status}</span>
                         </span>
                       </td>
@@ -605,9 +603,8 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
                           <button
                             type="button"
                             onClick={() => handleToggleEnable(m.id, m.enabled)}
-                            className={`px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer ${
-                              m.enabled ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
-                            }`}
+                            className={`px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer ${m.enabled ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"
+                              }`}
                           >
                             {m.enabled ? "Active" : "Off"}
                           </button>
@@ -641,9 +638,8 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
 
         {/* Live Test Diagnostics Banner */}
         {testResult && (
-          <div className={`p-4 rounded-2xl border text-xs flex items-start gap-2.5 ${
-            testResult.success ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-red-50 border-red-200 text-red-900"
-          }`}>
+          <div className={`p-4 rounded-2xl border text-xs flex items-start gap-2.5 ${testResult.success ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-red-50 border-red-200 text-red-900"
+            }`}>
             {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" /> : <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5" />}
             <div className="flex-1 space-y-1">
               <span className="font-bold">
@@ -672,7 +668,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
                   type="text"
                   value={formLabel}
                   onChange={(e) => setFormLabel(e.target.value)}
-                  placeholder="e.g. Claude 3.5 Haiku (Primary)"
+                  placeholder="e.g. Google Gemini 3.5 Flash Lite (Primary)"
                   className="w-full px-3 py-2 rounded-xl border border-zinc-200"
                 />
               </div>
@@ -685,11 +681,11 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
                     onChange={(e) => setFormProvider(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-zinc-200"
                   >
-                    <option value="anthropic">Anthropic</option>
-                    <option value="openai">OpenAI</option>
                     <option value="google">Google Gemini</option>
+                    <option value="openai_compatible">OpenAI-Compatible (Groq/Cerebras/Mistral)</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
                     <option value="openrouter">OpenRouter</option>
-                    <option value="openai_compatible">OpenAI-Compatible</option>
                   </select>
                 </div>
 
@@ -699,7 +695,7 @@ export default function AiModelManagerTab({ showToast }: AiModelManagerTabProps)
                     type="text"
                     value={formModelId}
                     onChange={(e) => setFormModelId(e.target.value)}
-                    placeholder="claude-haiku-5-5 or gpt-4o-mini"
+                    placeholder="gemini-3.5-flash-lite or llama-3.3-70b-versatile"
                     className="w-full px-3 py-2 rounded-xl border border-zinc-200 font-mono"
                   />
                 </div>

@@ -11,6 +11,7 @@ const LENGTH_GUIDE: Record<string, string> = {
 
 interface ProviderConfig {
   name: string;
+  label: string;
   url: string;
   key?: string;
   model: string;
@@ -20,27 +21,31 @@ function getProviders(): ProviderConfig[] {
   return [
     {
       name: "gemini",
+      label: "Google Gemini",
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       key: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
       model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
     },
     {
+      name: "groq",
+      label: "Groq AI",
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      key: process.env.GROQ_API_KEY,
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+    },
+    {
       name: "cerebras",
+      label: "Cerebras AI",
       url: "https://api.cerebras.ai/v1/chat/completions",
       key: process.env.CEREBRAS_API_KEY,
       model: process.env.CEREBRAS_MODEL || "llama-3.3-70b",
     },
     {
       name: "mistral",
+      label: "Mistral AI",
       url: "https://api.mistral.ai/v1/chat/completions",
       key: process.env.MISTRAL_API_KEY,
       model: process.env.MISTRAL_MODEL || "mistral-small-latest",
-    },
-    {
-      name: "groq",
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      key: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
     },
   ];
 }
@@ -75,7 +80,7 @@ ${b.variation ? `Use different wording from before (variation #${b.variation}).`
   return { system, prompt, stars, highlightsList, noteText };
 }
 
-async function generate(system: string, prompt: string): Promise<{ text: string; provider: string } | null> {
+async function generate(system: string, prompt: string): Promise<{ text: string; provider: string; model: string; label: string } | null> {
   const providers = getProviders();
 
   for (const p of providers) {
@@ -107,7 +112,7 @@ async function generate(system: string, prompt: string): Promise<{ text: string;
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content?.trim();
       if (text) {
-        return { text, provider: p.name };
+        return { text, provider: p.name, model: p.model, label: p.label };
       }
     } catch (err: any) {
       console.warn(`[ReviewWriter] ${p.name} failed:`, err?.message || err);
@@ -121,6 +126,7 @@ async function generate(system: string, prompt: string): Promise<{ text: string;
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
+    const wantsJson = req.headers.get("accept")?.includes("application/json");
     const { system, prompt, stars, highlightsList, noteText } = buildPrompts(body);
 
     // 1. Run multi-provider waterfall
@@ -130,11 +136,24 @@ export async function POST(req: Request) {
       // Clean leading/trailing quotes or markdown backticks if returned
       const cleanText = result.text.replace(/^["'`]+|["'`]+$/g, "").trim();
 
+      if (wantsJson) {
+        return Response.json({
+          text: cleanText,
+          provider: result.provider,
+          label: result.label,
+          model: result.model,
+          source: "cloud_llm",
+        });
+      }
+
       return new Response(cleanText, {
         status: 200,
         headers: {
           "Content-Type": "text/plain; charset=utf-8",
           "X-Review-Provider": result.provider,
+          "X-Review-Label": result.label,
+          "X-Review-Model": result.model,
+          "X-Review-Source": "cloud_llm",
         },
       });
     }
@@ -151,10 +170,24 @@ export async function POST(req: Request) {
     });
     const fallbackText = fallbackList[0] || `Had a wonderful experience at ${body.businessName || "this store"}! Highly recommended.`;
 
+    if (wantsJson) {
+      return Response.json({
+        text: fallbackText,
+        provider: "synthesizer",
+        label: "ZenTap Review Synthesizer",
+        model: "smart-templates-v2",
+        source: "synthesizer",
+      });
+    }
+
     return new Response(fallbackText, {
       status: 200,
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
+        "X-Review-Provider": "synthesizer",
+        "X-Review-Label": "ZenTap Review Synthesizer",
+        "X-Review-Model": "smart-templates-v2",
+        "X-Review-Source": "synthesizer",
         "X-Review-Fallback": "synthesizer",
       },
     });
