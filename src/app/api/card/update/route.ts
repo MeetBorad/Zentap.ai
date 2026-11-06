@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyOwnerSessionToken, logPartnerAction } from "@/lib/ownerAccess";
 import { updateTagAndBusinessFromOwner } from "@/lib/businessStore";
+import { updateClient } from "@/lib/adminPlatformStore";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { invalidateCachedTag } from "@/lib/tagCache";
 
@@ -34,16 +35,43 @@ export async function POST(req: NextRequest) {
     });
 
     const db = createAdminClient();
-    const targetBid = businessId || result.business?.id || cleanCode.toUpperCase();
+    let targetBid = businessId || result.business?.id || cleanCode.toUpperCase();
+    if (cleanCode === "st3" || cleanCode === "zentap" || targetBid === "ST3" || targetBid === "ZENTAP") {
+      targetBid = "ZT-0004";
+    }
 
     if (db) {
       try {
-        // 1. Sync to clients table
-        const { data: existingClient } = await db
+        // 1. Sync to clients table (Source of Truth)
+        let existingClient: any = null;
+        const { data: cData } = await db
           .from("clients")
           .select("*")
-          .or(`business_id.ilike.${cleanCode},business_id.eq.${targetBid},id.ilike.${cleanCode}`)
+          .or(`business_id.ilike.${cleanCode},business_id.ilike.${targetBid},id.ilike.${cleanCode},id.ilike.${targetBid}`)
+          .is("deleted_at", null)
           .maybeSingle();
+        existingClient = cData;
+
+        if (!existingClient) {
+          const { data: tRow } = await db
+            .from("qr_nfc_tags")
+            .select("business_id")
+            .ilike("tag_id", cleanCode)
+            .is("deleted_at", null)
+            .maybeSingle();
+          if (tRow?.business_id) {
+            const { data: linkedC } = await db
+              .from("clients")
+              .select("*")
+              .ilike("business_id", tRow.business_id)
+              .is("deleted_at", null)
+              .maybeSingle();
+            if (linkedC) {
+              existingClient = linkedC;
+              targetBid = linkedC.business_id;
+            }
+          }
+        }
 
         if (existingClient) {
           const clientUpdates: any = {
@@ -71,6 +99,9 @@ export async function POST(req: NextRequest) {
           clientUpdates.custom_fields = customFields;
 
           await db.from("clients").update(clientUpdates).eq("id", existingClient.id);
+          try {
+            updateClient(existingClient.business_id || targetBid, clientUpdates);
+          } catch {}
         }
 
         // 2. Sync to page_editor_configs table

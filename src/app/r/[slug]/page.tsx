@@ -8,7 +8,7 @@ import { resolveScan } from "@/lib/resolveTag";
 import { getTagByCode, getBusinessBySlug, BusinessRecord, SAMPLE_DEMO_BUSINESS } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags, getAllClients } from "@/lib/adminPlatformStore";
 import { getCachedTagData, setCachedTagData } from "@/lib/tagCache";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
@@ -145,6 +145,34 @@ export default async function Page({
   }
   const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
 
+  // 1. Fetch Client Record from clients table (Master Source of Truth)
+  let clientRecord: any = null;
+  const candidateBizId = pageConfig?.business_id || (cleanCode === "st3" || cleanCode === "zentap" || via?.toLowerCase() === "st3" ? "ZT-0004" : cleanCode);
+
+  if (db) {
+    try {
+      const { data: cData } = await db
+        .from('clients')
+        .select('*')
+        .or(`business_id.ilike.${cleanCode},business_id.ilike.${candidateBizId},id.ilike.${cleanCode}`)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (cData) clientRecord = cData;
+    } catch (e) {
+      console.warn("Client table lookup notice:", e);
+    }
+  }
+
+  if (!clientRecord) {
+    const allClients = getAllClients();
+    clientRecord = allClients.find(
+      (c) =>
+        c.business_id.toLowerCase() === cleanCode.toLowerCase() ||
+        c.business_id.toLowerCase() === candidateBizId.toLowerCase() ||
+        (cleanCode === "st3" && c.business_id === "ZT-0004")
+    ) || null;
+  }
+
   if (!pageConfig) {
     const local = getAllPageEditorConfigs().find(
       (p) =>
@@ -171,40 +199,40 @@ export default async function Page({
     }
   }
 
-  const effectiveBiz: BusinessRecord = biz || {
-    id: pageConfig?.business_id || pageConfig?.tag_id || "sample-demo-biz-01",
-    name: cfg.title || pageConfig?.business_name || "ZenTap Digital Solutions",
-    slug: (pageConfig?.business_id || pageConfig?.tag_id || "zentap").toLowerCase(),
-    review_url: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
-    google_review_link: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+  const effectiveBiz: BusinessRecord = {
+    id: clientRecord?.business_id || pageConfig?.business_id || biz?.id || pageConfig?.tag_id || "ZT-0004",
+    name: clientRecord?.business_name || cfg.title || pageConfig?.business_name || biz?.name || "ZenTap Digital Solutions",
+    slug: (clientRecord?.business_id || pageConfig?.business_id || biz?.slug || pageConfig?.tag_id || "zentap").toLowerCase(),
+    review_url: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    google_review_link: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
     active: true,
     is_deleted: false,
-    owner_user_id: "",
-    email: cfg.email || "contact@zentapdigitalsolutions.com",
-    phone: cfg.phone || "+91 92745 60880",
-    city: "Ahmedabad",
+    owner_user_id: biz?.owner_user_id || "",
+    email: clientRecord?.owner_email || cfg.email || biz?.email || "meetborad@hotmail.com",
+    phone: clientRecord?.owner_phone || cfg.phone || biz?.phone || "+91 96627 60880",
+    city: clientRecord?.city || cfg.city || biz?.city || "Ahmedabad",
     state: "Gujarat",
     country: "India",
     pincode: "380001",
-    address: cfg.address || "Ahmedabad, Gujarat, India",
-    category: cfg.subtitle || cfg.category || "Ahmedabad • Welcome to our official digital hub",
-    gbp_link: cfg.google_link || "https://www.google.com/maps/place//@23.0393793,72.6446507,17z",
+    address: clientRecord?.custom_fields?.directions || cfg.address || biz?.address || "Ahmedabad, Gujarat, India",
+    category: clientRecord?.custom_fields?.category || cfg.subtitle || cfg.category || biz?.category || "Service",
+    gbp_link: clientRecord?.google_review_link || cfg.google_link || biz?.gbp_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
     plan: "metal_reply",
     payment_status: "paid",
-    created_at: pageConfig?.created_at || new Date().toISOString(),
+    created_at: clientRecord?.created_at || pageConfig?.created_at || new Date().toISOString(),
     redirect_mode: "interactive_profile",
-    whatsapp_number: cfg.whatsapp || cfg.phone || "919274560880",
-    whatsapp: cfg.whatsapp || cfg.phone || "919274560880",
-    instagram: cfg.instagram || "https://instagram.com",
-    instagram_url: cfg.instagram || "https://instagram.com",
-    facebook: cfg.facebook || "https://facebook.com",
-    website: cfg.website || "https://zentapdigitalsolutions.com",
-    about_us: cfg.about_us,
-    opening_hours: cfg.opening_hours,
-    faqs: cfg.faqs,
-    location_image: cfg.location_image,
-    location_title: cfg.location_title,
-    logo_url: cfg.logo_url,
+    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp_number || "9274560880",
+    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp || "9274560880",
+    instagram: clientRecord?.instagram_link || cfg.instagram || biz?.instagram || "https://www.instagram.com/zenttap/",
+    instagram_url: clientRecord?.instagram_link || cfg.instagram || biz?.instagram_url || "https://www.instagram.com/zenttap/",
+    facebook: clientRecord?.facebook_link || cfg.facebook || biz?.facebook || "",
+    website: clientRecord?.custom_fields?.website || cfg.website || biz?.website || "https://www.zentapdigitalsolutions.com",
+    about_us: cfg.about_us || biz?.about_us,
+    opening_hours: cfg.opening_hours || biz?.opening_hours,
+    faqs: cfg.faqs || biz?.faqs,
+    location_image: cfg.location_image || biz?.location_image,
+    location_title: cfg.location_title || biz?.location_title,
+    logo_url: cfg.logo_url || biz?.logo_url,
   };
 
   const defaultDesign = getPageDesign(effectiveBiz.id);
@@ -343,7 +371,7 @@ export default async function Page({
       <ZenTapHubPage
         business={{
           ...effectiveBiz,
-          name: cfg.title || effectiveBiz.name,
+          name: clientRecord?.business_name || cfg.title || effectiveBiz.name,
         }}
         design={customDesign}
         buttons={getPageButtons(effectiveBiz.id)}

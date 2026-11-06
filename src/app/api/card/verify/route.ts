@@ -10,6 +10,7 @@ import {
   DEFAULT_PIN_HASH 
 } from "@/lib/ownerAccess";
 import { getTagByCode, getBusinessBySlug, getAllBusinesses, getAllTags, getBusinessAnalytics } from "@/lib/businessStore";
+import { getAllClients, getAllQrNfcTags } from "@/lib/adminPlatformStore";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     const db = createAdminClient();
     if (db) {
       try {
-        // A. Look up clients table
+        // A. Direct lookup in clients table
         const { data: cData } = await db
           .from("clients")
           .select("*")
@@ -74,16 +75,34 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         if (cData) client = cData;
 
-        // B. Look up page_editor_configs
-        const { data: pData } = await db
-          .from("page_editor_configs")
-          .select("*")
-          .or(`tag_id.ilike.${cleanCode},business_id.ilike.${cleanCode}`)
-          .is("deleted_at", null)
-          .maybeSingle();
-        if (pData) pageConfig = pData;
+        // B. Look up page_editor_configs, qr_nfc_tags, and google_review_links in parallel
+        const [pRes, qrRes, grlRes] = await Promise.all([
+          db.from("page_editor_configs").select("*").or(`tag_id.ilike.${cleanCode},business_id.ilike.${cleanCode}`).is("deleted_at", null).maybeSingle(),
+          db.from("qr_nfc_tags").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).maybeSingle(),
+          db.from("google_review_links").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).maybeSingle(),
+        ]);
 
-        // C. Look up tags & businesses
+        if (pRes?.data) pageConfig = pRes.data;
+        if (qrRes?.data) tag = qrRes.data;
+
+        // C. If client not found yet, map via tag/pageConfig/grl business_id
+        const mappedBizId =
+          tag?.business_id ||
+          pageConfig?.business_id ||
+          grlRes?.data?.business_id ||
+          (cleanCode === "st3" || cleanCode === "zentap" ? "ZT-0004" : null);
+
+        if (!client && mappedBizId) {
+          const { data: linkedClient } = await db
+            .from("clients")
+            .select("*")
+            .or(`business_id.ilike.${mappedBizId},id.ilike.${mappedBizId}`)
+            .is("deleted_at", null)
+            .maybeSingle();
+          if (linkedClient) client = linkedClient;
+        }
+
+        // D. Look up legacy tags & businesses
         const { data: dbTag } = await db
           .from("tags")
           .select("*, businesses (*)")
@@ -91,8 +110,18 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
 
         if (dbTag) {
-          tag = dbTag;
+          if (!tag) tag = dbTag;
           business = dbTag.businesses;
+          if (!client && (dbTag.business_id || dbTag.businesses?.id)) {
+            const bId = dbTag.business_id || dbTag.businesses?.id;
+            const { data: bClient } = await db
+              .from("clients")
+              .select("*")
+              .or(`business_id.ilike.${bId},id.ilike.${bId}`)
+              .is("deleted_at", null)
+              .maybeSingle();
+            if (bClient) client = bClient;
+          }
         } else {
           const { data: dbBiz } = await db
             .from("businesses")
@@ -106,7 +135,16 @@ export async function POST(req: NextRequest) {
               .select("*")
               .eq("business_id", dbBiz.id)
               .maybeSingle();
-            tag = bTag;
+            if (bTag && !tag) tag = bTag;
+            if (!client) {
+              const { data: bClient } = await db
+                .from("clients")
+                .select("*")
+                .or(`business_id.ilike.${dbBiz.id},id.ilike.${dbBiz.id}`)
+                .is("deleted_at", null)
+                .maybeSingle();
+              if (bClient) client = bClient;
+            }
           }
         }
       } catch (err) {
@@ -114,8 +152,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback to local store
-    if (!tag && !business && !client) {
+    // Fallback to local store if client still not located
+    if (!client) {
+      const allClients = getAllClients();
+      const direct = allClients.find(
+        (c) => c.business_id.toLowerCase() === cleanCode || c.id.toLowerCase() === cleanCode
+      );
+      if (direct) {
+        client = direct;
+      } else {
+        const allTags = getAllQrNfcTags();
+        const matched = allTags.find((t) => t.tag_id.toLowerCase() === cleanCode);
+        if (matched?.business_id) {
+          client = allClients.find((c) => c.business_id.toLowerCase() === matched.business_id!.toLowerCase()) || null;
+        }
+        if (!client && (cleanCode === "st3" || cleanCode === "zentap" || cleanCode === "zt-0004")) {
+          client = allClients.find((c) => c.business_id === "ZT-0004") || null;
+        }
+      }
+    }
+
+    if (!tag && !business) {
       tag = getTagByCode(cleanCode);
       if (tag && tag.business_id) {
         business = getAllBusinesses().find((b) => b.id === tag.business_id || b.slug === tag.business_id) || null;
@@ -170,15 +227,19 @@ export async function POST(req: NextRequest) {
     const targetSlug = business?.slug || pageConfig?.tag_id || cleanCode;
     const stats = getBusinessAnalytics(targetSlug);
 
-    const effectiveName = pageConfig?.title || client?.business_name || business?.name || "ZenTap Business";
+    // Business Owner Data strictly prioritizes the Clients table (Source of Truth)
+    const effectiveName = client?.business_name || pageConfig?.title || business?.name || "ZenTap Business";
     const effectiveCity = client?.city || pageConfig?.city || business?.city || "Ahmedabad";
-    const effectiveReviewUrl = client?.google_review_link || pageConfig?.google_link || business?.google_review_link || business?.review_url || "";
+    const effectiveOwnerName = client?.owner_name || "";
+    const effectivePhone = client?.owner_phone || pageConfig?.phone || business?.phone || "";
+    const effectiveEmail = client?.owner_email || business?.email || "";
     const effectiveWhatsapp = client?.whatsapp || pageConfig?.whatsapp || business?.whatsapp || business?.whatsapp_number || "";
+    const effectiveReviewUrl = client?.google_review_link || pageConfig?.google_link || business?.google_review_link || business?.review_url || "";
     const effectiveInstagram = client?.instagram_link || pageConfig?.instagram || business?.instagram || business?.instagram_url || "";
     const effectiveFacebook = client?.facebook_link || pageConfig?.facebook || "";
     const effectiveWebsite = client?.custom_fields?.website || pageConfig?.website || business?.website || "";
-    const effectiveCategory = pageConfig?.category || client?.custom_fields?.category || business?.category || "";
-    const effectiveAddress = pageConfig?.address || client?.custom_fields?.directions || business?.address || "";
+    const effectiveCategory = client?.custom_fields?.category || pageConfig?.category || business?.category || "";
+    const effectiveAddress = client?.custom_fields?.directions || pageConfig?.address || business?.address || "";
 
     return NextResponse.json({
       success: true,
@@ -196,9 +257,9 @@ export async function POST(req: NextRequest) {
         name: effectiveName,
         slug: targetSlug,
         city: effectiveCity,
-        owner_name: client?.owner_name || "",
-        phone: client?.owner_phone || pageConfig?.phone || business?.phone || "",
-        email: client?.owner_email || business?.email || "",
+        owner_name: effectiveOwnerName,
+        phone: effectivePhone,
+        email: effectiveEmail,
         whatsapp_number: effectiveWhatsapp,
         whatsapp_message: tag?.whatsapp_message || business?.whatsapp_message || "Hello, I am reaching out regarding your business services.",
         google_review_link: effectiveReviewUrl,

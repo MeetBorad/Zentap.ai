@@ -1547,6 +1547,7 @@ export default function CustomizedReviewAssistantPage() {
         onClose={() => setOwnerAccessModalOpen(false)}
         tagCode={slug}
         businessSlug={slug}
+        clientBusinessId={business?.id}
         initialBusinessName={business?.name}
         onDetailsUpdated={(updated) => {
           if (business) {

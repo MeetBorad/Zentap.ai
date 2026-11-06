@@ -1101,8 +1101,9 @@ export default function ZenTapHubPage({
         <OwnerAccessModal
           isOpen={ownerModalOpen}
           onClose={() => setOwnerModalOpen(false)}
-          tagCode={business.slug}
-          businessSlug={business.slug}
+          tagCode={via || business.slug || "st3"}
+          businessSlug={business.slug || via || "st3"}
+          clientBusinessId={business.id}
           initialBusinessName={business.name}
         />
       )}

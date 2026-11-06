@@ -36,6 +36,7 @@ interface OwnerAccessModalProps {
   onClose: () => void;
   tagCode: string; // standee/card code (e.g. zt-0004, st3, or business slug)
   businessSlug?: string;
+  clientBusinessId?: string;
   initialBusinessName?: string;
   onDetailsUpdated?: (updated: any) => void;
 }
@@ -45,12 +46,22 @@ export default function OwnerAccessModal({
   onClose,
   tagCode,
   businessSlug,
+  clientBusinessId,
   initialBusinessName,
   onDetailsUpdated,
 }: OwnerAccessModalProps) {
+  // Resolve default login ID (e.g. "ZT-0004")
+  const computeDefaultId = () => {
+    if (clientBusinessId && clientBusinessId.toUpperCase().startsWith("ZT-")) {
+      return clientBusinessId.toUpperCase();
+    }
+    const raw = (businessSlug || tagCode || "ZT-0004").toLowerCase().trim();
+    if (raw === "st3" || raw === "zentap") return "ZT-0004";
+    return (clientBusinessId || tagCode || businessSlug || "ZT-0004").toUpperCase();
+  };
+
   // Authentication State
-  const defaultCode = (tagCode || businessSlug || "ZT-0004").toUpperCase();
-  const [loginId, setLoginId] = useState(defaultCode);
+  const [loginId, setLoginId] = useState(computeDefaultId);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -87,12 +98,10 @@ export default function OwnerAccessModal({
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Sync default code whenever tagCode changes
+  // Sync default code whenever tagCode, businessSlug, or clientBusinessId changes
   useEffect(() => {
-    if (tagCode || businessSlug) {
-      setLoginId((tagCode || businessSlug || "ZT-0004").toUpperCase());
-    }
-  }, [tagCode, businessSlug]);
+    setLoginId(computeDefaultId());
+  }, [tagCode, businessSlug, clientBusinessId]);
 
   // Check existing session from sessionStorage on mount / open
   useEffect(() => {
@@ -323,7 +332,7 @@ export default function OwnerAccessModal({
                 {sessionToken ? "Business Owner Panel" : "Business Owner Access"}
               </h3>
               <p className="text-[11px] text-gray-400 font-mono">
-                Item: {loginId || defaultCode}
+                Item: {loginId || "ZT-0004"}
               </p>
             </div>
           </div>

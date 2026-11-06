@@ -832,6 +832,7 @@ export default function ZenTapReviewAssistant({
           onClose={() => setOwnerModalOpen(false)}
           tagCode={tagCode || business.slug || "st3"}
           businessSlug={business.slug || tagCode || "st3"}
+          clientBusinessId={business.id}
           initialBusinessName={businessName}
         />
       )}

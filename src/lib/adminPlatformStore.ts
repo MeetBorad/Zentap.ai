@@ -200,14 +200,20 @@ const INITIAL_CLIENTS: ClientRecord[] = [
   {
     id: "cl_04",
     business_id: "ZT-0004",
-    business_name: "XYZ",
-    owner_name: "Store Manager",
-    owner_phone: "+91 91919 19192",
-    owner_email: "contact@xyz.com",
-    whatsapp: "9191919192",
-    instagram_link: "",
+    business_name: "Zentap Digital Solutions",
+    owner_name: "Meet",
+    owner_phone: "+91 96627 60880",
+    owner_email: "meetborad@hotmail.com",
+    whatsapp: "+91 92745 60880",
+    instagram_link: "https://www.instagram.com/zenttap/",
     facebook_link: "",
+    google_review_link: "https://g.page/r/CdJX2OGu1yhoEAI/review",
     city: "Ahmedabad",
+    custom_fields: {
+      directions: "Ahmedabad, Gujarat, India",
+      website: "https://www.zentapdigitalsolutions.com",
+      category: "Digital Growth & Smart NFC Systems"
+    },
     created_at: "2026-11-02T13:20:00Z",
   },
 ];

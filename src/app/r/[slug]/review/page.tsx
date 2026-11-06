@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getBusinessBySlug, BusinessRecord, SAMPLE_DEMO_BUSINESS } from "@/lib/businessStore";
 import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags, getAllClients } from "@/lib/adminPlatformStore";
 import ZenTapReviewAssistant from "@/components/customer/ZenTapReviewAssistant";
 
 export const dynamic = "force-dynamic";
@@ -120,6 +120,34 @@ export default async function ReviewPage({
     }
   }
 
+  // 1. Fetch Client Record from clients table (Master Source of Truth)
+  let clientRecord: any = null;
+  const candidateBizId = pageConfig?.business_id || (cleanSlug === "st3" || cleanSlug === "zentap" || via?.toLowerCase() === "st3" ? "ZT-0004" : cleanSlug);
+
+  if (db) {
+    try {
+      const { data: cData } = await db
+        .from('clients')
+        .select('*')
+        .or(`business_id.ilike.${cleanSlug},business_id.ilike.${candidateBizId},id.ilike.${cleanSlug}`)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (cData) clientRecord = cData;
+    } catch (e) {
+      console.warn("Review page client lookup notice:", e);
+    }
+  }
+
+  if (!clientRecord) {
+    const allClients = getAllClients();
+    clientRecord = allClients.find(
+      (c) =>
+        c.business_id.toLowerCase() === cleanSlug.toLowerCase() ||
+        c.business_id.toLowerCase() === candidateBizId.toLowerCase() ||
+        (cleanSlug === "st3" && c.business_id === "ZT-0004")
+    ) || null;
+  }
+
   if (!pageConfig) {
     const local = getAllPageEditorConfigs().find(
       (p) =>
@@ -146,38 +174,45 @@ export default async function ReviewPage({
     }
   }
 
-  // Fallback business record if not in businesses table
+  // Fallback business record if not in businesses table (prioritizing clients table)
   const fallbackBiz: BusinessRecord = {
-    id: pageConfig?.business_id || pageConfig?.tag_id || cleanSlug,
-    name: cfg.title || pageConfig?.business_name || "ZenTap Digital Solutions",
-    slug: (pageConfig?.business_id || pageConfig?.tag_id || cleanSlug).toLowerCase(),
-    review_url: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
-    google_review_link: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    id: clientRecord?.business_id || pageConfig?.business_id || pageConfig?.tag_id || cleanSlug,
+    name: clientRecord?.business_name || cfg.title || pageConfig?.business_name || "ZenTap Digital Solutions",
+    slug: (clientRecord?.business_id || pageConfig?.business_id || pageConfig?.tag_id || cleanSlug).toLowerCase(),
+    review_url: clientRecord?.google_review_link || cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    google_review_link: clientRecord?.google_review_link || cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
     active: true,
     is_deleted: false,
     owner_user_id: "",
-    email: cfg.email || "meetborad@hotmail.com",
-    phone: cfg.phone || "9662760880",
-    city: cfg.address || "Ahmedabad",
+    email: clientRecord?.owner_email || cfg.email || "meetborad@hotmail.com",
+    phone: clientRecord?.owner_phone || cfg.phone || "9662760880",
+    city: clientRecord?.city || cfg.address || "Ahmedabad",
     state: "Gujarat",
     country: "India",
     pincode: "",
-    address: cfg.address || "Ahmedabad",
-    category: cfg.subtitle || cfg.category || "Service",
-    gbp_link: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    address: clientRecord?.custom_fields?.directions || cfg.address || "Ahmedabad",
+    category: clientRecord?.custom_fields?.category || cfg.subtitle || cfg.category || "Service",
+    gbp_link: clientRecord?.google_review_link || cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
     plan: "standee_1500",
     payment_status: "paid",
-    created_at: pageConfig?.created_at || new Date().toISOString(),
+    created_at: clientRecord?.created_at || pageConfig?.created_at || new Date().toISOString(),
     redirect_mode: "interactive_profile",
-    whatsapp_number: cfg.whatsapp || cfg.phone || "9274560880",
-    whatsapp: cfg.whatsapp || cfg.phone || "9274560880",
-    instagram: cfg.instagram || "https://www.instagram.com/zenttap/",
-    website: cfg.website || "https://www.zentapdigitalsolutions.com/",
+    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || "9274560880",
+    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || "9274560880",
+    instagram: clientRecord?.instagram_link || cfg.instagram || "https://www.instagram.com/zenttap/",
+    website: clientRecord?.custom_fields?.website || cfg.website || "https://www.zentapdigitalsolutions.com/",
     location_image: cfg.location_image || "",
     logo_url: cfg.logo_url || "/logo.png",
   };
 
-  const biz: BusinessRecord = rawBiz ? toBusinessRecord(rawBiz) : fallbackBiz;
+  const parsedBiz = rawBiz ? toBusinessRecord(rawBiz) : null;
+  const biz: BusinessRecord = parsedBiz ? {
+    ...parsedBiz,
+    name: clientRecord?.business_name || parsedBiz.name,
+    google_review_link: clientRecord?.google_review_link || parsedBiz.google_review_link || parsedBiz.review_url,
+    phone: clientRecord?.owner_phone || parsedBiz.phone,
+    whatsapp: clientRecord?.whatsapp || parsedBiz.whatsapp,
+  } : fallbackBiz;
 
   // Determine effective destination
   const localGrl = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === (via || cleanSlug));
