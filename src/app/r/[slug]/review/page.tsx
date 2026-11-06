@@ -85,6 +85,20 @@ export default async function ReviewPage({
         pageConfig = data;
       }
 
+      if (!pageConfig && (cleanSlug === "zentap" || cleanSlug === "zt-0004" || cleanSlug === "sample" || via?.toLowerCase() === "st3")) {
+        const { data: st3ReviewConfig } = await db
+          .from("page_editor_configs")
+          .select("*")
+          .or("tag_id.ilike.st3,business_id.ilike.zt-0004")
+          .is("deleted_at", null)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (st3ReviewConfig) {
+          pageConfig = st3ReviewConfig;
+        }
+      }
+
       // Query tag and google review links to determine effective destination
       const { data: tData } = await db
         .from("qr_nfc_tags")
@@ -132,37 +146,36 @@ export default async function ReviewPage({
     }
   }
 
-  // Fallback demo business for sample/zentap
-  const fallbackBiz: BusinessRecord = cleanSlug === "zentap" || cleanSlug === "sample"
-    ? SAMPLE_DEMO_BUSINESS
-    : {
-        id: pageConfig?.business_id || pageConfig?.tag_id || cleanSlug,
-        name: pageConfig?.business_name || cfg.title || "Business",
-        slug: (pageConfig?.business_id || pageConfig?.tag_id || cleanSlug).toLowerCase(),
-        review_url: cfg.google_link || "",
-        google_review_link: cfg.google_link || "",
-        active: true,
-        is_deleted: false,
-        owner_user_id: "",
-        email: cfg.email || "",
-        phone: cfg.phone || "",
-        city: "Ahmedabad",
-        state: "Gujarat",
-        country: "India",
-        pincode: "",
-        address: cfg.address || "",
-        category: cfg.subtitle || "Service",
-        gbp_link: cfg.google_link || "",
-        plan: "standee_1500",
-        payment_status: "paid",
-        created_at: pageConfig?.created_at || new Date().toISOString(),
-        redirect_mode: "interactive_profile",
-        whatsapp_number: cfg.whatsapp || cfg.phone || "",
-        whatsapp: cfg.whatsapp || cfg.phone || "",
-        instagram: cfg.instagram || "",
-        website: cfg.website || "",
-        location_image: cfg.location_image || "",
-      };
+  // Fallback business record if not in businesses table
+  const fallbackBiz: BusinessRecord = {
+    id: pageConfig?.business_id || pageConfig?.tag_id || cleanSlug,
+    name: cfg.title || pageConfig?.business_name || "ZenTap Digital Solutions",
+    slug: (pageConfig?.business_id || pageConfig?.tag_id || cleanSlug).toLowerCase(),
+    review_url: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    google_review_link: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    active: true,
+    is_deleted: false,
+    owner_user_id: "",
+    email: cfg.email || "meetborad@hotmail.com",
+    phone: cfg.phone || "9662760880",
+    city: cfg.address || "Ahmedabad",
+    state: "Gujarat",
+    country: "India",
+    pincode: "",
+    address: cfg.address || "Ahmedabad",
+    category: cfg.subtitle || cfg.category || "Service",
+    gbp_link: cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    plan: "standee_1500",
+    payment_status: "paid",
+    created_at: pageConfig?.created_at || new Date().toISOString(),
+    redirect_mode: "interactive_profile",
+    whatsapp_number: cfg.whatsapp || cfg.phone || "9274560880",
+    whatsapp: cfg.whatsapp || cfg.phone || "9274560880",
+    instagram: cfg.instagram || "https://www.instagram.com/zenttap/",
+    website: cfg.website || "https://www.zentapdigitalsolutions.com/",
+    location_image: cfg.location_image || "",
+    logo_url: cfg.logo_url || "/logo.png",
+  };
 
   const biz: BusinessRecord = rawBiz ? toBusinessRecord(rawBiz) : fallbackBiz;
 

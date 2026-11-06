@@ -432,8 +432,13 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   <th className="py-3.5 px-4 whitespace-nowrap">Google Review Link</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Instagram Link</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Facebook Link</th>
+                  {/* Dynamic Custom Field Columns configured from Settings */}
+                  {activeCustomFields.map((f) => (
+                    <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100">
+                      {f.label}
+                    </th>
+                  ))}
                   <th className="py-3.5 px-4 whitespace-nowrap">Hardware / Tags</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Custom Fields</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
                   <th className="py-3.5 px-4 text-right whitespace-nowrap sticky right-0 bg-zinc-50 shadow-xs">Actions</th>
                 </tr>
@@ -441,7 +446,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
               <tbody className="divide-y divide-zinc-100">
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={13 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
                       No clients found matching &ldquo;{searchQuery}&rdquo;.
                     </td>
                   </tr>
@@ -582,7 +587,40 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         )}
                       </td>
 
-                      {/* 11. Hardware / Tags Assigned */}
+                      {/* 11. Dynamic Custom Field Values */}
+                      {activeCustomFields.map((field) => {
+                        const val = client.custom_fields?.[field.id];
+                        if (!val || !String(val).trim()) {
+                          return (
+                            <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-400 border-l border-r border-zinc-100/60">
+                              —
+                            </td>
+                          );
+                        }
+                        const isLink = field.type === "url" || String(val).startsWith("http");
+                        return (
+                          <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-800 font-medium border-l border-r border-zinc-100/60">
+                            {isLink ? (
+                              <a
+                                href={String(val)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold max-w-[160px] truncate"
+                                title={String(val)}
+                              >
+                                <span className="truncate">{String(val).replace(/^https?:\/\//, "")}</span>
+                                <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="truncate max-w-[160px] inline-block" title={String(val)}>
+                                {String(val)}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+
+                      {/* 12. Hardware / Tags Assigned */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         {(() => {
                           const bizTags = tags.filter((t) => t.business_id === client.business_id);
@@ -607,44 +645,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                             </div>
                           );
                         })()}
-                      </td>
-
-                      {/* 12. Custom Fields */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {client.custom_fields && Object.keys(client.custom_fields).some((k) => client.custom_fields![k]?.trim()) ? (
-                          <div className="flex flex-wrap gap-1 max-w-[220px]">
-                            {Object.entries(client.custom_fields)
-                              .filter(([_, val]) => val && String(val).trim())
-                              .map(([key, val]) => {
-                                const def = customFieldDefs.find((f) => f.id === key);
-                                const label = def?.label || key;
-                                const isLink = def?.type === "url" || String(val).startsWith("http");
-                                return isLink ? (
-                                  <a
-                                    key={key}
-                                    href={String(val)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
-                                    title={`${label}: ${val}`}
-                                  >
-                                    <span>{label}</span>
-                                    <ExternalLink className="w-2.5 h-2.5" />
-                                  </a>
-                                ) : (
-                                  <span
-                                    key={key}
-                                    className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium bg-zinc-100 text-zinc-700 border border-zinc-200"
-                                    title={`${label}: ${val}`}
-                                  >
-                                    {label}: {String(val)}
-                                  </span>
-                                );
-                              })}
-                          </div>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
                       </td>
 
                       {/* 13. Registered Date */}
@@ -932,81 +932,27 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  {onNavigateToSettings && (
                     <button
                       type="button"
-                      onClick={() => setShowAddCustomFieldInline(!showAddCustomFieldInline)}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        setIsAddModalOpen(false);
+                        onNavigateToSettings();
+                      }}
+                      className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                      title="Manage custom fields in Settings tab"
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>{showAddCustomFieldInline ? "Close" : "+ Add Field"}</span>
+                      <Settings className="w-3 h-3" />
+                      <span>Manage Fields in Settings</span>
                     </button>
-
-                    {onNavigateToSettings && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAddModalOpen(false);
-                          onNavigateToSettings();
-                        }}
-                        className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                        title="Configure custom fields in Settings"
-                      >
-                        <Settings className="w-3 h-3" />
-                        <span>Settings</span>
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                {/* Inline mini-creator */}
-                {showAddCustomFieldInline && (
-                  <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2.5 animate-in fade-in duration-150">
-                    <span className="text-[11px] font-bold text-zinc-700 block">Add New Custom Field:</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        placeholder="Field Label (e.g. Website URL)"
-                        value={inlineFieldLabel}
-                        onChange={(e) => setInlineFieldLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
-                      />
-                      <select
-                        value={inlineFieldType}
-                        onChange={(e) => setInlineFieldType(e.target.value as any)}
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
-                      >
-                        <option value="text">Standard Text</option>
-                        <option value="url">Link / URL</option>
-                        <option value="tel">Phone</option>
-                        <option value="email">Email</option>
-                        <option value="number">Number</option>
-                      </select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomFieldInline(false)}
-                        className="px-2.5 py-1 rounded-lg text-[11px] text-zinc-500 hover:bg-zinc-200 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveInlineField}
-                        className="px-3 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-bold cursor-pointer"
-                      >
-                        Add to Form
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Active Custom Fields Inputs */}
-                {activeCustomFields.length === 0 && !showAddCustomFieldInline && (
+                {activeCustomFields.length === 0 && (
                   <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
-                    <span>No custom fields configured yet.</span>
-                    {onNavigateToSettings ? (
+                    <span>No custom fields configured yet. Add them in Settings tab.</span>
+                    {onNavigateToSettings && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1016,14 +962,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         className="font-bold text-blue-600 hover:underline cursor-pointer"
                       >
                         Configure in Settings &rarr;
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomFieldInline(true)}
-                        className="font-bold text-blue-600 hover:underline cursor-pointer"
-                      >
-                        + Add Custom Field
                       </button>
                     )}
                   </div>
@@ -1219,81 +1157,27 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  {onNavigateToSettings && (
                     <button
                       type="button"
-                      onClick={() => setShowAddCustomFieldInline(!showAddCustomFieldInline)}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                      onClick={() => {
+                        setIsEditModalOpen(false);
+                        onNavigateToSettings();
+                      }}
+                      className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
+                      title="Manage custom fields in Settings tab"
                     >
-                      <Plus className="w-3 h-3" />
-                      <span>{showAddCustomFieldInline ? "Close" : "+ Add Field"}</span>
+                      <Settings className="w-3 h-3" />
+                      <span>Manage Fields in Settings</span>
                     </button>
-
-                    {onNavigateToSettings && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditModalOpen(false);
-                          onNavigateToSettings();
-                        }}
-                        className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                        title="Configure custom fields in Settings"
-                      >
-                        <Settings className="w-3 h-3" />
-                        <span>Settings</span>
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                {/* Inline mini-creator */}
-                {showAddCustomFieldInline && (
-                  <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2.5 animate-in fade-in duration-150">
-                    <span className="text-[11px] font-bold text-zinc-700 block">Add New Custom Field:</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        placeholder="Field Label (e.g. Website URL)"
-                        value={inlineFieldLabel}
-                        onChange={(e) => setInlineFieldLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
-                      />
-                      <select
-                        value={inlineFieldType}
-                        onChange={(e) => setInlineFieldType(e.target.value as any)}
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-300 text-xs text-zinc-900"
-                      >
-                        <option value="text">Standard Text</option>
-                        <option value="url">Link / URL</option>
-                        <option value="tel">Phone</option>
-                        <option value="email">Email</option>
-                        <option value="number">Number</option>
-                      </select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomFieldInline(false)}
-                        className="px-2.5 py-1 rounded-lg text-[11px] text-zinc-500 hover:bg-zinc-200 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveInlineField}
-                        className="px-3 py-1 rounded-lg bg-zinc-900 text-white text-[11px] font-bold cursor-pointer"
-                      >
-                        Add to Form
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Active Custom Fields Inputs */}
-                {activeCustomFields.length === 0 && !showAddCustomFieldInline && (
+                {activeCustomFields.length === 0 && (
                   <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
-                    <span>No custom fields configured yet.</span>
-                    {onNavigateToSettings ? (
+                    <span>No custom fields configured yet. Add them in Settings tab.</span>
+                    {onNavigateToSettings && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1303,14 +1187,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         className="font-bold text-blue-600 hover:underline cursor-pointer"
                       >
                         Configure in Settings &rarr;
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomFieldInline(true)}
-                        className="font-bold text-blue-600 hover:underline cursor-pointer"
-                      >
-                        + Add Custom Field
                       </button>
                     )}
                   </div>

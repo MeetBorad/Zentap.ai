@@ -122,6 +122,24 @@ export default async function Page({
     }
   }
 
+  // If cleanCode is zentap or zt-0004 or via is st3/zentap and pageConfig is still null, fetch from ST3 / ZT-0004
+  if (!pageConfig && db && (cleanCode === "zentap" || cleanCode === "zt-0004" || cleanCode === "sample" || via?.toLowerCase() === "st3" || lookupKey.toLowerCase() === "st3")) {
+    try {
+      const { data: st3Data } = await db
+        .from('page_editor_configs')
+        .select('*')
+        .or('tag_id.ilike.st3,business_id.ilike.zt-0004')
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (st3Data) {
+        pageConfig = st3Data;
+      }
+    } catch {}
+  }
+
   if (!rawBiz) {
     rawBiz = getBusinessBySlug(cleanCode);
   }

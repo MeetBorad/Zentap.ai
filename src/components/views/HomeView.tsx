@@ -15,6 +15,7 @@ import {
   Check,
   Sparkles,
   Star,
+  ExternalLink,
   Smartphone,
   CheckCircle2,
   Store,
@@ -175,6 +176,18 @@ export default function HomeView({ onNavigate }: HomeViewProps) {
                   className="tactile-btn-subtle inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#1e2230] hover:bg-[#252b3d] text-white border border-[#2d3345] font-bold text-sm transition-colors cursor-pointer"
                 >
                   <span>View Standee Models</span>
+                </a>
+
+                <a
+                  href="https://www.zentapdigitalsolutions.com/r/st3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tactile-btn-subtle inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-[#1e2230] to-[#1e2230] hover:bg-[#252b3d] text-white border border-amber-500/40 hover:border-amber-400 font-bold text-sm transition-all cursor-pointer group shadow-sm active:scale-[0.978]"
+                  title="Experience our live interactive customer standee page"
+                >
+                  <Sparkles className="w-4 h-4 text-[#ff7a00] group-hover:scale-110 transition-transform" />
+                  <span>Sample Business Page</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white transition-colors" />
                 </a>
               </div>
 

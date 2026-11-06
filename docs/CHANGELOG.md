@@ -1,5 +1,19 @@
 # ZenTap — Changelog
 
+## [1.54.13] — 2026-11-06
+### Added (Settings-Only Custom Field Governance, Dynamic Clients Table Columns, Page Cloning & Homepage Showcase CTA)
+- **Settings-Only Custom Business Fields Governance (`ClientsWebpageTab.tsx`)**:
+  - Removed inline `+ Add Field` creators from "Add New Business" and "Edit Business" modals. Custom business fields are now governed exclusively via `Settings -> Custom Business Fields`.
+  - When configured in Settings, custom fields dynamically populate input fields in the business creation and edit forms.
+  - Added clean direct navigation shortcut (`Manage Fields in Settings`) for administrative convenience.
+- **Dynamic Clients Directory Table Expansion (`ClientsWebpageTab.tsx`)**:
+  - Added dedicated individual table columns for every field available in the Add Business form: `Owner Email`, `WhatsApp Number`, `Google Review Link`, `Instagram Link`, `Facebook Link`, plus dynamic individual columns for each active custom field (`Directions`, `Website`, etc.).
+- **Page Config Synchronisation (`/r/zentap`, `/r/zt-0004`, `/r/st3`)**:
+  - Cloned the master `ST3` profile configuration to `tag_id = 'zentap'` and `business_id = 'ZT-0004'` in Supabase `page_editor_configs`.
+  - Updated `/r/[slug]/page.tsx` and `/r/[slug]/review/page.tsx` with goal-backward fallback mapping to `ST3` and `ZT-0004`, guaranteeing that `https://www.zentapdigitalsolutions.com/r/zentap?preview=1`, `https://www.zentapdigitalsolutions.com/r/zentap/review?preview=1`, and `https://www.zentapdigitalsolutions.com/r/zt-0004/review?via=st3` always dynamically fetch live data from the master standee configuration.
+- **Homepage Sample Business Page CTA (`src/components/views/HomeView.tsx`)**:
+  - Added a tactile "Sample Business Page" button directly to the right of "View Standee Models" on the homepage hero section, linking directly to `https://www.zentapdigitalsolutions.com/r/st3` with subtle amber gradient and external link indicators.
+
 ## [1.54.12] — 2026-11-06
 ### Added (Live AI Model Visibility, Multi-Provider Priority Queue & Assistant Badge Display)
 - **Resolved AI Model Visibility in Super Admin Console & Customer Review Assistant**:
