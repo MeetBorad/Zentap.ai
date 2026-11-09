@@ -49,10 +49,11 @@ export default async function ReviewPage({
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const source = resolvedSearchParams.s === "nfc" ? "nfc" : "qr";
-  const via = resolvedSearchParams.via;
+  const rawVia = resolvedSearchParams.via;
   const isPreview = resolvedSearchParams.preview === "1";
 
-  const cleanSlug = slug.toLowerCase().trim();
+  const cleanSlug = (slug || "").replace(/[|%#?&\s/]+$/g, "").toLowerCase().trim();
+  const via = rawVia ? rawVia.replace(/[|%#?&\s/]+$/g, "").trim() : undefined;
 
   // Find business
   const rawBiz = getBusinessBySlug(cleanSlug) || (await fetchPublicBusinessBySlug(cleanSlug));

@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { getBusinessBySlug, SAMPLE_DEMO_BUSINESS } from "@/lib/businessStore";
+import { fetchPublicBusinessBySlug } from "@/lib/supabase/service";
 
 export async function generateMetadata({
   params,
@@ -6,26 +8,39 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const formattedName = slug
-    ? slug
+  const cleanSlug = (slug || "").replace(/[|%#?&\s/]+$/g, "").trim().toLowerCase();
+
+  // Attempt to resolve real business name
+  let businessName = "ZenTap Verified Business";
+  try {
+    const rawBiz = getBusinessBySlug(cleanSlug) || (await fetchPublicBusinessBySlug(cleanSlug));
+    if (rawBiz?.name) {
+      businessName = rawBiz.name;
+    } else if (cleanSlug === "zentap" || cleanSlug === "sample" || cleanSlug === "st3") {
+      businessName = SAMPLE_DEMO_BUSINESS.name;
+    } else if (cleanSlug) {
+      businessName = cleanSlug
         .split("-")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ")
-    : "Verified Business";
+        .join(" ");
+    }
+  } catch {
+    businessName = cleanSlug || "Verified Business";
+  }
 
-  const title = `${formattedName} | Verified Google Review Assistant`;
-  const description = `Leave a verified 5-star Google review or share direct feedback with ${formattedName}. Quick tap NFC and dynamic QR touchpoint powered by ZenTap.`;
+  const title = `Share your experience on Google | ${businessName}`;
+  const description = `Share your experience on Google with ${businessName}. Quick tap NFC and dynamic QR touchpoint powered by ZenTap.`;
 
   return {
     title,
     description,
     alternates: {
-      canonical: `https://www.zentapdigitalsolutions.com/r/${slug}`,
+      canonical: `https://www.zentapdigitalsolutions.com/r/${cleanSlug}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://www.zentapdigitalsolutions.com/r/${slug}`,
+      url: `https://www.zentapdigitalsolutions.com/r/${cleanSlug}`,
       siteName: "ZenTap Digital Solutions",
       type: "website",
       images: [
@@ -33,7 +48,7 @@ export async function generateMetadata({
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: `${formattedName} Review Touchpoint`,
+          alt: `${businessName} Touchpoint`,
         },
       ],
     },

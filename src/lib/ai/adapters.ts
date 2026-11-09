@@ -5,6 +5,9 @@ export interface GenerateInput {
   system: string;
   prompt: string;
   maxTokens?: number;
+  temperature?: number;
+  json?: boolean;
+  timeoutMs?: number;
 }
 
 export interface GenerateOutput {
@@ -16,12 +19,21 @@ export interface GenerateOutput {
   latency_ms: number;
 }
 
+export type AdapterErrorType = 
+  | "invalid_key" 
+  | "credit_exhausted" 
+  | "rate_limited" 
+  | "server_error" 
+  | "timeout" 
+  | "invalid_response" 
+  | "connection_error";
+
 export class AdapterError extends Error {
   status: number;
   provider: string;
-  errorType: "credit_exhausted" | "rate_limited" | "invalid_response" | "connection_error";
+  errorType: AdapterErrorType;
 
-  constructor(status: number, message: string, provider: string, errorType: "credit_exhausted" | "rate_limited" | "invalid_response" | "connection_error") {
+  constructor(status: number, message: string, provider: string, errorType: AdapterErrorType) {
     super(`[${provider.toUpperCase()} ${status}] ${message}`);
     this.name = "AdapterError";
     this.status = status;
@@ -36,33 +48,43 @@ export class AdapterError extends Error {
 function classifyError(status: number, message: string, provider: string): AdapterError {
   const lower = message.toLowerCase();
 
-  // Credit / Billing / Authentication
+  // 1. Invalid or Bad API Key
   if (
-    status === 401 || 
-    status === 402 || 
-    status === 403 || 
+    status === 401 ||
+    status === 403 ||
+    lower.includes("invalid api key") ||
+    lower.includes("incorrect api key") ||
+    lower.includes("authentication failed") ||
+    lower.includes("unauthorized")
+  ) {
+    return new AdapterError(status, message, provider, "invalid_key");
+  }
+
+  // 2. Credit / Quota / Billing Exhausted
+  if (
+    status === 402 ||
     lower.includes("credit balance") ||
     lower.includes("insufficient quota") ||
     lower.includes("exceeded your current quota") ||
-    lower.includes("billing") ||
-    lower.includes("unauthorized")
+    lower.includes("quota exceeded") ||
+    lower.includes("billing")
   ) {
     return new AdapterError(status, message, provider, "credit_exhausted");
   }
 
-  // Rate Limit / Overloaded / Server Timeout
+  // 3. Rate Limit / 429
+  if (status === 429 || lower.includes("rate limit") || lower.includes("too many requests")) {
+    return new AdapterError(status, message, provider, "rate_limited");
+  }
+
+  // 4. Server 5xx Error
   if (
-    status === 429 || 
-    status === 500 || 
-    status === 502 || 
-    status === 503 || 
-    status === 529 ||
-    lower.includes("rate limit") ||
+    status >= 500 && status < 600 ||
     lower.includes("overloaded") ||
     lower.includes("capacity") ||
-    lower.includes("timeout")
+    lower.includes("internal server error")
   ) {
-    return new AdapterError(status, message, provider, "rate_limited");
+    return new AdapterError(status, message, provider, "server_error");
   }
 
   return new AdapterError(status, message, provider, "invalid_response");
@@ -80,11 +102,16 @@ export class AnthropicAdapter implements ModelAdapter {
 
   async generate(input: GenerateInput): Promise<GenerateOutput> {
     const start = Date.now();
+    const timeoutMs = input.timeoutMs || 10000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     let res: Response;
 
     try {
       res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           "x-api-key": this.apiKey,
@@ -93,13 +120,18 @@ export class AnthropicAdapter implements ModelAdapter {
         body: JSON.stringify({
           model: this.modelId,
           max_tokens: input.maxTokens || 600,
-          temperature: 0.75,
+          temperature: input.temperature ?? 0.75,
           system: input.system,
           messages: [{ role: "user", content: input.prompt }],
         }),
       });
     } catch (netErr: any) {
+      if (netErr.name === "AbortError") {
+        throw new AdapterError(504, `Call timed out after ${timeoutMs / 1000}s`, "anthropic", "timeout");
+      }
       throw new AdapterError(503, netErr.message || "Network failed", "anthropic", "connection_error");
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const latency = Date.now() - start;
@@ -140,7 +172,9 @@ export class OpenAIAdapter implements ModelAdapter {
 
   async generate(input: GenerateInput): Promise<GenerateOutput> {
     const start = Date.now();
-    let res: Response;
+    const timeoutMs = input.timeoutMs || 10000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -152,22 +186,36 @@ export class OpenAIAdapter implements ModelAdapter {
       headers["X-Title"] = "ZenTap Digital Solutions";
     }
 
+    const payload: any = {
+      model: this.modelId,
+      max_tokens: input.maxTokens || 600,
+      temperature: input.temperature ?? 0.75,
+      messages: [
+        { role: "system", content: input.system },
+        { role: "user", content: input.prompt },
+      ],
+    };
+
+    if (input.json) {
+      payload.response_format = { type: "json_object" };
+    }
+
+    let res: Response;
+
     try {
       res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
+        signal: controller.signal,
         headers,
-        body: JSON.stringify({
-          model: this.modelId,
-          max_tokens: input.maxTokens || 600,
-          temperature: 0.75,
-          messages: [
-            { role: "system", content: input.system },
-            { role: "user", content: input.prompt },
-          ],
-        }),
+        body: JSON.stringify(payload),
       });
     } catch (netErr: any) {
+      if (netErr.name === "AbortError") {
+        throw new AdapterError(504, `Call timed out after ${timeoutMs / 1000}s`, this.providerName, "timeout");
+      }
       throw new AdapterError(503, netErr.message || "Network failed", this.providerName, "connection_error");
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const latency = Date.now() - start;
@@ -199,25 +247,44 @@ export class GoogleAdapter implements ModelAdapter {
 
   async generate(input: GenerateInput): Promise<GenerateOutput> {
     const start = Date.now();
-    const cleanModel = this.modelId.replace(/^models\//, "");
+    const timeoutMs = input.timeoutMs || 10000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let cleanModel = this.modelId.replace(/^models\//, "");
+    if (cleanModel === "gemini-3.5-flash-lite") {
+      cleanModel = "gemini-2.5-flash";
+    }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
     let res: Response;
+
+    const bodyPayload: any = {
+      systemInstruction: { parts: [{ text: input.system }] },
+      contents: [{ parts: [{ text: input.prompt }] }],
+      generationConfig: {
+        maxOutputTokens: input.maxTokens || 600,
+        temperature: input.temperature ?? 0.75,
+      },
+    };
+
+    if (input.json) {
+      bodyPayload.generationConfig.responseMimeType = "application/json";
+    }
 
     try {
       res = await fetch(url, {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: input.system }] },
-          contents: [{ parts: [{ text: input.prompt }] }],
-          generationConfig: {
-            maxOutputTokens: input.maxTokens || 600,
-            temperature: 0.75,
-          },
-        }),
+        body: JSON.stringify(bodyPayload),
       });
     } catch (netErr: any) {
+      if (netErr.name === "AbortError") {
+        throw new AdapterError(504, `Call timed out after ${timeoutMs / 1000}s`, "google", "timeout");
+      }
       throw new AdapterError(503, netErr.message || "Network failed", "google", "connection_error");
+    } finally {
+      clearTimeout(timeoutId);
     }
 
     const latency = Date.now() - start;

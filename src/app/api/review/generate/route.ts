@@ -13,6 +13,7 @@ import {
 import { getBusinessById } from "@/lib/businessStore";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { executeWithFailover } from "@/lib/ai/modelManager";
+import { callAI } from "@/lib/ai/router";
 
 export const dynamic = "force-dynamic";
 
@@ -159,23 +160,30 @@ RULES:
     let usedModelId: string | null = null;
     let usedModelLabel: string = "Synthesizer";
 
-    // 6. Attempt execution through AI Model Manager with auto-failover
+    // 6. Attempt execution through shared AI router with auto-failover
     try {
-      const failoverResult = await executeWithFailover({
+      const failoverResult = await callAI({
+        task: "review_generate",
         businessId: business_id,
         system: systemPrompt,
         prompt: `Please generate ${suggestionsCount} distinct review drafts for ${biz.name} with ${stars} stars. Selected chips: ${[...products, ...aspects].join(", ")}. Length: ${targetLength}.`,
+        json: true,
         maxTokens: 600,
         modelOverrideId: (config as any).model_override_id || null,
+        timeoutMs: 10000,
       });
 
-      const cleaned = failoverResult.text.replace(/```json/gi, "").replace(/```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed.options) && parsed.options.length > 0) {
-        generatedOptions = parsed.options.slice(0, suggestionsCount).map((s: any) => String(s).trim());
-        usedModelId = failoverResult.modelId;
-        usedModelLabel = failoverResult.modelLabel;
+      if (failoverResult.data?.options && Array.isArray(failoverResult.data.options)) {
+        generatedOptions = failoverResult.data.options.slice(0, suggestionsCount).map((s: any) => String(s).trim());
+      } else {
+        const cleaned = failoverResult.text.replace(/```json/gi, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed.options) && parsed.options.length > 0) {
+          generatedOptions = parsed.options.slice(0, suggestionsCount).map((s: any) => String(s).trim());
+        }
       }
+      usedModelId = failoverResult.modelId;
+      usedModelLabel = failoverResult.modelLabel;
     } catch (failoverErr: any) {
       // If no models exist or all fail, fall back to env ANTHROPIC_API_KEY exactly as before
       const apiKey = process.env.ANTHROPIC_API_KEY;

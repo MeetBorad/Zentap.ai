@@ -1,12 +1,11 @@
 // src/app/api/admin/models/test/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getAllAiModels } from "@/lib/ai/modelManager";
-import { decryptApiKey } from "@/lib/ai/crypto";
-import { createAdapter } from "@/lib/ai/adapters";
+import { getAllAiModels, upsertAiModel } from "@/lib/ai/modelManager";
+import { callAI, resolveModelApiKey } from "@/lib/ai/router";
 
 export const dynamic = "force-dynamic";
 
-// In-memory rate limiting for test button (max 10 tests/min)
+// In-memory rate limiting for test button
 const testLimiter = new Map<string, { count: number; expiresAt: number }>();
 
 export async function POST(req: NextRequest) {
@@ -17,76 +16,159 @@ export async function POST(req: NextRequest) {
 
     const limit = testLimiter.get(ip);
     if (limit && limit.expiresAt > now) {
-      if (limit.count >= 10) {
-        return NextResponse.json({ error: "Rate limit: please wait a minute before running more model tests." }, { status: 429 });
+      if (limit.count >= 20) {
+        return NextResponse.json(
+          { error: "Rate limit: please wait a minute before running more model tests." },
+          { status: 429 }
+        );
       }
       limit.count++;
     } else {
       testLimiter.set(ip, { count: 1, expiresAt: now + 60000 });
     }
 
-    const body = await req.json();
-    const { model_id, api_key } = body;
+    const body = await req.json().catch(() => ({}));
+    const { model_id } = body;
 
     if (!model_id) {
       return NextResponse.json({ error: "Model ID is required." }, { status: 400 });
     }
 
-    // Lookup model record
-    const models = await getAllAiModels();
-    const modelRecord = models.find((m) => m.id === model_id);
+    const allModels = await getAllAiModels();
 
-    const provider = modelRecord?.provider || body.provider || "anthropic";
-    const actualModelId = modelRecord?.model_id || body.actual_model_id || "claude-haiku-5-5";
-    const baseUrl = modelRecord?.base_url || body.base_url || undefined;
+    // Test All Models action
+    if (model_id === "all") {
+      const results: any[] = [];
+      for (const m of allModels) {
+        const hasKey = Boolean(resolveModelApiKey(m));
+        if (!m.enabled) {
+          results.push({
+            id: m.id,
+            label: m.label,
+            success: false,
+            error: "Model is disabled",
+            latency_ms: 0,
+          });
+          continue;
+        }
 
-    let key = api_key?.trim();
-    if (!key && modelRecord?.api_key_encrypted) {
-      key = decryptApiKey(modelRecord.api_key_encrypted);
-    }
-    if (!key && provider === "google") {
-      key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-    }
-    if (!key && (provider === "openai_compatible" || provider === "openai")) {
-      if (baseUrl?.includes("groq.com")) {
-        key = process.env.GROQ_API_KEY;
-      } else if (baseUrl?.includes("cerebras.ai")) {
-        key = process.env.CEREBRAS_API_KEY;
-      } else if (baseUrl?.includes("mistral.ai")) {
-        key = process.env.MISTRAL_API_KEY;
-      } else {
-        key = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+        if (!hasKey) {
+          results.push({
+            id: m.id,
+            label: m.label,
+            success: false,
+            error: "No API key configured",
+            latency_ms: 0,
+          });
+          continue;
+        }
+
+        try {
+          const aiRes = await callAI({
+            task: "test_model",
+            modelOverrideId: m.id,
+            system: "You are a test ping agent. Respond strictly with: OK",
+            prompt: "Respond with OK",
+            maxTokens: 10,
+            temperature: 0.1,
+            timeoutMs: 10000,
+          });
+
+          // Update model's last success timestamp
+          await upsertAiModel({
+            ...m,
+            last_success_at: new Date().toISOString(),
+          });
+
+          results.push({
+            id: m.id,
+            label: m.label,
+            success: true,
+            text: aiRes.text.trim(),
+            latency_ms: aiRes.latencyMs,
+          });
+        } catch (err: any) {
+          // Update model's last error message
+          await upsertAiModel({
+            ...m,
+            last_error_at: new Date().toISOString(),
+            last_error_message: err.message || "Ping failed",
+          });
+
+          results.push({
+            id: m.id,
+            label: m.label,
+            success: false,
+            error: err.message || "Test failed",
+            latency_ms: err.latencyMs || 0,
+          });
+        }
       }
+
+      return NextResponse.json({
+        success: true,
+        batch: true,
+        results,
+      });
     }
-    if (!key && provider === "anthropic") {
-      key = process.env.ANTHROPIC_API_KEY;
+
+    // Single Model Test
+    const targetModel = allModels.find((m) => m.id === model_id);
+    if (!targetModel) {
+      return NextResponse.json({ error: `Model ${model_id} not found.` }, { status: 404 });
     }
 
-    if (!key) {
-      return NextResponse.json({ error: "No API key configured for this model." }, { status: 400 });
+    const hasKey = Boolean(resolveModelApiKey(targetModel));
+    if (!hasKey) {
+      return NextResponse.json({
+        success: false,
+        error: "No API key configured for this model. Please add a valid API key.",
+      });
     }
 
-    const adapter = createAdapter(provider, key, actualModelId, baseUrl);
+    try {
+      const aiRes = await callAI({
+        task: "test_model",
+        modelOverrideId: targetModel.id,
+        system: "You are a test ping agent. Respond strictly with: OK",
+        prompt: "Respond with OK",
+        maxTokens: 10,
+        temperature: 0.1,
+        timeoutMs: 10000,
+      });
 
-    const out = await adapter.generate({
-      system: "You are a test ping agent. Output strictly: OK",
-      prompt: "Respond with the word OK.",
-      maxTokens: 10,
-    });
+      // Update model record with success
+      await upsertAiModel({
+        ...targetModel,
+        last_success_at: new Date().toISOString(),
+      });
 
-    return NextResponse.json({
-      success: true,
-      text: out.text.trim(),
-      latency_ms: out.latency_ms,
-      usage: out.usage,
-    });
+      return NextResponse.json({
+        success: true,
+        text: aiRes.text.trim(),
+        latency_ms: aiRes.latencyMs,
+        modelId: aiRes.modelId,
+        modelLabel: aiRes.modelLabel,
+      });
+    } catch (err: any) {
+      // Update model record with error
+      await upsertAiModel({
+        ...targetModel,
+        last_error_at: new Date().toISOString(),
+        last_error_message: err.message || "Ping failed",
+      });
+
+      return NextResponse.json({
+        success: false,
+        error: err.message || "Model test call failed",
+        latency_ms: err.latencyMs || 0,
+      });
+    }
   } catch (err: any) {
     console.error("POST /api/admin/models/test error:", err);
     return NextResponse.json({
       success: false,
-      error: err.message || "Model test failed",
-      status: err.status || 500,
-      errorType: err.errorType || "unknown",
-    }, { status: 200 }); // return 200 so UI displays friendly test diagnostics
+      error: err.message || "Test request error",
+    });
   }
 }

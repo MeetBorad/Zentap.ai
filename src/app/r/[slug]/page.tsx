@@ -77,10 +77,11 @@ export default async function Page({
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const source = resolvedSearchParams.s === "nfc" ? "nfc" : "qr";
-  const via = resolvedSearchParams.via;
+  const rawVia = resolvedSearchParams.via;
   const isPreview = resolvedSearchParams.preview === "1";
 
-  const cleanCode = slug.toLowerCase().trim();
+  const cleanCode = (slug || "").replace(/[|%#?&\s/]+$/g, "").toLowerCase().trim();
+  const via = rawVia ? rawVia.replace(/[|%#?&\s/]+$/g, "").trim() : undefined;
   const lookupKey = via || cleanCode;
 
   // 0. Fast Memory Cache lookup (from /t/[code] handover or recent scan)

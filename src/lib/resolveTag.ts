@@ -47,7 +47,7 @@ export async function resolveScan(
   source: 'qr' | 'nfc',
   opts: { logPage?: boolean } = { logPage: true }
 ): Promise<Resolution> {
-  const code = rawCode.toLowerCase().trim();
+  const code = (rawCode || '').replace(/[|%#?&\s/]+$/g, '').toLowerCase().trim();
   if (!CODE_RE.test(code)) return { kind: 'unavailable' };
 
   // 0. Fast In-Memory Cache: if recently resolved, return immediately without network round trip

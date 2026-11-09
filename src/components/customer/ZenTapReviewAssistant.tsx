@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BusinessRecord } from "@/lib/businessStore";
 import {
-  generateReviewDraft,
   generateReviewSuggestions,
   REVIEW_RATING_METAS,
-  DEFAULT_REVIEW_TAGS
+  DEFAULT_REVIEW_TAGS,
 } from "@/services/reviewService";
 import {
   Sparkles,
@@ -21,12 +20,13 @@ import {
   ArrowLeft,
   ExternalLink,
   AlertTriangle,
-  ShoppingBag,
   Tag,
   RefreshCw,
   Sliders,
+  CheckCircle2,
 } from "lucide-react";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
+import ExperienceNoteBox, { ExperienceNoteChangePayload } from "@/components/customer/ExperienceNoteBox";
 
 interface ZenTapReviewAssistantProps {
   business: BusinessRecord;
@@ -47,30 +47,21 @@ export default function ZenTapReviewAssistant({
   source = "qr",
   isPreview = false,
 }: ZenTapReviewAssistantProps) {
-  const [currentRating, setCurrentRating] = useState<number>(5);
+  // Start with unforced rating (allow visitor to click any star freely)
+  const [currentRating, setCurrentRating] = useState<number>(0);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [customExperience, setCustomExperience] = useState<string>("");
+  const [currentLang, setCurrentLang] = useState<string>("gu-IN");
   const [hasGenerated, setHasGenerated] = useState<boolean>(false);
-  const [variationSeed, setVariationSeed] = useState<number>(0);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
   const [isRotating, setIsRotating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(0);
   const [reviewLength, setReviewLength] = useState<"short" | "medium" | "detailed">("medium");
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
+  const [postNotice, setPostNotice] = useState<string | null>(null);
   const [ownerModalOpen, setOwnerModalOpen] = useState(false);
-  const [activeAiEngine, setActiveAiEngine] = useState<{
-    provider: string;
-    label: string;
-    model: string;
-    source: string;
-  }>({
-    provider: "gemini",
-    label: "Google Gemini",
-    model: "gemini-3.5-flash-lite",
-    source: "cloud_llm",
-  });
 
   const [liveBusiness, setLiveBusiness] = useState<BusinessRecord>(business);
 
@@ -109,6 +100,7 @@ export default function ZenTapReviewAssistant({
     };
   }, []);
 
+  // Consistent business details from database/client record
   const businessName = liveBusiness.name || pageConfig?.title || "ZenTap Digital Solutions";
   const city = liveBusiness.city || "Ahmedabad";
   const cleanPhone = (liveBusiness.phone || pageConfig?.phone || "+919274560880").replace(/\s+/g, "");
@@ -116,67 +108,57 @@ export default function ZenTapReviewAssistant({
   const logoUrl = pageConfig?.logo_url || liveBusiness.logo_url || "/logo.png";
   const locationImg = pageConfig?.location_image || liveBusiness.location_image || "https://lh3.googleusercontent.com/aida-public/AB6AXuBn_TEaXs-VF4rFe0stnQgCYg0MynH2oOZeU9dQHGHuoFh5E1v447bVapRPDHEz1ipdX4vPRxNVokhF77GwXNQOBUmj2bF9oe3C9v4c8fmxU_3FFVdsBS5kiipfsNb3M4Va0GalihDkxwsGJYQ1UAhu0dnfybRD-0AXXNrCoLX5185-7q2BnTbJiEPNztNk2SqgMiYh9fYG9ajLfLogd4E4g_d8_f6s0AfohHb_Em7G";
 
+  // Sanitize tagCode and slug to avoid stray character bugs (e.g. '|' or '%7C')
+  const cleanTagCode = (tagCode || "").replace(/[|%#?&\s/]+$/g, "").trim();
+  const cleanBusinessSlug = (liveBusiness.slug || "").replace(/[|%#?&\s/]+$/g, "").trim();
+
   // Active theme styling mapped from pageConfig
   const activeTheme = pageConfig?.theme || "obsidian";
+
   const themeClasses = useMemo(() => {
     switch (activeTheme) {
-      case "slate":
+      case "emerald_luxury":
         return {
-          wrapper: "bg-[#0f172a] text-slate-100",
-          card: "bg-[#1e293b]/95 border-sky-500/20",
-          inner: "bg-[#334155]",
-          innerBorder: "border-sky-500/10",
-          accentLine: "via-sky-400",
-          accentText: "text-sky-400",
-          glow1: "bg-sky-500/10",
-          glow2: "bg-indigo-500/10",
-          chipActive: "bg-sky-500/20 text-white border-sky-500/50 shadow-[0_0_12px_rgba(56,189,248,0.25)]",
-          chipInactive: "bg-[#334155] text-slate-300 hover:text-white border-white/5",
-          btnGradient: "from-sky-500 via-sky-400 to-sky-500 text-slate-950",
-          footerBg: "bg-[#0a0f1d]",
-        };
-      case "emerald":
-        return {
-          wrapper: "bg-[#062016] text-emerald-100",
-          card: "bg-[#0d3326]/95 border-emerald-500/20",
-          inner: "bg-[#134e3a]",
-          innerBorder: "border-emerald-500/10",
+          wrapper: "bg-[#06140f] text-emerald-100",
+          card: "bg-[#0c221a]/95 border-emerald-500/25",
+          inner: "bg-[#133226]",
+          innerBorder: "border-emerald-500/15",
           accentLine: "via-emerald-400",
           accentText: "text-emerald-400",
-          glow1: "bg-emerald-500/10",
+          glow1: "bg-emerald-500/15",
           glow2: "bg-teal-500/10",
           chipActive: "bg-emerald-500/20 text-white border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.25)]",
-          chipInactive: "bg-[#134e3a] text-slate-300 hover:text-white border-white/5",
-          btnGradient: "from-emerald-500 via-emerald-400 to-emerald-500 text-slate-950",
-          footerBg: "bg-[#03140e]",
+          chipInactive: "bg-[#133226] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-emerald-500 via-teal-400 to-emerald-600 text-slate-950",
+          footerBg: "bg-[#040e0b]",
         };
-      case "sunset":
+      case "midnight_sapphire":
         return {
-          wrapper: "bg-[#1c0d06] text-orange-100",
-          card: "bg-[#2e170c]/95 border-orange-500/20",
-          inner: "bg-[#452210]",
-          innerBorder: "border-orange-500/10",
-          accentLine: "via-orange-400",
-          accentText: "text-orange-400",
-          glow1: "bg-orange-500/10",
-          glow2: "bg-amber-500/10",
-          chipActive: "bg-orange-500/20 text-white border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.25)]",
-          chipInactive: "bg-[#452210] text-slate-300 hover:text-white border-white/5",
-          btnGradient: "from-orange-500 via-amber-400 to-orange-500 text-slate-950",
-          footerBg: "bg-[#120703]",
+          wrapper: "bg-[#050b17] text-blue-100",
+          card: "bg-[#0a152d]/95 border-blue-500/25",
+          inner: "bg-[#102044]",
+          innerBorder: "border-blue-500/15",
+          accentLine: "via-blue-400",
+          accentText: "text-blue-400",
+          glow1: "bg-blue-500/15",
+          glow2: "bg-indigo-500/10",
+          chipActive: "bg-blue-500/20 text-white border-blue-500/50 shadow-[0_0_12px_rgba(59,130,246,0.25)]",
+          chipInactive: "bg-[#102044] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-blue-500 via-sky-400 to-blue-600 text-slate-950",
+          footerBg: "bg-[#03070f]",
         };
-      case "clean_light":
+      case "modern_slate":
         return {
           wrapper: "bg-[#f8fafc] text-slate-900",
-          card: "bg-white border-slate-200 shadow-xl",
-          inner: "bg-slate-100",
+          card: "bg-white/95 border-slate-300 shadow-xl text-slate-900",
+          inner: "bg-slate-100 text-slate-900",
           innerBorder: "border-slate-200",
           accentLine: "via-amber-500",
           accentText: "text-amber-600",
           glow1: "bg-amber-500/5",
-          glow2: "bg-blue-500/5",
-          chipActive: "bg-amber-500/20 text-slate-900 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.25)]",
-          chipInactive: "bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200",
+          glow2: "bg-slate-400/10",
+          chipActive: "bg-amber-500/20 text-amber-900 border-amber-500/50 font-bold shadow-sm",
+          chipInactive: "bg-slate-200 text-slate-700 hover:text-slate-950 border-slate-300",
           btnGradient: "from-amber-500 via-amber-400 to-amber-500 text-slate-950",
           footerBg: "bg-slate-100",
         };
@@ -192,10 +174,10 @@ export default function ZenTapReviewAssistant({
           glow2: "bg-purple-500/10",
           chipActive: "bg-indigo-500/20 text-white border-indigo-500/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]",
           chipInactive: "bg-[#1f2756] text-slate-300 hover:text-white border-white/5",
-          btnGradient: "from-indigo-600 via-indigo-500 to-purple-600 text-white",
-          footerBg: "bg-[#070918]",
+          btnGradient: "from-indigo-500 via-purple-500 to-indigo-600 text-white",
+          footerBg: "bg-[#080a18]",
         };
-      case "midnight_rose":
+      case "rose_gold":
         return {
           wrapper: "bg-[#1a0b16] text-pink-100",
           card: "bg-[#2a1223]/95 border-pink-500/20",
@@ -247,22 +229,22 @@ export default function ZenTapReviewAssistant({
   // Google review link (guarantees sample showcase redirect for zentap)
   const finalGoogleLink = useMemo(() => {
     const isZenTapSample =
-      (business.slug || "").toLowerCase() === "zentap" ||
-      (tagCode || "").toLowerCase() === "zentap" ||
-      business.id === "sample-demo-biz-01";
+      (liveBusiness.slug || "").toLowerCase() === "zentap" ||
+      cleanTagCode.toLowerCase() === "zentap" ||
+      liveBusiness.id === "sample-demo-biz-01";
 
     if (isZenTapSample) {
       return "https://g.page/r/CdJX2OGu1yhoEAI/review";
     }
 
-    let link = (googleReviewUrl || pageConfig?.google_link || business.google_review_link || business.review_url || "").trim();
+    let link = (googleReviewUrl || pageConfig?.google_link || liveBusiness.google_review_link || liveBusiness.review_url || "").trim();
     if (link && !link.startsWith("http://") && !link.startsWith("https://")) {
       link = `https://${link}`;
     }
     return link || "https://g.page/r/CdJX2OGu1yhoEAI/review";
-  }, [googleReviewUrl, pageConfig?.google_link, business.google_review_link, business.review_url, business.slug, business.id, tagCode]);
+  }, [googleReviewUrl, pageConfig?.google_link, liveBusiness.google_review_link, liveBusiness.review_url, liveBusiness.slug, liveBusiness.id, cleanTagCode]);
 
-  // Read categories & tags directly from editor config to strictly match what was saved in the editor
+  // Read categories & tags directly from editor config
   const allTags = useMemo(() => {
     const customCats = Array.isArray(pageConfig?.categories)
       ? pageConfig.categories
@@ -280,15 +262,14 @@ export default function ZenTapReviewAssistant({
       ? pageConfig.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
       : [];
 
-    const bizCat = typeof business?.category === "string"
-      ? business.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
+    const bizCat = typeof liveBusiness?.category === "string"
+      ? liveBusiness.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
       : [];
 
-    const bizChips = Array.isArray((business as any)?.custom_chips)
-      ? (business as any).custom_chips
+    const bizChips = Array.isArray((liveBusiness as any)?.custom_chips)
+      ? (liveBusiness as any).custom_chips
       : [];
 
-    // Also extract categories from subtitle if entered as "City • Category" or "Category, Category"
     const subtitleCategories = pageConfig?.subtitle
       ? String(pageConfig.subtitle)
         .split(/[•|,]/)
@@ -298,200 +279,191 @@ export default function ZenTapReviewAssistant({
 
     const userDefined = Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
 
-    // If the user has custom categories or tags entered in Editor, show EXACTLY those!
     if (userDefined.length > 0) {
       return userDefined;
     }
 
     return Array.from(DEFAULT_REVIEW_TAGS);
-  }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, business?.category, (business as any)?.custom_chips]);
+  }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, liveBusiness?.category, (liveBusiness as any)?.custom_chips]);
 
-  // Determine if user has provided input (tapped tags or entered short experience note)
+  // Has user provided a chip or written notes?
   const hasUserInput = selectedTags.size > 0 || customExperience.trim().length > 0;
   const shouldShowReviews = hasUserInput || hasGenerated;
 
-  // Generate dynamic 2-3 unique suggestions whenever inputs change or generation is requested
-  useEffect(() => {
-    if (!shouldShowReviews) {
-      setSuggestions([]);
-      setReviewDraft("");
-      return;
-    }
+  // Request 3 distinct suggestions from /api/suggest
+  const fetchAiSuggestions = useCallback(
+    async (override?: {
+      stars?: number;
+      chips?: string[];
+      note?: string;
+      lang?: string;
+      len?: "short" | "medium" | "detailed";
+    }) => {
+      const effStars = override?.stars !== undefined ? override.stars : (currentRating > 0 ? currentRating : 5);
+      const effChips = override?.chips !== undefined ? override.chips : Array.from(selectedTags);
+      const effNote = override?.note !== undefined ? override.note : customExperience;
+      const effLang = override?.lang !== undefined ? override.lang : currentLang;
+      const effLen = override?.len !== undefined ? override.len : reviewLength;
 
-    const list = generateReviewSuggestions({
-      businessName,
-      city,
-      rating: currentRating,
-      length: reviewLength,
-      selectedTags: Array.from(selectedTags),
-      customNotes: customExperience,
-      seed: variationSeed,
-    });
-    setSuggestions(list);
-
-    // Sync draft with currently selected option index
-    const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, list.length - 1));
-    setReviewDraft(list[safeIdx] || list[0] || "");
-  }, [shouldShowReviews, currentRating, selectedTags, customExperience, variationSeed, businessName, city, selectedSuggestionIndex, reviewLength]);
-
-  const handleLengthChange = (newLen: "short" | "medium" | "detailed") => {
-    setReviewLength(newLen);
-    const updatedList = generateReviewSuggestions({
-      businessName,
-      city,
-      rating: currentRating,
-      length: newLen,
-      selectedTags: Array.from(selectedTags),
-      customNotes: customExperience,
-      seed: variationSeed,
-    });
-    setSuggestions(updatedList);
-    const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, updatedList.length - 1));
-    setReviewDraft(updatedList[safeIdx] || updatedList[0] || "");
-  };
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tag)) {
-        next.delete(tag);
-      } else {
-        next.add(tag);
+      if (effChips.length === 0 && !effNote.trim()) {
+        setSuggestions([]);
+        setReviewDraft("");
+        return;
       }
-      return next;
-    });
-  };
 
-  const handleCopy = () => {
-    if (!reviewDraft) return;
-    navigator.clipboard.writeText(reviewDraft).then(() => {
-      setCopiedText(true);
-      setTimeout(() => setCopiedText(false), 2000);
-    });
-  };
-
-  // Generate unique reviews based on inputs or default business features & stream from AI review writer
-  const handleGenerateReviews = async () => {
-    setIsRotating(true);
-    setHasGenerated(true);
-    const nextSeed = variationSeed + 1;
-    setVariationSeed(nextSeed);
-
-    // Immediate local generation fallback so the user sees instant response
-    const localList = generateReviewSuggestions({
-      businessName,
-      city,
-      rating: currentRating,
-      length: reviewLength,
-      selectedTags: Array.from(selectedTags),
-      customNotes: customExperience,
-      seed: nextSeed,
-    });
-    setSuggestions(localList);
-    setReviewDraft(localList[0] || "");
-    setSelectedSuggestionIndex(0);
-
-    try {
-      const resp = await fetch("/api/review/writer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessName,
-          category: pageConfig?.category || business.category || "local business",
-          stars: currentRating,
-          length: reviewLength,
-          highlights: Array.from(selectedTags),
-          note: customExperience,
-          variation: nextSeed,
-        }),
-      });
-
-      if (resp.ok && resp.body) {
-        const providerHeader = resp.headers.get("X-Review-Provider") || "gemini";
-        const labelHeader = resp.headers.get("X-Review-Label") || "Google Gemini";
-        const modelHeader = resp.headers.get("X-Review-Model") || "gemini-3.5-flash-lite";
-        const sourceHeader = resp.headers.get("X-Review-Source") || "cloud_llm";
-
-        setActiveAiEngine({
-          provider: providerHeader,
-          label: labelHeader,
-          model: modelHeader,
-          source: sourceHeader,
+      setIsLoadingSuggestions(true);
+      try {
+        const res = await fetch("/api/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: cleanBusinessSlug || cleanTagCode || "zentap",
+            stars: effStars,
+            selectedChips: effChips,
+            noteText: effNote,
+            language: effLang,
+            length: effLen,
+          }),
         });
 
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let streamedText = "";
-        let isFirstChunk = true;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          if (isFirstChunk) {
-            streamedText = chunk;
-            isFirstChunk = false;
-          } else {
-            streamedText += chunk;
-          }
-          setReviewDraft(streamedText);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.drafts) && data.drafts.length > 0) {
+          setSuggestions(data.drafts);
+          setHasGenerated(true);
+          const safeIdx = Math.min(selectedSuggestionIndex, data.drafts.length - 1);
+          setReviewDraft(data.drafts[safeIdx] || data.drafts[0]);
+        } else {
+          // Fallback to local synthesizer
+          const localList = generateReviewSuggestions({
+            businessName,
+            city,
+            rating: effStars,
+            length: effLen,
+            selectedTags: effChips,
+            customNotes: effNote,
+          });
+          setSuggestions(localList);
+          setHasGenerated(true);
+          setReviewDraft(localList[0] || "");
         }
+      } catch {
+        const localList = generateReviewSuggestions({
+          businessName,
+          city,
+          rating: effStars,
+          length: effLen,
+          selectedTags: effChips,
+          customNotes: effNote,
+        });
+        setSuggestions(localList);
+        setHasGenerated(true);
+        setReviewDraft(localList[0] || "");
+      } finally {
+        setIsLoadingSuggestions(false);
       }
-    } catch {
-      // Local synthesizer will have already populated the draft smoothly
-    } finally {
-      setTimeout(() => setIsRotating(false), 450);
+    },
+    [cleanBusinessSlug, cleanTagCode, currentRating, selectedTags, customExperience, currentLang, reviewLength, selectedSuggestionIndex, businessName, city]
+  );
+
+  // Trigger when chip is clicked
+  const toggleTag = (tag: string) => {
+    const next = new Set(selectedTags);
+    if (next.has(tag)) next.delete(tag);
+    else next.add(tag);
+    setSelectedTags(next);
+
+    if (next.size > 0 || customExperience.trim().length > 0) {
+      fetchAiSuggestions({ chips: Array.from(next) });
+    } else {
+      setSuggestions([]);
+      setReviewDraft("");
     }
   };
 
+  // Trigger when note changes from typing, speech, or translation
+  const handleNoteChange = (payload: ExperienceNoteChangePayload) => {
+    setCustomExperience(payload.text);
+    setCurrentLang(payload.lang);
+    if (selectedTags.size > 0 || payload.text.trim().length > 0) {
+      fetchAiSuggestions({ note: payload.text, lang: payload.lang });
+    } else {
+      setSuggestions([]);
+      setReviewDraft("");
+    }
+  };
+
+  // Trigger when rating star changes
+  const handleRatingSelect = (starVal: number) => {
+    setCurrentRating(starVal);
+    if (selectedTags.size > 0 || customExperience.trim().length > 0) {
+      fetchAiSuggestions({ stars: starVal });
+    }
+  };
+
+  // Trigger when length button is clicked
+  const handleLengthChange = (newLen: "short" | "medium" | "detailed") => {
+    setReviewLength(newLen);
+    if (selectedTags.size > 0 || customExperience.trim().length > 0) {
+      fetchAiSuggestions({ len: newLen });
+    }
+  };
+
+  // Regenerate button
+  const handleRegenerate = async () => {
+    setIsRotating(true);
+    await fetchAiSuggestions({});
+    setTimeout(() => setIsRotating(false), 450);
+  };
+
+  // Copy helper
+  const handleCopy = () => {
+    if (!reviewDraft) return;
+    navigator.clipboard.writeText(reviewDraft);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2500);
+  };
+
+  // Part F: Post Button
   const handlePostReview = (e: React.MouseEvent) => {
     e.preventDefault();
-    let textToPost = reviewDraft;
+    let textToPost = reviewDraft.trim();
     if (!textToPost) {
-      // If user hasn't generated yet and clicked Post, create one immediately
-      const generatedList = generateReviewSuggestions({
-        businessName,
-        city,
-        rating: currentRating,
-        selectedTags: Array.from(selectedTags),
-        customNotes: customExperience,
-        seed: variationSeed,
-      });
-      textToPost = generatedList[0] || `Had a wonderful experience with ${businessName} in ${city}! Excellent service and highly recommended.`;
+      textToPost = `Had a wonderful experience with ${businessName} in ${city}! Excellent service and highly recommended.`;
       setReviewDraft(textToPost);
-      setSuggestions(generatedList);
-      setHasGenerated(true);
     }
 
-    // 1. Copy draft from the box to clipboard
-    navigator.clipboard.writeText(textToPost);
-    setCopiedText(true);
-    setRedirecting(true);
+    // 1. Copy draft to clipboard
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(textToPost).catch(() => {});
+    }
 
-    // 2. Track click telemetry asynchronously
+    // 2. Show clear "Copied. Paste it on the next screen" message
+    setPostNotice("Copied. Paste it on the next screen");
+
+    // 3. Track click telemetry asynchronously
     if (!isPreview) {
       try {
         fetch("/api/hub/click", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            business_id: business.id,
+            business_id: liveBusiness.id,
             button_type: "google_review_post",
             source,
-            rating: currentRating,
+            rating: currentRating || 5,
           }),
-        }).catch(() => { });
-      } catch { }
+        }).catch(() => {});
+      } catch {}
     }
 
-    // 3. Open the destination link to paste
+    // 4. Open destination in new tab (never auto-post)
     setTimeout(() => {
       window.open(finalGoogleLink, "_blank", "noopener,noreferrer");
-      setRedirecting(false);
-    }, 600);
+      setTimeout(() => setPostNotice(null), 5000);
+    }, 450);
   };
 
-  const ratingMeta = REVIEW_RATING_METAS[currentRating] || REVIEW_RATING_METAS[5];
+  const ratingMeta = REVIEW_RATING_METAS[currentRating > 0 ? currentRating : 5] || REVIEW_RATING_METAS[5];
 
   // Typography
   const fontFamilies: Record<string, string> = {
@@ -504,12 +476,12 @@ export default function ZenTapReviewAssistant({
   };
   const activeFontFamily = fontFamilies[pageConfig?.font || "Outfit"] || "'Outfit', sans-serif";
 
-  // Back URL to Business Page
-  const targetProfileSlug = (tagCode || business.slug || "zentap").toLowerCase();
-  const backToProfileUrl = `/r/${targetProfileSlug}${isPreview ? "?preview=1" : ""}${tagCode && tagCode.toLowerCase() !== targetProfileSlug ? `${isPreview ? "&" : "?"}via=${tagCode}` : ""}`;
+  // Back URL to Business Profile (guaranteed clean, no trailing pipes or encoded characters)
+  const targetProfileSlug = (cleanTagCode || cleanBusinessSlug || "zentap").toLowerCase();
+  const backToProfileUrl = `/r/${targetProfileSlug}${isPreview ? "?preview=1" : ""}${cleanTagCode && cleanTagCode.toLowerCase() !== targetProfileSlug ? `${isPreview ? "&" : "?"}via=${cleanTagCode}` : ""}`;
 
   return (
-    <div 
+    <div
       className={`${themeClasses.wrapper} min-h-screen selection:bg-amber-500 selection:text-black transition-colors duration-300`}
       style={{ fontFamily: activeFontFamily }}
     >
@@ -539,16 +511,16 @@ export default function ZenTapReviewAssistant({
               </span>
             </div>
 
-            {/* Page Context Header */}
+            {/* Part G: Page Context Header (no 5-star push, clean and genuine) */}
             <div className="flex flex-col gap-1">
               <div className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${themeClasses.accentText} uppercase tracking-wider`}>
-                Verified Client Feedback
+                Verified Client Touchpoint
               </div>
               <h1 className="text-2xl font-bold tracking-tight">
-                Rate Your Experience
+                Share your experience on Google
               </h1>
               <p className="text-xs opacity-75 leading-relaxed">
-                Your feedback empowers others to discover {businessName} and helps our team maintain 5-star quality.
+                Your feedback empowers others to discover {businessName} and helps local customers make informed decisions.
               </p>
             </div>
 
@@ -557,55 +529,62 @@ export default function ZenTapReviewAssistant({
               {/* Glow Accent Line at top */}
               <div className={`absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-transparent ${themeClasses.accentLine} to-transparent opacity-75`} />
 
-              {/* Star Rating Section */}
+              {/* Star Rating Section: unforced, visitor can tap any rating */}
               <div className={`flex flex-col items-center justify-center gap-2 py-3 ${themeClasses.inner} rounded-xl border ${themeClasses.innerBorder}`}>
                 <span className="text-[10px] font-bold opacity-60 uppercase tracking-wider">
                   Tap a star to score
                 </span>
                 <div aria-label="Rating" className="flex items-center justify-center gap-2.5" role="radiogroup">
                   {[1, 2, 3, 4, 5].map((starVal) => {
-                    const isFilled = starVal <= currentRating;
+                    const isFilled = currentRating > 0 && starVal <= currentRating;
                     return (
                       <button
                         key={starVal}
                         aria-label={`${starVal} stars`}
-                        onClick={() => setCurrentRating(starVal)}
+                        onClick={() => handleRatingSelect(starVal)}
                         className="transition-all duration-200 transform hover:scale-115 active:scale-95 focus:outline-none p-1 cursor-pointer"
                         type="button"
                       >
                         <Star
-                          className={`w-9 h-9 transition-all ${isFilled
+                          className={`w-9 h-9 transition-all ${
+                            isFilled
                               ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.65)]"
                               : "text-zinc-600 hover:text-zinc-500"
-                            }`}
+                          }`}
                         />
                       </button>
                     );
                   })}
                 </div>
                 <div className="text-base font-semibold flex items-center gap-1.5 transition-all">
-                  <span>{ratingMeta.label}</span>
-                  <span className={`${themeClasses.accentText} font-bold`}>{ratingMeta.desc}</span>
+                  {currentRating > 0 ? (
+                    <>
+                      <span>{ratingMeta.label}</span>
+                      <span className={`${themeClasses.accentText} font-bold`}>{ratingMeta.desc}</span>
+                    </>
+                  ) : (
+                    <span className="text-xs opacity-50 font-normal">Choose a star rating above</span>
+                  )}
                 </div>
               </div>
 
-              {/* Private Resolution Notice for 1-2 stars (Google Anti-Gating Policy Compliant) */}
-              {currentRating <= 2 && (
+              {/* Private Resolution Notice for 1-2 stars (Anti-Gating Compliant: public Google link is NEVER blocked) */}
+              {currentRating > 0 && currentRating <= 2 && (
                 <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="text-xs space-y-1">
                     <p className="font-semibold">We want to make this right!</p>
                     <p className="text-[11px] opacity-75 leading-normal">
-                      Would you prefer sharing private feedback with our management team first so we can resolve your concern immediately?
+                      Would you like to share private feedback with our management team on WhatsApp to resolve your concern immediately? (You may also proceed directly to Google review below.)
                     </p>
                     <a
-                      href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${businessName} Management, I had an unsatisfactory visit regarding my recent experience.`)}`}
+                      href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${businessName} Management, I had feedback regarding my recent visit.`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 mt-1 cursor-pointer"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>Chat directly on WhatsApp</span>
+                      <span>Chat directly on WhatsApp (Private)</span>
                     </a>
                   </div>
                 </div>
@@ -631,10 +610,11 @@ export default function ZenTapReviewAssistant({
                         key={tag}
                         onClick={() => toggleTag(tag)}
                         type="button"
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95 ${isSelected
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95 ${
+                          isSelected
                             ? themeClasses.chipActive
                             : themeClasses.chipInactive
-                          }`}
+                        }`}
                       >
                         {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
                         <span>{tag}</span>
@@ -644,39 +624,16 @@ export default function ZenTapReviewAssistant({
                 </div>
               </div>
 
-              {/* Short Experience Custom Text Field */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold flex items-center gap-1.5">
-                    <ShoppingBag className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                    <span>Write about your experience in short</span>
-                    <span className="text-[10px] font-normal opacity-60">(Optional)</span>
-                  </label>
-                  {customExperience && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomExperience("")}
-                      className={`text-[10px] font-semibold ${themeClasses.accentText} hover:opacity-80 transition-colors cursor-pointer`}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={customExperience}
-                    onChange={(e) => setCustomExperience(e.target.value)}
-                    placeholder="e.g., bought purse nice, bought 2 pairs of clothes, unique design nice staff"
-                    className={`w-full ${themeClasses.inner} rounded-xl px-3.5 py-2.5 text-base sm:text-xs placeholder:opacity-40 border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all shadow-inner`}
-                  />
-                </div>
-                <p className="text-[10.5px] opacity-60 leading-tight">
-                  Type what you bought, ordered, or experienced — review suggestions will instantly adapt!
-                </p>
-              </div>
+              {/* Part C: Dedicated ExperienceNoteBox with Voice & Translation */}
+              <ExperienceNoteBox
+                initialText={customExperience}
+                onNoteChange={handleNoteChange}
+                accentTextClass={themeClasses.accentText}
+                innerBgClass={themeClasses.inner}
+                innerBorderClass={themeClasses.innerBorder}
+              />
 
-              {/* 2-3 Unique Humanized Review Suggestions displayed HORIZONTALLY */}
+              {/* Part E: 3 Unique Review Suggestions displayed HORIZONTALLY */}
               <div className="flex flex-col gap-2 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -686,13 +643,29 @@ export default function ZenTapReviewAssistant({
                       <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
                     )}
                   </span>
-                  <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1.5`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Smart Suggestions</span>
-                  </span>
+                  {hasUserInput && (
+                    <button
+                      type="button"
+                      onClick={handleRegenerate}
+                      disabled={isLoadingSuggestions}
+                      className={`text-[10.5px] ${themeClasses.accentText} hover:opacity-80 flex items-center gap-1 font-semibold transition-opacity cursor-pointer`}
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isRotating || isLoadingSuggestions ? "animate-spin" : ""}`} />
+                      <span>Regenerate</span>
+                    </button>
+                  )}
                 </div>
 
-                {shouldShowReviews && suggestions.length > 0 ? (
+                {isLoadingSuggestions ? (
+                  /* Loading State */
+                  <div className={`p-4 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-4`}>
+                    <RefreshCw className={`w-4 h-4 animate-spin ${themeClasses.accentText} shrink-0`} />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold">Crafting genuine review drafts...</span>
+                      <span className="text-[10.5px] opacity-60">Synthesizing your highlights into 3 unique options</span>
+                    </div>
+                  </div>
+                ) : shouldShowReviews && suggestions.length > 0 ? (
                   /* Horizontal Scrolling Review Cards */
                   <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
                     {suggestions.map((sug, idx) => {
@@ -701,7 +674,6 @@ export default function ZenTapReviewAssistant({
                         "Experience Focus",
                         "Hospitality Focus",
                         "Recommendation Focus",
-                        "Quality Focus",
                       ];
                       return (
                         <button
@@ -711,19 +683,21 @@ export default function ZenTapReviewAssistant({
                             setSelectedSuggestionIndex(idx);
                             setReviewDraft(sug);
                           }}
-                          className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${isSelected
+                          className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
+                            isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
                               : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
-                            }`}
+                          }`}
                         >
                           <div>
                             <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${themeClasses.accentText} flex items-center gap-1`}>
                                 <span>Option {idx + 1}</span>
-                                <span className="opacity-60 font-normal">• {labels[idx] || "Variation"}</span>
+                                <span className="opacity-60 font-normal">• {labels[idx] || "Draft"}</span>
                               </span>
-                              <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
-                                }`}>
+                              <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                                isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
+                              }`}>
                                 {isSelected ? "Active" : "Tap to use"}
                               </span>
                             </div>
@@ -740,15 +714,15 @@ export default function ZenTapReviewAssistant({
                     })}
                   </div>
                 ) : (
-                  /* Waiting state card before input or generation */
+                  /* Waiting state card: Pick a highlight or write a few words first */
                   <div className={`p-4 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-3.5`}>
                     <div className={`w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center ${themeClasses.accentText} shrink-0`}>
                       <Sparkles className="w-4 h-4 animate-pulse" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold">Ready to draft your review</span>
+                      <span className="text-xs font-semibold">Pick a highlight or write a few words first</span>
                       <span className="text-[11px] opacity-65 leading-snug">
-                        Tap highlights in &quot;What stood out?&quot; above, write a short note, or click &quot;Generate Reviews&quot; below.
+                        Tap highlights above or type/speak your note. Review suggestions will generate automatically.
                       </span>
                     </div>
                   </div>
@@ -790,7 +764,7 @@ export default function ZenTapReviewAssistant({
                     placeholder={
                       shouldShowReviews
                         ? "Select an option above or type your customized review here..."
-                        : "Your AI-crafted review will appear here once you pick what stood out above or click 'Generate Reviews'..."
+                        : "Your AI-crafted review will appear here once you pick what stood out above or write a note..."
                     }
                     className={`w-full ${themeClasses.inner} rounded-xl p-3 text-base sm:text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
                   />
@@ -800,7 +774,7 @@ export default function ZenTapReviewAssistant({
                   </div>
                 </div>
 
-                {/* Review Length Customizer */}
+                {/* Review Length Customizer (Short / Medium / Detailed) */}
                 <div className="flex flex-col gap-1.5 pt-1.5">
                   <div className="flex items-center justify-between px-0.5">
                     <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
@@ -840,44 +814,35 @@ export default function ZenTapReviewAssistant({
                       );
                     })}
                   </div>
-
-                  <div className="flex items-center justify-between px-1 text-[10.5px] opacity-60 pt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      <span>Auto-formats selected review</span>
-                    </span>
-                    <span>{reviewDraft ? "Editable draft" : "Waiting for input"}</span>
-                  </div>
                 </div>
               </div>
 
-              {/* Two Buttons Below the Review Box */}
-              <div className="flex flex-col gap-2.5 pt-1">
-                {/* Button 1: Generate Reviews (creates tailored or unique reviews) */}
-                <button
-                  onClick={handleGenerateReviews}
-                  type="button"
-                  className={`tactile-btn w-full h-11 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} font-bold text-xs flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.978] transition-all cursor-pointer shadow-xs`}
+              {/* Part F: Post Status Toast Banner */}
+              {postNotice && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${themeClasses.accentText} ${isRotating ? "animate-spin" : ""}`} />
-                  <span>{isRotating ? "Generating Reviews..." : "Generate Reviews"}</span>
-                </button>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{postNotice}</span>
+                </div>
+              )}
 
-                {/* Button 2: Post the review on Google (copies text from box and opens destination to paste) */}
+              {/* Post the review on Google Button (Copies text from box and opens destination) */}
+              <div className="flex flex-col gap-2 pt-1">
                 <button
                   onClick={handlePostReview}
                   type="button"
                   className={`tactile-btn w-full h-12 rounded-xl bg-gradient-to-r ${themeClasses.btnGradient} font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_24px_-2px_rgba(245,158,11,0.35)] hover:shadow-[0_0_32px_rgba(245,158,11,0.5)] active:scale-[0.978] transition-all cursor-pointer`}
                 >
                   <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>
-                    {redirecting ? "Copied! Opening Google Reviews..." : "Post the Review on Google Page"}
-                  </span>
+                  <span>Post the Review on Google Page</span>
                   <ExternalLink className="w-3.5 h-3.5 text-slate-950/70" />
                 </button>
               </div>
 
-              {/* Quick Feedback Perks / Micro Trust Indicators */}
+              {/* Micro Trust Indicators (Removed '100% Genuine' claim per Part G) */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <div className={`${themeClasses.card} rounded-xl p-3 flex items-start gap-2.5 border`}>
                   <div className={`w-7 h-7 rounded-lg ${themeClasses.inner} flex items-center justify-center ${themeClasses.accentText} shrink-0`}>
@@ -893,7 +858,7 @@ export default function ZenTapReviewAssistant({
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-semibold">100% Genuine</span>
+                    <span className="text-xs font-semibold">Direct Review</span>
                     <span className="text-[10px] opacity-60 truncate">Direct Google Maps link</span>
                   </div>
                 </div>
@@ -921,7 +886,7 @@ export default function ZenTapReviewAssistant({
                 </div>
                 <div className="p-3.5 flex flex-col gap-2">
                   <p className="text-[11px] opacity-75 leading-normal">
-                    Need assistance or prefer private feedback instead of a public review? Chat with our support team directly.
+                    Need assistance or prefer private feedback instead of a public review? Chat with our team directly.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
                     <a
@@ -948,7 +913,7 @@ export default function ZenTapReviewAssistant({
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Dynamic Footer with Current Year (Part G) */}
       <footer className={`w-full ${themeClasses.footerBg} border-t border-white/5 py-6 transition-colors`}>
         <div className="max-w-[480px] mx-auto px-4 flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-1.5 text-xs opacity-75">
@@ -975,7 +940,9 @@ export default function ZenTapReviewAssistant({
               <a href="/privacy" className="hover:underline transition-colors">Privacy &amp; Terms</a>
             </div>
           </div>
-          <span className="text-[10px] opacity-40">© 2025 ZenTap Solutions. All rights reserved.</span>
+          <span className="text-[10px] opacity-40">
+            © {new Date().getFullYear()} ZenTap Solutions. All rights reserved.
+          </span>
         </div>
       </footer>
 
@@ -984,8 +951,8 @@ export default function ZenTapReviewAssistant({
         <OwnerAccessModal
           isOpen={ownerModalOpen}
           onClose={() => setOwnerModalOpen(false)}
-          tagCode={tagCode || liveBusiness.slug || "st3"}
-          businessSlug={liveBusiness.slug || tagCode || "st3"}
+          tagCode={cleanTagCode || cleanBusinessSlug || "st3"}
+          businessSlug={cleanBusinessSlug || cleanTagCode || "st3"}
           clientBusinessId={liveBusiness.id}
           initialBusinessName={businessName}
           onDetailsUpdated={(updated) => {

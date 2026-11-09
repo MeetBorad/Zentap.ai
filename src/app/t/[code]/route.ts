@@ -10,8 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
+  const cleanCode = (code || '').replace(/[|%#?&\s/]+$/g, '').trim();
   const source = req.nextUrl.searchParams.get('s') === 'nfc' ? 'nfc' : 'qr';
-  const result = await resolveScan(code, source, { logPage: true });
+  const result = await resolveScan(cleanCode, source, { logPage: true });
 
   // 302 + no-store: a 301 would be permanently cached by phones/browsers and break physical tag reassignment
   const init = {
@@ -28,7 +29,7 @@ export async function GET(
   if (result.kind === 'page') {
     const basePath = result.target === 'review' ? `/r/${result.slug}/review` : `/r/${result.slug}`;
     const url = new URL(basePath, req.url);
-    url.searchParams.set('via', code.toLowerCase()); // /r page must NOT double-log when `via` is present
+    url.searchParams.set('via', cleanCode.toLowerCase()); // /r page must NOT double-log when `via` is present
     url.searchParams.set('s', source);
     return NextResponse.redirect(url, init);
   }
