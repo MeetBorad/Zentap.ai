@@ -1038,7 +1038,7 @@ export default function OwnerAccessModal({
                   </button>
                 </div>
                 <p className="text-[10.5px] text-gray-400 leading-relaxed">
-                  Used by the AI Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
+                  Used by the Smart Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">

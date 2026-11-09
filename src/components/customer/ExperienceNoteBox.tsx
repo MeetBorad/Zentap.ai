@@ -20,8 +20,8 @@ interface ExperienceNoteBoxProps {
 
 const SUPPORTED_LANGS = [
   { code: "en-IN", label: "English", speechCode: "en-IN" },
-  { code: "hi-IN", label: "Hindi (Hinglish)", speechCode: "hi-IN" },
-  { code: "gu-IN", label: "Gujarati (Gujlish)", speechCode: "gu-IN" },
+  { code: "hi-IN", label: "Hindi", speechCode: "hi-IN" },
+  { code: "gu-IN", label: "Gujarati", speechCode: "gu-IN" },
 ];
 
 export default function ExperienceNoteBox({

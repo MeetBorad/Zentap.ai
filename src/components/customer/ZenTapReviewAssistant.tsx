@@ -740,7 +740,7 @@ export default function ZenTapReviewAssistant({
                 )}
               </div>
 
-              {/* Step 5: Language selector (English Default, Hindi Hinglish, Gujarati Gujlish) */}
+              {/* Step 5: Language selector (English, Hindi, Gujarati) */}
               <div className="flex flex-col gap-1.5 pt-1">
                 <div className="flex items-center px-0.5">
                   <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
@@ -748,11 +748,11 @@ export default function ZenTapReviewAssistant({
                     <span>Review Language</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: "en-IN", label: "English", sub: "Default" },
-                    { id: "hi-IN", label: "Hindi", sub: "Hinglish" },
-                    { id: "gu-IN", label: "Gujarati", sub: "Gujlish" },
+                    { id: "en-IN", label: "English" },
+                    { id: "hi-IN", label: "Hindi" },
+                    { id: "gu-IN", label: "Gujarati" },
                   ].map((l) => {
                     const isSelected = currentLang === l.id;
                     return (
@@ -760,14 +760,13 @@ export default function ZenTapReviewAssistant({
                         key={l.id}
                         type="button"
                         onClick={() => handleLanguageSelect(l.id)}
-                        className={`tactile-btn py-2 px-1.5 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
+                        className={`tactile-btn py-2.5 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
                           isSelected
                             ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
                             : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
                         }`}
                       >
                         <div className="text-xs font-semibold leading-tight">{l.label}</div>
-                        <div className="text-[9.5px] opacity-60 mt-0.5">{l.sub}</div>
                       </button>
                     );
                   })}
@@ -809,7 +808,7 @@ export default function ZenTapReviewAssistant({
                     placeholder={
                       shouldShowReviews
                         ? "Select an option above or type your customized review here..."
-                        : "Your AI-crafted review will appear here once you pick what stood out above or write a note..."
+                        : "Your review draft will appear here once you pick what stood out above or write a note..."
                     }
                     className={`w-full ${themeClasses.inner} rounded-xl p-3 text-base sm:text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
                   />
