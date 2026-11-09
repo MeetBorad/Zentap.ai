@@ -146,7 +146,7 @@ export async function resolveScan(
           return { kind: 'unavailable', unassigned: false };
         }
 
-        let slug = code;
+        let slug = (effectiveBusinessId || code).toLowerCase().trim();
         if (effectiveBusinessId) {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveBusinessId);
           const bizQuery = isUuid
@@ -154,7 +154,7 @@ export async function resolveScan(
             : db.from('businesses').select('slug').eq('slug', effectiveBusinessId.toLowerCase()).maybeSingle();
           const { data: bizRow } = await bizQuery;
           if (bizRow?.slug) {
-            slug = bizRow.slug;
+            slug = bizRow.slug.toLowerCase().trim();
           }
         }
 

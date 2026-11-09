@@ -121,6 +121,25 @@ export default async function ReviewPage({
     }
   }
 
+  // Canonicalization: If cleanSlug is a hardware tag (e.g. st3, crd1, tag_),
+  // automatically redirect to the assigned business's canonical review page (/r/[business_id]/review).
+  const isHardwareTag = /^(st\d+|crd\d+|tag_)/i.test(cleanSlug);
+  if (isHardwareTag) {
+    let assignedBizId = pageConfig?.business_id || tagRow?.business_id || grlRow?.business_id;
+    if (!assignedBizId) {
+      const localT = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === cleanSlug);
+      if (localT?.business_id) assignedBizId = localT.business_id;
+    }
+    if (assignedBizId && assignedBizId.toLowerCase() !== cleanSlug) {
+      const canonicalSlug = assignedBizId.toLowerCase().trim();
+      const qParams = new URLSearchParams();
+      qParams.set('via', via || cleanSlug);
+      if (source) qParams.set('s', source);
+      if (isPreview) qParams.set('preview', '1');
+      redirect(`/r/${canonicalSlug}/review?${qParams.toString()}`);
+    }
+  }
+
   // 1. Fetch Client Record from clients table (Master Source of Truth)
   let clientRecord: any = null;
   const candidateBizId = pageConfig?.business_id || (cleanSlug === "st3" || cleanSlug === "zentap" || via?.toLowerCase() === "st3" ? "ZT-0004" : cleanSlug);

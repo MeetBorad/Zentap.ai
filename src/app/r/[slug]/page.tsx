@@ -147,6 +147,37 @@ export default async function Page({
     } catch {}
   }
 
+  // Canonicalization: If cleanCode is a hardware tag (e.g. st3, crd1, tag_),
+  // automatically redirect to the assigned business's canonical page (/r/[business_id]).
+  // This permanently eliminates URL duplication between /r/st3 and /r/zt-0004.
+  const isHardwareTag = /^(st\d+|crd\d+|tag_)/i.test(cleanCode);
+  if (isHardwareTag) {
+    let assignedBizId = pageConfig?.business_id;
+    if (!assignedBizId && db) {
+      try {
+        const { data: tRow } = await db
+          .from('qr_nfc_tags')
+          .select('business_id')
+          .ilike('tag_id', cleanCode)
+          .maybeSingle();
+        if (tRow?.business_id) assignedBizId = tRow.business_id;
+      } catch {}
+    }
+    if (!assignedBizId) {
+      const localT = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === cleanCode);
+      if (localT?.business_id) assignedBizId = localT.business_id;
+    }
+
+    if (assignedBizId && assignedBizId.toLowerCase() !== cleanCode) {
+      const canonicalSlug = assignedBizId.toLowerCase().trim();
+      const qParams = new URLSearchParams();
+      qParams.set('via', via || cleanCode);
+      if (source) qParams.set('s', source);
+      if (isPreview) qParams.set('preview', '1');
+      redirect(`/r/${canonicalSlug}?${qParams.toString()}`);
+    }
+  }
+
   if (!rawBiz) {
     rawBiz = getBusinessBySlug(cleanCode);
   }
