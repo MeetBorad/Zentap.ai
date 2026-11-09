@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       slug = "zentap",
       stars = 5,
       language = "english",
-      length = "medium", // "short" | "medium" | "detailed"
+      length = "short", // default is "short" (1-3 sentences)
     } = body;
 
     const rawChips = body.selectedChips || body.chips || [];
@@ -217,23 +217,21 @@ export async function POST(req: NextRequest) {
 
     const ratingNum = Math.min(5, Math.max(1, Number(stars) || 5));
 
-    // Length specifications
-    let lengthInstructions = "2 to 3 natural, human sentences (approx. 35 to 55 words).";
-    if (length === "short") {
-      lengthInstructions = "Exactly 1 or 2 concise, punchy sentences (approx. 15 to 30 words).";
+    // Length specifications (Default: Short = 1 to 3 sentences)
+    let lengthInstructions = "1 to 3 concise, natural sentences (approx. 20 to 45 words).";
+    if (length === "medium") {
+      lengthInstructions = "3 to 4 natural, descriptive sentences (approx. 45 to 65 words).";
     } else if (length === "detailed") {
-      lengthInstructions = "3 to 5 clear, descriptive sentences (approx. 60 to 95 words) detailing the experience.";
+      lengthInstructions = "5 or more comprehensive sentences (approx. 70 to 110 words) detailing the full experience.";
     }
 
-    // Language specifications
-    let langInstruction = "Write in natural, fluent English.";
+    // Language specifications (Default: English; Hindi = Hinglish in Roman script; Gujarati = Gujlish in Roman script)
+    let langInstruction = "Write in natural, fluent Indian English.";
     const lowerLang = String(language).toLowerCase();
-    if (lowerLang.includes("gu") || lowerLang === "gujarati") {
-      langInstruction = "Write in natural Gujarati script (ગુજરાતી) that sounds genuinely spoken by a Gujarati local. Keep brand names and proper nouns in their original English spelling.";
-    } else if (lowerLang.includes("hi") || lowerLang === "hindi") {
-      langInstruction = "Write in natural Hindi script (हिन्दी) that sounds authentic and warm. Keep brand names and proper nouns in their original English spelling.";
-    } else if (lowerLang.includes("hinglish")) {
-      langInstruction = "Write in conversational Hinglish using English Roman script only (e.g. 'Service bahut badiya thi aur staff ka behavior ekdum helpful tha.').";
+    if (lowerLang.includes("gu") || lowerLang.includes("gujlish") || lowerLang === "gujarati") {
+      langInstruction = "Write in authentic Gujlish (conversational Gujarati language written using the English Latin alphabet/Roman script ONLY, e.g. 'Bahu saras service che, staff pan helpful che ane kaam ekdum perfect thayu.'). DO NOT use Gujarati script. Use English letters only. Keep brand names and proper nouns in their original English spelling.";
+    } else if (lowerLang.includes("hi") || lowerLang.includes("hinglish") || lowerLang === "hindi") {
+      langInstruction = "Write in authentic Hinglish (conversational Hindi language written using the English Latin alphabet/Roman script ONLY, e.g. 'Service bahut badiya thi, staff ka behaviour bahut accha tha aur kaam bilkul time pe hua.'). DO NOT use Devanagari script. Use English letters only. Keep brand names and proper nouns in their original English spelling.";
     }
 
     // Tone based on star rating

@@ -14,6 +14,7 @@ export interface ReviewDraftOptions {
   selectedTags: string[];
   customNotes?: string;
   seed?: number;
+  language?: string;
 }
 
 export interface ReviewSentiment {
@@ -89,11 +90,47 @@ export function generateReviewSuggestions({
   selectedTags,
   customNotes,
   seed = 0,
+  language = "english",
 }: ReviewDraftOptions): string[] {
   const tagsText = formatTagsSentence(selectedTags);
   const clampedRating = Math.max(1, Math.min(5, Math.round(rating))) as 1 | 2 | 3 | 4 | 5;
   const noteObj = cleanExperienceNote(customNotes);
   const cleanSeed = Math.abs(Math.floor(seed || 0));
+
+  const isGujlish = String(language || "").toLowerCase().includes("gu");
+  const isHinglish = String(language || "").toLowerCase().includes("hi") || String(language || "").toLowerCase().includes("hinglish");
+
+  if (clampedRating >= 4) {
+    if (isGujlish) {
+      if (noteObj) {
+        return [
+          `Bahu saras experience rahyo ${businessName} ma! ${noteObj.sentence} ${tagsText} ekdum mast che. Strongly recommend!`,
+          `${businessName} nu kaam ane service khub j saru che. ${noteObj.sentence} Staff pan friendly che ane ${tagsText} perfect hatu.`,
+          `Superb quality and great assistance at ${businessName}. ${noteObj.sentence} 10/10 for ${tagsText}!`,
+        ];
+      }
+      return [
+        `${businessName} ma bahu saras service mali! ${tagsText} khub j gamyu. Badha ne recommend karu chu!`,
+        `Khub j saras experience rahyo ${businessName} sathe. Staff no nature helpful che ane ${tagsText} ekdum badhiya che!`,
+        `Superb work at ${businessName}! Fast service ane reliable team. 5 stars for ${tagsText}!`,
+      ];
+    }
+
+    if (isHinglish) {
+      if (noteObj) {
+        return [
+          `Bahut hi badiya experience raha ${businessName} ke saath! ${noteObj.sentence} ${tagsText} ekdum top quality thi. Highly recommended!`,
+          `${businessName} ki service sach me lajawab hai. ${noteObj.sentence} Staff ka behavior bohot polite tha aur ${tagsText} time pe hua!`,
+          `Overall shandar service! ${businessName} par ${noteObj.sentence} ${tagsText} kaafi badhiya laga. 5/5 stars!`,
+        ];
+      }
+      return [
+        `Bahut badiya experience raha ${businessName} ke sath! ${tagsText} ekdum mast thi. Definitely recommend karunga!`,
+        `${businessName} ki service sach me kaafi impressive hai. Polite staff aur ${tagsText} ekdum perfect tha!`,
+        `Shandar service aur reliable kaam at ${businessName}. ${tagsText} ke liye 5 stars!`,
+      ];
+    }
+  }
 
   // When rating is 1 or 2 stars (Google Anti-Gating compliant polite feedback)
   if (clampedRating <= 2) {

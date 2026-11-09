@@ -34,11 +34,13 @@ function checkTranslateRateLimit(ipHash: string): boolean {
 
 const LANG_MAP: Record<string, string> = {
   "gu": "Gujarati",
-  "gu-IN": "Gujarati",
+  "gu-IN": "Gujarati (Gujlish)",
   "gujarati": "Gujarati",
+  "gujlish": "Gujarati (Gujlish in English alphabets)",
   "hi": "Hindi",
-  "hi-IN": "Hindi",
+  "hi-IN": "Hindi (Hinglish)",
   "hindi": "Hindi",
+  "hinglish": "Hindi (Hinglish in English alphabets)",
   "en": "English",
   "en-IN": "English",
   "en-US": "English",

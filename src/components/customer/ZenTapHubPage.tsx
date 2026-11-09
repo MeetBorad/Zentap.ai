@@ -202,15 +202,25 @@ export default function ZenTapHubPage({
   const subtitle = liveBusiness.category || cfg.subtitle || cfg.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
   const address = liveBusiness.address || cfg.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
-  const mapsUrl = liveBusiness.maps_link || liveBusiness.gbp_link || liveBusiness.google_review_link || liveBusiness.review_url || cfg.maps_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
-  const googleReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  const rawMaps = liveBusiness.maps_link || liveBusiness.gbp_link || liveBusiness.google_review_link || liveBusiness.review_url || cfg.maps_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
+  const mapsUrl = rawMaps
+    ? (rawMaps.startsWith("http://") || rawMaps.startsWith("https://") ? rawMaps : `https://${rawMaps}`)
+    : (address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : "");
+
+  const rawReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  const googleReviewLink = rawReviewLink
+    ? (rawReviewLink.startsWith("http://") || rawReviewLink.startsWith("https://") ? rawReviewLink : `https://${rawReviewLink}`)
+    : "https://g.page/r/CdJX2OGu1yhoEAI/review";
 
   const phone = liveBusiness.phone || cfg.phone || (isZenTapDemo ? "+91 92745 60880" : "");
   const contactPhone = liveBusiness.contact_phone || cfg.contact_phone || phone;
   const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
   const cleanContactPhone = contactPhone ? contactPhone.replace(/[^0-9+]/g, "") : cleanPhone;
 
-  const googleBizPageUrl = liveBusiness.google_business_page || cfg.google_business_page || cfg.gbp_link || "";
+  const rawGbp = liveBusiness.google_business_page || cfg.google_business_page || cfg.gbp_link || "";
+  const googleBizPageUrl = rawGbp
+    ? (rawGbp.startsWith("http://") || rawGbp.startsWith("https://") ? rawGbp : `https://${rawGbp}`)
+    : "";
 
   const twitterRaw = liveBusiness.twitter_link || liveBusiness.twitter || cfg.twitter || cfg.twitter_link || "";
   let twitterUrl = twitterRaw;
@@ -234,7 +244,9 @@ export default function ZenTapHubPage({
   const upiUrl = upiIdRaw ? `upi://pay?pa=${encodeURIComponent(upiIdRaw)}&pn=${encodeURIComponent(businessName)}&cu=INR` : "";
 
   const directionsRaw = liveBusiness.directions_link || liveBusiness.directions || cfg.directions_link || cfg.directions || mapsUrl;
-  const directionsUrl = directionsRaw || mapsUrl;
+  const directionsUrl = directionsRaw
+    ? (directionsRaw.startsWith("http://") || directionsRaw.startsWith("https://") ? directionsRaw : `https://${directionsRaw}`)
+    : mapsUrl;
 
   const whatsapp = liveBusiness.whatsapp || liveBusiness.whatsapp_number || cfg.whatsapp || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
@@ -268,7 +280,8 @@ export default function ZenTapHubPage({
     }
   }
 
-  const facebookUrl = liveBusiness.facebook || liveBusiness.facebook_url || cfg.facebook || (isZenTapDemo ? "https://facebook.com" : "");
+  const rawFb = liveBusiness.facebook || liveBusiness.facebook_url || cfg.facebook || (isZenTapDemo ? "https://facebook.com" : "");
+  const facebookUrl = rawFb ? (rawFb.startsWith("http://") || rawFb.startsWith("https://") ? rawFb : `https://${rawFb}`) : "";
 
   const websiteRaw = liveBusiness.website || liveBusiness.website_url || liveBusiness.portfolio_url || cfg.website || (isZenTapDemo ? "https://zentapdigitalsolutions.com" : "");
   const websiteUrl = websiteRaw ? (websiteRaw.startsWith("http") ? websiteRaw : `https://${websiteRaw}`) : "";
@@ -476,7 +489,7 @@ export default function ZenTapHubPage({
   const [ownerModalOpen, setOwnerModalOpen] = useState(false);
   const [currentRating, setCurrentRating] = useState<number>(5);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [selectedLength, setSelectedLength] = useState<"short" | "medium" | "detailed">("medium");
+  const [selectedLength, setSelectedLength] = useState<"short" | "medium" | "detailed">("short");
   const [generatedReview, setGeneratedReview] = useState<string>("");
   const [showReviewBox, setShowReviewBox] = useState<boolean>(false);
   const [copiedReview, setCopiedReview] = useState<boolean>(false);
@@ -682,9 +695,9 @@ export default function ZenTapHubPage({
                 </div>
               </div>
 
-              {/* Quick Action Bar (Only shown if phone or mapsUrl is not blank!) */}
-              {(cleanPhone || mapsUrl) && (
-                <div className={`grid ${cleanPhone && mapsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
+              {/* Quick Action Bar (Only shown if phone or directionsUrl/mapsUrl is not blank!) */}
+              {(cleanPhone || directionsUrl || mapsUrl) && (
+                <div className={`grid ${cleanPhone && (directionsUrl || mapsUrl) ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
                   {cleanPhone && (
                     <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
@@ -695,10 +708,10 @@ export default function ZenTapHubPage({
                       <span>Call Us</span>
                     </a>
                   )}
-                  {mapsUrl && (
+                  {(directionsUrl || mapsUrl) && (
                     <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
-                      href={mapsUrl}
+                      href={directionsUrl || mapsUrl}
                       rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("directions_quick")}
@@ -1246,7 +1259,7 @@ export default function ZenTapHubPage({
                   <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#1B2232] border border-white/5">
                     {(["short", "medium", "detailed"] as const).map((len) => {
                       const isLen = selectedLength === len;
-                      const labels = { short: "Short (1–2)", medium: "Medium (3–4)", detailed: "Detailed (5+)" };
+                      const labels = { short: "Short (1–3)", medium: "Medium (3–4)", detailed: "Detailed (5+)" };
                       return (
                         <button
                           key={len}

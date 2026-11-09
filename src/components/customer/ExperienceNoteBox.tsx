@@ -14,12 +14,14 @@ interface ExperienceNoteBoxProps {
   accentTextClass?: string;
   innerBgClass?: string;
   innerBorderClass?: string;
+  selectedLang?: string;
+  onLanguageChange?: (lang: string) => void;
 }
 
 const SUPPORTED_LANGS = [
-  { code: "gu-IN", label: "ગુજરાતી (Gujarati)" },
-  { code: "hi-IN", label: "हिन्दी (Hindi)" },
-  { code: "en-IN", label: "English (en-IN)" },
+  { code: "en-IN", label: "English", speechCode: "en-IN" },
+  { code: "hi-IN", label: "Hindi (Hinglish)", speechCode: "hi-IN" },
+  { code: "gu-IN", label: "Gujarati (Gujlish)", speechCode: "gu-IN" },
 ];
 
 export default function ExperienceNoteBox({
@@ -28,9 +30,18 @@ export default function ExperienceNoteBox({
   accentTextClass = "text-amber-400",
   innerBgClass = "bg-[#181c24]",
   innerBorderClass = "border-white/5",
+  selectedLang: propSelectedLang,
+  onLanguageChange,
 }: ExperienceNoteBoxProps) {
   const [text, setText] = useState(initialText);
-  const [selectedLang, setSelectedLang] = useState("gu-IN"); // Gujarati default for local Gujarat market
+  const [selectedLang, setSelectedLang] = useState(propSelectedLang || "en-IN"); // Default English
+
+  // Sync external language change
+  useEffect(() => {
+    if (propSelectedLang && propSelectedLang !== selectedLang) {
+      setSelectedLang(propSelectedLang);
+    }
+  }, [propSelectedLang]);
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
@@ -95,6 +106,9 @@ export default function ExperienceNoteBox({
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLang = e.target.value;
     setSelectedLang(newLang);
+    if (onLanguageChange) {
+      onLanguageChange(newLang);
+    }
     if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);

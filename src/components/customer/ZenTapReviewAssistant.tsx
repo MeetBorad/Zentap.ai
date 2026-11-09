@@ -24,6 +24,7 @@ import {
   RefreshCw,
   Sliders,
   CheckCircle2,
+  Globe,
 } from "lucide-react";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 import ExperienceNoteBox, { ExperienceNoteChangePayload } from "@/components/customer/ExperienceNoteBox";
@@ -51,13 +52,13 @@ export default function ZenTapReviewAssistant({
   const [currentRating, setCurrentRating] = useState<number>(0);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [customExperience, setCustomExperience] = useState<string>("");
-  const [currentLang, setCurrentLang] = useState<string>("gu-IN");
+  const [currentLang, setCurrentLang] = useState<string>("en-IN"); // Default English
   const [hasGenerated, setHasGenerated] = useState<boolean>(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
   const [isRotating, setIsRotating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(0);
-  const [reviewLength, setReviewLength] = useState<"short" | "medium" | "detailed">("medium");
+  const [reviewLength, setReviewLength] = useState<"short" | "medium" | "detailed">("short"); // Default short (1-3 sentences)
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
   const [postNotice, setPostNotice] = useState<string | null>(null);
@@ -408,6 +409,14 @@ export default function ZenTapReviewAssistant({
     }
   };
 
+  // Trigger when language button is clicked (English default, Hindi Hinglish, Gujarati Gujlish)
+  const handleLanguageSelect = (newLang: string) => {
+    setCurrentLang(newLang);
+    if (selectedTags.size > 0 || customExperience.trim().length > 0) {
+      fetchAiSuggestions({ lang: newLang });
+    }
+  };
+
   // Regenerate button
   const handleRegenerate = async () => {
     setIsRotating(true);
@@ -631,6 +640,8 @@ export default function ZenTapReviewAssistant({
                 accentTextClass={themeClasses.accentText}
                 innerBgClass={themeClasses.inner}
                 innerBorderClass={themeClasses.innerBorder}
+                selectedLang={currentLang}
+                onLanguageChange={handleLanguageSelect}
               />
 
               {/* Part E: 3 Unique Review Suggestions displayed HORIZONTALLY */}
@@ -639,8 +650,11 @@ export default function ZenTapReviewAssistant({
                   <span className="text-xs font-semibold flex items-center gap-1.5">
                     <Sparkles className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                     <span>Review Suggestions</span>
+                    <span className="text-[10px] opacity-70 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-amber-300">
+                      Short it
+                    </span>
                     {shouldShowReviews && suggestions.length > 0 && (
-                      <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
+                      <span className="opacity-60 font-normal text-[11px] hidden sm:inline">(Swipe &amp; tap to choose)</span>
                     )}
                   </span>
                   {hasUserInput && (
@@ -683,7 +697,7 @@ export default function ZenTapReviewAssistant({
                             setSelectedSuggestionIndex(idx);
                             setReviewDraft(sug);
                           }}
-                          className={`min-w-[250px] max-w-[280px] flex-1 shrink-0 snap-start p-3.5 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
+                          className={`min-w-[240px] max-w-[270px] flex-1 shrink-0 snap-start p-3 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
                             isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
                               : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
@@ -701,11 +715,11 @@ export default function ZenTapReviewAssistant({
                                 {isSelected ? "Active" : "Tap to use"}
                               </span>
                             </div>
-                            <p className="line-clamp-4 leading-relaxed text-[11.5px]">
+                            <p className="line-clamp-3 leading-relaxed text-[11px]">
                               {sug}
                             </p>
                           </div>
-                          <div className="pt-2.5 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
+                          <div className="pt-2 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
                             <span>{isSelected ? "Shown in box below" : "Tap to load into box"}</span>
                             {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
                           </div>
@@ -715,7 +729,7 @@ export default function ZenTapReviewAssistant({
                   </div>
                 ) : (
                   /* Waiting state card: Pick a highlight or write a few words first */
-                  <div className={`p-4 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-3.5`}>
+                  <div className={`p-3.5 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-3`}>
                     <div className={`w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center ${themeClasses.accentText} shrink-0`}>
                       <Sparkles className="w-4 h-4 animate-pulse" />
                     </div>
@@ -729,7 +743,44 @@ export default function ZenTapReviewAssistant({
                 )}
               </div>
 
-              {/* Selected Review Shown in the Box (Editable) */}
+              {/* Step 5: Language selector (English Default, Hindi Hinglish, Gujarati Gujlish) */}
+              <div className="flex flex-col gap-1.5 pt-1">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
+                    <Globe className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
+                    <span>Review Language</span>
+                  </span>
+                  <span className="text-[10px] opacity-60">
+                    {currentLang === "en-IN" ? "English (Default)" : currentLang === "hi-IN" ? "Hindi (Hinglish)" : "Gujarati (Gujlish)"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: "en-IN", label: "English", sub: "Default" },
+                    { id: "hi-IN", label: "Hindi", sub: "Hinglish" },
+                    { id: "gu-IN", label: "Gujarati", sub: "Gujlish" },
+                  ].map((l) => {
+                    const isSelected = currentLang === l.id;
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => handleLanguageSelect(l.id)}
+                        className={`tactile-btn py-2 px-1.5 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
+                          isSelected
+                            ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
+                            : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                        }`}
+                      >
+                        <div className="text-xs font-semibold leading-tight">{l.label}</div>
+                        <div className="text-[9.5px] opacity-60 mt-0.5">{l.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 6: Selected Review Shown in the Box (Editable) */}
               <div className="flex flex-col gap-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -774,7 +825,7 @@ export default function ZenTapReviewAssistant({
                   </div>
                 </div>
 
-                {/* Review Length Customizer (Short / Medium / Detailed) */}
+                {/* Review Length Customizer (Short (1–3 sentences - Default) / Medium / Detailed) */}
                 <div className="flex flex-col gap-1.5 pt-1.5">
                   <div className="flex items-center justify-between px-0.5">
                     <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
@@ -783,18 +834,18 @@ export default function ZenTapReviewAssistant({
                     </span>
                     <span className="text-[10px] opacity-60">
                       {reviewLength === "short"
-                        ? "1–2 sentences • Quick"
+                        ? "1–3 sentences • Quick (Default)"
                         : reviewLength === "detailed"
-                        ? "Detailed • In-depth review"
+                        ? "Detailed • 5+ sentences"
                         : "3–4 sentences • Balanced"}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: "short", label: "Short", desc: "1-2 lines" },
-                      { id: "medium", label: "Medium", desc: "Balanced" },
-                      { id: "detailed", label: "Detailed", desc: "In-depth" },
+                      { id: "short", label: "Short", desc: "1–3 sentences" },
+                      { id: "medium", label: "Medium", desc: "3–4 sentences" },
+                      { id: "detailed", label: "Detailed", desc: "5+ sentences" },
                     ].map((opt) => {
                       const isSelected = reviewLength === opt.id;
                       return (
