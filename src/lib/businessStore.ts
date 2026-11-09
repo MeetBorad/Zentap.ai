@@ -154,6 +154,15 @@ export interface BusinessRecord {
   category?: string;
   custom_chips?: string[];
   // Dynamic Profile (Interaction)
+  contact_phone?: string;
+  owner_phone?: string;
+  owner_email?: string;
+  google_business_page?: string;
+  twitter_link?: string;
+  twitter?: string;
+  upi_id?: string;
+  directions_link?: string;
+  directions?: string;
   whatsapp?: string;
   whatsapp_number?: string;
   whatsapp_message?: string;

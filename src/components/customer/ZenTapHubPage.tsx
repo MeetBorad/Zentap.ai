@@ -3,15 +3,15 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { 
-  Star, 
-  Phone, 
-  MapPin, 
+import {
+  Star,
+  Phone,
+  MapPin,
   Navigation,
-  Globe, 
-  Mail, 
-  Clock, 
-  ChevronDown, 
+  Globe,
+  Mail,
+  Clock,
+  ChevronDown,
   Sparkles,
   Copy,
   Check,
@@ -22,13 +22,16 @@ import {
   ExternalLink,
   MessageCircle,
   Instagram,
-  Facebook
+  Facebook,
+  Building2,
+  Twitter,
+  CreditCard
 } from "lucide-react";
 import { BusinessRecord } from "@/lib/businessStore";
-import { 
-  PageDesignRecord, 
-  PageButtonRecord, 
-  PageSectionRecord, 
+import {
+  PageDesignRecord,
+  PageButtonRecord,
+  PageSectionRecord,
   PagePhotoRecord,
   getPageDesign,
   getPageButtons,
@@ -116,7 +119,14 @@ export default function ZenTapHubPage({
           facebook_url: u.facebook_url || prev.facebook_url,
           website: u.website || prev.website,
           website_url: u.website || prev.website_url,
-          address: u.address || prev.address,
+          address: u.address || u.directions || prev.address,
+          directions_link: u.directions_link || u.directions || prev.directions_link,
+          google_business_page: u.google_business_page || prev.google_business_page,
+          twitter: u.twitter || u.twitter_link || prev.twitter,
+          twitter_link: u.twitter_link || u.twitter || prev.twitter_link,
+          upi_id: u.upi_id || prev.upi_id,
+          contact_phone: u.contact_phone || prev.contact_phone,
+          owner_phone: u.owner_phone || prev.owner_phone,
         }));
         setLocalConfig((prev: any) => ({
           ...prev,
@@ -130,7 +140,14 @@ export default function ZenTapHubPage({
           instagram: u.instagram_url || prev.instagram,
           facebook: u.facebook_url || prev.facebook,
           website: u.website || prev.website,
-          address: u.address || prev.address,
+          address: u.address || u.directions || prev.address,
+          directions_link: u.directions_link || u.directions || prev.directions_link,
+          google_business_page: u.google_business_page || prev.google_business_page,
+          twitter: u.twitter || u.twitter_link || prev.twitter,
+          twitter_link: u.twitter_link || u.twitter || prev.twitter_link,
+          upi_id: u.upi_id || prev.upi_id,
+          contact_phone: u.contact_phone || prev.contact_phone,
+          owner_phone: u.owner_phone || prev.owner_phone,
         }));
       }
     };
@@ -165,8 +182,8 @@ export default function ZenTapHubPage({
           );
 
           if (matchingConfig?.config_data) {
-            const parsed = typeof matchingConfig.config_data === "string" 
-              ? JSON.parse(matchingConfig.config_data) 
+            const parsed = typeof matchingConfig.config_data === "string"
+              ? JSON.parse(matchingConfig.config_data)
               : matchingConfig.config_data;
             setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
           }
@@ -189,15 +206,43 @@ export default function ZenTapHubPage({
   const googleReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
 
   const phone = liveBusiness.phone || cfg.phone || (isZenTapDemo ? "+91 92745 60880" : "");
+  const contactPhone = liveBusiness.contact_phone || cfg.contact_phone || phone;
   const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
+  const cleanContactPhone = contactPhone ? contactPhone.replace(/[^0-9+]/g, "") : cleanPhone;
+
+  const googleBizPageUrl = liveBusiness.google_business_page || cfg.google_business_page || cfg.gbp_link || "";
+
+  const twitterRaw = liveBusiness.twitter_link || liveBusiness.twitter || cfg.twitter || cfg.twitter_link || "";
+  let twitterUrl = twitterRaw;
+  let twitterHandle = twitterRaw;
+  if (twitterRaw) {
+    if (!twitterRaw.startsWith("http")) {
+      const cleanH = twitterRaw.replace(/^@/, "");
+      twitterHandle = `@${cleanH}`;
+      twitterUrl = `https://x.com/${cleanH}`;
+    } else {
+      const match = twitterRaw.match(/(?:twitter|x)\.com\/([a-zA-Z0-9_]+)/);
+      if (match && match[1]) {
+        twitterHandle = `@${match[1]}`;
+      } else {
+        twitterHandle = "@Twitter";
+      }
+    }
+  }
+
+  const upiIdRaw = liveBusiness.upi_id || cfg.upi_id || cfg.upi || "";
+  const upiUrl = upiIdRaw ? `upi://pay?pa=${encodeURIComponent(upiIdRaw)}&pn=${encodeURIComponent(businessName)}&cu=INR` : "";
+
+  const directionsRaw = liveBusiness.directions_link || liveBusiness.directions || cfg.directions_link || cfg.directions || mapsUrl;
+  const directionsUrl = directionsRaw || mapsUrl;
 
   const whatsapp = liveBusiness.whatsapp || liveBusiness.whatsapp_number || cfg.whatsapp || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
   const displayWhatsApp = cleanWhatsApp.length === 12 && cleanWhatsApp.startsWith("91")
     ? `+91 ${cleanWhatsApp.slice(2, 7)} ${cleanWhatsApp.slice(7)}`
     : cleanWhatsApp.length === 10
-    ? `+91 ${cleanWhatsApp.slice(0, 5)} ${cleanWhatsApp.slice(5)}`
-    : (whatsapp.startsWith("+") ? whatsapp : (cleanWhatsApp ? `+${cleanWhatsApp}` : "+91 92745 60880"));
+      ? `+91 ${cleanWhatsApp.slice(0, 5)} ${cleanWhatsApp.slice(5)}`
+      : (whatsapp.startsWith("+") ? whatsapp : (cleanWhatsApp ? `+${cleanWhatsApp}` : "+91 92745 60880"));
 
   const instagramRaw = liveBusiness.instagram || liveBusiness.instagram_url || cfg.instagram || (isZenTapDemo ? "https://instagram.com/zentapdigitalsolutions" : "");
   let instagramUrl = instagramRaw;
@@ -241,34 +286,34 @@ export default function ZenTapHubPage({
     : [];
 
   const rawFaqs = cfg.faqs || business.faqs;
-  const faqsList: { question: string; answer: string }[] = 
-    Array.isArray(rawFaqs) && rawFaqs.length > 0 
-      ? rawFaqs 
-      : isZenTapDemo 
-      ? DEFAULT_FAQS 
-      : [];
+  const faqsList: { question: string; answer: string }[] =
+    Array.isArray(rawFaqs) && rawFaqs.length > 0
+      ? rawFaqs
+      : isZenTapDemo
+        ? DEFAULT_FAQS
+        : [];
 
   const locationImage = cfg.location_image || business.location_image || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : "");
   const locationTitle = cfg.location_title || business.location_title || (isZenTapDemo ? "Ahmedabad Central Hub" : address);
 
-  const availableTags: string[] = 
+  const availableTags: string[] =
     Array.isArray(cfg.tags) && cfg.tags.length > 0
       ? cfg.tags
       : Array.isArray(cfg.categories) && cfg.categories.length > 0
-      ? cfg.categories
-      : Array.isArray(business.custom_chips) && business.custom_chips.length > 0
-      ? business.custom_chips
-      : DEFAULT_TAGS;
+        ? cfg.categories
+        : Array.isArray(business.custom_chips) && business.custom_chips.length > 0
+          ? business.custom_chips
+          : DEFAULT_TAGS;
 
   const effectiveTheme = cfg.theme || (
     design.theme_preset === 'emerald_luxe' ? 'emerald' :
-    design.theme_preset === 'midnight_amber' ? 'sunset' :
-    design.theme_preset === 'clean_minimal' ? 'clean_light' :
-    design.theme_preset === 'modern_slate' ? 'slate' :
-    design.theme_preset === 'royal_indigo' ? 'royal_indigo' :
-    design.theme_preset === 'midnight_rose' ? 'midnight_rose' :
-    design.theme_preset === 'champagne_gold' ? 'champagne_gold' :
-    'obsidian'
+      design.theme_preset === 'midnight_amber' ? 'sunset' :
+        design.theme_preset === 'clean_minimal' ? 'clean_light' :
+          design.theme_preset === 'modern_slate' ? 'slate' :
+            design.theme_preset === 'royal_indigo' ? 'royal_indigo' :
+              design.theme_preset === 'midnight_rose' ? 'midnight_rose' :
+                design.theme_preset === 'champagne_gold' ? 'champagne_gold' :
+                  'obsidian'
   );
 
   const hubTheme = useMemo(() => {
@@ -454,7 +499,7 @@ export default function ZenTapHubPage({
   const generateReviewContent = (rating: number, tags: Set<string>, length: "short" | "medium" | "detailed") => {
     const tagsArr = Array.from(tags);
     const tagsSentence = tagsArr.length > 0 ? tagsArr.join(", ") : "superb hospitality";
-    
+
     if (rating <= 2) {
       if (length === "short") {
         return `Visited ${businessName}. While the location was accessible, the overall experience needed improvement.`;
@@ -516,8 +561,8 @@ export default function ZenTapHubPage({
             button_type: "google_review_submit",
             source,
           }),
-        }).catch(() => {});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     }
 
     // Redirect to Google Reviews URL
@@ -564,21 +609,21 @@ export default function ZenTapHubPage({
           button_type: btnType,
           source,
         }),
-      }).catch(() => {});
-    } catch {}
+      }).catch(() => { });
+    } catch { }
   };
 
   // Has at least one social / contact channel
-  const hasSocialChannels = !!(cleanWhatsApp || instagramUrl || phone || facebookUrl || websiteUrl || email);
+  const hasSocialChannels = !!(cleanWhatsApp || instagramUrl || phone || contactPhone || facebookUrl || websiteUrl || email || googleBizPageUrl || twitterUrl || upiIdRaw);
 
   return (
-    <div 
+    <div
       className={`${hubTheme.wrapper} ${sizeScaleClasses.root} min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden`}
       style={{ fontFamily: activeFontFamily }}
     >
       <main className="w-full min-h-screen pt-4 relative">
         <div className="flex flex-col w-full relative">
-          
+
           {/* Ambient Living Mesh Backdrops */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
             <div className={`absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] ${hubTheme.glow1} rounded-full blur-[110px] animate-pulse`} />
@@ -588,20 +633,20 @@ export default function ZenTapHubPage({
 
           {/* Mobile Hub Shell */}
           <div className="relative z-10 max-w-[480px] w-full mx-auto px-4 pb-8 flex flex-col gap-4">
-            
+
             {/* 1. Profile & NFC Hero Card */}
             <div className={`relative overflow-hidden rounded-2xl ${hubTheme.card} backdrop-blur-2xl shadow-2xl p-4 sm:p-5 flex flex-col gap-3.5 border`}>
               {/* Glow Accent Rim */}
               <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${hubTheme.rim} to-transparent opacity-75`} />
-              
+
               {/* Identity Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   {/* Monogram / Logo */}
                   <div className={`relative shrink-0 w-16 h-16 rounded-xl ${hubTheme.inner} p-1 shadow-lg border border-amber-500/20 flex items-center justify-center`}>
-                    <img 
-                      src={logoUrl} 
-                      alt={businessName} 
+                    <img
+                      src={logoUrl}
+                      alt={businessName}
                       className="w-full h-full object-contain rounded-lg"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "/logo.png";
@@ -622,10 +667,10 @@ export default function ZenTapHubPage({
                       </span>
                     )}
                     {address && (
-                      <a 
+                      <a
                         className={`mt-1 inline-flex items-center gap-1 ${hubTheme.accentText} hover:opacity-80 text-[11px] font-medium transition-colors`}
                         href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
-                        rel="noopener noreferrer" 
+                        rel="noopener noreferrer"
                         target="_blank"
                         onClick={() => trackClick("address_pin")}
                       >
@@ -641,7 +686,7 @@ export default function ZenTapHubPage({
               {(cleanPhone || mapsUrl) && (
                 <div className={`grid ${cleanPhone && mapsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
                   {cleanPhone && (
-                    <a 
+                    <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
                       href={`tel:${cleanPhone}`}
                       onClick={() => trackClick("call_quick")}
@@ -651,10 +696,10 @@ export default function ZenTapHubPage({
                     </a>
                   )}
                   {mapsUrl && (
-                    <a 
+                    <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
                       href={mapsUrl}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("directions_quick")}
                     >
@@ -667,9 +712,9 @@ export default function ZenTapHubPage({
             </div>
 
             {/* 2. Google Review Main Trigger Banner */}
-            <a 
+            <a
               href={`/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`}
-              className={`relative group cursor-pointer overflow-hidden rounded-2xl ${hubTheme.card} p-4 shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] border block text-left`} 
+              className={`relative group cursor-pointer overflow-hidden rounded-2xl ${hubTheme.card} p-4 shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] border block text-left`}
               onClick={() => trackClick("review_banner")}
             >
               <div
@@ -712,13 +757,13 @@ export default function ZenTapHubPage({
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  
+
                   {/* WhatsApp Contact */}
                   {cleanWhatsApp && (
-                    <a 
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
                       href={`https://wa.me/${cleanWhatsApp}?text=${encodeURIComponent(business.whatsapp_message || `Hi ${businessName}`)}`}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("whatsapp")}
                     >
@@ -740,10 +785,10 @@ export default function ZenTapHubPage({
 
                   {/* Instagram */}
                   {instagramUrl && (
-                    <a 
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
                       href={instagramUrl}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("instagram")}
                     >
@@ -764,10 +809,10 @@ export default function ZenTapHubPage({
                   )}
 
                   {/* Direct Phone Call */}
-                  {phone && (
-                    <a 
+                  {(cleanContactPhone || cleanPhone) && (
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
-                      href={`tel:${cleanPhone}`}
+                      href={`tel:${cleanContactPhone || cleanPhone}`}
                       onClick={() => trackClick("call_office")}
                     >
                       <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0`}>
@@ -777,17 +822,78 @@ export default function ZenTapHubPage({
                         <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#4cd7f6] truncate transition-colors`}>
                           Call Office
                         </span>
-                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{phone}</span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{contactPhone || phone}</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Google Business Page */}
+                  {googleBizPageUrl && (
+                    <a
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
+                      href={googleBizPageUrl}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      onClick={() => trackClick("google_business")}
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#4285F4]/20 flex items-center justify-center text-[#4285F4] transition-colors shrink-0`}>
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#4285F4] truncate transition-colors`}>
+                          Google Profile
+                        </span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>Business Page</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Twitter / X */}
+                  {twitterUrl && (
+                    <a
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
+                      href={twitterUrl}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      onClick={() => trackClick("twitter")}
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#38bdf8]/20 flex items-center justify-center text-[#38bdf8] transition-colors shrink-0`}>
+                        <Twitter className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#38bdf8] truncate transition-colors`}>
+                          Twitter / X
+                        </span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{twitterHandle || "@Twitter"}</span>
+                      </div>
+                    </a>
+                  )}
+
+                  {/* Pay via UPI */}
+                  {upiIdRaw && (
+                    <a
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
+                      href={upiUrl}
+                      onClick={() => trackClick("upi")}
+                    >
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#10b981]/20 flex items-center justify-center text-[#10b981] transition-colors shrink-0`}>
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#10b981] truncate transition-colors`}>
+                          Pay via UPI
+                        </span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate font-mono`}>{upiIdRaw}</span>
                       </div>
                     </a>
                   )}
 
                   {/* Facebook */}
                   {facebookUrl && (
-                    <a 
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={facebookUrl}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("facebook")}
                     >
@@ -807,10 +913,10 @@ export default function ZenTapHubPage({
 
                   {/* Website */}
                   {websiteUrl && (
-                    <a 
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={websiteUrl}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("website")}
                     >
@@ -828,7 +934,7 @@ export default function ZenTapHubPage({
 
                   {/* Email */}
                   {email && (
-                    <a 
+                    <a
                       className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={`mailto:${email}`}
                       onClick={() => trackClick("email")}
@@ -923,11 +1029,11 @@ export default function ZenTapHubPage({
                     Our Studio Location
                   </span>
                   {mapsUrl && (
-                    <a 
+                    <a
                       className="text-[11px] hover:underline font-semibold"
                       style={{ color: finalAccentHex }}
                       href={mapsUrl}
-                      rel="noopener noreferrer" 
+                      rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("location_maps_link")}
                     >
@@ -935,7 +1041,7 @@ export default function ZenTapHubPage({
                     </a>
                   )}
                 </div>
-                <div 
+                <div
                   className={`w-full h-44 rounded-2xl shadow-lg relative overflow-hidden ${hubTheme.card} flex items-end p-3.5 border`}
                   style={{
                     backgroundImage: `url('${locationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}')`,
@@ -964,8 +1070,8 @@ export default function ZenTapHubPage({
                 </div>
                 <span className={`text-xs ${hubTheme.textColor || "text-white"} font-medium`}>Business owner? Manage this card</span>
               </div>
-              <button 
-                className={`px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-colors cursor-pointer border border-white/10`} 
+              <button
+                className={`px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-colors cursor-pointer border border-white/10`}
                 type="button"
                 onClick={() => setOwnerModalOpen(true)}
               >
@@ -979,21 +1085,21 @@ export default function ZenTapHubPage({
 
       {/* 9. INTERACTIVE GOOGLE REVIEW MODAL */}
       {reviewModalOpen && (
-        <div 
-          aria-labelledby="modalHeading" 
-          aria-modal="true" 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#0B0F17]/80 backdrop-blur-md transition-opacity duration-300" 
+        <div
+          aria-labelledby="modalHeading"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#0B0F17]/80 backdrop-blur-md transition-opacity duration-300"
           role="dialog"
         >
           {/* Backdrop click to close */}
-          <div 
-            className="absolute inset-0 cursor-pointer" 
+          <div
+            className="absolute inset-0 cursor-pointer"
             onClick={() => setReviewModalOpen(false)}
           />
 
           {/* Modal Container */}
           <div className="relative z-10 w-full max-w-[460px] max-h-[92vh] overflow-y-auto bg-[#121824] rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl flex flex-col gap-4 text-[#dfe2ee] border border-white/10 animate-in slide-in-from-bottom-6 duration-200">
-            
+
             {/* Header & Close Button */}
             <div className="flex items-center justify-between pb-1 border-b border-white/5">
               <div className="flex items-center gap-2">
@@ -1004,9 +1110,9 @@ export default function ZenTapHubPage({
                   Write a Google Review
                 </span>
               </div>
-              <button 
-                aria-label="Close dialog" 
-                className="w-8 h-8 rounded-full bg-[#1B2232] hover:bg-[#262a33] flex items-center justify-center text-[#94A3B8] hover:text-[#F8FAFC] transition-colors cursor-pointer" 
+              <button
+                aria-label="Close dialog"
+                className="w-8 h-8 rounded-full bg-[#1B2232] hover:bg-[#262a33] flex items-center justify-center text-[#94A3B8] hover:text-[#F8FAFC] transition-colors cursor-pointer"
                 type="button"
                 onClick={() => setReviewModalOpen(false)}
               >
@@ -1030,12 +1136,11 @@ export default function ZenTapHubPage({
                         setShowReviewBox(false);
                       }}
                     >
-                      <Star 
-                        className={`w-8 h-8 sm:w-9 sm:h-9 transition-colors ${
-                          isFilled 
-                            ? "fill-[#ffc174] text-[#ffc174] drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" 
+                      <Star
+                        className={`w-8 h-8 sm:w-9 sm:h-9 transition-colors ${isFilled
+                            ? "fill-[#ffc174] text-[#ffc174] drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
                             : "text-[#353942] fill-transparent"
-                        }`}
+                          }`}
                       />
                     </button>
                   );
@@ -1123,11 +1228,10 @@ export default function ZenTapHubPage({
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1.5 rounded-full text-xs transition-all duration-150 active:scale-95 cursor-pointer border ${
-                            isSelected
+                          className={`px-3 py-1.5 rounded-full text-xs transition-all duration-150 active:scale-95 cursor-pointer border ${isSelected
                               ? "bg-[#f59e0b]/20 text-[#ffb95f] font-bold border-[#f59e0b]/40 shadow-xs"
                               : "bg-[#1B2232] text-[#94A3B8] hover:text-[#F8FAFC] border-white/5"
-                          }`}
+                            }`}
                         >
                           {tag}
                         </button>
@@ -1148,11 +1252,10 @@ export default function ZenTapHubPage({
                           key={len}
                           type="button"
                           onClick={() => setSelectedLength(len)}
-                          className={`py-2 px-1.5 rounded-lg text-xs text-center transition-all cursor-pointer ${
-                            isLen
+                          className={`py-2 px-1.5 rounded-lg text-xs text-center transition-all cursor-pointer ${isLen
                               ? "bg-[#262a33] text-[#F8FAFC] font-bold shadow"
                               : "text-[#94A3B8] hover:text-[#F8FAFC]"
-                          }`}
+                            }`}
                         >
                           {labels[len]}
                         </button>
@@ -1166,8 +1269,8 @@ export default function ZenTapHubPage({
                   <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-[#1B2232]/80 border border-[#ffc174]/20 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between text-[#ffc174] text-xs font-semibold">
                       <span>Generated Review Ready</span>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={handleCopyReview}
                         className="inline-flex items-center gap-1 text-[#ffb95f] hover:text-[#ffc174] cursor-pointer"
                       >
@@ -1191,8 +1294,8 @@ export default function ZenTapHubPage({
                 )}
 
                 {/* Write my review Golden Action CTA */}
-                <button 
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#f59e0b] via-[#ffc174] to-[#f59e0b] text-[#2a1700] text-sm font-extrabold shadow-[0_0_24px_-2px_rgba(245,158,11,0.35)] hover:shadow-[0_0_32px_rgba(245,158,11,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer" 
+                <button
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#f59e0b] via-[#ffc174] to-[#f59e0b] text-[#2a1700] text-sm font-extrabold shadow-[0_0_24px_-2px_rgba(245,158,11,0.35)] hover:shadow-[0_0_32px_rgba(245,158,11,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                   type="button"
                   onClick={handleSubmitReview}
                 >
@@ -1228,8 +1331,8 @@ export default function ZenTapHubPage({
               Business owner? Manage this card
             </button>
             <div className="flex items-center gap-3 text-xs text-[#d8c3ad]">
-              <button 
-                onClick={() => setOwnerModalOpen(true)} 
+              <button
+                onClick={() => setOwnerModalOpen(true)}
                 className="hover:text-[#ffc174] transition-colors cursor-pointer"
               >
                 Log In to Business Portal

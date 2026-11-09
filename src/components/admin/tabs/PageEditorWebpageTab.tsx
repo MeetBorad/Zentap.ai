@@ -40,6 +40,9 @@ import {
   Plus,
   FileText,
   Info,
+  Building2,
+  Twitter,
+  CreditCard,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -54,6 +57,7 @@ import {
   savePageEditorConfig,
   savePageEditorConfigServer,
   updatePageEditorConfig,
+  updateClientServer,
   updateGoogleReviewLinkServer,
   softDeletePageEditorServer,
   restorePageEditorServer,
@@ -159,11 +163,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editWallpaperUrl, setEditWallpaperUrl] = useState("");
   const [editCtaText, setEditCtaText] = useState("Leave a 5-Star Review on Google");
   const [editGoogleLink, setEditGoogleLink] = useState("");
+  const [editGoogleBusinessPage, setEditGoogleBusinessPage] = useState("");
+  const [editOwnerName, setEditOwnerName] = useState("");
+  const [editOwnerPhone, setEditOwnerPhone] = useState("");
   const [editPhone, setEditPhone] = useState("+91 98250 12345");
   const [editWhatsapp, setEditWhatsapp] = useState("919825012345");
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
+  const [editTwitter, setEditTwitter] = useState("");
   const [editWebsite, setEditWebsite] = useState("");
+  const [editUpiId, setEditUpiId] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editAddress, setEditAddress] = useState("");
   const [editMapsLink, setEditMapsLink] = useState("");
@@ -259,44 +268,62 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       return;
     }
 
-    // Auto-fill all blank or default fields from Client profile
+    // Auto-fill and replace data directly from Client profile
+    const cf = client.custom_fields || {};
     if (client.business_name) {
       setEditTitle(client.business_name);
     }
     if (client.city) {
-      if (!editSubtitle || editSubtitle === "Customer Satisfaction Hub") {
-        setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
-      }
-      if (!editAddress) {
-        setEditAddress(client.city);
-      }
+      setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
+      setEditAddress(client.city);
     }
-    if (client.owner_phone && (!editPhone || editPhone.includes("98250 12345"))) {
-      setEditPhone(client.owner_phone);
+    if (client.owner_name) {
+      setEditOwnerName(client.owner_name);
+    }
+    if (client.owner_phone) {
+      setEditOwnerPhone(client.owner_phone);
+    }
+    const resolvedPhone = client.contact_phone || cf.contact_phone || cf.phone || client.owner_phone;
+    if (resolvedPhone) {
+      setEditPhone(resolvedPhone);
     }
     const targetWa = client.whatsapp || client.owner_phone;
-    if (targetWa && (!editWhatsapp || editWhatsapp.includes("919825012345"))) {
+    if (targetWa) {
       setEditWhatsapp(targetWa);
     }
-    if (client.instagram_link && !editInstagram) {
+    if (client.instagram_link) {
       setEditInstagram(client.instagram_link);
     }
-    if (client.facebook_link && !editFacebook) {
+    if (client.facebook_link) {
       setEditFacebook(client.facebook_link);
     }
-    if (client.owner_email && !editEmail) {
+    const resolvedTwitter = client.twitter_link || cf.twitter_link || cf.twitter;
+    if (resolvedTwitter) {
+      setEditTwitter(resolvedTwitter);
+    }
+    const resolvedGoogleBiz = client.google_business_page || cf.google_business_page || cf.google_business;
+    if (resolvedGoogleBiz) {
+      setEditGoogleBusinessPage(resolvedGoogleBiz);
+    }
+    const resolvedUpi = client.upi_id || cf.upi_id;
+    if (resolvedUpi) {
+      setEditUpiId(resolvedUpi);
+    }
+    if (client.owner_email) {
       setEditEmail(client.owner_email);
     }
-    if ((client.custom_fields?.website_url || client.custom_fields?.website) && !editWebsite) {
-      setEditWebsite(client.custom_fields.website_url || client.custom_fields.website);
+    const resolvedWebsite = client.website_url || client.website || cf.website_url || cf.website;
+    if (resolvedWebsite) {
+      setEditWebsite(resolvedWebsite);
     }
-    if ((client.custom_fields?.google_maps_link || client.custom_fields?.maps_link) && !editMapsLink) {
-      setEditMapsLink(client.custom_fields.google_maps_link || client.custom_fields.maps_link);
+    const resolvedDirections = client.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || cf.maps_link;
+    if (resolvedDirections) {
+      setEditMapsLink(resolvedDirections);
     }
-    if (client.custom_fields?.about_us && !editAboutUs) {
-      setEditAboutUs(client.custom_fields.about_us);
+    if (cf.about_us) {
+      setEditAboutUs(cf.about_us);
     }
-    if (client.google_review_link && !editGoogleLink) {
+    if (client.google_review_link) {
       setEditGoogleLink(client.google_review_link);
     } else if (activeItem && !editGoogleLink) {
       const matchingG = googleLinks.find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase()) ||
@@ -465,14 +492,19 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWallpaperUrl(cfg.wallpaper_url || "");
     setEditCtaText(cfg.cta_text || (isZenTap ? "Loved your visit? Tap to write a rapid 5-Star Google Review" : "Leave a 5-Star Review on Google"));
     setEditGoogleLink(resolvedGoogleLink || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
-    setEditPhone(cfg.phone || client?.owner_phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
+    setEditPhone(cfg.contact_phone || cfg.phone || client?.contact_phone || client?.owner_phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
+    setEditOwnerName(cfg.owner_name || client?.owner_name || "");
+    setEditOwnerPhone(cfg.owner_phone || client?.owner_phone || "");
+    setEditGoogleBusinessPage(cfg.google_business_page || client?.google_business_page || client?.custom_fields?.google_business_page || client?.custom_fields?.google_business || "");
+    setEditTwitter(cfg.twitter || cfg.twitter_link || client?.twitter_link || client?.custom_fields?.twitter_link || client?.custom_fields?.twitter || "");
+    setEditUpiId(cfg.upi_id || client?.upi_id || client?.custom_fields?.upi_id || "");
     setEditWhatsapp(cfg.whatsapp || client?.whatsapp || client?.owner_phone || (isZenTap ? "919274560880" : "919825012345"));
     setEditInstagram(cfg.instagram || client?.instagram_link || (isZenTap ? "https://instagram.com" : ""));
     setEditFacebook(cfg.facebook || client?.facebook_link || (isZenTap ? "https://facebook.com" : ""));
-    setEditWebsite(cfg.website || client?.custom_fields?.website_url || client?.custom_fields?.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
+    setEditWebsite(cfg.website || client?.website_url || client?.website || client?.custom_fields?.website_url || client?.custom_fields?.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
     setEditEmail(cfg.email || client?.owner_email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
     setEditAddress(cfg.address || client?.city || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
-    setEditMapsLink(cfg.maps_link || client?.custom_fields?.google_maps_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
+    setEditMapsLink(cfg.maps_link || cfg.directions_link || client?.directions_link || client?.custom_fields?.google_maps_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
     setEditAboutUs(cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
     setEditOpeningHours(cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
     setEditFaqs(Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
@@ -505,16 +537,24 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       categories: currentDesignerCategories,
       address: editAddress.trim(),
       maps_link: editMapsLink.trim(),
+      directions_link: editMapsLink.trim(),
       cover_image: editBannerUrl.trim(),
       logo_url: editLogoUrl.trim(),
       wallpaper_url: editWallpaperUrl.trim(),
       cta_text: editCtaText.trim(),
       google_link: editGoogleLink.trim(),
+      google_business_page: editGoogleBusinessPage.trim(),
+      owner_name: editOwnerName.trim(),
+      owner_phone: editOwnerPhone.trim(),
+      contact_phone: editPhone.trim(),
       phone: editPhone.trim(),
       whatsapp: editWhatsapp.trim(),
       instagram: editInstagram.trim(),
       facebook: editFacebook.trim(),
+      twitter: editTwitter.trim(),
+      twitter_link: editTwitter.trim(),
       website: editWebsite.trim(),
+      upi_id: editUpiId.trim(),
       email: editEmail.trim(),
       about_us: editAboutUs.trim(),
       opening_hours: editOpeningHours.trim(),
@@ -531,32 +571,65 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === activeItem.tag_id.toLowerCase());
     const currentDest = matchingGLink?.destination || activeItem.destination || "business_page";
 
-    const res = await savePageEditorConfigServer(activeItem.tag_id, newConfigData, {
-      business_id: activeItem.business_id,
-      business_name: editTitle.trim() || activeItem.business_name,
-      link_url: activeItem.link_url,
-      destination: currentDest,
-    });
-
     // Cross-sync: If editing ST3 or zentap or ZT-0004, keep both URLs strictly identical
     const isSharedTag =
       activeItem.tag_id.toLowerCase() === "st3" ||
       activeItem.tag_id.toLowerCase() === "zentap" ||
       activeItem.business_id.toLowerCase() === "zt-0004";
 
-    if (isSharedTag && res.success) {
-      const sisterTagId = activeItem.tag_id.toLowerCase() === "st3" ? "zentap" : "st3";
-      await savePageEditorConfigServer(sisterTagId, newConfigData, {
+    // Lightning-fast parallel saves: active tag, sister tag & clients table simultaneously
+    const savePromises: Promise<any>[] = [
+      savePageEditorConfigServer(activeItem.tag_id, newConfigData, {
         business_id: activeItem.business_id,
         business_name: editTitle.trim() || activeItem.business_name,
-        link_url: `${DOMAIN_BASE}/t/${sisterTagId}`,
+        link_url: activeItem.link_url,
         destination: currentDest,
-      }).catch((e) => console.warn("Sister tag sync notice:", e));
+      }),
+    ];
+
+    if (isSharedTag) {
+      const sisterTagId = activeItem.tag_id.toLowerCase() === "st3" ? "zentap" : "st3";
+      savePromises.push(
+        savePageEditorConfigServer(sisterTagId, newConfigData, {
+          business_id: activeItem.business_id,
+          business_name: editTitle.trim() || activeItem.business_name,
+          link_url: `${DOMAIN_BASE}/t/${sisterTagId}`,
+          destination: currentDest,
+        }).catch((e) => console.warn("Sister tag sync notice:", e))
+      );
     }
+
+    // Two-way interconnected sync: Update clients table from Design Review Page
+    if (activeItem.business_id) {
+      savePromises.push(
+        updateClientServer(activeItem.business_id, {
+          business_name: editTitle.trim(),
+          owner_name: editOwnerName.trim() || undefined,
+          owner_phone: editOwnerPhone.trim() || undefined,
+          contact_phone: editPhone.trim() || undefined,
+          owner_email: editEmail.trim() || undefined,
+          whatsapp: editWhatsapp.trim() || undefined,
+          google_review_link: editGoogleLink.trim() || undefined,
+          google_business_page: editGoogleBusinessPage.trim() || undefined,
+          instagram_link: editInstagram.trim() || undefined,
+          facebook_link: editFacebook.trim() || undefined,
+          twitter_link: editTwitter.trim() || undefined,
+          directions_link: editMapsLink.trim() || undefined,
+          website_url: editWebsite.trim() || undefined,
+          website: editWebsite.trim() || undefined,
+          upi_id: editUpiId.trim() || undefined,
+          city: editAddress.trim() || undefined,
+        }).catch((e) => console.warn("Clients table sync notice:", e))
+      );
+    }
+
+    // Await all saves concurrently (takes only the time of single fastest query ~350ms)
+    const results = await Promise.allSettled(savePromises);
+    const primaryRes = results[0].status === "fulfilled" ? results[0].value : { success: false, error: "Network error" };
 
     setIsSubmitting(false);
 
-    if (res.success) {
+    if (primaryRes.success) {
       // Sync to hubDesignStore for live preview and Hub hydration
       try {
         const defaultDesign = getPageDesign(activeItem.business_id);
@@ -619,13 +692,22 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             sort_order: 2,
             visible: true,
           }] : []),
+          ...(editGoogleBusinessPage.trim() ? [{
+            id: `btn_gbiz_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "google_business" as const,
+            label: "Google Profile",
+            url_or_value: editGoogleBusinessPage.trim(),
+            sort_order: 3,
+            visible: true,
+          }] : []),
           {
             id: `btn_maps_${activeItem.business_id}`,
             business_id: activeItem.business_id,
             type: "directions" as const,
             label: "Directions",
-            url_or_value: editGoogleLink.trim(),
-            sort_order: 3,
+            url_or_value: editMapsLink.trim() || editGoogleLink.trim(),
+            sort_order: 4,
             visible: true,
           },
           ...(editWhatsapp.trim() ? [{
@@ -634,7 +716,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             type: "whatsapp" as const,
             label: "WhatsApp",
             url_or_value: editWhatsapp.trim(),
-            sort_order: 4,
+            sort_order: 5,
             visible: true,
           }] : []),
           ...(editInstagram.trim() ? [{
@@ -643,7 +725,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             type: "instagram" as const,
             label: "Instagram",
             url_or_value: editInstagram.trim(),
-            sort_order: 5,
+            sort_order: 6,
             visible: true,
           }] : []),
           ...(editFacebook.trim() ? [{
@@ -652,7 +734,34 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
             type: "facebook" as const,
             label: "Facebook",
             url_or_value: editFacebook.trim(),
-            sort_order: 6,
+            sort_order: 7,
+            visible: true,
+          }] : []),
+          ...(editTwitter.trim() ? [{
+            id: `btn_tw_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "twitter" as const,
+            label: "Twitter / X",
+            url_or_value: editTwitter.trim(),
+            sort_order: 8,
+            visible: true,
+          }] : []),
+          ...(editWebsite.trim() ? [{
+            id: `btn_web_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "website" as const,
+            label: "Website",
+            url_or_value: editWebsite.trim(),
+            sort_order: 9,
+            visible: true,
+          }] : []),
+          ...(editUpiId.trim() ? [{
+            id: `btn_upi_${activeItem.business_id}`,
+            business_id: activeItem.business_id,
+            type: "upi" as const,
+            label: "Pay via UPI",
+            url_or_value: `upi://pay?pa=${encodeURIComponent(editUpiId.trim())}&pn=${encodeURIComponent(editTitle.trim())}`,
+            sort_order: 10,
             visible: true,
           }] : []),
         ];
@@ -661,11 +770,11 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
         console.warn("Hub design sync error", err);
       }
 
-      onShowToast(`✓ Successfully saved & published live for "${activeItem.business_name}"! Status of Design: Completed.`);
+      onShowToast(`✓ Successfully saved & published live for "${activeItem.business_name}"! Interconnected sync complete.`);
       setActiveItem(null);
-      await refreshData();
+      refreshData();
     } else {
-      onShowToast(res.error || "Failed to save design in database");
+      onShowToast(primaryRes.error || "Failed to save design in database");
     }
   };
 
@@ -2186,11 +2295,41 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {/* Phone */}
+                      {/* Owner Name */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-zinc-600" />
+                          <span>Owner Name</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Meet Borad"
+                          value={editOwnerName}
+                          onChange={(e) => setEditOwnerName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* Owner Phone */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-zinc-600" />
+                          <span>Owner Phone</span>
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="+91 96627 60880"
+                          value={editOwnerPhone}
+                          onChange={(e) => setEditOwnerPhone(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* Contact Phone */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
                           <Phone className="w-3 h-3 text-emerald-600" />
-                          <span>Phone / Call</span>
+                          <span>Contact Phone / Call</span>
                         </label>
                         <input
                           type="tel"
@@ -2212,6 +2351,21 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           placeholder="919274560880"
                           value={editWhatsapp}
                           onChange={(e) => setEditWhatsapp(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* Google Business Page */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Building2 className="w-3 h-3 text-blue-600" />
+                          <span>Google Business Page</span>
+                        </label>
+                        <input
+                          type="url"
+                          placeholder="https://maps.google.com/..."
+                          value={editGoogleBusinessPage}
+                          onChange={(e) => setEditGoogleBusinessPage(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
@@ -2246,6 +2400,21 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         />
                       </div>
 
+                      {/* Twitter / X */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <Twitter className="w-3 h-3 text-sky-500" />
+                          <span>Twitter / X</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="https://twitter.com/... or @handle"
+                          value={editTwitter}
+                          onChange={(e) => setEditTwitter(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
                       {/* Website */}
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
@@ -2258,6 +2427,21 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           value={editWebsite}
                           onChange={(e) => setEditWebsite(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                        />
+                      </div>
+
+                      {/* UPI ID */}
+                      <div>
+                        <label className="block text-[11px] font-medium text-zinc-700 mb-1 flex items-center gap-1">
+                          <CreditCard className="w-3 h-3 text-emerald-600" />
+                          <span>Business UPI ID</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="merchant@okhdfcbank"
+                          value={editUpiId}
+                          onChange={(e) => setEditUpiId(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                         />
                       </div>
 
@@ -2506,6 +2690,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   editInstagram.trim() || 
                   editPhone.trim() || 
                   editFacebook.trim() || 
+                  editTwitter.trim() || 
+                  editGoogleBusinessPage.trim() || 
+                  editUpiId.trim() || 
                   editWebsite.trim() || 
                   editEmail.trim()
                 );
@@ -2778,10 +2965,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                                   <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Facebook</span>
                                 </div>
                               )}
+                              {editGoogleBusinessPage.trim() && (
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
+                                  <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Google Profile</span>
+                                </div>
+                              )}
+                              {editTwitter.trim() && (
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
+                                  <Twitter className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Twitter / X</span>
+                                </div>
+                              )}
                               {editWebsite.trim() && (
                                 <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
                                   <Globe className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                   <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Website</span>
+                                </div>
+                              )}
+                              {editUpiId.trim() && (
+                                <div className={`p-2 rounded-lg ${currentP.cardBg} border ${currentP.borderColor} flex items-center gap-1.5`}>
+                                  <CreditCard className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  <span className={`text-[10px] font-bold ${currentP.textColor} truncate`}>Pay via UPI</span>
                                 </div>
                               )}
                               {editEmail.trim() && (

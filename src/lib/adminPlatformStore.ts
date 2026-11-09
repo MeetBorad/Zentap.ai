@@ -18,11 +18,18 @@ export interface ClientRecord {
   business_name: string;
   owner_name: string;
   owner_phone: string;
+  contact_phone?: string;
   owner_email: string;
   whatsapp: string;
   instagram_link: string;
   facebook_link: string;
   google_review_link?: string;
+  google_business_page?: string;
+  twitter_link?: string;
+  upi_id?: string;
+  directions_link?: string;
+  website_url?: string;
+  website?: string;
   city: string;
   custom_fields?: Record<string, string>;
   created_at: string;
@@ -776,29 +783,57 @@ export async function addClientServer(params: {
   business_name: string;
   owner_name?: string;
   owner_phone?: string;
+  contact_phone?: string;
   owner_email?: string;
   whatsapp?: string;
   instagram_link?: string;
   facebook_link?: string;
   city?: string;
   google_review_link?: string;
+  google_business_page?: string;
+  twitter_link?: string;
+  upi_id?: string;
+  directions_link?: string;
+  website_url?: string;
+  website?: string;
   custom_fields?: Record<string, string>;
 }): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
   const current = getAllClients();
   const nextBusinessId = generateNextBusinessIdCode(current);
+
+  const mergedCustomFields: Record<string, string> = {
+    ...(params.custom_fields || {}),
+  };
+  if (params.contact_phone) mergedCustomFields.contact_phone = params.contact_phone.trim();
+  if (params.google_business_page) mergedCustomFields.google_business_page = params.google_business_page.trim();
+  if (params.twitter_link) mergedCustomFields.twitter_link = params.twitter_link.trim();
+  if (params.upi_id) mergedCustomFields.upi_id = params.upi_id.trim();
+  if (params.directions_link) mergedCustomFields.directions_link = params.directions_link.trim();
+  if (params.website_url || params.website) {
+    const web = (params.website_url || params.website || "").trim();
+    mergedCustomFields.website_url = web;
+    mergedCustomFields.website = web;
+  }
 
   const clientPayload: Omit<ClientRecord, "id" | "created_at"> & { id?: string; business_id: string } = {
     business_id: nextBusinessId,
     business_name: params.business_name.trim(),
     owner_name: params.owner_name?.trim() || "",
     owner_phone: params.owner_phone?.trim() || "",
+    contact_phone: params.contact_phone?.trim() || params.owner_phone?.trim() || "",
     owner_email: params.owner_email?.trim() || "",
     whatsapp: params.whatsapp?.trim() || params.owner_phone?.trim() || "",
     instagram_link: params.instagram_link?.trim() || "",
     facebook_link: params.facebook_link?.trim() || "",
     city: params.city?.trim() || "India",
     google_review_link: params.google_review_link?.trim() || "",
-    custom_fields: params.custom_fields || {},
+    google_business_page: params.google_business_page?.trim() || "",
+    twitter_link: params.twitter_link?.trim() || "",
+    upi_id: params.upi_id?.trim() || "",
+    directions_link: params.directions_link?.trim() || "",
+    website_url: params.website_url?.trim() || params.website?.trim() || "",
+    website: params.website?.trim() || params.website_url?.trim() || "",
+    custom_fields: mergedCustomFields,
   };
 
   // Optimistically update local storage so UI displays it immediately
@@ -837,11 +872,30 @@ export async function updateClientServer(
   updates: Partial<ClientRecord>
 ): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
   try {
+    const mergedCustomFields: Record<string, string> = {
+      ...(updates.custom_fields || {}),
+    };
+    if (updates.contact_phone) mergedCustomFields.contact_phone = updates.contact_phone;
+    if (updates.google_business_page) mergedCustomFields.google_business_page = updates.google_business_page;
+    if (updates.twitter_link) mergedCustomFields.twitter_link = updates.twitter_link;
+    if (updates.upi_id) mergedCustomFields.upi_id = updates.upi_id;
+    if (updates.directions_link) mergedCustomFields.directions_link = updates.directions_link;
+    if (updates.website_url || updates.website) {
+      const web = (updates.website_url || updates.website || "").trim();
+      mergedCustomFields.website_url = web;
+      mergedCustomFields.website = web;
+    }
+
+    const normalizedUpdates = {
+      ...updates,
+      custom_fields: mergedCustomFields,
+    };
+
     // Optimistically update local storage and cascade locally
-    const localUpdated = updateClient(businessId, updates);
+    const localUpdated = updateClient(businessId, normalizedUpdates);
 
     const payload = {
-      ...updates,
+      ...normalizedUpdates,
       business_id: updates.business_id || businessId,
       updated_at: new Date().toISOString(),
     };

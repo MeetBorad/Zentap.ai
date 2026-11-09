@@ -23,6 +23,11 @@ import {
   Star,
   MapPin,
   Calendar,
+  Globe,
+  Navigation,
+  CreditCard,
+  Twitter,
+  Copy,
 } from "lucide-react";
 import {
   ClientRecord,
@@ -67,11 +72,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [newBizName, setNewBizName] = useState("");
   const [newOwnerName, setNewOwnerName] = useState("");
   const [newOwnerPhone, setNewOwnerPhone] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
   const [newOwnerEmail, setNewOwnerEmail] = useState("");
   const [newWhatsapp, setNewWhatsapp] = useState("");
   const [newGoogleReviewLink, setNewGoogleReviewLink] = useState("");
+  const [newGoogleBusinessPage, setNewGoogleBusinessPage] = useState("");
   const [newInstagram, setNewInstagram] = useState("");
   const [newFacebook, setNewFacebook] = useState("");
+  const [newTwitter, setNewTwitter] = useState("");
+  const [newDirectionsLink, setNewDirectionsLink] = useState("");
+  const [newWebsite, setNewWebsite] = useState("");
+  const [newUpiId, setNewUpiId] = useState("");
   const [newCity, setNewCity] = useState("Ahmedabad");
   const [newCustomFields, setNewCustomFields] = useState<Record<string, string>>({});
 
@@ -82,11 +93,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [editBizName, setEditBizName] = useState("");
   const [editOwnerName, setEditOwnerName] = useState("");
   const [editOwnerPhone, setEditOwnerPhone] = useState("");
+  const [editContactPhone, setEditContactPhone] = useState("");
   const [editOwnerEmail, setEditOwnerEmail] = useState("");
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [editGoogleReviewLink, setEditGoogleReviewLink] = useState("");
+  const [editGoogleBusinessPage, setEditGoogleBusinessPage] = useState("");
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
+  const [editTwitter, setEditTwitter] = useState("");
+  const [editDirectionsLink, setEditDirectionsLink] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
+  const [editUpiId, setEditUpiId] = useState("");
   const [editCity, setEditCity] = useState("Ahmedabad");
   const [editCustomFields, setEditCustomFields] = useState<Record<string, string>>({});
 
@@ -186,11 +203,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditBizName(client.business_name || "");
     setEditOwnerName(client.owner_name || "");
     setEditOwnerPhone(client.owner_phone || "");
+    setEditContactPhone(client.contact_phone || client.custom_fields?.contact_phone || client.custom_fields?.phone || "");
     setEditOwnerEmail(client.owner_email || "");
     setEditWhatsapp(client.whatsapp || "");
     setEditGoogleReviewLink(client.google_review_link || "");
+    setEditGoogleBusinessPage(client.google_business_page || client.custom_fields?.google_business_page || client.custom_fields?.google_business || client.custom_fields?.google_maps_link || "");
     setEditInstagram(client.instagram_link || "");
     setEditFacebook(client.facebook_link || "");
+    setEditTwitter(client.twitter_link || client.custom_fields?.twitter_link || client.custom_fields?.twitter || "");
+    setEditDirectionsLink(client.directions_link || client.custom_fields?.directions_link || client.custom_fields?.directions || "");
+    setEditWebsite(client.website_url || client.website || client.custom_fields?.website_url || client.custom_fields?.website || "");
+    setEditUpiId(client.upi_id || client.custom_fields?.upi_id || "");
     setEditCity(client.city || "Ahmedabad");
     setEditCustomFields(client.custom_fields || {});
     setIsEditModalOpen(true);
@@ -205,19 +228,37 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     }
 
     setIsSubmitting(true);
+    const mergedFields = {
+      ...editCustomFields,
+      contact_phone: editContactPhone.trim(),
+      google_business_page: editGoogleBusinessPage.trim(),
+      twitter_link: editTwitter.trim(),
+      directions_link: editDirectionsLink.trim(),
+      website_url: editWebsite.trim(),
+      website: editWebsite.trim(),
+      upi_id: editUpiId.trim(),
+    };
+
     const res = await updateClientServer(editTarget.business_id, {
       id: editTarget.id,
       business_id: editBusinessId.trim() || editTarget.business_id,
       business_name: editBizName.trim(),
       owner_name: editOwnerName.trim() || undefined,
       owner_phone: editOwnerPhone.trim() || undefined,
+      contact_phone: editContactPhone.trim() || undefined,
       owner_email: editOwnerEmail.trim() || undefined,
       whatsapp: editWhatsapp.trim() || undefined,
       google_review_link: editGoogleReviewLink.trim() || undefined,
+      google_business_page: editGoogleBusinessPage.trim() || undefined,
       instagram_link: editInstagram.trim() || undefined,
       facebook_link: editFacebook.trim() || undefined,
+      twitter_link: editTwitter.trim() || undefined,
+      directions_link: editDirectionsLink.trim() || undefined,
+      website_url: editWebsite.trim() || undefined,
+      website: editWebsite.trim() || undefined,
+      upi_id: editUpiId.trim() || undefined,
       city: editCity.trim() || "India",
-      custom_fields: editCustomFields,
+      custom_fields: mergedFields,
     });
     setIsSubmitting(false);
 
@@ -239,17 +280,35 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     }
 
     setIsSubmitting(true);
+    const mergedFields = {
+      ...newCustomFields,
+      contact_phone: newContactPhone.trim(),
+      google_business_page: newGoogleBusinessPage.trim(),
+      twitter_link: newTwitter.trim(),
+      directions_link: newDirectionsLink.trim(),
+      website_url: newWebsite.trim(),
+      website: newWebsite.trim(),
+      upi_id: newUpiId.trim(),
+    };
+
     const res = await addClientServer({
       business_name: newBizName.trim(),
       owner_name: newOwnerName.trim() || undefined,
       owner_phone: newOwnerPhone.trim() || undefined,
+      contact_phone: newContactPhone.trim() || undefined,
       owner_email: newOwnerEmail.trim() || undefined,
       whatsapp: newWhatsapp.trim() || newOwnerPhone.trim() || undefined,
       google_review_link: newGoogleReviewLink.trim() || undefined,
+      google_business_page: newGoogleBusinessPage.trim() || undefined,
       instagram_link: newInstagram.trim() || undefined,
       facebook_link: newFacebook.trim() || undefined,
+      twitter_link: newTwitter.trim() || undefined,
+      directions_link: newDirectionsLink.trim() || undefined,
+      website_url: newWebsite.trim() || undefined,
+      website: newWebsite.trim() || undefined,
+      upi_id: newUpiId.trim() || undefined,
       city: newCity.trim() || "India",
-      custom_fields: newCustomFields,
+      custom_fields: mergedFields,
     });
     setIsSubmitting(false);
 
@@ -260,11 +319,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       setNewBizName("");
       setNewOwnerName("");
       setNewOwnerPhone("");
+      setNewContactPhone("");
       setNewOwnerEmail("");
       setNewWhatsapp("");
       setNewGoogleReviewLink("");
+      setNewGoogleBusinessPage("");
       setNewInstagram("");
       setNewFacebook("");
+      setNewTwitter("");
+      setNewDirectionsLink("");
+      setNewWebsite("");
+      setNewUpiId("");
       setNewCity("Ahmedabad");
       setNewCustomFields({});
       await refreshData();
@@ -427,17 +492,25 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   <th className="py-3.5 px-4 whitespace-nowrap">City / Location</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Owner Name</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Owner Phone</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Contact Phone</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Owner Email</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">WhatsApp</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Google Review Link</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Google Business Page</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Instagram Link</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Facebook Link</th>
-                  {/* Dynamic Custom Field Columns configured from Settings */}
-                  {activeCustomFields.map((f) => (
-                    <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100">
-                      {f.label}
-                    </th>
-                  ))}
+                  <th className="py-3.5 px-4 whitespace-nowrap">Twitter</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Website</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Directions link</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">UPI ID</th>
+                  {/* Dynamic Custom Field Columns configured from Settings (excluding existing dedicated columns) */}
+                  {activeCustomFields
+                    .filter((f) => !["contact_phone", "google_business_page", "google_business", "twitter_link", "twitter", "upi_id", "directions_link", "directions", "website_url", "website", "google_maps_link"].includes(f.id))
+                    .map((f) => (
+                      <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100">
+                        {f.label}
+                      </th>
+                    ))}
                   <th className="py-3.5 px-4 whitespace-nowrap">Hardware / Tags</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
                   <th className="py-3.5 px-4 text-right whitespace-nowrap sticky right-0 bg-zinc-50 shadow-xs">Actions</th>
@@ -446,208 +519,325 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
               <tbody className="divide-y divide-zinc-100">
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan={13 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={19 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
                       No clients found matching &ldquo;{searchQuery}&rdquo;.
                     </td>
                   </tr>
                 ) : (
-                  filteredClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-zinc-50/70 transition-colors">
-                      {/* 1. Business ID */}
-                      <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px] font-bold">
-                          {client.business_id}
-                        </span>
-                      </td>
+                  filteredClients.map((client) => {
+                    const cf = client.custom_fields || {};
+                    const contactPhone = client.contact_phone || cf.contact_phone || cf.phone || "";
+                    const googleBizPage = client.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || "";
+                    const twitterUrl = client.twitter_link || cf.twitter_link || cf.twitter || "";
+                    const websiteUrl = client.website_url || client.website || cf.website_url || cf.website || "";
+                    const directionsUrl = client.directions_link || cf.directions_link || cf.directions || "";
+                    const upiId = client.upi_id || cf.upi_id || "";
 
-                      {/* 2. Business Name */}
-                      <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
-                        <div className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span>{client.business_name}</span>
-                        </div>
-                      </td>
-
-                      {/* 3. City / Location */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
-                        {client.city ? (
-                          <span className="inline-flex items-center gap-1 text-zinc-700 bg-zinc-50 border border-zinc-200/80 px-2 py-0.5 rounded text-[11px]">
-                            <MapPin className="w-3 h-3 text-zinc-400" />
-                            <span>{client.city}</span>
+                    return (
+                      <tr key={client.id} className="hover:bg-zinc-50/70 transition-colors">
+                        {/* 1. Business ID */}
+                        <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
+                          <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px] font-bold">
+                            {client.business_id}
                           </span>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* 4. Owner Name */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
-                        {client.owner_name || <span className="text-zinc-400">—</span>}
-                      </td>
+                        {/* 2. Business Name */}
+                        <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span>{client.business_name}</span>
+                          </div>
+                        </td>
 
-                      {/* 5. Owner Phone */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.owner_phone ? (
-                          <a
-                            href={`tel:${client.owner_phone}`}
-                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
-                          >
-                            <Phone className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{client.owner_phone}</span>
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 3. City / Location */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
+                          {client.city ? (
+                            <span className="inline-flex items-center gap-1 text-zinc-700 bg-zinc-50 border border-zinc-200/80 px-2 py-0.5 rounded text-[11px]">
+                              <MapPin className="w-3 h-3 text-zinc-400" />
+                              <span>{client.city}</span>
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 6. Owner Email */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.owner_email ? (
-                          <a
-                            href={`mailto:${client.owner_email}`}
-                            className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
-                          >
-                            <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{client.owner_email}</span>
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 4. Owner Name */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap font-medium">
+                          {client.owner_name || <span className="text-zinc-400">—</span>}
+                        </td>
 
-                      {/* 7. WhatsApp */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.whatsapp ? (
-                          <a
-                            href={`https://wa.me/${client.whatsapp.replace(/\D/g, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold hover:bg-emerald-100"
-                          >
-                            <MessageCircle className="w-3 h-3 text-emerald-600" />
-                            <span>{client.whatsapp}</span>
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 5. Owner Phone */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.owner_phone ? (
+                            <a
+                              href={`tel:${client.owner_phone}`}
+                              className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-zinc-400" />
+                              <span>{client.owner_phone}</span>
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 8. Google Review Link */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.google_review_link ? (
-                          <a
-                            href={client.google_review_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold hover:bg-amber-100"
-                            title={client.google_review_link}
-                          >
-                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                            <span>Review Link</span>
-                            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 6. Contact Phone */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {contactPhone ? (
+                            <a
+                              href={`tel:${contactPhone}`}
+                              className="inline-flex items-center gap-1 text-zinc-800 hover:text-black font-medium"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{contactPhone}</span>
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 9. Instagram Link */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.instagram_link ? (
-                          <a
-                            href={client.instagram_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-900 font-semibold"
-                          >
-                            <Instagram className="w-3.5 h-3.5 text-pink-600" />
-                            <span className="truncate max-w-[120px]">Profile</span>
-                            <ExternalLink className="w-3 h-3 opacity-60" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 7. Owner Email */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.owner_email ? (
+                            <a
+                              href={`mailto:${client.owner_email}`}
+                              className="flex items-center gap-1.5 text-zinc-800 hover:text-black font-medium"
+                            >
+                              <Mail className="w-3.5 h-3.5 text-zinc-400" />
+                              <span>{client.owner_email}</span>
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 10. Facebook Link */}
-                      <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
-                        {client.facebook_link ? (
-                          <a
-                            href={client.facebook_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-semibold"
-                          >
-                            <Facebook className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="truncate max-w-[120px]">Page</span>
-                            <ExternalLink className="w-3 h-3 opacity-60" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
+                        {/* 8. WhatsApp */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.whatsapp ? (
+                            <a
+                              href={`https://wa.me/${client.whatsapp.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold hover:bg-emerald-100"
+                            >
+                              <MessageCircle className="w-3 h-3 text-emerald-600" />
+                              <span>{client.whatsapp}</span>
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 11. Dynamic Custom Field Values */}
-                      {activeCustomFields.map((field) => {
-                        const val = client.custom_fields?.[field.id];
-                        if (!val || !String(val).trim()) {
-                          return (
-                            <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-400 border-l border-r border-zinc-100/60">
-                              —
-                            </td>
-                          );
-                        }
-                        const isLink = field.type === "url" || String(val).startsWith("http");
-                        return (
-                          <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-800 font-medium border-l border-r border-zinc-100/60">
-                            {isLink ? (
-                              <a
-                                href={String(val)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold max-w-[160px] truncate"
-                                title={String(val)}
-                              >
-                                <span className="truncate">{String(val).replace(/^https?:\/\//, "")}</span>
-                                <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
-                              </a>
-                            ) : (
-                              <span className="truncate max-w-[160px] inline-block" title={String(val)}>
-                                {String(val)}
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
+                        {/* 9. Google Review Link */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.google_review_link ? (
+                            <a
+                              href={client.google_review_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold hover:bg-amber-100"
+                              title={client.google_review_link}
+                            >
+                              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                              <span>Review Link</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 12. Hardware / Tags Assigned */}
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {(() => {
-                          const bizTags = tags.filter((t) => t.business_id === client.business_id);
-                          if (bizTags.length === 0) {
-                            return <span className="text-zinc-400 text-[11px]">—</span>;
-                          }
-                          return (
-                            <div className="flex flex-wrap items-center gap-1 max-w-[190px]">
-                              {bizTags.map((t) => (
-                                <a
-                                  key={t.tag_id}
-                                  href={t.link || `/t/${t.tag_id}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200 font-mono text-[10px] font-bold"
-                                  title={`${t.product_type} • ${t.destination || "Not Assigned"}`}
-                                >
-                                  <Tag className="w-2.5 h-2.5 text-zinc-500" />
-                                  <span>{t.tag_id}</span>
-                                </a>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </td>
+                        {/* 10. Google Business Page */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {googleBizPage ? (
+                            <a
+                              href={googleBizPage.startsWith("http") ? googleBizPage : `https://${googleBizPage}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-[11px] font-semibold hover:bg-blue-100"
+                              title={googleBizPage}
+                            >
+                              <Building2 className="w-3 h-3 text-blue-600" />
+                              <span>Business Page</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
 
-                      {/* 13. Registered Date */}
+                        {/* 11. Instagram Link */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.instagram_link ? (
+                            <a
+                              href={client.instagram_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-pink-700 hover:text-pink-900 font-semibold"
+                            >
+                              <Instagram className="w-3.5 h-3.5 text-pink-600" />
+                              <span className="truncate max-w-[120px]">Profile</span>
+                              <ExternalLink className="w-3 h-3 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 12. Facebook Link */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {client.facebook_link ? (
+                            <a
+                              href={client.facebook_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-semibold"
+                            >
+                              <Facebook className="w-3.5 h-3.5 text-blue-600" />
+                              <span className="truncate max-w-[120px]">Page</span>
+                              <ExternalLink className="w-3 h-3 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 13. Twitter */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {twitterUrl ? (
+                            <a
+                              href={twitterUrl.startsWith("http") ? twitterUrl : `https://twitter.com/${twitterUrl.replace(/^@/, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 text-[11px] font-semibold hover:bg-sky-100"
+                              title={twitterUrl}
+                            >
+                              <Twitter className="w-3 h-3 text-sky-600" />
+                              <span className="truncate max-w-[110px]">{twitterUrl.replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//i, "@")}</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 14. Website */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {websiteUrl ? (
+                            <a
+                              href={websiteUrl.startsWith("http") ? websiteUrl : `https://${websiteUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-semibold hover:bg-amber-100"
+                              title={websiteUrl}
+                            >
+                              <Globe className="w-3 h-3 text-amber-600" />
+                              <span className="truncate max-w-[120px]">{websiteUrl.replace(/^https?:\/\//i, "")}</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 15. Directions link */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {directionsUrl ? (
+                            <a
+                              href={directionsUrl.startsWith("http") ? directionsUrl : `https://${directionsUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-800 border border-cyan-200 text-[11px] font-semibold hover:bg-cyan-100"
+                              title={directionsUrl}
+                            >
+                              <Navigation className="w-3 h-3 text-cyan-600" />
+                              <span className="truncate max-w-[120px]">Directions</span>
+                              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 16. UPI ID */}
+                        <td className="py-3 px-4 text-zinc-800 whitespace-nowrap">
+                          {upiId ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200 text-[11px] font-mono font-bold"
+                              title={upiId}
+                            >
+                              <CreditCard className="w-3 h-3 text-emerald-600" />
+                              <span>{upiId}</span>
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 17. Dynamic Custom Field Values */}
+                        {activeCustomFields
+                          .filter((f) => !["contact_phone", "google_business_page", "google_business", "twitter_link", "twitter", "upi_id", "directions_link", "directions", "website_url", "website", "google_maps_link"].includes(f.id))
+                          .map((field) => {
+                            const val = cf[field.id];
+                            if (!val || !String(val).trim()) {
+                              return (
+                                <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-400 border-l border-r border-zinc-100/60">
+                                  —
+                                </td>
+                              );
+                            }
+                            const isLink = field.type === "url" || String(val).startsWith("http");
+                            return (
+                              <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-800 font-medium border-l border-r border-zinc-100/60">
+                                {isLink ? (
+                                  <a
+                                    href={String(val)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold max-w-[160px] truncate"
+                                    title={String(val)}
+                                  >
+                                    <span className="truncate">{String(val).replace(/^https?:\/\//, "")}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                                  </a>
+                                ) : (
+                                  <span className="truncate max-w-[160px] inline-block" title={String(val)}>
+                                    {String(val)}
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                        {/* 18. Hardware / Tags Assigned */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {(() => {
+                            const bizTags = tags.filter((t) => t.business_id === client.business_id);
+                            if (bizTags.length === 0) {
+                              return <span className="text-zinc-400 text-[11px]">—</span>;
+                            }
+                            return (
+                              <div className="flex flex-wrap items-center gap-1 max-w-[190px]">
+                                {bizTags.map((t) => (
+                                  <a
+                                    key={t.tag_id}
+                                    href={t.link || `/t/${t.tag_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200 text-zinc-800 border border-zinc-200 font-mono text-[10px] font-bold"
+                                    title={`${t.product_type} • ${t.destination || "Not Assigned"}`}
+                                  >
+                                    <Tag className="w-2.5 h-2.5 text-zinc-500" />
+                                    <span>{t.tag_id}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </td>
+
+                        {/* 19. Registered Date */}
                       <td className="py-3 px-4 text-zinc-600 whitespace-nowrap font-mono text-[11px]">
                         {client.created_at ? (
                           <span className="inline-flex items-center gap-1 text-zinc-600">
@@ -685,9 +875,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
+                  );
+                })
+              )}
+            </tbody>
             </table>
           </div>
         </div>
@@ -839,10 +1030,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Phone / Contact</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Phone</label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 98250 12345"
+                    placeholder="e.g. +91 96627 60880"
                     value={newOwnerPhone}
                     onChange={(e) => setNewOwnerPhone(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
@@ -851,6 +1042,16 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Contact Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 92745 60880"
+                    value={newContactPhone}
+                    onChange={(e) => setNewContactPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Email</label>
                   <input
@@ -861,13 +1062,49 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">WhatsApp Number</label>
                   <input
                     type="tel"
-                    placeholder="e.g. +91 98250 12345"
+                    placeholder="e.g. 919274560880"
                     value={newWhatsapp}
                     onChange={(e) => setNewWhatsapp(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <input
+                    type="url"
+                    placeholder="https://g.page/r/... or search.google.com"
+                    value={newGoogleReviewLink}
+                    onChange={(e) => setNewGoogleReviewLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Business Page</label>
+                  <input
+                    type="url"
+                    placeholder="https://maps.google.com/... or business page link"
+                    value={newGoogleBusinessPage}
+                    onChange={(e) => setNewGoogleBusinessPage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Website URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://yourwebsite.com"
+                    value={newWebsite}
+                    onChange={(e) => setNewWebsite(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
@@ -898,6 +1135,29 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Twitter (X) Profile</label>
+                  <input
+                    type="text"
+                    placeholder="https://twitter.com/... or @handle"
+                    value={newTwitter}
+                    onChange={(e) => setNewTwitter(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Directions link</label>
+                  <input
+                    type="url"
+                    placeholder="https://maps.google.com/... directions"
+                    value={newDirectionsLink}
+                    onChange={(e) => setNewDirectionsLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
                   <input
                     type="text"
@@ -908,13 +1168,13 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
                   <input
-                    type="url"
-                    placeholder="https://search.google.com/... or g.page/r/..."
-                    value={newGoogleReviewLink}
-                    onChange={(e) => setNewGoogleReviewLink(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                    type="text"
+                    placeholder="e.g. merchant@okhdfcbank"
+                    value={newUpiId}
+                    onChange={(e) => setNewUpiId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
               </div>
@@ -1082,6 +1342,15 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={editContactPhone}
+                    onChange={(e) => setEditContactPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Email</label>
                   <input
                     type="email"
@@ -1090,12 +1359,48 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">WhatsApp Number</label>
                   <input
                     type="tel"
                     value={editWhatsapp}
                     onChange={(e) => setEditWhatsapp(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <input
+                    type="url"
+                    placeholder="https://search.google.com/... or g.page/r/..."
+                    value={editGoogleReviewLink}
+                    onChange={(e) => setEditGoogleReviewLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Business Page</label>
+                  <input
+                    type="url"
+                    placeholder="https://maps.google.com/... or business page link"
+                    value={editGoogleBusinessPage}
+                    onChange={(e) => setEditGoogleBusinessPage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Website URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://yourwebsite.com"
+                    value={editWebsite}
+                    onChange={(e) => setEditWebsite(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
@@ -1124,6 +1429,29 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Twitter (X) Profile</label>
+                  <input
+                    type="text"
+                    placeholder="https://twitter.com/... or @handle"
+                    value={editTwitter}
+                    onChange={(e) => setEditTwitter(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Directions link</label>
+                  <input
+                    type="url"
+                    placeholder="https://maps.google.com/... directions"
+                    value={editDirectionsLink}
+                    onChange={(e) => setEditDirectionsLink(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
                   <input
                     type="text"
@@ -1133,13 +1461,13 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Google Review Link</label>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
                   <input
-                    type="url"
-                    placeholder="https://search.google.com/... or g.page/r/..."
-                    value={editGoogleReviewLink}
-                    onChange={(e) => setEditGoogleReviewLink(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                    type="text"
+                    placeholder="e.g. merchant@okhdfcbank"
+                    value={editUpiId}
+                    onChange={(e) => setEditUpiId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
               </div>

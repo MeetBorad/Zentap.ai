@@ -242,11 +242,25 @@ export async function GET(req: Request) {
       },
     };
 
+    const mappedClients = clients.map((c: any) => {
+      const cf = typeof c.custom_fields === "object" && c.custom_fields !== null ? c.custom_fields : {};
+      return {
+        ...c,
+        contact_phone: c.contact_phone || cf.contact_phone || cf.phone || "",
+        google_business_page: c.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cf.maps_link || "",
+        twitter_link: c.twitter_link || cf.twitter_link || cf.twitter || "",
+        upi_id: c.upi_id || cf.upi_id || "",
+        directions_link: c.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || "",
+        website_url: c.website_url || c.website || cf.website_url || cf.website || "",
+        website: c.website || c.website_url || cf.website || cf.website_url || "",
+      };
+    });
+
     return NextResponse.json({
       success: true,
       counts,
       data: {
-        clients,
+        clients: mappedClients,
         deletedBusinesses,
         payments,
         deletedPayments,
@@ -680,6 +694,17 @@ function sanitizeRowForTable(item: any, table: string) {
   if (!item || typeof item !== "object") return item;
   const copy: any = {};
   const allowed = TABLE_COLUMNS[table];
+
+  if (table === "clients") {
+    const existingCf = typeof item.custom_fields === "object" && item.custom_fields !== null ? { ...item.custom_fields } : {};
+    if (item.contact_phone && !existingCf.contact_phone) existingCf.contact_phone = item.contact_phone;
+    if (item.google_business_page && !existingCf.google_business_page) existingCf.google_business_page = item.google_business_page;
+    if ((item.twitter_link || item.twitter) && !existingCf.twitter_link) existingCf.twitter_link = item.twitter_link || item.twitter;
+    if (item.upi_id && !existingCf.upi_id) existingCf.upi_id = item.upi_id;
+    if ((item.directions_link || item.directions) && !existingCf.directions_link) existingCf.directions_link = item.directions_link || item.directions;
+    if ((item.website_url || item.website) && !existingCf.website_url) existingCf.website_url = item.website_url || item.website;
+    copy.custom_fields = existingCf;
+  }
 
   for (const [key, value] of Object.entries(item)) {
     if (allowed && !allowed.includes(key)) {

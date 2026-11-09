@@ -149,9 +149,13 @@ export async function GET(req: NextRequest) {
     const effectiveReviewUrl = client?.google_review_link || cfg.google_link || "";
     const effectiveInstagram = client?.instagram_link || cfg.instagram || "";
     const effectiveFacebook = client?.facebook_link || cfg.facebook || "";
-    const effectiveWebsite = client?.custom_fields?.website || cfg.website || "";
+    const effectiveWebsite = client?.website || client?.website_url || client?.custom_fields?.website_url || client?.custom_fields?.website || cfg.website || "";
     const effectiveCategory = client?.custom_fields?.category || client?.custom_fields?.subtitle || cfg.subtitle || cfg.category || "";
-    const effectiveAddress = client?.custom_fields?.directions || client?.custom_fields?.address || cfg.address || "";
+    const effectiveAddress = client?.directions_link || client?.custom_fields?.directions_link || client?.custom_fields?.directions || client?.custom_fields?.address || cfg.address || "";
+    const effectiveContactPhone = client?.contact_phone || client?.custom_fields?.contact_phone || cfg.contact_phone || "";
+    const effectiveGoogleBusinessPage = client?.google_business_page || client?.custom_fields?.google_business_page || cfg.google_business_page || cfg.gbp_link || "";
+    const effectiveTwitter = client?.twitter_link || client?.custom_fields?.twitter_link || cfg.twitter || "";
+    const effectiveUpi = client?.upi_id || client?.custom_fields?.upi_id || cfg.upi_id || "";
 
     return NextResponse.json({
       success: true,
@@ -163,16 +167,25 @@ export async function GET(req: NextRequest) {
         city: effectiveCity,
         owner_name: effectiveOwnerName,
         phone: effectivePhone,
+        owner_phone: effectivePhone,
+        contact_phone: effectiveContactPhone,
         email: effectiveEmail,
+        owner_email: effectiveEmail,
         whatsapp_number: effectiveWhatsapp,
         whatsapp_message: tag?.whatsapp_message || "Hello, I am reaching out regarding your business services.",
         google_review_link: effectiveReviewUrl,
         review_url: effectiveReviewUrl,
+        google_business_page: effectiveGoogleBusinessPage,
         instagram_url: effectiveInstagram,
         facebook_url: effectiveFacebook,
+        twitter_link: effectiveTwitter,
+        twitter: effectiveTwitter,
+        upi_id: effectiveUpi,
         website_url: effectiveWebsite,
+        website: effectiveWebsite,
         category: effectiveCategory,
         address: effectiveAddress,
+        directions: effectiveAddress,
       },
       stats: {
         totalScans: stats.totalScans || 0,
@@ -348,9 +361,13 @@ export async function POST(req: NextRequest) {
     const effectiveReviewUrl = client?.google_review_link || pageConfig?.google_link || business?.google_review_link || business?.review_url || "";
     const effectiveInstagram = client?.instagram_link || pageConfig?.instagram || business?.instagram || business?.instagram_url || "";
     const effectiveFacebook = client?.facebook_link || pageConfig?.facebook || "";
-    const effectiveWebsite = client?.custom_fields?.website || pageConfig?.website || business?.website || "";
-    const effectiveCategory = client?.custom_fields?.category || pageConfig?.category || business?.category || "";
-    const effectiveAddress = client?.custom_fields?.directions || pageConfig?.address || business?.address || "";
+    const effectiveWebsite = client?.website || client?.website_url || client?.custom_fields?.website_url || client?.custom_fields?.website || pageConfig?.website || business?.website || "";
+    const effectiveCategory = client?.custom_fields?.category || client?.custom_fields?.subtitle || pageConfig?.category || business?.category || "";
+    const effectiveAddress = client?.directions_link || client?.custom_fields?.directions_link || client?.custom_fields?.directions || client?.custom_fields?.address || pageConfig?.address || business?.address || "";
+    const effectiveContactPhone = client?.contact_phone || client?.custom_fields?.contact_phone || pageConfig?.config_data?.contact_phone || "";
+    const effectiveGoogleBusinessPage = client?.google_business_page || client?.custom_fields?.google_business_page || pageConfig?.config_data?.google_business_page || pageConfig?.config_data?.gbp_link || "";
+    const effectiveTwitter = client?.twitter_link || client?.custom_fields?.twitter_link || pageConfig?.config_data?.twitter || "";
+    const effectiveUpi = client?.upi_id || client?.custom_fields?.upi_id || pageConfig?.config_data?.upi_id || "";
 
     return NextResponse.json({
       success: true,
@@ -371,16 +388,25 @@ export async function POST(req: NextRequest) {
         city: effectiveCity,
         owner_name: effectiveOwnerName,
         phone: effectivePhone,
+        owner_phone: effectivePhone,
+        contact_phone: effectiveContactPhone,
         email: effectiveEmail,
+        owner_email: effectiveEmail,
         whatsapp_number: effectiveWhatsapp,
         whatsapp_message: tag?.whatsapp_message || business?.whatsapp_message || "Hello, I am reaching out regarding your business services.",
         google_review_link: effectiveReviewUrl,
         review_url: effectiveReviewUrl,
+        google_business_page: effectiveGoogleBusinessPage,
         instagram_url: effectiveInstagram,
         facebook_url: effectiveFacebook,
+        twitter_link: effectiveTwitter,
+        twitter: effectiveTwitter,
+        upi_id: effectiveUpi,
         website_url: effectiveWebsite,
+        website: effectiveWebsite,
         category: effectiveCategory,
         address: effectiveAddress,
+        directions: effectiveAddress,
       },
       stats: {
         totalScans: stats.totalScans || 0,

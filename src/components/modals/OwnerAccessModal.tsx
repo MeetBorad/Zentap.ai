@@ -2,18 +2,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Lock, 
-  Unlock, 
-  KeyRound, 
-  ShieldCheck, 
-  AlertCircle, 
-  AlertTriangle, 
-  Check, 
-  CheckCircle2, 
-  X, 
-  ExternalLink, 
-  Clock, 
+import {
+  Lock,
+  Unlock,
+  KeyRound,
+  ShieldCheck,
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  X,
+  ExternalLink,
+  Clock,
   RotateCcw,
   Sliders,
   ChevronDown,
@@ -28,7 +28,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Save
+  Save,
+  Twitter,
+  CreditCard,
+  Navigation,
+  Mail
 } from "lucide-react";
 
 interface OwnerAccessModalProps {
@@ -85,14 +89,21 @@ export default function OwnerAccessModal({
   const [editName, setEditName] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editOwnerName, setEditOwnerName] = useState("");
+  const [editOwnerPhone, setEditOwnerPhone] = useState("");
+  const [editContactPhone, setEditContactPhone] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editWhatsapp, setEditWhatsapp] = useState("");
   const [editWhatsappMsg, setEditWhatsappMsg] = useState("");
   const [editReviewUrl, setEditReviewUrl] = useState("");
+  const [editGoogleBusinessPage, setEditGoogleBusinessPage] = useState("");
   const [editInstagram, setEditInstagram] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
+  const [editTwitter, setEditTwitter] = useState("");
+  const [editUpiId, setEditUpiId] = useState("");
   const [editWebsite, setEditWebsite] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editDirections, setEditDirections] = useState("");
   const [editAddress, setEditAddress] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -148,15 +159,22 @@ export default function OwnerAccessModal({
     setEditName(b.name || initialBusinessName || "");
     setEditCity(b.city || "Ahmedabad");
     setEditOwnerName(b.owner_name || "");
-    setEditPhone(b.phone || "");
+    setEditOwnerPhone(b.owner_phone || b.phone || "");
+    setEditContactPhone(b.contact_phone || b.phone || "");
+    setEditPhone(b.phone || b.contact_phone || b.owner_phone || "");
+    setEditEmail(b.owner_email || b.email || "");
     setEditWhatsapp(b.whatsapp_number || b.whatsapp || "");
     setEditWhatsappMsg(b.whatsapp_message || "Hello, I am reaching out regarding your business services.");
     setEditReviewUrl(b.google_review_link || b.review_url || "");
-    setEditInstagram(b.instagram_url || b.instagram || "");
-    setEditFacebook(b.facebook_url || b.facebook_link || "");
+    setEditGoogleBusinessPage(b.google_business_page || b.gbp_link || "");
+    setEditInstagram(b.instagram_url || b.instagram_handle || b.instagram || "");
+    setEditFacebook(b.facebook_url || b.facebook_link || b.facebook || "");
+    setEditTwitter(b.twitter_link || b.twitter || "");
+    setEditUpiId(b.upi_id || b.upi || "");
     setEditWebsite(b.website_url || b.website || "");
     setEditCategory(b.category || "");
-    setEditAddress(b.address || "");
+    setEditDirections(b.directions_link || b.directions || b.address || "");
+    setEditAddress(b.address || b.directions_link || b.directions || "");
   };
 
   // 15-Minute Countdown Timer
@@ -257,27 +275,47 @@ export default function OwnerAccessModal({
     setSaveSuccess(false);
 
     try {
+      const activeOwnerPhone = (editOwnerPhone || editPhone).trim();
+      const activeContactPhone = (editContactPhone || editPhone).trim();
+      const activePhone = (editContactPhone || editOwnerPhone || editPhone).trim();
+      const activeDirections = (editDirections || editAddress).trim();
+
+      const payloadUpdates = {
+        name: editName.trim(),
+        city: editCity.trim(),
+        owner_name: editOwnerName.trim(),
+        owner_phone: activeOwnerPhone,
+        contact_phone: activeContactPhone,
+        phone: activePhone,
+        owner_email: editEmail.trim(),
+        email: editEmail.trim(),
+        whatsapp_number: editWhatsapp.trim(),
+        whatsapp_message: editWhatsappMsg.trim(),
+        google_review_link: editReviewUrl.trim(),
+        review_url: editReviewUrl.trim(),
+        google_business_page: editGoogleBusinessPage.trim(),
+        instagram_handle: editInstagram.trim(),
+        instagram_url: editInstagram.trim(),
+        facebook_link: editFacebook.trim(),
+        facebook_url: editFacebook.trim(),
+        twitter: editTwitter.trim(),
+        twitter_link: editTwitter.trim(),
+        upi_id: editUpiId.trim(),
+        website: editWebsite.trim(),
+        website_url: editWebsite.trim(),
+        category: editCategory.trim(),
+        directions: activeDirections,
+        directions_link: activeDirections,
+        address: activeDirections,
+      };
+
       const res = await fetch("/api/card/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token: sessionToken,
           code: loginId || tagCode || businessSlug,
-          updates: {
-            name: editName.trim(),
-            city: editCity.trim(),
-            owner_name: editOwnerName.trim(),
-            phone: editPhone.trim(),
-            whatsapp_number: editWhatsapp.trim(),
-            whatsapp_message: editWhatsappMsg.trim(),
-            google_review_link: editReviewUrl.trim(),
-            review_url: editReviewUrl.trim(),
-            instagram_handle: editInstagram.trim(),
-            facebook_link: editFacebook.trim(),
-            website: editWebsite.trim(),
-            category: editCategory.trim(),
-            address: editAddress.trim(),
-          },
+          updates: payloadUpdates,
         }),
       });
 
@@ -288,21 +326,8 @@ export default function OwnerAccessModal({
       }
 
       const updatedPayload = {
-        name: editName.trim(),
-        city: editCity.trim(),
-        owner_name: editOwnerName.trim(),
-        phone: editPhone.trim(),
-        whatsapp_number: editWhatsapp.trim(),
-        whatsapp_message: editWhatsappMsg.trim(),
-        google_review_link: editReviewUrl.trim(),
-        review_url: editReviewUrl.trim(),
-        instagram_url: editInstagram.trim(),
-        facebook_url: editFacebook.trim(),
-        facebook_link: editFacebook.trim(),
-        website_url: editWebsite.trim(),
-        website: editWebsite.trim(),
-        address: editAddress.trim(),
-        category: editCategory.trim(),
+        ...payloadUpdates,
+        id: data.business?.id || clientBusinessId || loginId || "ZT-0004",
       };
 
       setSaveSuccess(true);
@@ -333,13 +358,13 @@ export default function OwnerAccessModal({
       // Sync client-side caches and stores so changes populate instantly like page editor
       try {
         const cTargetBid = data.business?.id || clientBusinessId || loginId || "ZT-0004";
-        
+
         // A. Sync to localStorage zentap_platform_clients
         const rawClients = localStorage.getItem("zentap_platform_clients");
         if (rawClients) {
           const parsedClients = JSON.parse(rawClients);
           if (Array.isArray(parsedClients)) {
-            const idx = parsedClients.findIndex((c: any) => 
+            const idx = parsedClients.findIndex((c: any) =>
               (c.business_id || "").toLowerCase() === cTargetBid.toLowerCase() ||
               (c.id || "").toLowerCase() === cTargetBid.toLowerCase()
             );
@@ -349,16 +374,30 @@ export default function OwnerAccessModal({
                 business_name: editName.trim(),
                 city: editCity.trim(),
                 owner_name: editOwnerName.trim(),
-                owner_phone: editPhone.trim(),
+                owner_phone: activeOwnerPhone,
+                contact_phone: activeContactPhone,
+                owner_email: editEmail.trim(),
                 whatsapp: editWhatsapp.trim(),
                 google_review_link: editReviewUrl.trim(),
+                google_business_page: editGoogleBusinessPage.trim(),
                 instagram_link: editInstagram.trim(),
                 facebook_link: editFacebook.trim(),
+                twitter_link: editTwitter.trim(),
+                upi_id: editUpiId.trim(),
+                website_url: editWebsite.trim(),
+                website: editWebsite.trim(),
+                directions_link: activeDirections,
                 custom_fields: {
                   ...(parsedClients[idx].custom_fields || {}),
+                  contact_phone: activeContactPhone,
+                  google_business_page: editGoogleBusinessPage.trim(),
+                  twitter_link: editTwitter.trim(),
+                  upi_id: editUpiId.trim(),
                   website: editWebsite.trim(),
-                  directions: editAddress.trim(),
-                  address: editAddress.trim(),
+                  website_url: editWebsite.trim(),
+                  directions: activeDirections,
+                  directions_link: activeDirections,
+                  address: activeDirections,
                   category: editCategory.trim(),
                   subtitle: editCategory.trim(),
                 },
@@ -390,13 +429,20 @@ export default function OwnerAccessModal({
                   city: editCity.trim(),
                   subtitle: editCategory.trim(),
                   category: editCategory.trim(),
-                  phone: editPhone.trim(),
+                  owner_name: editOwnerName.trim(),
+                  owner_phone: activeOwnerPhone,
+                  contact_phone: activeContactPhone,
+                  phone: activePhone,
                   whatsapp: editWhatsapp.trim(),
                   google_link: editReviewUrl.trim(),
+                  google_business_page: editGoogleBusinessPage.trim(),
                   instagram: editInstagram.trim(),
                   facebook: editFacebook.trim(),
+                  twitter: editTwitter.trim(),
+                  upi_id: editUpiId.trim(),
                   website: editWebsite.trim(),
-                  address: editAddress.trim(),
+                  directions_link: activeDirections,
+                  address: activeDirections,
                 },
               };
               localStorage.setItem("zentap_platform_page_editor_configs", JSON.stringify(parsedConfigs));
@@ -430,7 +476,7 @@ export default function OwnerAccessModal({
     const storageKey = `zentap_owner_session_${codeKey}`;
     try {
       sessionStorage.removeItem(storageKey);
-    } catch {}
+    } catch { }
     setSessionToken(null);
     setSessionExpiresAt(null);
     setPassword("");
@@ -444,7 +490,7 @@ export default function OwnerAccessModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-[#121622] text-white border border-white/10 rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -593,7 +639,7 @@ export default function OwnerAccessModal({
           /* VIEW 2: 15-MINUTE SCOPED OWNER MANAGEMENT PANEL                           */
           /* ========================================================================= */
           <div className="space-y-4 animate-in fade-in duration-200">
-            
+
             {/* Live Telemetry Card */}
             <div className="grid grid-cols-4 gap-2 p-3 rounded-2xl bg-black/40 border border-white/10 text-center">
               <div>
@@ -697,31 +743,34 @@ export default function OwnerAccessModal({
                 </div>
               </div>
 
-              {/* Owner Name & Phone */}
+              {/* Owner Name & Owner Phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
                     Owner Name
                   </label>
-                  <input
-                    type="text"
-                    value={editOwnerName}
-                    onChange={(e) => setEditOwnerName(e.target.value)}
-                    placeholder="e.g. Meet Borad"
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={editOwnerName}
+                      onChange={(e) => setEditOwnerName(e.target.value)}
+                      placeholder="e.g. Meet Borad"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Contact Phone
+                    Owner Phone
                   </label>
                   <div className="relative">
                     <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
                     <input
                       type="tel"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
+                      value={editOwnerPhone}
+                      onChange={(e) => setEditOwnerPhone(e.target.value)}
                       placeholder="+91 92745 60880"
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                     />
@@ -729,34 +778,84 @@ export default function OwnerAccessModal({
                 </div>
               </div>
 
-              {/* Google Review Link */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-bold text-gray-300">
-                    Google Review Link
+              {/* Contact Phone & Owner Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Contact Phone
                   </label>
-                  {editReviewUrl && (
-                    <a
-                      href={editReviewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] text-amber-400 hover:underline inline-flex items-center gap-1"
-                    >
-                      <span>Test link</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  )}
+                  <div className="relative">
+                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                    <input
+                      type="tel"
+                      value={editContactPhone}
+                      onChange={(e) => setEditContactPhone(e.target.value)}
+                      placeholder="+91 96627 60880"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
                 </div>
-                <input
-                  type="url"
-                  placeholder="https://search.google.com/local/writereview?placeid=... or g.page/r/..."
-                  value={editReviewUrl}
-                  onChange={(e) => setEditReviewUrl(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                />
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Owner Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="e.g. contact@zentapdigitalsolutions.com"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* WhatsApp Number & Message */}
+              {/* Google Review Link & Google Business Page */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-gray-300">
+                      Google Review Link
+                    </label>
+                    {editReviewUrl && (
+                      <a
+                        href={editReviewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-amber-400 hover:underline inline-flex items-center gap-1"
+                      >
+                        <span>Test link</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://g.page/r/.../review"
+                    value={editReviewUrl}
+                    onChange={(e) => setEditReviewUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Google Business Page
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://maps.app.goo.gl/... or business profile"
+                    value={editGoogleBusinessPage}
+                    onChange={(e) => setEditGoogleBusinessPage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              {/* WhatsApp Number & Instagram */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
@@ -766,7 +865,7 @@ export default function OwnerAccessModal({
                     <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
                     <input
                       type="text"
-                      placeholder="919274560880"
+                      placeholder="+91 92745 60880"
                       value={editWhatsapp}
                       onChange={(e) => setEditWhatsapp(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
@@ -826,18 +925,59 @@ export default function OwnerAccessModal({
                 </div>
               </div>
 
-              {/* Full Address / Directions */}
+              {/* Twitter / X & UPI ID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Twitter / X Profile
+                  </label>
+                  <div className="relative">
+                    <Twitter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                    <input
+                      type="text"
+                      placeholder="https://x.com/... or @handle"
+                      value={editTwitter}
+                      onChange={(e) => setEditTwitter(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    Business UPI ID
+                  </label>
+                  <div className="relative">
+                    <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                    <input
+                      type="text"
+                      placeholder="e.g. zentap@oksbi"
+                      value={editUpiId}
+                      onChange={(e) => setEditUpiId(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Directions Link / Full Address */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                  Full Address / Directions Note
+                  Directions Link / Full Address Note
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ground Floor, Sindhu Bhavan Road, Bodakdev, Ahmedabad"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                />
+                <div className="relative">
+                  <Navigation className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                  <input
+                    type="text"
+                    placeholder="e.g. https://maps.app.goo.gl/... or Ahmedabad, Gujarat, India"
+                    value={editDirections}
+                    onChange={(e) => {
+                      setEditDirections(e.target.value);
+                      setEditAddress(e.target.value);
+                    }}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                </div>
               </div>
 
               {/* Save Updates Button */}
