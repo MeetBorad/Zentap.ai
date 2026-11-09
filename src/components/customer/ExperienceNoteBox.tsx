@@ -263,71 +263,53 @@ export default function ExperienceNoteBox({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Header bar: Label, Language Select & Clear button */}
+      {/* Header bar: Label, Speak mic & Clear button */}
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold flex items-center gap-1.5">
           <span className="text-base">✍️</span>
           <span>Write about your experience in short</span>
           <span className="text-[10px] font-normal opacity-60">(Optional)</span>
         </label>
-        {text && (
+        <div className="flex items-center gap-2">
+          {text && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className={`text-[10.5px] font-semibold ${accentTextClass} hover:opacity-80 transition-colors cursor-pointer px-1`}
+            >
+              Clear
+            </button>
+          )}
+
+          {/* Speak / Stop Button */}
           <button
             type="button"
-            onClick={handleClear}
-            className={`text-[10.5px] font-semibold ${accentTextClass} hover:opacity-80 transition-colors cursor-pointer`}
+            onClick={toggleListening}
+            disabled={!isSpeechSupported}
+            aria-label={isListening ? "Stop listening" : "Speak your experience"}
+            className={`tactile-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border cursor-pointer active:scale-[0.978] ${
+              !isSpeechSupported
+                ? "opacity-40 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-400"
+                : isListening
+                ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse"
+                : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-200"
+            }`}
+            title={!isSpeechSupported ? "Voice input not supported in this browser" : undefined}
           >
-            Clear
+            {isListening ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                <MicOff className="w-3.5 h-3.5 text-rose-400" />
+                <span>Stop</span>
+              </>
+            ) : (
+              <>
+                <Mic className={`w-3.5 h-3.5 ${accentTextClass}`} />
+                <span>Speak</span>
+              </>
+            )}
           </button>
-        )}
-      </div>
-
-      {/* Controls row: Language selection & Voice mic */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Language selector */}
-        <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-xs">
-          <Globe className={`w-3.5 h-3.5 ${accentTextClass} shrink-0`} />
-          <select
-            value={selectedLang}
-            onChange={handleLanguageChange}
-            aria-label="Select spoken language"
-            className="bg-transparent text-[11px] text-white focus:outline-none cursor-pointer pr-1"
-          >
-            {SUPPORTED_LANGS.map((lang) => (
-              <option key={lang.code} value={lang.code} className="bg-slate-900 text-white">
-                {lang.label}
-              </option>
-            ))}
-          </select>
         </div>
-
-        {/* Speak / Stop Button */}
-        <button
-          type="button"
-          onClick={toggleListening}
-          disabled={!isSpeechSupported}
-          aria-label={isListening ? "Stop listening" : "Speak your experience"}
-          className={`tactile-btn flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all border cursor-pointer active:scale-[0.978] ${
-            !isSpeechSupported
-              ? "opacity-40 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-400"
-              : isListening
-              ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse"
-              : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-200"
-          }`}
-          title={!isSpeechSupported ? "Voice input not supported in this browser" : undefined}
-        >
-          {isListening ? (
-            <>
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <MicOff className="w-3.5 h-3.5 text-rose-400" />
-              <span>Stop</span>
-            </>
-          ) : (
-            <>
-              <Mic className={`w-3.5 h-3.5 ${accentTextClass}`} />
-              <span>Speak</span>
-            </>
-          )}
-        </button>
       </div>
 
       {/* Speech error indicator */}
@@ -358,38 +340,6 @@ export default function ExperienceNoteBox({
           <span>{text.length}/500</span>
         </div>
       </div>
-
-      {/* Translation & Undo Bar */}
-      <div className="flex items-center justify-between text-xs px-0.5">
-        <label className="flex items-center gap-1.5 cursor-pointer select-none opacity-85 hover:opacity-100 transition-opacity">
-          <input
-            type="checkbox"
-            checked={translateToEnglish}
-            onChange={handleTranslateToggle}
-            disabled={!text.trim() || isTranslating}
-            className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-0 cursor-pointer accent-amber-500"
-          />
-          <span className="text-[11px] font-medium flex items-center gap-1">
-            <span>Write in English</span>
-            {isTranslating && <Loader2 className="w-3 h-3 animate-spin text-amber-400" />}
-          </span>
-        </label>
-
-        {preTranslationText && (
-          <button
-            type="button"
-            onClick={handleUndoTranslation}
-            className={`text-[11px] font-semibold ${accentTextClass} hover:opacity-80 flex items-center gap-1 transition-colors cursor-pointer`}
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Undo translation</span>
-          </button>
-        )}
-      </div>
-
-      <p className="text-[10px] opacity-55 leading-tight">
-        Type or speak in Gujarati, Hindi or English. Review suggestions adapt instantly!
-      </p>
     </div>
   );
 }

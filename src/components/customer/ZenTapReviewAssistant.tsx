@@ -650,11 +650,8 @@ export default function ZenTapReviewAssistant({
                   <span className="text-xs font-semibold flex items-center gap-1.5">
                     <Sparkles className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                     <span>Review Suggestions</span>
-                    <span className="text-[10px] opacity-70 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-amber-300">
-                      Short it
-                    </span>
                     {shouldShowReviews && suggestions.length > 0 && (
-                      <span className="opacity-60 font-normal text-[11px] hidden sm:inline">(Swipe &amp; tap to choose)</span>
+                      <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
                     )}
                   </span>
                   {hasUserInput && (
@@ -712,7 +709,7 @@ export default function ZenTapReviewAssistant({
                               <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
                                 isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
                               }`}>
-                                {isSelected ? "Active" : "Tap to use"}
+                                {isSelected ? "Active" : "Use"}
                               </span>
                             </div>
                             <p className="line-clamp-3 leading-relaxed text-[11px]">
@@ -720,7 +717,7 @@ export default function ZenTapReviewAssistant({
                             </p>
                           </div>
                           <div className="pt-2 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
-                            <span>{isSelected ? "Shown in box below" : "Tap to load into box"}</span>
+                            <span>{isSelected ? "Loaded in draft box" : "Tap to select"}</span>
                             {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
                           </div>
                         </button>
@@ -745,13 +742,10 @@ export default function ZenTapReviewAssistant({
 
               {/* Step 5: Language selector (English Default, Hindi Hinglish, Gujarati Gujlish) */}
               <div className="flex flex-col gap-1.5 pt-1">
-                <div className="flex items-center justify-between px-0.5">
+                <div className="flex items-center px-0.5">
                   <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
                     <Globe className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                     <span>Review Language</span>
-                  </span>
-                  <span className="text-[10px] opacity-60">
-                    {currentLang === "en-IN" ? "English (Default)" : currentLang === "hi-IN" ? "Hindi (Hinglish)" : "Gujarati (Gujlish)"}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
