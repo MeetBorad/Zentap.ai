@@ -28,6 +28,7 @@ import {
   CreditCard,
   Twitter,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import {
   ClientRecord,
@@ -84,6 +85,11 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [newWebsite, setNewWebsite] = useState("");
   const [newUpiId, setNewUpiId] = useState("");
   const [newCity, setNewCity] = useState("Ahmedabad");
+  const [newArea, setNewArea] = useState("");
+  const [newServices, setNewServices] = useState("");
+  const [newKeywords, setNewKeywords] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newAutoFilling, setNewAutoFilling] = useState(false);
   const [newCustomFields, setNewCustomFields] = useState<Record<string, string>>({});
 
   // Edit Business Modal
@@ -105,6 +111,11 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [editWebsite, setEditWebsite] = useState("");
   const [editUpiId, setEditUpiId] = useState("");
   const [editCity, setEditCity] = useState("Ahmedabad");
+  const [editArea, setEditArea] = useState("");
+  const [editServices, setEditServices] = useState("");
+  const [editKeywords, setEditKeywords] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editAutoFilling, setEditAutoFilling] = useState(false);
   const [editCustomFields, setEditCustomFields] = useState<Record<string, string>>({});
 
   // Soft delete confirmation
@@ -215,8 +226,91 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditWebsite(client.website_url || client.website || client.custom_fields?.website_url || client.custom_fields?.website || "");
     setEditUpiId(client.upi_id || client.custom_fields?.upi_id || "");
     setEditCity(client.city || "Ahmedabad");
+
+    const cf = client.custom_fields || {};
+    setEditCategory((client as any).category || cf.category || "");
+    setEditArea(cf.area || (client as any).area || "");
+    const rawServices = cf.services ?? (client as any).services;
+    setEditServices(
+      Array.isArray(rawServices)
+        ? rawServices.join(", ")
+        : typeof rawServices === "string"
+        ? rawServices
+        : ""
+    );
+    const rawKeywords = cf.keywords ?? (client as any).keywords;
+    setEditKeywords(
+      Array.isArray(rawKeywords)
+        ? rawKeywords.join(", ")
+        : typeof rawKeywords === "string"
+        ? rawKeywords
+        : ""
+    );
+
     setEditCustomFields(client.custom_fields || {});
     setIsEditModalOpen(true);
+  };
+
+  const handleAutoFillNew = async () => {
+    if (!newWebsite.trim()) {
+      onShowToast("Please enter a Website URL first to auto-fill details.");
+      return;
+    }
+    setNewAutoFilling(true);
+    try {
+      const res = await fetch("/api/business/auto-fill-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: newWebsite.trim(), businessName: newBizName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        onShowToast(data.error || "Could not auto-fill details from website");
+        return;
+      }
+      const ext = data.extracted || {};
+      if (ext.businessName && !newBizName) setNewBizName(ext.businessName);
+      if (ext.category) setNewCategory(ext.category);
+      if (ext.area) setNewArea(ext.area);
+      if (Array.isArray(ext.services) && ext.services.length > 0) setNewServices(ext.services.join(", "));
+      if (Array.isArray(ext.keywords) && ext.keywords.length > 0) setNewKeywords(ext.keywords.join(", "));
+      onShowToast("✓ Auto-filled business context from website!");
+    } catch (err: any) {
+      onShowToast("Auto-fill failed: " + (err.message || "Network error"));
+    } finally {
+      setNewAutoFilling(false);
+    }
+  };
+
+  const handleAutoFillEdit = async () => {
+    if (!editWebsite.trim()) {
+      onShowToast("Please enter a Website URL first to auto-fill details.");
+      return;
+    }
+    setEditAutoFilling(true);
+    try {
+      const res = await fetch("/api/business/auto-fill-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: editWebsite.trim(), businessName: editBizName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        onShowToast(data.error || "Could not auto-fill details from website");
+        return;
+      }
+      const ext = data.extracted || {};
+      if (ext.businessName && !editBizName) setEditBizName(ext.businessName);
+      if (ext.category) setEditCategory(ext.category);
+      if (ext.area) setEditArea(ext.area);
+      if (Array.isArray(ext.services) && ext.services.length > 0) setEditServices(ext.services.join(", "));
+      if (Array.isArray(ext.keywords) && ext.keywords.length > 0) setEditKeywords(ext.keywords.join(", "));
+      onShowToast("✓ Auto-filled business context from website!");
+    } catch (err: any) {
+      onShowToast("Auto-fill failed: " + (err.message || "Network error"));
+    } finally {
+      setEditAutoFilling(false);
+    }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -237,6 +331,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: editWebsite.trim(),
       website: editWebsite.trim(),
       upi_id: editUpiId.trim(),
+      category: editCategory.trim(),
+      area: editArea.trim(),
+      services: editServices.trim(),
+      keywords: editKeywords.trim(),
     };
 
     const res = await updateClientServer(editTarget.business_id, {
@@ -289,6 +387,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: newWebsite.trim(),
       website: newWebsite.trim(),
       upi_id: newUpiId.trim(),
+      category: newCategory.trim(),
+      area: newArea.trim(),
+      services: newServices.trim(),
+      keywords: newKeywords.trim(),
     };
 
     const res = await addClientServer({
@@ -331,6 +433,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       setNewWebsite("");
       setNewUpiId("");
       setNewCity("Ahmedabad");
+      setNewArea("");
+      setNewServices("");
+      setNewKeywords("");
+      setNewCategory("");
       setNewCustomFields({});
       await refreshData();
     } else {
@@ -1099,13 +1205,77 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Website URL</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-zinc-800">Website URL</label>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillNew}
+                      disabled={newAutoFilling || !newWebsite.trim()}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer disabled:opacity-40"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>{newAutoFilling ? "Extracting..." : "Auto-fill from website"}</span>
+                    </button>
+                  </div>
                   <input
                     type="url"
                     placeholder="https://yourwebsite.com"
                     value={newWebsite}
                     onChange={(e) => setNewWebsite(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Business Info / Context for AI Reviews */}
+              <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-bold text-zinc-900">Business Info (AI Context &amp; Keywords)</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Category / Subtitle</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Fine Dining Restaurant"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bodakdev / SG Highway"
+                      value={newArea}
+                      onChange={(e) => setNewArea(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NFC Standees, Tap Cards, Google Review Booster"
+                    value={newServices}
+                    onChange={(e) => setNewServices(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Focus Keywords (3–5)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Smart NFC, Tap Review, Fast Setup"
+                    value={newKeywords}
+                    onChange={(e) => setNewKeywords(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   />
                 </div>
               </div>
@@ -1395,13 +1565,77 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Website URL</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-zinc-800">Website URL</label>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillEdit}
+                      disabled={editAutoFilling || !editWebsite.trim()}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer disabled:opacity-40"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>{editAutoFilling ? "Extracting..." : "Auto-fill from website"}</span>
+                    </button>
+                  </div>
                   <input
                     type="url"
                     placeholder="https://yourwebsite.com"
                     value={editWebsite}
                     onChange={(e) => setEditWebsite(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Business Info / Context for AI Reviews */}
+              <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-bold text-zinc-900">Business Info (AI Context &amp; Keywords)</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Category / Subtitle</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Fine Dining Restaurant"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bodakdev / SG Highway"
+                      value={editArea}
+                      onChange={(e) => setEditArea(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NFC Standees, Tap Cards, Google Review Booster"
+                    value={editServices}
+                    onChange={(e) => setEditServices(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Focus Keywords (3–5)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Smart NFC, Tap Review, Fast Setup"
+                    value={editKeywords}
+                    onChange={(e) => setEditKeywords(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   />
                 </div>
               </div>

@@ -101,6 +101,19 @@ export async function POST(req: NextRequest) {
             customFields.category = updates.category.trim();
             customFields.subtitle = updates.category.trim();
           }
+          if (updates.area !== undefined) {
+            customFields.area = updates.area.trim();
+          }
+          if (updates.services !== undefined) {
+            customFields.services = Array.isArray(updates.services)
+              ? updates.services
+              : String(updates.services).split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean);
+          }
+          if (updates.keywords !== undefined) {
+            customFields.keywords = Array.isArray(updates.keywords)
+              ? updates.keywords
+              : String(updates.keywords).split(/[•|,]/).map((k: string) => k.trim()).filter(Boolean);
+          }
 
           parallelTasks.push(
             (async () => {
@@ -276,6 +289,41 @@ export async function POST(req: NextRequest) {
         if (updates.directions_link || updates.directions || updates.address) {
           bizUpdates.address = (updates.directions_link || updates.directions || updates.address).trim();
         }
+
+        // 5. Sync to business_context table with refreshed_at
+        const contextPayload = {
+          business_name: updates.name ? updates.name.trim() : existingClient?.business_name || "ZenTap Business",
+          category: updates.category ? updates.category.trim() : (existingClient?.custom_fields?.category || "Service"),
+          area: updates.area ? updates.area.trim() : (updates.city ? updates.city.trim() : "Ahmedabad"),
+          services: Array.isArray(updates.services)
+            ? updates.services
+            : typeof updates.services === "string"
+            ? updates.services.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
+            : (existingClient?.custom_fields?.services || []),
+          keywords: Array.isArray(updates.keywords)
+            ? updates.keywords
+            : typeof updates.keywords === "string"
+            ? updates.keywords.split(/[•|,]/).map((k: string) => k.trim()).filter(Boolean)
+            : (existingClient?.custom_fields?.keywords || []),
+          website_url: updates.website || updates.website_url || undefined,
+          source: "owner",
+          sources_used: ["owner"],
+          confidence: "high",
+          refreshed_at: new Date().toISOString(),
+        };
+
+        parallelTasks.push(
+          (async () => {
+            try {
+              await db.from("business_context").upsert({
+                business_id: (existingClient?.business_id || targetBid).toLowerCase(),
+                context_data: contextPayload,
+                sources_used: ["owner"],
+                refreshed_at: new Date().toISOString(),
+              });
+            } catch {}
+          })()
+        );
 
         parallelTasks.push(
           db.from("businesses")

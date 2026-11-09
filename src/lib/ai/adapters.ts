@@ -8,6 +8,7 @@ export interface GenerateInput {
   temperature?: number;
   json?: boolean;
   timeoutMs?: number;
+  searchGrounding?: boolean;
 }
 
 export interface GenerateOutput {
@@ -252,8 +253,8 @@ export class GoogleAdapter implements ModelAdapter {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     let cleanModel = this.modelId.replace(/^models\//, "");
-    if (cleanModel === "gemini-3.5-flash-lite") {
-      cleanModel = "gemini-2.5-flash";
+    if (cleanModel === "gemini-2.5-flash" || cleanModel === "gemini-1.5-flash" || !cleanModel) {
+      cleanModel = "gemini-3.5-flash-lite";
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${this.apiKey}`;
     let res: Response;
@@ -269,6 +270,10 @@ export class GoogleAdapter implements ModelAdapter {
 
     if (input.json) {
       bodyPayload.generationConfig.responseMimeType = "application/json";
+    }
+
+    if (input.searchGrounding) {
+      bodyPayload.tools = [{ googleSearch: {} }];
     }
 
     try {

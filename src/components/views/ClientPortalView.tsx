@@ -198,6 +198,10 @@ export default function ClientPortalView({
   const [formPincode, setFormPincode] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [formAddress, setFormAddress] = useState("");
+  const [formArea, setFormArea] = useState("");
+  const [formServices, setFormServices] = useState("");
+  const [formKeywords, setFormKeywords] = useState("");
+  const [formAutoFilling, setFormAutoFilling] = useState(false);
 
   // Custom Review Categories ("What did you like most?") State
   const [customChipsList, setCustomChipsList] = useState<string[]>([]);
@@ -489,7 +493,57 @@ export default function ClientPortalView({
     setFormPincode(b.pincode || "");
     setFormEmail(b.email || "");
     setFormAddress(b.address || "");
+    const cf = (b as any).custom_fields || {};
+    setFormArea(cf.area || (b as any).area || b.city || "");
+    const rawServices = cf.services ?? (b as any).services;
+    setFormServices(
+      Array.isArray(rawServices)
+        ? rawServices.join(", ")
+        : typeof rawServices === "string"
+        ? rawServices
+        : ""
+    );
+    const rawKeywords = cf.keywords ?? (b as any).keywords;
+    setFormKeywords(
+      Array.isArray(rawKeywords)
+        ? rawKeywords.join(", ")
+        : typeof rawKeywords === "string"
+        ? rawKeywords
+        : ""
+    );
     if (b.plan) setSelectedPlan(b.plan);
+  };
+
+  const handleAutoFillFromWebsite = async () => {
+    const url = formWebsiteUrl || business.website_url;
+    if (!url) {
+      showToast("Please enter a Website URL first in Profile Settings to auto-fill.");
+      return;
+    }
+    setFormAutoFilling(true);
+    try {
+      const res = await fetch("/api/business/auto-fill-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), businessName: formName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.error || "Could not auto-fill details from website");
+        return;
+      }
+      const ext = data.extracted || {};
+      if (ext.businessName && !formName) setFormName(ext.businessName);
+      if (ext.category && !formCategory) setFormCategory(ext.category);
+      if (ext.area) setFormArea(ext.area);
+      if (Array.isArray(ext.services) && ext.services.length > 0) setFormServices(ext.services.join(", "));
+      if (Array.isArray(ext.keywords) && ext.keywords.length > 0) setFormKeywords(ext.keywords.join(", "));
+      showToast("✓ Extracted business context from website! Review and save below.");
+    } catch (err: any) {
+      showToast("Website extraction failed: " + (err.message || "Network error"));
+    } finally {
+      setFormAutoFilling(false);
+    }
   };
 
   const showToast = (msg: string) => {
@@ -563,6 +617,14 @@ export default function ClientPortalView({
       return;
     }
 
+    const customFieldsObj = {
+      ...((business as any).custom_fields || {}),
+      area: formArea.trim(),
+      services: formServices.trim(),
+      keywords: formKeywords.trim(),
+      category: formCategory.trim(),
+    };
+
     const updates = {
       name: formName.trim(),
       category: formCategory.trim() || business.category,
@@ -575,6 +637,7 @@ export default function ClientPortalView({
       pincode: formPincode.trim(),
       email: formEmail.trim() || business.email,
       address: formAddress.trim(),
+      custom_fields: customFieldsObj,
     };
 
     if (user) {
@@ -594,7 +657,8 @@ export default function ClientPortalView({
           review_url: updated.review_url,
           gbp_link: updated.gbp_link,
           active: updated.active,
-        });
+          custom_fields: customFieldsObj,
+        } as any);
       } catch (err) {
         console.warn("Supabase update error:", err);
       }
@@ -1755,6 +1819,74 @@ export default function ClientPortalView({
                       placeholder="Shop 12-14, Commercial Complex, Main Road"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
                     />
+                  </div>
+                </div>
+
+                {/* Business Info / Context for AI Reviews */}
+                <div className="p-4 rounded-2xl bg-surface-variant/20 border border-secondary/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span className="text-xs font-bold text-on-surface">
+                        Business Info (AI Review Context &amp; Keywords)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillFromWebsite}
+                      disabled={formAutoFilling}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary/15 hover:bg-secondary/25 text-secondary text-[11px] font-bold cursor-pointer disabled:opacity-40 transition-colors"
+                      title="Auto-fill details from website URL"
+                    >
+                      <Sparkles className="w-3 h-3 text-secondary" />
+                      <span>{formAutoFilling ? "Extracting..." : "Auto-fill from website"}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    Helps AI draft authentic customer reviews with exact business names, matching service terminology, and local context. Owner values always override fetched data.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Area / Locality
+                      </label>
+                      <input
+                        type="text"
+                        value={formArea}
+                        onChange={(e) => setFormArea(e.target.value)}
+                        placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Services / Products List
+                      </label>
+                      <input
+                        type="text"
+                        value={formServices}
+                        onChange={(e) => setFormServices(e.target.value)}
+                        placeholder="e.g. Smart NFC Standees, Tap Cards, Review Booster"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Focus Keywords (3–5)
+                    </label>
+                    <input
+                      type="text"
+                      value={formKeywords}
+                      onChange={(e) => setFormKeywords(e.target.value)}
+                      placeholder="e.g. Smart NFC, Google Review Card, Tap Standee, Fast Delivery"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                    />
+                    <span className="text-[10px] text-zinc-400 mt-1 block">
+                      Comma separated. These keywords provide natural search context when customers choose matching highlights.
+                    </span>
                   </div>
                 </div>
 

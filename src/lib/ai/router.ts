@@ -24,6 +24,7 @@ export interface CallAIOptions {
   maxTokens?: number;
   temperature?: number;
   timeoutMs?: number; // default 10,000ms (10 seconds)
+  searchGrounding?: boolean;
 }
 
 export interface CallAIResult {
@@ -258,6 +259,7 @@ export async function callAI(options: CallAIOptions): Promise<CallAIResult> {
         temperature,
         json,
         timeoutMs,
+        searchGrounding: options.searchGrounding,
       });
 
       const latencyMs = Date.now() - startCallTime;

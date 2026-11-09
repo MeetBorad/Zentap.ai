@@ -103,6 +103,11 @@ export default function OwnerAccessModal({
   const [editUpiId, setEditUpiId] = useState("");
   const [editWebsite, setEditWebsite] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editArea, setEditArea] = useState("");
+  const [editServices, setEditServices] = useState("");
+  const [editKeywords, setEditKeywords] = useState("");
+  const [autoFilling, setAutoFilling] = useState(false);
+  const [autoFillMsg, setAutoFillMsg] = useState("");
   const [editDirections, setEditDirections] = useState("");
   const [editAddress, setEditAddress] = useState("");
 
@@ -173,6 +178,24 @@ export default function OwnerAccessModal({
     setEditUpiId(b.upi_id || b.upi || "");
     setEditWebsite(b.website_url || b.website || "");
     setEditCategory(b.category || "");
+    const custom = b.custom_fields || {};
+    setEditArea(custom.area || b.area || b.city || "");
+    const rawServices = custom.services ?? b.services;
+    setEditServices(
+      Array.isArray(rawServices)
+        ? rawServices.join(", ")
+        : typeof rawServices === "string"
+        ? rawServices
+        : ""
+    );
+    const rawKeywords = custom.keywords ?? b.keywords;
+    setEditKeywords(
+      Array.isArray(rawKeywords)
+        ? rawKeywords.join(", ")
+        : typeof rawKeywords === "string"
+        ? rawKeywords
+        : ""
+    );
     setEditDirections(b.directions_link || b.directions || b.address || "");
     setEditAddress(b.address || b.directions_link || b.directions || "");
   };
@@ -265,6 +288,53 @@ export default function OwnerAccessModal({
     }
   };
 
+  // Auto-fill business details from website
+  const handleAutoFillFromWebsite = async () => {
+    if (!editWebsite.trim()) {
+      setErrorMsg("Please enter a Website URL first to auto-fill details.");
+      return;
+    }
+    setAutoFilling(true);
+    setErrorMsg("");
+    setAutoFillMsg("");
+    try {
+      const res = await fetch("/api/business/auto-fill-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: editWebsite.trim(),
+          businessName: editName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.error || "Could not extract details from website. Please enter manually.");
+        return;
+      }
+      const ext = data.extracted || {};
+      if (ext.businessName && (!editName || editName.includes("ABC"))) {
+        setEditName(ext.businessName);
+      }
+      if (ext.category && (!editCategory || editCategory === "Service")) {
+        setEditCategory(ext.category);
+      }
+      if (ext.area) {
+        setEditArea(ext.area);
+      }
+      if (Array.isArray(ext.services) && ext.services.length > 0) {
+        setEditServices(ext.services.join(", "));
+      }
+      if (Array.isArray(ext.keywords) && ext.keywords.length > 0) {
+        setEditKeywords(ext.keywords.join(", "));
+      }
+      setAutoFillMsg("✓ Details extracted from website! Review and save below.");
+    } catch (err: any) {
+      setErrorMsg("Website extraction failed: " + (err.message || "Network error"));
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
   // Save updated details
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,6 +353,9 @@ export default function OwnerAccessModal({
       const payloadUpdates = {
         name: editName.trim(),
         city: editCity.trim(),
+        area: editArea.trim(),
+        services: editServices.trim(),
+        keywords: editKeywords.trim(),
         owner_name: editOwnerName.trim(),
         owner_phone: activeOwnerPhone,
         contact_phone: activeContactPhone,
@@ -909,9 +982,21 @@ export default function OwnerAccessModal({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Website / Portfolio URL
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-gray-300">
+                      Website / Portfolio URL
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAutoFillFromWebsite}
+                      disabled={autoFilling || !editWebsite.trim()}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[10px] text-amber-300 hover:bg-amber-500/30 font-semibold cursor-pointer disabled:opacity-40 transition-colors"
+                      title="Extract business info, services & keywords from website"
+                    >
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                      <span>{autoFilling ? "Extracting..." : "Auto-fill from website"}</span>
+                    </button>
+                  </div>
                   <div className="relative">
                     <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
                     <input
@@ -922,6 +1007,82 @@ export default function OwnerAccessModal({
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                     />
                   </div>
+                </div>
+              </div>
+
+              {autoFillMsg && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2 animate-in fade-in">
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+                  <span>{autoFillMsg}</span>
+                </div>
+              )}
+
+              {/* Business Info for AI Reviews (Context, Services, Area, Keywords) */}
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-amber-500/20 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                      Business Info (AI Review Context)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoFillFromWebsite}
+                    disabled={autoFilling || !editWebsite.trim()}
+                    className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-300 transition-colors cursor-pointer disabled:opacity-40"
+                    title="Re-fetch and refresh business info from website"
+                  >
+                    <RotateCcw className={`w-2.5 h-2.5 ${autoFilling ? "animate-spin" : ""}`} />
+                    <span>Refresh business info</span>
+                  </button>
+                </div>
+                <p className="text-[10.5px] text-gray-400 leading-relaxed">
+                  Used by the AI Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                      Area / Locality
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
+                      value={editArea}
+                      onChange={(e) => setEditArea(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                      Services / Products List
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Smart NFC Standee, Google Review Card, Tap Card"
+                      value={editServices}
+                      onChange={(e) => setEditServices(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                    3–5 Focus Keywords
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NFC Standee, Tap Review, Smart Business Card, Fast Setup"
+                    value={editKeywords}
+                    onChange={(e) => setEditKeywords(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[9.5px] text-gray-500 mt-1 block">
+                    Comma separated. Model never invents false details — only naturally weaves relevant keywords if customer selects matching chips.
+                  </span>
                 </div>
               </div>
 
