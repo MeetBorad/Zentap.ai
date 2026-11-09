@@ -5,6 +5,7 @@ import { updateTagAndBusinessFromOwner } from "@/lib/businessStore";
 import { updateClient } from "@/lib/adminPlatformStore";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { invalidateCachedTag } from "@/lib/tagCache";
+import { fetchClientRecord } from "../verify/route";
 
 export const dynamic = "force-dynamic";
 
@@ -41,41 +42,14 @@ export async function POST(req: NextRequest) {
       targetBid = "ZT-0004";
     }
 
+    let updatedClientRow: any = null;
+
     if (db) {
       try {
         // 1. Sync to clients table (Master Source of Truth)
-        let existingClient: any = null;
-        const candidateIds = Array.from(new Set([cleanCode, targetBid, tokenBizId, tokenTagCode, "ZT-0004"].filter(Boolean)));
-        const orFilter = candidateIds.map((id) => `business_id.ilike.${id},id.ilike.${id}`).join(",");
-        
-        const { data: cData } = await db
-          .from("clients")
-          .select("*")
-          .or(orFilter)
-          .is("deleted_at", null)
-          .maybeSingle();
-        existingClient = cData;
-
-        if (!existingClient) {
-          const { data: tRow } = await db
-            .from("qr_nfc_tags")
-            .select("business_id")
-            .ilike("tag_id", effectiveTagCode)
-            .is("deleted_at", null)
-            .maybeSingle();
-          if (tRow?.business_id) {
-            const { data: linkedC } = await db
-              .from("clients")
-              .select("*")
-              .ilike("business_id", tRow.business_id)
-              .is("deleted_at", null)
-              .maybeSingle();
-            if (linkedC) {
-              existingClient = linkedC;
-              targetBid = linkedC.business_id;
-            }
-          }
-        }
+        let existingClient = await fetchClientRecord(db, targetBid) || 
+                             await fetchClientRecord(db, cleanCode) || 
+                             await fetchClientRecord(db, effectiveTagCode);
 
         if (existingClient) {
           const clientUpdates: any = {
@@ -96,64 +70,110 @@ export async function POST(req: NextRequest) {
             clientUpdates.facebook_link = (updates.facebook_link || updates.facebook_url).trim();
           }
 
-          const customFields = existingClient.custom_fields || {};
+          // Try update with custom_fields, and fallback without it if column doesn't exist
+          const customFields = { ...(existingClient.custom_fields || {}) };
           if (updates.website !== undefined) customFields.website = updates.website.trim();
-          if (updates.address !== undefined) customFields.directions = updates.address.trim();
-          if (updates.category !== undefined) customFields.category = updates.category.trim();
-          clientUpdates.custom_fields = customFields;
-
-          const { error: cErr } = await db.from("clients").update(clientUpdates).eq("id", existingClient.id);
-          if (cErr) {
-            console.error("clients update error:", cErr);
+          if (updates.address !== undefined) {
+            customFields.directions = updates.address.trim();
+            customFields.address = updates.address.trim();
           }
+          if (updates.category !== undefined) {
+            customFields.category = updates.category.trim();
+            customFields.subtitle = updates.category.trim();
+          }
+
+          let updateRes = await db
+            .from("clients")
+            .update({ ...clientUpdates, custom_fields: customFields })
+            .eq("id", existingClient.id)
+            .select();
+
+          if (updateRes.error && updateRes.error.message?.includes("custom_fields")) {
+            updateRes = await db
+              .from("clients")
+              .update(clientUpdates)
+              .eq("id", existingClient.id)
+              .select();
+          }
+
+          if (updateRes.data && updateRes.data.length > 0) {
+            updatedClientRow = { ...updateRes.data[0], custom_fields: customFields };
+          } else {
+            updatedClientRow = { ...existingClient, ...clientUpdates, custom_fields: customFields };
+          }
+
           try {
-            updateClient(existingClient.business_id || targetBid, clientUpdates);
+            updateClient(existingClient.business_id || targetBid, {
+              ...clientUpdates,
+              custom_fields: customFields,
+            });
           } catch {}
         }
 
-        // 2. Sync to page_editor_configs table
-        const pageSearch = Array.from(new Set([effectiveTagCode, cleanCode, targetBid, "st3", "ZT-0004"].filter(Boolean)));
-        const pageFilter = pageSearch.map((id) => `tag_id.ilike.${id},business_id.ilike.${id}`).join(",");
-        const { data: existingPage } = await db
+        // 2. Sync to page_editor_configs table (Two-way live populated)
+        const { data: existingPages } = await db
           .from("page_editor_configs")
           .select("*")
-          .or(pageFilter)
-          .is("deleted_at", null)
-          .maybeSingle();
+          .or(`tag_id.ilike.${effectiveTagCode},business_id.ilike.${targetBid},tag_id.ilike.${cleanCode}`)
+          .is("deleted_at", null);
 
-        if (existingPage) {
-          const cfg = existingPage.config_data || {};
-          if (updates.name !== undefined) cfg.title = updates.name.trim();
-          if (updates.city !== undefined) cfg.city = updates.city.trim();
-          if (updates.phone !== undefined) cfg.phone = updates.phone.trim();
-          if (updates.whatsapp_number !== undefined) cfg.whatsapp = updates.whatsapp_number.trim();
-          if (updates.google_review_link || updates.review_url) {
-            cfg.google_link = (updates.google_review_link || updates.review_url).trim();
-          }
-          if (updates.instagram_handle || updates.instagram_url) {
-            cfg.instagram = (updates.instagram_handle || updates.instagram_url).trim();
-          }
-          if (updates.facebook_link || updates.facebook_url) {
-            cfg.facebook = (updates.facebook_link || updates.facebook_url).trim();
-          }
-          if (updates.website !== undefined) cfg.website = updates.website.trim();
-          if (updates.address !== undefined) cfg.address = updates.address.trim();
-          if (updates.category !== undefined) {
-            cfg.category = updates.category.trim();
-            cfg.subtitle = updates.category.trim();
-          }
+        if (existingPages && existingPages.length > 0) {
+          for (const pageRow of existingPages) {
+            const cfg = { ...(pageRow.config_data || {}) };
+            if (updates.name !== undefined) cfg.title = updates.name.trim();
+            if (updates.city !== undefined) cfg.city = updates.city.trim();
+            if (updates.phone !== undefined) cfg.phone = updates.phone.trim();
+            if (updates.whatsapp_number !== undefined) cfg.whatsapp = updates.whatsapp_number.trim();
+            if (updates.google_review_link || updates.review_url) {
+              cfg.google_link = (updates.google_review_link || updates.review_url).trim();
+            }
+            if (updates.instagram_handle || updates.instagram_url) {
+              cfg.instagram = (updates.instagram_handle || updates.instagram_url).trim();
+            }
+            if (updates.facebook_link || updates.facebook_url) {
+              cfg.facebook = (updates.facebook_link || updates.facebook_url).trim();
+            }
+            if (updates.website !== undefined) cfg.website = updates.website.trim();
+            if (updates.address !== undefined) cfg.address = updates.address.trim();
+            if (updates.category !== undefined) {
+              cfg.category = updates.category.trim();
+              cfg.subtitle = updates.category.trim();
+            }
 
-          const pageUpdates = {
-            business_name: updates.name ? updates.name.trim() : existingPage.business_name,
-            config_data: cfg,
-            setup_status: "completed",
-            updated_at: new Date().toISOString(),
+            await db
+              .from("page_editor_configs")
+              .update({
+                business_name: updates.name ? updates.name.trim() : pageRow.business_name,
+                config_data: cfg,
+                setup_status: "completed",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", pageRow.id);
+          }
+        } else {
+          // Create initial page editor config entry
+          const newCfg = {
+            title: (updates.name || "").trim(),
+            city: (updates.city || "Ahmedabad").trim(),
+            subtitle: (updates.category || "").trim(),
+            category: (updates.category || "").trim(),
+            phone: (updates.phone || "").trim(),
+            whatsapp: (updates.whatsapp_number || "").trim(),
+            google_link: (updates.google_review_link || updates.review_url || "").trim(),
+            instagram: (updates.instagram_handle || updates.instagram_url || "").trim(),
+            facebook: (updates.facebook_link || updates.facebook_url || "").trim(),
+            website: (updates.website || "").trim(),
+            address: (updates.address || "").trim(),
           };
 
-          const { error: pErr } = await db.from("page_editor_configs").update(pageUpdates).eq("id", existingPage.id);
-          if (pErr) {
-            console.error("page_editor_configs update error:", pErr);
-          }
+          await db.from("page_editor_configs").insert({
+            tag_id: effectiveTagCode,
+            business_id: targetBid,
+            business_name: updates.name ? updates.name.trim() : "ZenTap Business",
+            config_data: newCfg,
+            setup_status: "completed",
+            updated_at: new Date().toISOString(),
+          });
         }
 
         // 3. Sync to qr_nfc_tags & google_review_links tables
@@ -180,39 +200,41 @@ export async function POST(req: NextRequest) {
         }
 
         // 4. Sync to businesses table
-        if (result.business?.id) {
-          const bizUpdates: any = {
-            updated_at: new Date().toISOString(),
-          };
-          if (updates.name) bizUpdates.name = updates.name.trim();
-          if (updates.city) bizUpdates.city = updates.city.trim();
-          if (updates.phone) bizUpdates.phone = updates.phone.trim();
-          if (updates.whatsapp_number) {
-            bizUpdates.whatsapp_number = updates.whatsapp_number.trim();
-            bizUpdates.whatsapp = updates.whatsapp_number.trim();
-          }
-          if (updates.whatsapp_message) bizUpdates.whatsapp_message = updates.whatsapp_message.trim();
-          if (grUrl) {
-            bizUpdates.review_url = grUrl;
-            bizUpdates.google_review_link = grUrl;
-          }
-          if (updates.instagram_handle || updates.instagram_url) {
-            bizUpdates.instagram_url = (updates.instagram_handle || updates.instagram_url).trim();
-          }
-
-          await db.from("businesses").update(bizUpdates).eq("id", result.business.id);
+        const bizUpdates: any = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.name) bizUpdates.name = updates.name.trim();
+        if (updates.city) bizUpdates.city = updates.city.trim();
+        if (updates.phone) bizUpdates.phone = updates.phone.trim();
+        if (updates.whatsapp_number) {
+          bizUpdates.whatsapp_number = updates.whatsapp_number.trim();
+          bizUpdates.whatsapp = updates.whatsapp_number.trim();
         }
+        if (updates.whatsapp_message) bizUpdates.whatsapp_message = updates.whatsapp_message.trim();
+        if (grUrl) {
+          bizUpdates.review_url = grUrl;
+          bizUpdates.google_review_link = grUrl;
+        }
+        if (updates.instagram_handle || updates.instagram_url) {
+          bizUpdates.instagram_url = (updates.instagram_handle || updates.instagram_url).trim();
+        }
+        if (updates.facebook_link || updates.facebook_url) {
+          bizUpdates.facebook_url = (updates.facebook_link || updates.facebook_url).trim();
+        }
+        if (updates.website) {
+          bizUpdates.website = updates.website.trim();
+          bizUpdates.website_url = updates.website.trim();
+        }
+        if (updates.category) bizUpdates.category = updates.category.trim();
+        if (updates.address) bizUpdates.address = updates.address.trim();
 
-        // 5. Invalidate Edge & Server Tag Cache
-        invalidateCachedTag(cleanCode);
-        if (tokenTagCode) invalidateCachedTag(tokenTagCode);
-        if (targetBid) invalidateCachedTag(targetBid);
-        invalidateCachedTag("st3");
-        invalidateCachedTag("zentap");
-        invalidateCachedTag("zt-0004");
-        if (targetBid) invalidateCachedTag(targetBid);
-        invalidateCachedTag("st3");
-        invalidateCachedTag("zentap");
+        await db
+          .from("businesses")
+          .update(bizUpdates)
+          .or(`id.ilike.${targetBid},slug.ilike.${cleanCode}`);
+
+        // 5. Invalidate Edge & Server Tag Cache completely
+        invalidateCachedTag();
       } catch (dbErr) {
         console.warn("DB update error (using local store):", dbErr);
       }
@@ -234,7 +256,9 @@ export async function POST(req: NextRequest) {
       business: {
         ...result.business,
         ...updates,
+        id: targetBid,
       },
+      client: updatedClientRow,
       sessionRemainingMs: remainingMs,
     });
   } catch (err) {

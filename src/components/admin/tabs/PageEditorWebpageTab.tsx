@@ -149,6 +149,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   // Visual Editor State
   const [activeItem, setActiveItem] = useState<PageEditorConfigItemRecord | null>(null);
   const [editTheme, setEditTheme] = useState("obsidian");
+  const [editFont, setEditFont] = useState("Outfit");
+  const [editFontSize, setEditFontSize] = useState<"compact" | "default" | "large">("default");
+  const [editAccentColor, setEditAccentColor] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editSubtitle, setEditSubtitle] = useState("");
   const [editBannerUrl, setEditBannerUrl] = useState("/standees/standee_01.jpg");
@@ -451,6 +454,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     const isZenTap = item.tag_id.toLowerCase() === "zentap" || item.business_id.toLowerCase() === "sample-demo-biz-01";
 
     setEditTheme(cfg.theme || "obsidian");
+    setEditFont(cfg.font || "Outfit");
+    const validSizes = ["compact", "default", "large"] as const;
+    setEditFontSize(validSizes.includes(cfg.font_size) ? cfg.font_size : "default");
+    setEditAccentColor(cfg.accent_color || "");
     setEditTitle(cfg.title || item.business_name || client?.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
     setEditSubtitle(cfg.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : (isZenTap ? "Ahmedabad • Welcome to our official digital hub" : "Customer Satisfaction Hub")));
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
@@ -489,6 +496,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     const newConfigData = {
       theme: editTheme,
+      font: editFont,
+      font_size: editFontSize,
+      accent_color: editAccentColor.trim(),
       title: editTitle.trim(),
       subtitle: editSubtitle.trim(),
       category: editSubtitle.trim(),
@@ -527,6 +537,23 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       link_url: activeItem.link_url,
       destination: currentDest,
     });
+
+    // Cross-sync: If editing ST3 or zentap or ZT-0004, keep both URLs strictly identical
+    const isSharedTag =
+      activeItem.tag_id.toLowerCase() === "st3" ||
+      activeItem.tag_id.toLowerCase() === "zentap" ||
+      activeItem.business_id.toLowerCase() === "zt-0004";
+
+    if (isSharedTag && res.success) {
+      const sisterTagId = activeItem.tag_id.toLowerCase() === "st3" ? "zentap" : "st3";
+      await savePageEditorConfigServer(sisterTagId, newConfigData, {
+        business_id: activeItem.business_id,
+        business_name: editTitle.trim() || activeItem.business_name,
+        link_url: `${DOMAIN_BASE}/t/${sisterTagId}`,
+        destination: currentDest,
+      }).catch((e) => console.warn("Sister tag sync notice:", e));
+    }
+
     setIsSubmitting(false);
 
     if (res.success) {
@@ -540,9 +567,28 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       : editTheme === "emerald" ? "emerald_luxe"
                       : editTheme === "sunset" ? "midnight_amber"
                       : editTheme === "clean_light" ? "clean_minimal"
+                      : editTheme === "royal_indigo" ? "royal_indigo"
+                      : editTheme === "midnight_rose" ? "midnight_rose"
+                      : editTheme === "champagne_gold" ? "champagne_gold"
                       : "modern_slate",
-          primary_color: editTheme === "sunset" ? "#ea580c" : editTheme === "emerald" ? "#059669" : "#ff7a00",
-          bg_color: editTheme === "clean_light" ? "#ffffff" : editTheme === "slate" ? "#0f172a" : editTheme === "emerald" ? "#062016" : "#0e1015",
+          primary_color: editAccentColor.trim() || (
+            editTheme === "sunset" ? "#f97316" :
+            editTheme === "emerald" ? "#10b981" :
+            editTheme === "slate" ? "#38bdf8" :
+            editTheme === "royal_indigo" ? "#818cf8" :
+            editTheme === "midnight_rose" ? "#fb7185" :
+            editTheme === "champagne_gold" ? "#eab308" :
+            editTheme === "clean_light" ? "#ea580c" :
+            "#f59e0b"
+          ),
+          bg_color: editTheme === "clean_light" ? "#ffffff"
+                  : editTheme === "slate" ? "#0f172a"
+                  : editTheme === "emerald" ? "#062016"
+                  : editTheme === "sunset" ? "#1c0d06"
+                  : editTheme === "royal_indigo" ? "#0c0f24"
+                  : editTheme === "midnight_rose" ? "#1a0b16"
+                  : editTheme === "champagne_gold" ? "#12100b"
+                  : "#0B0F17",
           dark_mode: editTheme === "clean_light" ? "light" : "dark",
           cover_url: editBannerUrl.trim(),
           logo_url: editLogoUrl.trim(),
@@ -1592,36 +1638,178 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     }}
                   />
 
-                  {/* Theme Presets */}
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-900 mb-1.5 flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Theme Preset</span>
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
+                  {/* Theme Presets (8 Curated Themes) */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span>Visual Theme Preset (8 Curated Palettes)</span>
+                      </label>
+                      <span className="text-[10px] text-zinc-500 font-medium">Auto-matches contrast & accents</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {[
-                        { id: "obsidian", label: "Obsidian Dark", bg: "bg-[#0e1015] text-white" },
-                        { id: "slate", label: "Slate Minimal", bg: "bg-slate-900 text-white" },
-                        { id: "emerald", label: "Emerald Luxe", bg: "bg-emerald-950 text-white" },
-                        { id: "sunset", label: "Sunset Amber", bg: "bg-orange-950 text-white" },
-                        { id: "clean_light", label: "Pure Light", bg: "bg-white text-zinc-900 border" },
+                        { id: "obsidian", label: "Obsidian Dark", bg: "bg-[#0B0F17] text-amber-400 border border-amber-500/30", dot: "bg-amber-400", sub: "Pitch & Amber" },
+                        { id: "slate", label: "Slate Minimal", bg: "bg-[#0f172a] text-sky-400 border border-sky-500/30", dot: "bg-sky-400", sub: "Tech Slate & Cyan" },
+                        { id: "emerald", label: "Emerald Luxe", bg: "bg-[#062016] text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400", sub: "Forest & Jade" },
+                        { id: "sunset", label: "Sunset Amber", bg: "bg-[#1c0d06] text-orange-400 border border-orange-500/30", dot: "bg-orange-400", sub: "Espresso & Flame" },
+                        { id: "royal_indigo", label: "Royal Indigo", bg: "bg-[#0c0f24] text-indigo-400 border border-indigo-500/30", dot: "bg-indigo-400", sub: "Deep Midnight" },
+                        { id: "midnight_rose", label: "Midnight Rose", bg: "bg-[#1a0b16] text-rose-400 border border-rose-500/30", dot: "bg-rose-400", sub: "Velvet & Ruby" },
+                        { id: "champagne_gold", label: "Champagne Gold", bg: "bg-[#12100b] text-yellow-400 border border-amber-400/40", dot: "bg-yellow-400", sub: "Royal 24K Gold" },
+                        { id: "clean_light", label: "Pure Light", bg: "bg-white text-zinc-900 border border-zinc-300", dot: "bg-amber-500", sub: "Crisp Alabaster" },
                       ].map((t) => (
                         <button
                           key={t.id}
                           type="button"
                           onClick={() => setEditTheme(t.id)}
-                          className={`p-2 rounded-xl text-center cursor-pointer transition-all ${
+                          className={`p-2.5 rounded-xl text-left cursor-pointer transition-all border ${
                             editTheme === t.id
-                              ? "ring-2 ring-purple-600 shadow-sm"
-                              : "opacity-75 hover:opacity-100"
+                              ? "ring-2 ring-amber-500 border-amber-500 shadow-md bg-white scale-[1.02]"
+                              : "border-zinc-200/80 hover:border-zinc-300 bg-white/70 hover:bg-white"
                           }`}
                         >
-                          <div className={`w-full h-8 rounded-lg ${t.bg} flex items-center justify-center text-[10px] font-bold shadow-2xs mb-1`}>
-                            Aa
+                          <div className={`w-full h-8 rounded-lg ${t.bg} flex items-center justify-between px-2.5 shadow-2xs mb-1.5`}>
+                            <span className="text-[11px] font-black tracking-tight">Aa</span>
+                            <span className={`w-2 h-2 rounded-full ${t.dot} shadow-xs`} />
                           </div>
-                          <span className="text-[11px] font-medium text-zinc-700">{t.label}</span>
+                          <div className="text-[11px] font-bold text-zinc-900 truncate leading-tight">{t.label}</div>
+                          <div className="text-[9px] text-zinc-500 font-medium truncate">{t.sub}</div>
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Typography & Customization Studio */}
+                  <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                        <Sliders className="w-4 h-4 text-purple-600" />
+                        <span>Typography &amp; Styling Studio</span>
+                      </label>
+                      <span className="text-[10px] text-zinc-500 font-medium">Font Family, Size &amp; Accent</span>
+                    </div>
+
+                    {/* Font Family Selector */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-zinc-700 mb-1.5">
+                        Font Family (Curated Google Fonts)
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { id: "Outfit", label: "Outfit", desc: "Modern & Clean", family: "'Outfit', sans-serif" },
+                          { id: "Inter", label: "Inter", desc: "Crisp & Neutral", family: "'Inter', sans-serif" },
+                          { id: "Plus Jakarta Sans", label: "Jakarta Sans", desc: "Tech & Premium", family: "'Plus Jakarta Sans', sans-serif" },
+                          { id: "Poppins", label: "Poppins", desc: "Friendly & Geometric", family: "'Poppins', sans-serif" },
+                          { id: "Playfair Display", label: "Playfair", desc: "Luxury Serif", family: "'Playfair Display', serif" },
+                          { id: "Space Grotesk", label: "Space Grotesk", desc: "Punchy Designer", family: "'Space Grotesk', sans-serif" },
+                        ].map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => setEditFont(f.id)}
+                            style={{ fontFamily: f.family }}
+                            className={`p-2 rounded-xl text-left border cursor-pointer transition-all ${
+                              editFont === f.id
+                                ? "bg-purple-50/80 border-purple-500 ring-2 ring-purple-500/30 text-purple-950 font-bold shadow-2xs"
+                                : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100/50"
+                            }`}
+                          >
+                            <div className="text-xs font-bold truncate leading-tight">{f.label}</div>
+                            <div className="text-[9px] text-zinc-500 font-normal truncate mt-0.5">{f.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Font Size & Scale Selector */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-zinc-700 mb-1.5">
+                          Font Size &amp; Scale
+                        </label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: "compact", label: "Compact", sub: "13px Dense" },
+                            { id: "default", label: "Standard", sub: "15px Normal" },
+                            { id: "large", label: "Large", sub: "17px High-Vis" },
+                          ].map((sz) => (
+                            <button
+                              key={sz.id}
+                              type="button"
+                              onClick={() => setEditFontSize(sz.id as any)}
+                              className={`py-2 px-1 rounded-xl text-center border cursor-pointer transition-all ${
+                                editFontSize === sz.id
+                                  ? "bg-purple-600 text-white border-purple-600 font-bold shadow-xs"
+                                  : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300"
+                              }`}
+                            >
+                              <div className="text-xs font-bold leading-tight">{sz.label}</div>
+                              <div className={`text-[9px] mt-0.5 ${editFontSize === sz.id ? "text-purple-100" : "text-zinc-500"}`}>
+                                {sz.sub}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Accent Highlight Color */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[11px] font-semibold text-zinc-700">
+                            Accent Highlight Color
+                          </label>
+                          {editAccentColor && (
+                            <button
+                              type="button"
+                              onClick={() => setEditAccentColor("")}
+                              className="text-[10px] text-purple-600 hover:underline font-semibold"
+                            >
+                              Reset to Theme Default
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {[
+                            { hex: "#f59e0b", label: "Amber Gold" },
+                            { hex: "#38bdf8", label: "Sky Cyan" },
+                            { hex: "#10b981", label: "Emerald Mint" },
+                            { hex: "#f97316", label: "Sunset Orange" },
+                            { hex: "#818cf8", label: "Royal Indigo" },
+                            { hex: "#fb7185", label: "Ruby Rose" },
+                            { hex: "#eab308", label: "24K Gold" },
+                          ].map((c) => (
+                            <button
+                              key={c.hex}
+                              type="button"
+                              title={c.label}
+                              onClick={() => setEditAccentColor(c.hex)}
+                              className={`w-6 h-6 rounded-full cursor-pointer transition-transform border border-white shadow-xs ${
+                                editAccentColor.toLowerCase() === c.hex.toLowerCase()
+                                  ? "scale-125 ring-2 ring-purple-600 ring-offset-1"
+                                  : "hover:scale-110"
+                              }`}
+                              style={{ backgroundColor: c.hex }}
+                            />
+                          ))}
+                          <div className="flex items-center gap-1 ml-auto">
+                            <input
+                              type="color"
+                              value={editAccentColor || "#f59e0b"}
+                              onChange={(e) => setEditAccentColor(e.target.value)}
+                              className="w-6 h-6 rounded-md border border-zinc-300 cursor-pointer p-0 bg-transparent"
+                              title="Pick Custom Hex Color"
+                            />
+                            <input
+                              type="text"
+                              value={editAccentColor}
+                              placeholder="Default"
+                              onChange={(e) => setEditAccentColor(e.target.value)}
+                              className="w-16 px-1.5 py-1 text-[11px] rounded-lg border border-zinc-200 bg-white text-zinc-800 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2334,6 +2522,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                   accentGlow: string;
                   notchBg: string;
                   themeName: string;
+                  accentHex: string;
                 }> = {
                   obsidian: {
                     containerBg: "bg-[#0B0F17]",
@@ -2347,6 +2536,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     accentGlow: "bg-amber-500/15",
                     notchBg: "bg-[#0B0F17]",
                     themeName: "Obsidian Dark",
+                    accentHex: "#f59e0b",
                   },
                   slate: {
                     containerBg: "bg-[#0f172a]",
@@ -2360,6 +2550,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     accentGlow: "bg-sky-500/15",
                     notchBg: "bg-[#0f172a]",
                     themeName: "Slate Minimal",
+                    accentHex: "#38bdf8",
                   },
                   emerald: {
                     containerBg: "bg-[#062016]",
@@ -2373,6 +2564,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     accentGlow: "bg-emerald-500/15",
                     notchBg: "bg-[#062016]",
                     themeName: "Emerald Luxe",
+                    accentHex: "#10b981",
                   },
                   sunset: {
                     containerBg: "bg-[#1c0d06]",
@@ -2386,6 +2578,49 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     accentGlow: "bg-orange-500/15",
                     notchBg: "bg-[#1c0d06]",
                     themeName: "Sunset Amber",
+                    accentHex: "#f97316",
+                  },
+                  royal_indigo: {
+                    containerBg: "bg-[#0c0f24]",
+                    cardBg: "bg-[#151b3b]",
+                    innerBg: "bg-[#1f2756]",
+                    borderColor: "border-indigo-500/15",
+                    textColor: "text-[#eef2ff]",
+                    textMuted: "text-[#a5b4fc]",
+                    accentText: "text-[#818cf8]",
+                    accentCircle: "bg-[#6366f1]",
+                    accentGlow: "bg-indigo-500/15",
+                    notchBg: "bg-[#0c0f24]",
+                    themeName: "Royal Indigo",
+                    accentHex: "#6366f1",
+                  },
+                  midnight_rose: {
+                    containerBg: "bg-[#1a0b16]",
+                    cardBg: "bg-[#2a1223]",
+                    innerBg: "bg-[#401a35]",
+                    borderColor: "border-pink-500/15",
+                    textColor: "text-[#fdf2f8]",
+                    textMuted: "text-[#f472b6]",
+                    accentText: "text-[#fb7185]",
+                    accentCircle: "bg-[#f43f5e]",
+                    accentGlow: "bg-rose-500/15",
+                    notchBg: "bg-[#1a0b16]",
+                    themeName: "Midnight Rose",
+                    accentHex: "#f43f5e",
+                  },
+                  champagne_gold: {
+                    containerBg: "bg-[#12100b]",
+                    cardBg: "bg-[#1f1c14]",
+                    innerBg: "bg-[#2f2a1e]",
+                    borderColor: "border-amber-400/20",
+                    textColor: "text-[#fefce8]",
+                    textMuted: "text-[#fde047]",
+                    accentText: "text-[#eab308]",
+                    accentCircle: "bg-[#eab308]",
+                    accentGlow: "bg-amber-400/15",
+                    notchBg: "bg-[#12100b]",
+                    themeName: "Champagne Gold",
+                    accentHex: "#eab308",
                   },
                   clean_light: {
                     containerBg: "bg-[#f8fafc]",
@@ -2399,22 +2634,33 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     accentGlow: "bg-amber-500/10",
                     notchBg: "bg-[#f8fafc]",
                     themeName: "Pure Light",
+                    accentHex: "#ea580c",
                   },
                 };
 
                 const currentP = themePalettes[editTheme] || themePalettes.obsidian;
+                const fontMap: Record<string, string> = {
+                  Outfit: "'Outfit', sans-serif",
+                  Inter: "'Inter', sans-serif",
+                  "Plus Jakarta Sans": "'Plus Jakarta Sans', sans-serif",
+                  Poppins: "'Poppins', sans-serif",
+                  "Playfair Display": "'Playfair Display', serif",
+                  "Space Grotesk": "'Space Grotesk', sans-serif",
+                };
+                const activeFontFamily = fontMap[editFont] || "'Outfit', sans-serif";
+                const customAccentHex = editAccentColor.trim() || currentP.accentHex;
 
                 return (
                   <div className="lg:col-span-5 p-6 bg-[#07090e] flex flex-col items-center justify-center overflow-y-auto">
                     <div className="flex items-center gap-1.5 mb-2.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-zinc-300">
                       <Sparkles className="w-3 h-3 text-amber-400" />
-                      <span>Live Theme Preview • <strong>{currentP.themeName}</strong></span>
+                      <span>Live Theme Preview • <strong>{currentP.themeName}</strong> ({editFont})</span>
                     </div>
 
                     <div 
                       className={`w-[290px] max-h-[700px] overflow-y-auto ${currentP.containerBg} ${currentP.textColor} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl flex flex-col relative transition-all duration-300 select-none pb-4`}
                       style={{
-                        fontFamily: "'Outfit', sans-serif"
+                        fontFamily: activeFontFamily
                       }}
                     >
                       {/* Ambient Mesh Glows in Phone */}
@@ -2493,7 +2739,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               <span className={`text-[9px] ${currentP.accentText} ml-1 font-bold`}>5.0</span>
                             </div>
                           </div>
-                          <div className={`w-8 h-8 rounded-full ${currentP.accentCircle} flex items-center justify-center shrink-0 shadow`}>
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow transition-colors"
+                            style={{ backgroundColor: customAccentHex }}
+                          >
                             <Star className="w-4 h-4 fill-black text-black" />
                           </div>
                         </div>
@@ -2597,9 +2846,6 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               <span className="text-[9px] font-bold text-white truncate flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5 text-amber-400" />
                                 <span>{editLocationTitle || editAddress || "Location"}</span>
-                              </span>
-                              <span className={`px-1.5 py-0.5 rounded-full ${currentP.innerBg} text-[8px] font-bold text-white border border-white/10`}>
-                                NFC Station
                               </span>
                             </div>
                           </div>

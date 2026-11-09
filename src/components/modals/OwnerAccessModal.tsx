@@ -122,6 +122,18 @@ export default function OwnerAccessModal({
               populateFields(parsed.business);
             }
             if (parsed.stats) setScanStats(parsed.stats);
+
+            // Re-validate and fetch fresh client table data in background to populate exact current fields from clients table
+            fetch(`/api/card/verify?code=${encodeURIComponent(loginId || codeKey)}&token=${encodeURIComponent(parsed.token)}`)
+              .then((res) => res.json())
+              .then((fresh) => {
+                if (fresh?.success && fresh?.business) {
+                  setBizData(fresh.business);
+                  populateFields(fresh.business);
+                  if (fresh.stats) setScanStats(fresh.stats);
+                }
+              })
+              .catch((err) => console.warn("Background client refresh notice:", err));
           } else {
             sessionStorage.removeItem(storageKey);
           }
@@ -316,6 +328,88 @@ export default function OwnerAccessModal({
         }
       } catch (err) {
         console.warn("sessionStorage update notice:", err);
+      }
+
+      // Sync client-side caches and stores so changes populate instantly like page editor
+      try {
+        const cTargetBid = data.business?.id || clientBusinessId || loginId || "ZT-0004";
+        
+        // A. Sync to localStorage zentap_platform_clients
+        const rawClients = localStorage.getItem("zentap_platform_clients");
+        if (rawClients) {
+          const parsedClients = JSON.parse(rawClients);
+          if (Array.isArray(parsedClients)) {
+            const idx = parsedClients.findIndex((c: any) => 
+              (c.business_id || "").toLowerCase() === cTargetBid.toLowerCase() ||
+              (c.id || "").toLowerCase() === cTargetBid.toLowerCase()
+            );
+            if (idx !== -1) {
+              parsedClients[idx] = {
+                ...parsedClients[idx],
+                business_name: editName.trim(),
+                city: editCity.trim(),
+                owner_name: editOwnerName.trim(),
+                owner_phone: editPhone.trim(),
+                whatsapp: editWhatsapp.trim(),
+                google_review_link: editReviewUrl.trim(),
+                instagram_link: editInstagram.trim(),
+                facebook_link: editFacebook.trim(),
+                custom_fields: {
+                  ...(parsedClients[idx].custom_fields || {}),
+                  website: editWebsite.trim(),
+                  directions: editAddress.trim(),
+                  address: editAddress.trim(),
+                  category: editCategory.trim(),
+                  subtitle: editCategory.trim(),
+                },
+              };
+              localStorage.setItem("zentap_platform_clients", JSON.stringify(parsedClients));
+            }
+          }
+        }
+
+        // B. Sync to localStorage zentap_platform_page_editor_configs
+        const rawConfigs = localStorage.getItem("zentap_platform_page_editor_configs");
+        const activeTag = (tagCode || businessSlug || "st3").toLowerCase();
+        if (rawConfigs) {
+          const parsedConfigs = JSON.parse(rawConfigs);
+          if (Array.isArray(parsedConfigs)) {
+            const peIdx = parsedConfigs.findIndex((p: any) =>
+              (p.tag_id || "").toLowerCase() === activeTag ||
+              (p.business_id || "").toLowerCase() === cTargetBid.toLowerCase()
+            );
+            if (peIdx !== -1) {
+              const existingCfg = parsedConfigs[peIdx].config_data || {};
+              parsedConfigs[peIdx] = {
+                ...parsedConfigs[peIdx],
+                business_name: editName.trim(),
+                setup_status: "completed",
+                config_data: {
+                  ...existingCfg,
+                  title: editName.trim(),
+                  city: editCity.trim(),
+                  subtitle: editCategory.trim(),
+                  category: editCategory.trim(),
+                  phone: editPhone.trim(),
+                  whatsapp: editWhatsapp.trim(),
+                  google_link: editReviewUrl.trim(),
+                  instagram: editInstagram.trim(),
+                  facebook: editFacebook.trim(),
+                  website: editWebsite.trim(),
+                  address: editAddress.trim(),
+                },
+              };
+              localStorage.setItem("zentap_platform_page_editor_configs", JSON.stringify(parsedConfigs));
+            }
+          }
+        }
+
+        // C. Dispatch real-time events for live page updates across any active components
+        window.dispatchEvent(new CustomEvent("zentap_client_updated", { detail: updatedPayload }));
+        window.dispatchEvent(new CustomEvent("zentap_page_editor_updated", { detail: updatedPayload }));
+        window.dispatchEvent(new Event("storage"));
+      } catch (e) {
+        console.warn("Client stores synchronization notice:", e);
       }
 
       if (onDetailsUpdated) {

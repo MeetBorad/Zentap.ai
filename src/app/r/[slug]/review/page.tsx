@@ -66,36 +66,36 @@ export default async function ReviewPage({
   if (db) {
     try {
       const tagQuery = via || cleanSlug;
-      const { data: vData } = await db
-        .from("page_editor_configs")
-        .select("*")
-        .ilike("tag_id", tagQuery)
-        .is("deleted_at", null)
-        .maybeSingle();
-      if (vData) {
-        pageConfig = vData;
-      } else {
-        const q = db
-          .from("page_editor_configs")
-          .select("*")
-          .or(`tag_id.ilike.${cleanSlug},business_id.ilike.${cleanSlug}`)
-          .is("deleted_at", null)
-          .maybeSingle();
-        const { data } = await q;
-        pageConfig = data;
-      }
+      const isSharedDemo = cleanSlug === "zentap" || cleanSlug === "st3" || via?.toLowerCase() === "st3" || cleanSlug === "zt-0004";
 
-      if (!pageConfig && (cleanSlug === "zentap" || cleanSlug === "zt-0004" || cleanSlug === "sample" || via?.toLowerCase() === "st3")) {
-        const { data: st3ReviewConfig } = await db
+      if (isSharedDemo) {
+        const { data: sharedCfg } = await db
           .from("page_editor_configs")
           .select("*")
-          .or("tag_id.ilike.st3,business_id.ilike.zt-0004")
+          .or("tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004")
           .is("deleted_at", null)
           .order("updated_at", { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (st3ReviewConfig) {
-          pageConfig = st3ReviewConfig;
+        pageConfig = sharedCfg;
+      } else {
+        const { data: vData } = await db
+          .from("page_editor_configs")
+          .select("*")
+          .ilike("tag_id", tagQuery)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (vData) {
+          pageConfig = vData;
+        } else {
+          const q = db
+            .from("page_editor_configs")
+            .select("*")
+            .or(`tag_id.ilike.${cleanSlug},business_id.ilike.${cleanSlug}`)
+            .is("deleted_at", null)
+            .maybeSingle();
+          const { data } = await q;
+          pageConfig = data;
         }
       }
 
@@ -126,11 +126,14 @@ export default async function ReviewPage({
 
   if (db) {
     try {
+      const candidates = Array.from(new Set([cleanSlug, candidateBizId, "ZT-0004"].filter(Boolean)));
+      const orExpr = candidates.map((c) => `business_id.ilike.${c}`).join(",");
       const { data: cData } = await db
         .from('clients')
         .select('*')
-        .or(`business_id.ilike.${cleanSlug},business_id.ilike.${candidateBizId},id.ilike.${cleanSlug}`)
+        .or(orExpr)
         .is('deleted_at', null)
+        .limit(1)
         .maybeSingle();
       if (cData) clientRecord = cData;
     } catch (e) {
@@ -209,9 +212,17 @@ export default async function ReviewPage({
   const biz: BusinessRecord = parsedBiz ? {
     ...parsedBiz,
     name: clientRecord?.business_name || parsedBiz.name,
+    city: clientRecord?.city || parsedBiz.city,
     google_review_link: clientRecord?.google_review_link || parsedBiz.google_review_link || parsedBiz.review_url,
+    review_url: clientRecord?.google_review_link || parsedBiz.google_review_link || parsedBiz.review_url,
     phone: clientRecord?.owner_phone || parsedBiz.phone,
     whatsapp: clientRecord?.whatsapp || parsedBiz.whatsapp,
+    whatsapp_number: clientRecord?.whatsapp || parsedBiz.whatsapp_number,
+    instagram: clientRecord?.instagram_link || parsedBiz.instagram,
+    facebook: clientRecord?.facebook_link || parsedBiz.facebook,
+    website: clientRecord?.custom_fields?.website || parsedBiz.website,
+    category: clientRecord?.custom_fields?.category || clientRecord?.custom_fields?.subtitle || parsedBiz.category,
+    address: clientRecord?.custom_fields?.directions || clientRecord?.custom_fields?.address || parsedBiz.address,
   } : fallbackBiz;
 
   // Determine effective destination
@@ -231,6 +242,7 @@ export default async function ReviewPage({
 
   // Effective Google Review link (Link of Tag ID)
   let effectiveGoogleLink =
+    (clientRecord?.google_review_link || "").trim() ||
     (grlRow?.business_google_review_link || "").trim() ||
     (localGrl?.business_google_review_link || "").trim() ||
     (tagRow?.google_review_link || "").trim() ||
@@ -239,7 +251,7 @@ export default async function ReviewPage({
     (biz.review_url || "").trim() ||
     "https://g.page/r/CdJX2OGu1yhoEAI/review";
 
-  if (cleanSlug === "zentap" || cleanSlug === "sample" || isPreview) {
+  if (!effectiveGoogleLink && (cleanSlug === "zentap" || cleanSlug === "sample" || isPreview)) {
     effectiveGoogleLink = "https://g.page/r/CdJX2OGu1yhoEAI/review";
   }
 

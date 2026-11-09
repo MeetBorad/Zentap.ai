@@ -6,14 +6,17 @@ import {
   resetLockout, 
   hashSecret, 
   generateOwnerSessionToken, 
+  verifyOwnerSessionToken,
   logPartnerAction, 
   DEFAULT_PIN_HASH 
 } from "@/lib/ownerAccess";
 import { getTagByCode, getBusinessBySlug, getAllBusinesses, getAllTags, getBusinessAnalytics } from "@/lib/businessStore";
-import { getAllClients, getAllQrNfcTags } from "@/lib/adminPlatformStore";
+import { getAllClients, getAllQrNfcTags, getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -30,6 +33,157 @@ function generateDeterministicPassword(businessId: string): string {
   const num = parseInt(digits || "1", 10);
   const code = (num * 7393 + 1234) % 10000;
   return `ZT@${String(code).padStart(4, "0")}`;
+}
+
+export async function fetchClientRecord(db: any, rawCode: string) {
+  if (!db || !rawCode) return null;
+  const clean = rawCode.toLowerCase().trim();
+
+  // 1. Direct business_id check (e.g. ZT-0004)
+  const { data: cData } = await db
+    .from("clients")
+    .select("*")
+    .ilike("business_id", clean)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+  if (cData) return cData;
+
+  // 2. If valid UUID, check id column (never query id.ilike)
+  if (UUID_REGEX.test(clean)) {
+    const { data: idData } = await db
+      .from("clients")
+      .select("*")
+      .eq("id", clean)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (idData) return idData;
+  }
+
+  // 3. Known aliases for sample demo
+  if (clean === "st3" || clean === "zentap") {
+    const { data: st3Client } = await db
+      .from("clients")
+      .select("*")
+      .ilike("business_id", "ZT-0004")
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (st3Client) return st3Client;
+  }
+
+  // 4. Map via qr_nfc_tags, google_review_links, and page_editor_configs
+  const [qrRes, grlRes, pRes] = await Promise.all([
+    db.from("qr_nfc_tags").select("business_id").ilike("tag_id", clean).is("deleted_at", null).limit(1).maybeSingle(),
+    db.from("google_review_links").select("business_id").ilike("tag_id", clean).is("deleted_at", null).limit(1).maybeSingle(),
+    db.from("page_editor_configs").select("business_id").ilike("tag_id", clean).is("deleted_at", null).limit(1).maybeSingle(),
+  ]);
+
+  const mappedBizId = qrRes?.data?.business_id || grlRes?.data?.business_id || pRes?.data?.business_id;
+  if (mappedBizId) {
+    const { data: linkedClient } = await db
+      .from("clients")
+      .select("*")
+      .ilike("business_id", mappedBizId)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (linkedClient) return linkedClient;
+  }
+
+  return null;
+}
+
+// GET: Fetch fresh client record directly from clients table for authenticated owner panel
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const code = searchParams.get("code") || searchParams.get("tagCode") || searchParams.get("slug") || "ZT-0004";
+    const token = searchParams.get("token");
+
+    const cleanCode = code.toLowerCase().trim();
+
+    if (token) {
+      const { valid } = verifyOwnerSessionToken(token, cleanCode);
+      if (!valid) {
+        return NextResponse.json({ error: "Session expired or invalid" }, { status: 401 });
+      }
+    }
+
+    const db = createAdminClient();
+    let client: any = null;
+    let pageConfig: any = null;
+    let tag: any = null;
+
+    if (db) {
+      client = await fetchClientRecord(db, cleanCode);
+      const [pRes, tRes] = await Promise.all([
+        db.from("page_editor_configs").select("*").or(`tag_id.ilike.${cleanCode},business_id.ilike.${cleanCode}`).is("deleted_at", null).limit(1).maybeSingle(),
+        db.from("qr_nfc_tags").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).limit(1).maybeSingle(),
+      ]);
+      pageConfig = pRes?.data;
+      tag = tRes?.data;
+    }
+
+    if (!client) {
+      const allClients = getAllClients();
+      client = allClients.find(
+        (c) => c.business_id.toLowerCase() === cleanCode || c.id.toLowerCase() === cleanCode
+      );
+      if (!client && (cleanCode === "st3" || cleanCode === "zentap")) {
+        client = allClients.find((c) => c.business_id === "ZT-0004");
+      }
+    }
+
+    const businessId = client?.business_id || pageConfig?.business_id || tag?.business_id || cleanCode.toUpperCase();
+    const stats = getBusinessAnalytics(cleanCode);
+
+    const cfg = pageConfig?.config_data || {};
+    const effectiveName = client?.business_name || cfg.title || pageConfig?.business_name || "ZenTap Business";
+    const effectiveCity = client?.city || cfg.city || "Ahmedabad";
+    const effectiveOwnerName = client?.owner_name || "";
+    const effectivePhone = client?.owner_phone || cfg.phone || "";
+    const effectiveEmail = client?.owner_email || cfg.email || "";
+    const effectiveWhatsapp = client?.whatsapp || cfg.whatsapp || "";
+    const effectiveReviewUrl = client?.google_review_link || cfg.google_link || "";
+    const effectiveInstagram = client?.instagram_link || cfg.instagram || "";
+    const effectiveFacebook = client?.facebook_link || cfg.facebook || "";
+    const effectiveWebsite = client?.custom_fields?.website || cfg.website || "";
+    const effectiveCategory = client?.custom_fields?.category || client?.custom_fields?.subtitle || cfg.subtitle || cfg.category || "";
+    const effectiveAddress = client?.custom_fields?.directions || client?.custom_fields?.address || cfg.address || "";
+
+    return NextResponse.json({
+      success: true,
+      client,
+      business: {
+        id: businessId,
+        name: effectiveName,
+        slug: cleanCode,
+        city: effectiveCity,
+        owner_name: effectiveOwnerName,
+        phone: effectivePhone,
+        email: effectiveEmail,
+        whatsapp_number: effectiveWhatsapp,
+        whatsapp_message: tag?.whatsapp_message || "Hello, I am reaching out regarding your business services.",
+        google_review_link: effectiveReviewUrl,
+        review_url: effectiveReviewUrl,
+        instagram_url: effectiveInstagram,
+        facebook_url: effectiveFacebook,
+        website_url: effectiveWebsite,
+        category: effectiveCategory,
+        address: effectiveAddress,
+      },
+      stats: {
+        totalScans: stats.totalScans || 0,
+        nfcScans: stats.nfcScans || 0,
+        qrScans: stats.qrScans || 0,
+        reviewClicks: stats.reviewClicks || 0,
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Failed to load client details" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -57,7 +211,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Account temporarily locked due to multiple failed attempts. Try again in 30 minutes." }, { status: 401 });
     }
 
-    // 2. Locate Client, Page Config, Tag & Business
+    // 2. Locate Client, Page Config, Tag & Business (Clients table is Source of Truth)
     let tag: any = null;
     let business: any = null;
     let client: any = null;
@@ -67,42 +221,18 @@ export async function POST(req: NextRequest) {
     if (db) {
       try {
         // A. Direct lookup in clients table
-        const { data: cData } = await db
-          .from("clients")
-          .select("*")
-          .or(`business_id.ilike.${cleanCode},id.ilike.${cleanCode}`)
-          .is("deleted_at", null)
-          .maybeSingle();
-        if (cData) client = cData;
+        client = await fetchClientRecord(db, cleanCode);
 
-        // B. Look up page_editor_configs, qr_nfc_tags, and google_review_links in parallel
-        const [pRes, qrRes, grlRes] = await Promise.all([
-          db.from("page_editor_configs").select("*").or(`tag_id.ilike.${cleanCode},business_id.ilike.${cleanCode}`).is("deleted_at", null).maybeSingle(),
-          db.from("qr_nfc_tags").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).maybeSingle(),
-          db.from("google_review_links").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).maybeSingle(),
+        // B. Look up page_editor_configs and qr_nfc_tags in parallel
+        const [pRes, qrRes] = await Promise.all([
+          db.from("page_editor_configs").select("*").or(`tag_id.ilike.${cleanCode},business_id.ilike.${cleanCode}`).is("deleted_at", null).limit(1).maybeSingle(),
+          db.from("qr_nfc_tags").select("*").ilike("tag_id", cleanCode).is("deleted_at", null).limit(1).maybeSingle(),
         ]);
 
         if (pRes?.data) pageConfig = pRes.data;
         if (qrRes?.data) tag = qrRes.data;
 
-        // C. If client not found yet, map via tag/pageConfig/grl business_id
-        const mappedBizId =
-          tag?.business_id ||
-          pageConfig?.business_id ||
-          grlRes?.data?.business_id ||
-          (cleanCode === "st3" || cleanCode === "zentap" ? "ZT-0004" : null);
-
-        if (!client && mappedBizId) {
-          const { data: linkedClient } = await db
-            .from("clients")
-            .select("*")
-            .or(`business_id.ilike.${mappedBizId},id.ilike.${mappedBizId}`)
-            .is("deleted_at", null)
-            .maybeSingle();
-          if (linkedClient) client = linkedClient;
-        }
-
-        // D. Look up legacy tags & businesses
+        // C. Look up legacy tags & businesses
         const { data: dbTag } = await db
           .from("tags")
           .select("*, businesses (*)")
@@ -112,16 +242,6 @@ export async function POST(req: NextRequest) {
         if (dbTag) {
           if (!tag) tag = dbTag;
           business = dbTag.businesses;
-          if (!client && (dbTag.business_id || dbTag.businesses?.id)) {
-            const bId = dbTag.business_id || dbTag.businesses?.id;
-            const { data: bClient } = await db
-              .from("clients")
-              .select("*")
-              .or(`business_id.ilike.${bId},id.ilike.${bId}`)
-              .is("deleted_at", null)
-              .maybeSingle();
-            if (bClient) client = bClient;
-          }
         } else {
           const { data: dbBiz } = await db
             .from("businesses")
@@ -136,15 +256,6 @@ export async function POST(req: NextRequest) {
               .eq("business_id", dbBiz.id)
               .maybeSingle();
             if (bTag && !tag) tag = bTag;
-            if (!client) {
-              const { data: bClient } = await db
-                .from("clients")
-                .select("*")
-                .or(`business_id.ilike.${dbBiz.id},id.ilike.${dbBiz.id}`)
-                .is("deleted_at", null)
-                .maybeSingle();
-              if (bClient) client = bClient;
-            }
           }
         }
       } catch (err) {
@@ -245,6 +356,7 @@ export async function POST(req: NextRequest) {
       success: true,
       token,
       expiresAt,
+      client: client || null,
       tag: {
         id: tag?.id || businessId,
         code: tag?.code || pageConfig?.tag_id || cleanCode,

@@ -1,5 +1,54 @@
 # ZenTap — Changelog
 
+## [1.54.17] — 2026-11-09
+### Enhanced (Review Assistant White-Labeling & Dynamic Review Length Customizer)
+- **Zero AI Model Exposure on Customer Review Page (`ZenTapReviewAssistant.tsx`)**:
+  - Removed all mentions and badges of specific AI models (`Google Gemini`, `gemini-3.5-flash-lite`, and raw provider labels) from the customer-facing Google Review generation page.
+  - Replaced the model badge near "Review Suggestions" with a neutral, polished `Smart Suggestions` indicator with pulse dot.
+  - White-labeled customer review drafting to ensure clean brand presentation without exposing backend AI engine providers to end customers.
+- **Dynamic Review Length Customizer (`ZenTapReviewAssistant.tsx`, `reviewService.ts`)**:
+  - Added tactile review length selector buttons (`Short`, `Medium`, `Detailed`) directly below the "Selected Review Draft" textarea.
+  - Tapping a length option instantly reformats and regenerates the selected review draft to the chosen density (1–2 sentences for Short, 3–4 sentences for Medium, and comprehensive in-depth feedback for Detailed).
+  - Maintained mobile-first tactile styling with `.tactile-btn`, `active:scale-[0.978]`, and subtle active glow.
+
+## [1.54.16] — 2026-11-09
+### Added & Enhanced (Page Editor 8 Themes, Typography Studio, ST3 & zentap Cross-Sync, NFC Station Badge Removal)
+- **NFC Station Badge Removal (`ZenTapHubPage.tsx`, `PageEditorWebpageTab.tsx`)**:
+  - Removed the "NFC Station" pill badge overlay from the bottom-right of the "Our Studio Location" image banner across both customer-facing pages and the Page Editor phone mockup, providing a clean, uncluttered banner display.
+- **Standee & Demo Identical Cross-Synchronization (`/t/ST3` & `/r/zentap?preview=1`)**:
+  - Connected `/t/ST3` and `/r/zentap?preview=1` so that edits to the `ST3` standee configuration in the Page Editor or Business Owner Panel instantly propagate to `/r/zentap?preview=1` and its review assistant.
+  - Implemented automatic sister tag dual-save in `PageEditorWebpageTab.tsx` whenever saving `ST3`, `zentap`, or `ZT-0004`, ensuring both database records remain completely identical.
+  - Updated `/r/[slug]/page.tsx` and `/r/[slug]/review/page.tsx` to symmetrically resolve the latest updated record among `st3`, `zentap`, and `ZT-0004`.
+- **Comprehensive Page Customization Suite (`PageEditorWebpageTab.tsx`, `ZenTapHubPage.tsx`, `ZenTapReviewAssistant.tsx`)**:
+  - **8 Curated Visual Themes**: Expanded theme presets to 8 palettes with matching fonts, borders, glow, and card styling:
+    1. `Obsidian Dark` (`obsidian`): Pitch dark canvas with warm glowing amber accents.
+    2. `Slate Minimal` (`slate`): Modern cool slate with electric cyan highlights.
+    3. `Emerald Luxe` (`emerald`): Forest jade velvet with mint emerald highlights.
+    4. `Sunset Amber` (`sunset`): Deep espresso dusk with vibrant flame accents.
+    5. `Royal Indigo` (`royal_indigo`): Deep midnight indigo with luminous electric violet highlights.
+    6. `Midnight Rose` (`midnight_rose`): Deep plum velvet with radiant ruby rose highlights.
+    7. `Champagne Gold` (`champagne_gold`): Royal black tie with rich 24K gold accents.
+    8. `Pure Light` (`clean_light`): Crisp clean alabaster white with warm orange accents.
+  - **Typography & Font Family Selection**: Added 6 Google Fonts (`Outfit`, `Inter`, `Plus Jakarta Sans`, `Poppins`, `Playfair Display`, `Space Grotesk`) with live font sample previews on each button.
+  - **Font Size & Scale Selector**: Added `Compact` (13px dense), `Standard` (15px normal), and `Large` (17px high-vis accessibility) options.
+  - **Accent Highlight Color Picker**: Added 7 curated color presets (`Amber Gold #f59e0b`, `Sky Cyan #38bdf8`, `Emerald Mint #10b981`, `Sunset Orange #f97316`, `Royal Indigo #818cf8`, `Ruby Rose #fb7185`, `24K Gold #eab308`), custom hex input, HTML5 color swatch picker, and "Reset to Theme Default".
+  - **Live Interactive Phone Mockup**: Real-time rendering of chosen theme, font, font-size scale, and accent color inside the interactive smartphone phone mockup.
+  - **Mobile-First Theme Harmonization**: Enhanced `ZenTapHubPage.tsx` so all cards (About Us, Operating Hours, FAQs, Social Grid) seamlessly adapt to theme backgrounds and cards, ensuring light mode and all color palettes render without awkward hardcoded dark colors.
+
+## [1.54.15] — 2026-11-09
+### Enhanced (Business Owner Panel & Clients Table Synchronization with Live Page Population)
+- **Business Owner Panel Clients Table Synchronization (`OwnerAccessModal.tsx`, `/api/card/verify`, `/api/card/update`)**:
+  - Fixed database lookup queries that previously attempted `id.ilike` on Postgres UUID columns (error `42883`), ensuring client records are accurately loaded from the `clients` table upon login and modal open.
+  - Added `GET /api/card/verify` endpoint allowing authenticated owner panels to fetch live, un-cached merchant data directly from the `clients` table.
+  - Resolved `PGRST116` error during updates by replacing singular `maybeSingle()` queries on `page_editor_configs` with comprehensive multi-row updates, keeping all linked configs in sync.
+  - Safe database column handling: wrapped `custom_fields` updates so environments where `custom_fields` is absent cleanly update core fields (`business_name`, `city`, `owner_name`, `owner_phone`, `whatsapp`, `google_review_link`, `instagram_link`, `facebook_link`) without failing with `PGRST204`.
+  - Full cross-table database propagation: Saving in the Business Owner Panel now atomically updates `clients`, `page_editor_configs`, `qr_nfc_tags`, `google_review_links`, and `businesses`.
+- **Live Real-Time Page Population (`ZenTapHubPage.tsx`, `ZenTapReviewAssistant.tsx`)**:
+  - Added real-time event listeners (`zentap_client_updated` and `zentap_page_editor_updated`) to `<ZenTapHubPage />` and `<ZenTapReviewAssistant />`.
+  - When the business owner edits and clicks "Save & Publish Live", changes immediately populate on the active page without requiring a manual browser refresh, matching the instant feedback behavior of the Page Editor.
+  - Removed unconditional hardcoded demo overrides for Google Review links when custom links are provided in the client record.
+  - Synchronized browser `localStorage` platform stores (`KEY_CLIENTS`, `KEY_PAGE_EDITOR_CONFIGS`, `hubDesignStore`) upon save so that navigating between tabs or reloading immediately reflects updated data.
+
 ## [1.54.14] — 2026-11-06
 ### Security (Admin Session Auto-Signout Inactivity Policy, RLS Lockdown, Short Icon Login Button & Live Model Diagnostics)
 - **Admin Inactivity Auto-Signout Policy (`src/context/AuthContext.tsx`, `PlatformSettingsTab.tsx`, `admin/login/page.tsx`)**:

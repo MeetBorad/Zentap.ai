@@ -89,6 +89,59 @@ export default function ZenTapHubPage({
 }: ZenTapHubPageProps) {
   const [design, setDesign] = useState<PageDesignRecord>(initialDesign);
   const [localConfig, setLocalConfig] = useState<any>(initialPageConfig || {});
+  const [liveBusiness, setLiveBusiness] = useState<BusinessRecord>(business);
+
+  useEffect(() => {
+    setLiveBusiness(business);
+  }, [business]);
+
+  // Real-time synchronization: listen to client or page editor updates from Owner Panel
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      if (e?.detail) {
+        const u = e.detail;
+        setLiveBusiness((prev: any) => ({
+          ...prev,
+          name: u.name || prev.name,
+          city: u.city || prev.city,
+          category: u.category || prev.category,
+          phone: u.phone || prev.phone,
+          whatsapp: u.whatsapp_number || prev.whatsapp,
+          whatsapp_number: u.whatsapp_number || prev.whatsapp_number,
+          google_review_link: u.google_review_link || prev.google_review_link,
+          review_url: u.google_review_link || prev.review_url,
+          instagram: u.instagram_url || prev.instagram,
+          instagram_url: u.instagram_url || prev.instagram_url,
+          facebook: u.facebook_url || prev.facebook,
+          facebook_url: u.facebook_url || prev.facebook_url,
+          website: u.website || prev.website,
+          website_url: u.website || prev.website_url,
+          address: u.address || prev.address,
+        }));
+        setLocalConfig((prev: any) => ({
+          ...prev,
+          title: u.name || prev.title,
+          city: u.city || prev.city,
+          subtitle: u.category || prev.subtitle,
+          category: u.category || prev.category,
+          phone: u.phone || prev.phone,
+          whatsapp: u.whatsapp_number || prev.whatsapp,
+          google_link: u.google_review_link || prev.google_link,
+          instagram: u.instagram_url || prev.instagram,
+          facebook: u.facebook_url || prev.facebook,
+          website: u.website || prev.website,
+          address: u.address || prev.address,
+        }));
+      }
+    };
+
+    window.addEventListener("zentap_client_updated", handleUpdate);
+    window.addEventListener("zentap_page_editor_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("zentap_client_updated", handleUpdate);
+      window.removeEventListener("zentap_page_editor_updated", handleUpdate);
+    };
+  }, []);
 
   // Client hydration: fetch latest config from local storage ONLY when in admin preview mode
   // or when initialPageConfig was not preloaded by the server. On live public scans (mobile NFC/QR),
@@ -126,19 +179,19 @@ export default function ZenTapHubPage({
 
   // Merge attributes from page config, business record, or default showcase
   const cfg = localConfig || {};
-  const isZenTapDemo = (business.slug || "").toLowerCase() === "zentap" || business.id === "sample-demo-biz-01";
+  const isZenTapDemo = (liveBusiness.slug || "").toLowerCase() === "zentap" || liveBusiness.id === "sample-demo-biz-01";
 
-  const businessName = cfg.title || business.name || "ZenTap Digital Solutions";
-  const subtitle = cfg.subtitle || cfg.category || business.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
-  const address = cfg.address || business.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
+  const businessName = liveBusiness.name || cfg.title || "ZenTap Digital Solutions";
+  const subtitle = liveBusiness.category || cfg.subtitle || cfg.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
+  const address = liveBusiness.address || cfg.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
-  const mapsUrl = cfg.maps_link || business.maps_link || business.gbp_link || business.google_review_link || business.review_url || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
-  const googleReviewLink = (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || cfg.google_link || business.google_review_link || business.review_url || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  const mapsUrl = liveBusiness.maps_link || liveBusiness.gbp_link || liveBusiness.google_review_link || liveBusiness.review_url || cfg.maps_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
+  const googleReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
 
-  const phone = cfg.phone || business.phone || (isZenTapDemo ? "+91 92745 60880" : "");
+  const phone = liveBusiness.phone || cfg.phone || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanPhone = phone ? phone.replace(/[^0-9+]/g, "") : "";
 
-  const whatsapp = cfg.whatsapp || business.whatsapp || business.whatsapp_number || (isZenTapDemo ? "+91 92745 60880" : "");
+  const whatsapp = liveBusiness.whatsapp || liveBusiness.whatsapp_number || cfg.whatsapp || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
   const displayWhatsApp = cleanWhatsApp.length === 12 && cleanWhatsApp.startsWith("91")
     ? `+91 ${cleanWhatsApp.slice(2, 7)} ${cleanWhatsApp.slice(7)}`
@@ -146,9 +199,9 @@ export default function ZenTapHubPage({
     ? `+91 ${cleanWhatsApp.slice(0, 5)} ${cleanWhatsApp.slice(5)}`
     : (whatsapp.startsWith("+") ? whatsapp : (cleanWhatsApp ? `+${cleanWhatsApp}` : "+91 92745 60880"));
 
-  const instagramRaw = cfg.instagram || business.instagram || business.instagram_url || (isZenTapDemo ? "https://instagram.com/zentapdigitalsolutions" : "");
+  const instagramRaw = liveBusiness.instagram || liveBusiness.instagram_url || cfg.instagram || (isZenTapDemo ? "https://instagram.com/zentapdigitalsolutions" : "");
   let instagramUrl = instagramRaw;
-  let instagramHandle = business.instagram_handle || (isZenTapDemo ? "@zentapdigitalsolutions" : "");
+  let instagramHandle = liveBusiness.instagram_handle || (isZenTapDemo ? "@zentapdigitalsolutions" : "");
 
   if (isZenTapDemo && (!instagramUrl || instagramUrl === "https://instagram.com" || instagramUrl === "https://instagram.com/")) {
     instagramUrl = "https://instagram.com/zentapdigitalsolutions";
@@ -165,18 +218,18 @@ export default function ZenTapHubPage({
       if (match && match[1]) {
         instagramHandle = `@${match[1]}`;
       } else if (!instagramHandle || instagramHandle === "@instagram") {
-        instagramHandle = isZenTapDemo ? "@zentapdigitalsolutions" : `@${business.slug || "instagram"}`;
+        instagramHandle = isZenTapDemo ? "@zentapdigitalsolutions" : `@${liveBusiness.slug || "instagram"}`;
       }
     }
   }
 
-  const facebookUrl = cfg.facebook || business.facebook || business.facebook_url || (isZenTapDemo ? "https://facebook.com" : "");
+  const facebookUrl = liveBusiness.facebook || liveBusiness.facebook_url || cfg.facebook || (isZenTapDemo ? "https://facebook.com" : "");
 
-  const websiteRaw = cfg.website || business.website || business.website_url || business.portfolio_url || (isZenTapDemo ? "https://zentapdigitalsolutions.com" : "");
+  const websiteRaw = liveBusiness.website || liveBusiness.website_url || liveBusiness.portfolio_url || cfg.website || (isZenTapDemo ? "https://zentapdigitalsolutions.com" : "");
   const websiteUrl = websiteRaw ? (websiteRaw.startsWith("http") ? websiteRaw : `https://${websiteRaw}`) : "";
   const displayWebsite = websiteRaw ? websiteRaw.replace(/^https?:\/\//i, "").replace(/\/$/, "") : "";
 
-  const email = cfg.email || business.email || (isZenTapDemo ? "contact@zentapdigitalsolutions.com" : "");
+  const email = liveBusiness.email || cfg.email || (isZenTapDemo ? "contact@zentapdigitalsolutions.com" : "");
 
   const logoUrl = cfg.logo_url || design.logo_url || business.logo_url || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png");
 
@@ -211,7 +264,11 @@ export default function ZenTapHubPage({
     design.theme_preset === 'emerald_luxe' ? 'emerald' :
     design.theme_preset === 'midnight_amber' ? 'sunset' :
     design.theme_preset === 'clean_minimal' ? 'clean_light' :
-    design.theme_preset === 'modern_slate' ? 'slate' : 'obsidian'
+    design.theme_preset === 'modern_slate' ? 'slate' :
+    design.theme_preset === 'royal_indigo' ? 'royal_indigo' :
+    design.theme_preset === 'midnight_rose' ? 'midnight_rose' :
+    design.theme_preset === 'champagne_gold' ? 'champagne_gold' :
+    'obsidian'
   );
 
   const hubTheme = useMemo(() => {
@@ -227,6 +284,7 @@ export default function ZenTapHubPage({
           rim: "via-[#38bdf8]",
           glow1: "bg-[#38bdf8]/15",
           btnGradient: "from-sky-500 via-sky-400 to-sky-500",
+          accentHex: "#38bdf8",
         };
       case "emerald":
         return {
@@ -239,6 +297,7 @@ export default function ZenTapHubPage({
           rim: "via-[#10b981]",
           glow1: "bg-[#10b981]/15",
           btnGradient: "from-emerald-500 via-emerald-400 to-emerald-500",
+          accentHex: "#10b981",
         };
       case "sunset":
         return {
@@ -251,6 +310,46 @@ export default function ZenTapHubPage({
           rim: "via-[#f97316]",
           glow1: "bg-[#f97316]/15",
           btnGradient: "from-orange-500 via-amber-400 to-orange-500",
+          accentHex: "#f97316",
+        };
+      case "royal_indigo":
+        return {
+          wrapper: "bg-[#0c0f24] text-[#eef2ff]",
+          card: "bg-[#151b3b]/90 border-indigo-500/20 text-[#eef2ff]",
+          inner: "bg-[#1f2756] text-[#eef2ff] border border-indigo-400/10",
+          textColor: "text-[#eef2ff]",
+          textMuted: "text-[#a5b4fc]",
+          accentText: "text-[#818cf8]",
+          rim: "via-[#6366f1]",
+          glow1: "bg-[#6366f1]/15",
+          btnGradient: "from-indigo-600 via-indigo-500 to-purple-600",
+          accentHex: "#6366f1",
+        };
+      case "midnight_rose":
+        return {
+          wrapper: "bg-[#1a0b16] text-[#fdf2f8]",
+          card: "bg-[#2a1223]/90 border-pink-500/20 text-[#fdf2f8]",
+          inner: "bg-[#401a35] text-[#fdf2f8] border border-pink-400/10",
+          textColor: "text-[#fdf2f8]",
+          textMuted: "text-[#f472b6]",
+          accentText: "text-[#fb7185]",
+          rim: "via-[#f43f5e]",
+          glow1: "bg-[#f43f5e]/15",
+          btnGradient: "from-rose-500 via-pink-500 to-rose-600",
+          accentHex: "#f43f5e",
+        };
+      case "champagne_gold":
+        return {
+          wrapper: "bg-[#12100b] text-[#fefce8]",
+          card: "bg-[#1f1c14]/90 border-amber-400/25 text-[#fefce8]",
+          inner: "bg-[#2f2a1e] text-[#fefce8] border border-amber-300/15",
+          textColor: "text-[#fefce8]",
+          textMuted: "text-[#fde047]",
+          accentText: "text-[#eab308]",
+          rim: "via-[#eab308]",
+          glow1: "bg-[#eab308]/15",
+          btnGradient: "from-amber-500 via-yellow-400 to-amber-600",
+          accentHex: "#eab308",
         };
       case "clean_light":
         return {
@@ -263,6 +362,7 @@ export default function ZenTapHubPage({
           rim: "via-amber-500",
           glow1: "bg-amber-500/10",
           btnGradient: "from-amber-500 via-amber-400 to-amber-500",
+          accentHex: "#ea580c",
         };
       case "obsidian":
       default:
@@ -276,9 +376,55 @@ export default function ZenTapHubPage({
           rim: "via-[#f59e0b]",
           glow1: "bg-[#f59e0b]/10",
           btnGradient: "from-amber-500 via-amber-400 to-amber-500",
+          accentHex: "#f59e0b",
         };
     }
   }, [effectiveTheme]);
+
+  // Typography & Custom Styling
+  const effectiveFont = cfg.font || "Outfit";
+  const fontFamilies: Record<string, string> = {
+    Outfit: "'Outfit', sans-serif",
+    Inter: "'Inter', sans-serif",
+    "Plus Jakarta Sans": "'Plus Jakarta Sans', sans-serif",
+    Poppins: "'Poppins', sans-serif",
+    "Playfair Display": "'Playfair Display', Georgia, serif",
+    "Space Grotesk": "'Space Grotesk', sans-serif",
+  };
+  const activeFontFamily = fontFamilies[effectiveFont] || "'Outfit', sans-serif";
+
+  const effectiveFontSize = cfg.font_size || "default";
+  const sizeScaleClasses = {
+    compact: {
+      root: "text-[13.5px]",
+      h1: "text-base sm:text-[17px]",
+      cardTitle: "text-xs font-bold",
+      body: "text-xs leading-normal",
+      ctaTitle: "text-base font-bold",
+    },
+    default: {
+      root: "text-sm sm:text-[15px]",
+      h1: "text-base sm:text-lg",
+      cardTitle: "text-sm font-bold",
+      body: "text-xs sm:text-[13px] leading-relaxed",
+      ctaTitle: "text-base sm:text-lg font-bold",
+    },
+    large: {
+      root: "text-base sm:text-[16.5px]",
+      h1: "text-lg sm:text-xl",
+      cardTitle: "text-base font-bold",
+      body: "text-sm sm:text-[14.5px] leading-relaxed",
+      ctaTitle: "text-lg sm:text-xl font-bold",
+    },
+  }[effectiveFontSize as "compact" | "default" | "large"] || {
+    root: "text-sm sm:text-[15px]",
+    h1: "text-base sm:text-lg",
+    cardTitle: "text-sm font-bold",
+    body: "text-xs sm:text-[13px] leading-relaxed",
+    ctaTitle: "text-base sm:text-lg font-bold",
+  };
+
+  const finalAccentHex = (cfg.accent_color || "").trim() || hubTheme.accentHex;
 
   // Modal & Interactive Review States
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -427,17 +573,17 @@ export default function ZenTapHubPage({
 
   return (
     <div 
-      className={`${hubTheme.wrapper} min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden`}
-      style={{ fontFamily: "'Outfit', sans-serif" }}
+      className={`${hubTheme.wrapper} ${sizeScaleClasses.root} min-h-screen selection:bg-[#f59e0b] selection:text-[#2a1700] relative overflow-x-hidden`}
+      style={{ fontFamily: activeFontFamily }}
     >
       <main className="w-full min-h-screen pt-4 relative">
         <div className="flex flex-col w-full relative">
           
           {/* Ambient Living Mesh Backdrops */}
           <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-            <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#f59e0b]/10 rounded-full blur-[110px] animate-pulse" />
-            <div className="absolute top-[480px] -left-20 w-[360px] h-[360px] bg-[#03b5d3]/10 rounded-full blur-[90px]" />
-            <div className="absolute bottom-20 -right-20 w-[420px] h-[420px] bg-[#ffc174]/10 rounded-full blur-[100px]" />
+            <div className={`absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] ${hubTheme.glow1} rounded-full blur-[110px] animate-pulse`} />
+            <div className="absolute top-[480px] -left-20 w-[360px] h-[360px] bg-cyan-500/10 rounded-full blur-[90px]" />
+            <div className="absolute bottom-20 -right-20 w-[420px] h-[420px] bg-amber-500/10 rounded-full blur-[100px]" />
           </div>
 
           {/* Mobile Hub Shell */}
@@ -467,7 +613,7 @@ export default function ZenTapHubPage({
                   </div>
 
                   <div className="flex flex-col min-w-0">
-                    <h1 className={`font-bold text-base sm:text-lg ${hubTheme.textColor || "text-white"} leading-snug`}>
+                    <h1 className={`font-bold ${sizeScaleClasses.h1} ${hubTheme.textColor || "text-white"} leading-snug`}>
                       {businessName}
                     </h1>
                     {subtitle && (
@@ -483,7 +629,7 @@ export default function ZenTapHubPage({
                         target="_blank"
                         onClick={() => trackClick("address_pin")}
                       >
-                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: finalAccentHex }} />
                         <span className="truncate">{address}</span>
                       </a>
                     )}
@@ -500,7 +646,7 @@ export default function ZenTapHubPage({
                       href={`tel:${cleanPhone}`}
                       onClick={() => trackClick("call_quick")}
                     >
-                      <Phone className="w-4 h-4 text-[#ffc174]" />
+                      <Phone className="w-4 h-4" style={{ color: finalAccentHex }} />
                       <span>Call Us</span>
                     </a>
                   )}
@@ -512,7 +658,7 @@ export default function ZenTapHubPage({
                       target="_blank"
                       onClick={() => trackClick("directions_quick")}
                     >
-                      <Navigation className="w-4 h-4 text-[#4cd7f6]" />
+                      <Navigation className="w-4 h-4 text-cyan-400" />
                       <span>Directions</span>
                     </a>
                   )}
@@ -523,29 +669,35 @@ export default function ZenTapHubPage({
             {/* 2. Google Review Main Trigger Banner */}
             <a 
               href={`/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`}
-              className="relative group cursor-pointer overflow-hidden rounded-2xl bg-gradient-to-br from-[#121824] via-[#262a33] to-[#121824] p-4 shadow-xl transition-all duration-300 hover:shadow-[#f59e0b]/20 hover:scale-[1.01] active:scale-[0.99] border border-white/5 block text-left" 
+              className={`relative group cursor-pointer overflow-hidden rounded-2xl ${hubTheme.card} p-4 shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] border block text-left`} 
               onClick={() => trackClick("review_banner")}
             >
-              <div className="absolute -right-8 -top-8 w-28 h-28 bg-[#f59e0b]/15 rounded-full blur-2xl group-hover:bg-[#f59e0b]/25 transition-all" />
+              <div
+                className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-20 group-hover:opacity-35 transition-all pointer-events-none"
+                style={{ backgroundColor: finalAccentHex }}
+              />
               <div className="flex items-center justify-between relative z-10">
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-5 h-5 text-[#ffc174] fill-[#ffc174]" />
-                    <span className="text-base sm:text-lg text-[#F8FAFC] font-bold">
+                    <Sparkles className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
+                    <span className={`${sizeScaleClasses.ctaTitle} ${hubTheme.textColor || "text-white"}`}>
                       Loved your visit?
                     </span>
                   </div>
-                  <span className="text-xs text-[#94A3B8]">
+                  <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"}`}>
                     {cfg.cta_text || "Tap to write a rapid 5-Star Google Review"}
                   </span>
-                  <div className="flex items-center gap-1 mt-1 text-[#ffc174]">
+                  <div className="flex items-center gap-1 mt-1">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-4 h-4 fill-[#ffc174] text-[#ffc174]" />
+                      <Star key={s} className="w-4 h-4 fill-current" style={{ color: finalAccentHex }} />
                     ))}
-                    <span className="text-xs text-[#ffb95f] ml-1 font-semibold">5.0 Rating</span>
+                    <span className="text-xs ml-1 font-semibold" style={{ color: finalAccentHex }}>5.0 Rating</span>
                   </div>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-[#f59e0b] text-[#2a1700] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0"
+                  style={{ backgroundColor: finalAccentHex }}
+                >
                   <Star className="w-6 h-6 fill-black text-black" />
                 </div>
               </div>
@@ -555,7 +707,7 @@ export default function ZenTapHubPage({
             {hasSocialChannels && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-bold">
+                  <span className={`text-[11px] uppercase tracking-wider ${hubTheme.textMuted || "text-zinc-400"} font-bold`}>
                     Connect &amp; Social Channels
                   </span>
                 </div>
@@ -564,22 +716,22 @@ export default function ZenTapHubPage({
                   {/* WhatsApp Contact */}
                   {cleanWhatsApp && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5 cursor-pointer"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
                       href={`https://wa.me/${cleanWhatsApp}?text=${encodeURIComponent(business.whatsapp_message || `Hi ${businessName}`)}`}
                       rel="noopener noreferrer" 
                       target="_blank"
                       onClick={() => trackClick("whatsapp")}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#10B981]/20 flex items-center justify-center text-[#10B981] transition-colors shrink-0">
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#10B981]/20 flex items-center justify-center text-[#10B981] transition-colors shrink-0`}>
                         <svg className="w-5 h-5 text-emerald-400 fill-current" viewBox="0 0 24 24">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
                         </svg>
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#10B981] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#10B981] truncate transition-colors`}>
                           WhatsApp
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate font-medium">
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate font-medium`}>
                           {displayWhatsApp}
                         </span>
                       </div>
@@ -589,7 +741,7 @@ export default function ZenTapHubPage({
                   {/* Instagram */}
                   {instagramUrl && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5 cursor-pointer"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border cursor-pointer`}
                       href={instagramUrl}
                       rel="noopener noreferrer" 
                       target="_blank"
@@ -601,10 +753,10 @@ export default function ZenTapHubPage({
                         </svg>
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#ffc174] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#ffc174] truncate transition-colors`}>
                           Instagram
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate font-medium">
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate font-medium`}>
                           {instagramHandle || "@zentapdigitalsolutions"}
                         </span>
                       </div>
@@ -614,18 +766,18 @@ export default function ZenTapHubPage({
                   {/* Direct Phone Call */}
                   {phone && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={`tel:${cleanPhone}`}
                       onClick={() => trackClick("call_office")}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0">
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0`}>
                         <Phone className="w-5 h-5 fill-current" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#4cd7f6] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#4cd7f6] truncate transition-colors`}>
                           Call Office
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">{phone}</span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{phone}</span>
                       </div>
                     </a>
                   )}
@@ -633,22 +785,22 @@ export default function ZenTapHubPage({
                   {/* Facebook */}
                   {facebookUrl && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={facebookUrl}
                       rel="noopener noreferrer" 
                       target="_blank"
                       onClick={() => trackClick("facebook")}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#acedff]/20 flex items-center justify-center text-[#acedff] transition-colors shrink-0">
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#acedff]/20 flex items-center justify-center text-[#acedff] transition-colors shrink-0`}>
                         <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                         </svg>
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#acedff] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#acedff] truncate transition-colors`}>
                           Facebook
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">Official Page</span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>Official Page</span>
                       </div>
                     </a>
                   )}
@@ -656,20 +808,20 @@ export default function ZenTapHubPage({
                   {/* Website */}
                   {websiteUrl && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={websiteUrl}
                       rel="noopener noreferrer" 
                       target="_blank"
                       onClick={() => trackClick("website")}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#ffc174]/20 flex items-center justify-center text-[#ffc174] transition-colors shrink-0">
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#ffc174]/20 flex items-center justify-center text-[#ffc174] transition-colors shrink-0`}>
                         <Globe className="w-5 h-5" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#ffc174] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#ffc174] truncate transition-colors`}>
                           Website
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">{displayWebsite}</span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{displayWebsite}</span>
                       </div>
                     </a>
                   )}
@@ -677,18 +829,18 @@ export default function ZenTapHubPage({
                   {/* Email */}
                   {email && (
                     <a 
-                      className="group flex items-center gap-3 p-3.5 rounded-xl bg-[#121824] hover:bg-[#1B2232] text-[#F8FAFC] transition-all duration-200 shadow-md active:scale-95 border border-white/5"
+                      className={`group flex items-center gap-3 p-3.5 rounded-xl ${hubTheme.card} hover:opacity-95 ${hubTheme.textColor || "text-white"} transition-all duration-200 shadow-md active:scale-95 border`}
                       href={`mailto:${email}`}
                       onClick={() => trackClick("email")}
                     >
-                      <div className="w-10 h-10 rounded-lg bg-[#262a33] group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0">
+                      <div className={`w-10 h-10 rounded-lg ${hubTheme.inner} group-hover:bg-[#4cd7f6]/20 flex items-center justify-center text-[#4cd7f6] transition-colors shrink-0`}>
                         <Mail className="w-5 h-5" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-semibold text-[#F8FAFC] group-hover:text-[#4cd7f6] truncate transition-colors">
+                        <span className={`text-xs font-semibold ${hubTheme.textColor || "text-white"} group-hover:text-[#4cd7f6] truncate transition-colors`}>
                           Email
                         </span>
-                        <span className="text-[11px] text-[#94A3B8] truncate">{email}</span>
+                        <span className={`text-[11px] ${hubTheme.textMuted || "text-zinc-400"} truncate`}>{email}</span>
                       </div>
                     </a>
                   )}
@@ -699,12 +851,12 @@ export default function ZenTapHubPage({
 
             {/* 4. About Us Section (Only shown if client provided text!) */}
             {aboutUsText && (
-              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2 shadow-lg border border-white/5">
+              <div className={`rounded-2xl ${hubTheme.card} p-4 sm:p-5 flex flex-col gap-2 shadow-lg border`}>
                 <div className="flex items-center gap-2">
-                  <Info className="w-5 h-5 text-[#ffc174] shrink-0" />
-                  <h2 className="text-sm font-bold text-[#F8FAFC]">About Us</h2>
+                  <Info className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
+                  <h2 className={`${sizeScaleClasses.cardTitle} ${hubTheme.textColor || "text-white"}`}>About Us</h2>
                 </div>
-                <p className="text-xs sm:text-[13px] text-[#dfe2ee] leading-relaxed">
+                <p className={`${sizeScaleClasses.body} ${hubTheme.textColor || "text-white"} opacity-90 leading-relaxed`}>
                   {aboutUsText}
                 </p>
               </div>
@@ -712,10 +864,10 @@ export default function ZenTapHubPage({
 
             {/* 5. Operating Hours Matrix (Only shown if client provided hours!) */}
             {openingHoursList.length > 0 && (
-              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border border-white/5">
+              <div className={`rounded-2xl ${hubTheme.card} p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border`}>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-[#4cd7f6] shrink-0" />
-                  <h2 className="text-sm font-bold text-[#F8FAFC]">Opening Hours</h2>
+                  <Clock className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <h2 className={`${sizeScaleClasses.cardTitle} ${hubTheme.textColor || "text-white"}`}>Opening Hours</h2>
                 </div>
                 <div className="flex flex-col gap-2 pt-1 text-xs">
                   {openingHoursList.map((line: string, idx: number) => {
@@ -724,14 +876,14 @@ export default function ZenTapHubPage({
                       const dayLabel = parts[0].trim();
                       const timeLabel = parts.slice(1).join(":").trim();
                       return (
-                        <div key={idx} className="flex items-center justify-between py-2 px-3 rounded-xl bg-[#1B2232] border border-white/5">
-                          <span className="text-[#F8FAFC] font-medium">{dayLabel}</span>
-                          <span className="text-[#ffddb8] font-semibold">{timeLabel}</span>
+                        <div key={idx} className={`flex items-center justify-between py-2 px-3 rounded-xl ${hubTheme.inner} border`}>
+                          <span className={`${hubTheme.textColor || "text-white"} font-medium`}>{dayLabel}</span>
+                          <span className="font-semibold" style={{ color: finalAccentHex }}>{timeLabel}</span>
                         </div>
                       );
                     }
                     return (
-                      <div key={idx} className="py-1.5 px-3 rounded-xl bg-[#1B2232] text-[#ffddb8] font-medium border border-white/5">
+                      <div key={idx} className={`py-1.5 px-3 rounded-xl ${hubTheme.inner} font-medium border`} style={{ color: finalAccentHex }}>
                         {line}
                       </div>
                     );
@@ -742,19 +894,19 @@ export default function ZenTapHubPage({
 
             {/* 6. Frequently Asked Questions (Only shown if client provided FAQs!) */}
             {faqsList.length > 0 && (
-              <div className="rounded-2xl bg-[#121824] p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border border-white/5">
+              <div className={`rounded-2xl ${hubTheme.card} p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border`}>
                 <div className="flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-[#c7c8ff] shrink-0" />
-                  <h2 className="text-sm font-bold text-[#F8FAFC]">Frequently Asked Questions</h2>
+                  <HelpCircle className="w-5 h-5 text-indigo-400 shrink-0" />
+                  <h2 className={`${sizeScaleClasses.cardTitle} ${hubTheme.textColor || "text-white"}`}>Frequently Asked Questions</h2>
                 </div>
                 <div className="flex flex-col gap-2">
                   {faqsList.map((faq, idx) => (
-                    <details key={idx} className="group rounded-xl bg-[#1B2232] p-3 cursor-pointer border border-white/5 transition-all">
-                      <summary className="flex items-center justify-between list-none text-xs font-semibold text-[#F8FAFC] select-none">
+                    <details key={idx} className={`group rounded-xl ${hubTheme.inner} p-3 cursor-pointer border transition-all`}>
+                      <summary className={`flex items-center justify-between list-none text-xs font-semibold ${hubTheme.textColor || "text-white"} select-none`}>
                         <span>{faq.question}</span>
-                        <ChevronDown className="w-4 h-4 text-[#94A3B8] group-open:rotate-180 transition-transform shrink-0" />
+                        <ChevronDown className={`w-4 h-4 ${hubTheme.textMuted || "text-zinc-400"} group-open:rotate-180 transition-transform shrink-0`} />
                       </summary>
-                      <div className="mt-2 text-[#94A3B8] text-[11px] leading-relaxed pt-1 border-t border-white/5">
+                      <div className={`mt-2 ${hubTheme.textMuted || "text-zinc-400"} text-[11px] leading-relaxed pt-1 border-t border-white/5`}>
                         {faq.answer}
                       </div>
                     </details>
@@ -767,12 +919,13 @@ export default function ZenTapHubPage({
             {(address || mapsUrl || locationImage) && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-bold">
+                  <span className={`text-[11px] uppercase tracking-wider ${hubTheme.textMuted || "text-zinc-400"} font-bold`}>
                     Our Studio Location
                   </span>
                   {mapsUrl && (
                     <a 
-                      className="text-[11px] text-[#ffc174] hover:underline font-semibold"
+                      className="text-[11px] hover:underline font-semibold"
+                      style={{ color: finalAccentHex }}
                       href={mapsUrl}
                       rel="noopener noreferrer" 
                       target="_blank"
@@ -783,39 +936,36 @@ export default function ZenTapHubPage({
                   )}
                 </div>
                 <div 
-                  className="w-full h-44 rounded-2xl shadow-lg relative overflow-hidden bg-[#121824] flex items-end p-3.5 border border-white/5"
+                  className={`w-full h-44 rounded-2xl shadow-lg relative overflow-hidden ${hubTheme.card} flex items-end p-3.5 border`}
                   style={{
                     backgroundImage: `url('${locationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}')`,
                     backgroundSize: "cover",
                     backgroundPosition: "center"
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F17] via-[#0B0F17]/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
                   <div className="relative z-10 flex items-center justify-between w-full">
                     <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <MapPin className="w-5 h-5 text-[#ffc174] shrink-0" />
-                      <span className="text-xs sm:text-sm text-[#F8FAFC] font-bold truncate">
+                      <MapPin className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
+                      <span className="text-xs sm:text-sm font-bold truncate text-white">
                         {locationTitle || address || "Our Studio Hub"}
                       </span>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-[#1B2232]/90 backdrop-blur-md text-[#F8FAFC] text-[10px] font-bold shadow shrink-0 border border-white/10">
-                      NFC Station
-                    </span>
                   </div>
                 </div>
               </div>
             )}
 
             {/* 8. Business Portal Trigger */}
-            <div className="rounded-2xl bg-[#1B2232] p-3.5 flex items-center justify-between shadow-md border border-white/5">
+            <div className={`rounded-2xl ${hubTheme.inner} p-3.5 flex items-center justify-between shadow-md border`}>
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#262a33] flex items-center justify-center text-[#ffc174] shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0" style={{ color: finalAccentHex }}>
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <span className="text-xs text-[#F8FAFC] font-medium">Business owner? Manage this card</span>
+                <span className={`text-xs ${hubTheme.textColor || "text-white"} font-medium`}>Business owner? Manage this card</span>
               </div>
               <button 
-                className="px-3.5 py-1.5 rounded-lg bg-[#262a33] hover:bg-[#353942] text-[#F8FAFC] text-xs font-semibold transition-colors cursor-pointer border border-white/5" 
+                className={`px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-colors cursor-pointer border border-white/10`} 
                 type="button"
                 onClick={() => setOwnerModalOpen(true)}
               >
@@ -1101,11 +1251,14 @@ export default function ZenTapHubPage({
         <OwnerAccessModal
           isOpen={ownerModalOpen}
           onClose={() => setOwnerModalOpen(false)}
-          tagCode={via || business.slug || "st3"}
-          businessSlug={business.slug || via || "st3"}
-          clientBusinessId={business.id}
-          initialBusinessName={business.name}
-          onDetailsUpdated={() => {
+          tagCode={via || liveBusiness.slug || "st3"}
+          businessSlug={liveBusiness.slug || via || "st3"}
+          clientBusinessId={liveBusiness.id}
+          initialBusinessName={businessName}
+          onDetailsUpdated={(updated) => {
+            if (updated) {
+              setLiveBusiness((prev) => ({ ...prev, ...updated }));
+            }
             if (typeof window !== "undefined") {
               setTimeout(() => {
                 window.location.reload();

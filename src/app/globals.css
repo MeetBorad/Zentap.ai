@@ -1,6 +1,8 @@
 /* Hallmark · macrostructure: Workbench + Bento Grid · genre: modern-minimal · theme: tactile-obsidian */
 /* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

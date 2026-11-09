@@ -23,7 +23,8 @@ import {
   AlertTriangle,
   ShoppingBag,
   Tag,
-  RefreshCw
+  RefreshCw,
+  Sliders,
 } from "lucide-react";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
@@ -54,6 +55,7 @@ export default function ZenTapReviewAssistant({
   const [isRotating, setIsRotating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(0);
+  const [reviewLength, setReviewLength] = useState<"short" | "medium" | "detailed">("medium");
   const [reviewDraft, setReviewDraft] = useState<string>("");
   const [copiedText, setCopiedText] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -70,12 +72,49 @@ export default function ZenTapReviewAssistant({
     source: "cloud_llm",
   });
 
-  const businessName = pageConfig?.title || business.name || "ZenTap Digital Solutions";
-  const city = business.city || "Ahmedabad";
-  const cleanPhone = (pageConfig?.phone || business.phone || "+919274560880").replace(/\s+/g, "");
-  const cleanWa = (pageConfig?.whatsapp || business.whatsapp || "919274560880").replace(/\D/g, "");
-  const logoUrl = pageConfig?.logo_url || business.logo_url || "/logo.png";
-  const locationImg = pageConfig?.location_image || business.location_image || "https://lh3.googleusercontent.com/aida-public/AB6AXuBn_TEaXs-VF4rFe0stnQgCYg0MynH2oOZeU9dQHGHuoFh5E1v447bVapRPDHEz1ipdX4vPRxNVokhF77GwXNQOBUmj2bF9oe3C9v4c8fmxU_3FFVdsBS5kiipfsNb3M4Va0GalihDkxwsGJYQ1UAhu0dnfybRD-0AXXNrCoLX5185-7q2BnTbJiEPNztNk2SqgMiYh9fYG9ajLfLogd4E4g_d8_f6s0AfohHb_Em7G";
+  const [liveBusiness, setLiveBusiness] = useState<BusinessRecord>(business);
+
+  useEffect(() => {
+    setLiveBusiness(business);
+  }, [business]);
+
+  // Real-time synchronization: listen to client or page editor updates from Owner Panel
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      if (e?.detail) {
+        const u = e.detail;
+        setLiveBusiness((prev) => ({
+          ...prev,
+          name: u.name || prev.name,
+          city: u.city || prev.city,
+          category: u.category || prev.category,
+          phone: u.phone || prev.phone,
+          whatsapp: u.whatsapp_number || prev.whatsapp,
+          whatsapp_number: u.whatsapp_number || prev.whatsapp_number,
+          google_review_link: u.google_review_link || prev.google_review_link,
+          review_url: u.google_review_link || prev.review_url,
+          instagram: u.instagram_url || prev.instagram,
+          facebook: u.facebook_url || prev.facebook,
+          website: u.website || prev.website,
+          address: u.address || prev.address,
+        }));
+      }
+    };
+
+    window.addEventListener("zentap_client_updated", handleUpdate);
+    window.addEventListener("zentap_page_editor_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("zentap_client_updated", handleUpdate);
+      window.removeEventListener("zentap_page_editor_updated", handleUpdate);
+    };
+  }, []);
+
+  const businessName = liveBusiness.name || pageConfig?.title || "ZenTap Digital Solutions";
+  const city = liveBusiness.city || "Ahmedabad";
+  const cleanPhone = (liveBusiness.phone || pageConfig?.phone || "+919274560880").replace(/\s+/g, "");
+  const cleanWa = (liveBusiness.whatsapp || liveBusiness.whatsapp_number || pageConfig?.whatsapp || "919274560880").replace(/\D/g, "");
+  const logoUrl = pageConfig?.logo_url || liveBusiness.logo_url || "/logo.png";
+  const locationImg = pageConfig?.location_image || liveBusiness.location_image || "https://lh3.googleusercontent.com/aida-public/AB6AXuBn_TEaXs-VF4rFe0stnQgCYg0MynH2oOZeU9dQHGHuoFh5E1v447bVapRPDHEz1ipdX4vPRxNVokhF77GwXNQOBUmj2bF9oe3C9v4c8fmxU_3FFVdsBS5kiipfsNb3M4Va0GalihDkxwsGJYQ1UAhu0dnfybRD-0AXXNrCoLX5185-7q2BnTbJiEPNztNk2SqgMiYh9fYG9ajLfLogd4E4g_d8_f6s0AfohHb_Em7G";
 
   // Active theme styling mapped from pageConfig
   const activeTheme = pageConfig?.theme || "obsidian";
@@ -140,6 +179,51 @@ export default function ZenTapReviewAssistant({
           chipInactive: "bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200",
           btnGradient: "from-amber-500 via-amber-400 to-amber-500 text-slate-950",
           footerBg: "bg-slate-100",
+        };
+      case "royal_indigo":
+        return {
+          wrapper: "bg-[#0c0f24] text-indigo-100",
+          card: "bg-[#151b3b]/95 border-indigo-500/20",
+          inner: "bg-[#1f2756]",
+          innerBorder: "border-indigo-500/10",
+          accentLine: "via-indigo-400",
+          accentText: "text-indigo-400",
+          glow1: "bg-indigo-500/10",
+          glow2: "bg-purple-500/10",
+          chipActive: "bg-indigo-500/20 text-white border-indigo-500/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]",
+          chipInactive: "bg-[#1f2756] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-indigo-600 via-indigo-500 to-purple-600 text-white",
+          footerBg: "bg-[#070918]",
+        };
+      case "midnight_rose":
+        return {
+          wrapper: "bg-[#1a0b16] text-pink-100",
+          card: "bg-[#2a1223]/95 border-pink-500/20",
+          inner: "bg-[#401a35]",
+          innerBorder: "border-pink-500/10",
+          accentLine: "via-rose-400",
+          accentText: "text-rose-400",
+          glow1: "bg-rose-500/10",
+          glow2: "bg-pink-500/10",
+          chipActive: "bg-rose-500/20 text-white border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.25)]",
+          chipInactive: "bg-[#401a35] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-rose-500 via-pink-500 to-rose-600 text-white",
+          footerBg: "bg-[#11050e]",
+        };
+      case "champagne_gold":
+        return {
+          wrapper: "bg-[#12100b] text-yellow-100",
+          card: "bg-[#1f1c14]/95 border-amber-400/25",
+          inner: "bg-[#2f2a1e]",
+          innerBorder: "border-amber-400/15",
+          accentLine: "via-amber-400",
+          accentText: "text-amber-400",
+          glow1: "bg-amber-400/15",
+          glow2: "bg-yellow-500/10",
+          chipActive: "bg-amber-400/20 text-white border-amber-400/50 shadow-[0_0_12px_rgba(234,179,8,0.25)]",
+          chipInactive: "bg-[#2f2a1e] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-amber-500 via-yellow-400 to-amber-600 text-slate-950",
+          footerBg: "bg-[#0b0a06]",
         };
       case "obsidian":
       default:
@@ -238,6 +322,7 @@ export default function ZenTapReviewAssistant({
       businessName,
       city,
       rating: currentRating,
+      length: reviewLength,
       selectedTags: Array.from(selectedTags),
       customNotes: customExperience,
       seed: variationSeed,
@@ -247,7 +332,23 @@ export default function ZenTapReviewAssistant({
     // Sync draft with currently selected option index
     const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, list.length - 1));
     setReviewDraft(list[safeIdx] || list[0] || "");
-  }, [shouldShowReviews, currentRating, selectedTags, customExperience, variationSeed, businessName, city, selectedSuggestionIndex]);
+  }, [shouldShowReviews, currentRating, selectedTags, customExperience, variationSeed, businessName, city, selectedSuggestionIndex, reviewLength]);
+
+  const handleLengthChange = (newLen: "short" | "medium" | "detailed") => {
+    setReviewLength(newLen);
+    const updatedList = generateReviewSuggestions({
+      businessName,
+      city,
+      rating: currentRating,
+      length: newLen,
+      selectedTags: Array.from(selectedTags),
+      customNotes: customExperience,
+      seed: variationSeed,
+    });
+    setSuggestions(updatedList);
+    const safeIdx = Math.min(selectedSuggestionIndex, Math.max(0, updatedList.length - 1));
+    setReviewDraft(updatedList[safeIdx] || updatedList[0] || "");
+  };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) => {
@@ -281,6 +382,7 @@ export default function ZenTapReviewAssistant({
       businessName,
       city,
       rating: currentRating,
+      length: reviewLength,
       selectedTags: Array.from(selectedTags),
       customNotes: customExperience,
       seed: nextSeed,
@@ -297,6 +399,7 @@ export default function ZenTapReviewAssistant({
           businessName,
           category: pageConfig?.category || business.category || "local business",
           stars: currentRating,
+          length: reviewLength,
           highlights: Array.from(selectedTags),
           note: customExperience,
           variation: nextSeed,
@@ -390,12 +493,26 @@ export default function ZenTapReviewAssistant({
 
   const ratingMeta = REVIEW_RATING_METAS[currentRating] || REVIEW_RATING_METAS[5];
 
+  // Typography
+  const fontFamilies: Record<string, string> = {
+    Outfit: "'Outfit', sans-serif",
+    Inter: "'Inter', sans-serif",
+    "Plus Jakarta Sans": "'Plus Jakarta Sans', sans-serif",
+    Poppins: "'Poppins', sans-serif",
+    "Playfair Display": "'Playfair Display', Georgia, serif",
+    "Space Grotesk": "'Space Grotesk', sans-serif",
+  };
+  const activeFontFamily = fontFamilies[pageConfig?.font || "Outfit"] || "'Outfit', sans-serif";
+
   // Back URL to Business Page
   const targetProfileSlug = (tagCode || business.slug || "zentap").toLowerCase();
   const backToProfileUrl = `/r/${targetProfileSlug}${isPreview ? "?preview=1" : ""}${tagCode && tagCode.toLowerCase() !== targetProfileSlug ? `${isPreview ? "&" : "?"}via=${tagCode}` : ""}`;
 
   return (
-    <div className={`${themeClasses.wrapper} font-sans min-h-screen selection:bg-amber-500 selection:text-black transition-colors duration-300`}>
+    <div 
+      className={`${themeClasses.wrapper} min-h-screen selection:bg-amber-500 selection:text-black transition-colors duration-300`}
+      style={{ fontFamily: activeFontFamily }}
+    >
       <main className="w-full min-h-screen pt-4 pb-12">
         <div className="flex flex-col w-full relative">
           {/* Subtle Ambient Glow Orbs */}
@@ -569,9 +686,9 @@ export default function ZenTapReviewAssistant({
                       <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
                     )}
                   </span>
-                  <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1`}>
+                  <span className={`text-[10.5px] ${themeClasses.accentText} font-semibold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1.5`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{activeAiEngine.label}</span>
+                    <span>Smart Suggestions</span>
                   </span>
                 </div>
 
@@ -683,17 +800,54 @@ export default function ZenTapReviewAssistant({
                   </div>
                 </div>
 
-                {/* Active AI Model Badge Indicator */}
-                <div className="flex items-center justify-between px-1 text-[11px] pt-1">
-                  <span className="inline-flex items-center gap-1.5 py-0.5 px-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium">
-                    <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />
-                    <span>
-                      {shouldShowReviews && reviewDraft ? "Generated with " : "AI Engine Ready: "}
-                      <strong className="font-semibold text-amber-300">{activeAiEngine.label}</strong>{" "}
-                      <span className="text-[10px] text-amber-400/80 font-mono">({activeAiEngine.model})</span>
+                {/* Review Length Customizer */}
+                <div className="flex flex-col gap-1.5 pt-1.5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
+                      <Sliders className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
+                      <span>Review Length</span>
                     </span>
-                  </span>
-                  <span className="text-[10px] text-zinc-400">{reviewDraft ? "Editable draft" : "Waiting for input"}</span>
+                    <span className="text-[10px] opacity-60">
+                      {reviewLength === "short"
+                        ? "1–2 sentences • Quick"
+                        : reviewLength === "detailed"
+                        ? "Detailed • In-depth review"
+                        : "3–4 sentences • Balanced"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "short", label: "Short", desc: "1-2 lines" },
+                      { id: "medium", label: "Medium", desc: "Balanced" },
+                      { id: "detailed", label: "Detailed", desc: "In-depth" },
+                    ].map((opt) => {
+                      const isSelected = reviewLength === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleLengthChange(opt.id as "short" | "medium" | "detailed")}
+                          className={`tactile-btn py-2 px-2.5 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
+                            isSelected
+                              ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
+                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                          }`}
+                        >
+                          <div className="text-xs font-semibold leading-tight">{opt.label}</div>
+                          <div className="text-[9.5px] opacity-60 mt-0.5">{opt.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between px-1 text-[10.5px] opacity-60 pt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                      <span>Auto-formats selected review</span>
+                    </span>
+                    <span>{reviewDraft ? "Editable draft" : "Waiting for input"}</span>
+                  </div>
                 </div>
               </div>
 
@@ -830,11 +984,14 @@ export default function ZenTapReviewAssistant({
         <OwnerAccessModal
           isOpen={ownerModalOpen}
           onClose={() => setOwnerModalOpen(false)}
-          tagCode={tagCode || business.slug || "st3"}
-          businessSlug={business.slug || tagCode || "st3"}
-          clientBusinessId={business.id}
+          tagCode={tagCode || liveBusiness.slug || "st3"}
+          businessSlug={liveBusiness.slug || tagCode || "st3"}
+          clientBusinessId={liveBusiness.id}
           initialBusinessName={businessName}
-          onDetailsUpdated={() => {
+          onDetailsUpdated={(updated) => {
+            if (updated) {
+              setLiveBusiness((prev) => ({ ...prev, ...updated }));
+            }
             if (typeof window !== "undefined") {
               setTimeout(() => {
                 window.location.reload();

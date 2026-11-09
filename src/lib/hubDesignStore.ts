@@ -6,7 +6,9 @@ export type ThemePreset =
   | "midnight_amber" 
   | "emerald_luxe" 
   | "clean_minimal" 
-  | "royal_indigo";
+  | "royal_indigo"
+  | "midnight_rose"
+  | "champagne_gold";
 
 export type ButtonStyle = "rounded" | "pill" | "square";
 export type CardStyle = "glass" | "flat" | "elevated" | "bordered";
@@ -170,6 +172,26 @@ export const THEME_PRESET_CONFIGS: Record<ThemePreset, {
     font: "Plus Jakarta Sans",
     button_style: "rounded",
     card_style: "glass",
+    dark_mode: "dark",
+  },
+  midnight_rose: {
+    name: "Midnight Rose",
+    primary_color: "#f43f5e",
+    accent_color: "#fb7185",
+    bg_color: "#1a0b16",
+    font: "Outfit",
+    button_style: "rounded",
+    card_style: "glass",
+    dark_mode: "dark",
+  },
+  champagne_gold: {
+    name: "Champagne Gold",
+    primary_color: "#eab308",
+    accent_color: "#fde047",
+    bg_color: "#12100b",
+    font: "Playfair Display",
+    button_style: "rounded",
+    card_style: "elevated",
     dark_mode: "dark",
   },
 };

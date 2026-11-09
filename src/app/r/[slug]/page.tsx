@@ -95,13 +95,19 @@ export default async function Page({
   if (!pageConfig && db) {
     try {
       const isLikelyTag = cleanCode.startsWith('st') || cleanCode.startsWith('tag_') || cleanCode.length <= 6;
+      const isSharedDemo = cleanCode === 'zentap' || cleanCode === 'st3' || via?.toLowerCase() === 'st3' || lookupKey.toLowerCase() === 'st3' || cleanCode === 'zt-0004';
+      
+      const pageQuery = isSharedDemo
+        ? db.from('page_editor_configs').select('*').or('tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004').is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+        : (via
+            ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).limit(1).maybeSingle()
+            : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle());
+
       const [pageConfigRes, bizFetchRes, grlRes, tagRes] = await Promise.all([
-        via
-          ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).maybeSingle()
-          : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
+        pageQuery,
         isLikelyTag ? Promise.resolve(null) : fetchPublicBusinessBySlug(cleanCode),
-        db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
-        db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).maybeSingle(),
+        db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
+        db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
       ]);
 
       pageConfig = pageConfigRes?.data || null;
@@ -151,11 +157,14 @@ export default async function Page({
 
   if (db) {
     try {
+      const candidates = Array.from(new Set([cleanCode, candidateBizId, "ZT-0004"].filter(Boolean)));
+      const orExpr = candidates.map((c) => `business_id.ilike.${c}`).join(",");
       const { data: cData } = await db
         .from('clients')
         .select('*')
-        .or(`business_id.ilike.${cleanCode},business_id.ilike.${candidateBizId},id.ilike.${cleanCode}`)
+        .or(orExpr)
         .is('deleted_at', null)
+        .limit(1)
         .maybeSingle();
       if (cData) clientRecord = cData;
     } catch (e) {
@@ -243,9 +252,28 @@ export default async function Page({
                 : cfg.theme === 'emerald' ? 'emerald_luxe'
                 : cfg.theme === 'sunset' ? 'midnight_amber'
                 : cfg.theme === 'clean_light' ? 'clean_minimal'
+                : cfg.theme === 'royal_indigo' ? 'royal_indigo'
+                : cfg.theme === 'midnight_rose' ? 'midnight_rose'
+                : cfg.theme === 'champagne_gold' ? 'champagne_gold'
                 : 'modern_slate',
-    primary_color: cfg.theme === 'sunset' ? '#ea580c' : cfg.theme === 'emerald' ? '#059669' : '#ffc174',
-    bg_color: cfg.theme === 'clean_light' ? '#ffffff' : cfg.theme === 'slate' ? '#0f172a' : cfg.theme === 'emerald' ? '#062016' : '#0B0F17',
+    primary_color: cfg.accent_color || (
+      cfg.theme === 'sunset' ? '#f97316' :
+      cfg.theme === 'emerald' ? '#10b981' :
+      cfg.theme === 'slate' ? '#38bdf8' :
+      cfg.theme === 'royal_indigo' ? '#818cf8' :
+      cfg.theme === 'midnight_rose' ? '#fb7185' :
+      cfg.theme === 'champagne_gold' ? '#eab308' :
+      cfg.theme === 'clean_light' ? '#ea580c' :
+      '#ffc174'
+    ),
+    bg_color: cfg.theme === 'clean_light' ? '#ffffff'
+            : cfg.theme === 'slate' ? '#0f172a'
+            : cfg.theme === 'emerald' ? '#062016'
+            : cfg.theme === 'sunset' ? '#1c0d06'
+            : cfg.theme === 'royal_indigo' ? '#0c0f24'
+            : cfg.theme === 'midnight_rose' ? '#1a0b16'
+            : cfg.theme === 'champagne_gold' ? '#12100b'
+            : '#0B0F17',
     dark_mode: cfg.theme === 'clean_light' ? 'light' : 'dark',
     cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
     logo_url: cfg.logo_url || defaultDesign.logo_url,
