@@ -1,5 +1,29 @@
 # ZenTap — Changelog
 
+## [1.54.19] — 2026-11-10
+### Enhanced (Review Assistant Clean Layout, Language Simplification & Strict Zero AI Exposure)
+- **Review Page Section Repositioning & Clean Flow (`ZenTapReviewAssistant.tsx`)**:
+  - Reorganized the Google Review Assistant page into a streamlined top-to-bottom sequence:
+    1. Header & Star Rating ("Share your experience on Google").
+    2. "What stood out?" Aspect chips with counter.
+    3. Note Box ("Write about your experience in short") with speech mic and character counter.
+    4. Compact Review Suggestions cards with clean option tags and waiting state.
+    5. Dedicated Review Language selector with 3 tactile pills (`English`, `Hindi`, `Gujarati`).
+    6. Selected Review Draft (Box) with Copy text action, Editable indicator, and Review Length selector (`Short (1–3 sentences)` default).
+    7. High-contrast "Post the Review on Google Page" CTA button.
+- **Language Simplification & Clean Script Engine (`route.ts`, `reviewService.ts`, `ExperienceNoteBox.tsx`)**:
+  - Default language set to **English**.
+  - Buttons cleanly display pure language names: **English**, **Hindi**, **Gujarati**.
+  - All internal labels and badges for `Hinglish`, `Gujlish`, and `Default` removed from user-facing screens.
+  - Server-side AI router prompt strictly formats Hindi into conversational Hinglish (English Latin alphabet only) and Gujarati into conversational Gujlish (English Latin alphabet only) to align with smartphone review typing habits across India.
+  - Removed duplicate language selector dropdowns, "Write in English" checkboxes, and disclaimer text inside the note box for an uncluttered experience.
+- **Strict Zero User-Facing AI Exposure (`ZenTapReviewAssistant.tsx`, `OwnerAccessModal.tsx`)**:
+  - Removed all user-facing references to `AI`, `AI-crafted`, `AI Models`, and raw provider names across customer screens.
+  - Replaced copy with customer-friendly phrasing such as `"Your review draft will appear here..."` and `"Smart Review Assistant"`.
+- **Button Redirects Audit & Sanitization (`ZenTapHubPage.tsx`)**:
+  - Guaranteed `https://` protocol handling across all merchant touchpoints (Directions, Google Maps, Facebook, Instagram, WhatsApp, Phone, Website, UPI).
+  - Ensured Directions button cleanly routes to the verified Google Maps directions target.
+
 ## [1.54.18] — 2026-11-09
 ### Added & Enhanced (Unified Extended Business Fields, Auto-Fetch Sync, Multi-Channel Hub Buttons & Parallel Fast Save)
 - **Comprehensive Business Fields Expansion Across Platform**:
