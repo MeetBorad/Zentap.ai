@@ -708,14 +708,84 @@ export async function permanentDeleteClientServer(businessId: string, confirmati
   return serverPermanentDelete("clients", "business_id", businessId, confirmationName);
 }
 
+export const STANDARD_BUSINESS_FIELD_KEYS = new Set([
+  "business_name",
+  "name",
+  "slug",
+  "owner_name",
+  "owner_phone",
+  "contact_phone",
+  "phone",
+  "owner_email",
+  "email",
+  "whatsapp",
+  "whatsapp_number",
+  "google_review_link",
+  "review_link",
+  "google_business_page",
+  "google_business",
+  "google_maps_link",
+  "google_maps",
+  "maps_link",
+  "instagram_link",
+  "instagram",
+  "facebook_link",
+  "facebook",
+  "twitter_link",
+  "twitter",
+  "x_link",
+  "website_url",
+  "website",
+  "website_link",
+  "directions_link",
+  "directions",
+  "direction_link",
+  "direction",
+  "city",
+  "location",
+  "city_location",
+  "upi_id",
+  "upi",
+  "business_upi_id",
+  "category",
+  "area",
+  "locality",
+  "services",
+  "products",
+  "keywords",
+]);
+
+export function isStandardBusinessField(idOrLabel: string): boolean {
+  if (!idOrLabel || typeof idOrLabel !== "string") return false;
+  const normalized = idOrLabel
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  if (STANDARD_BUSINESS_FIELD_KEYS.has(normalized)) return true;
+  if (
+    normalized === "directions" ||
+    normalized.startsWith("direction") ||
+    normalized.endsWith("direction") ||
+    normalized.includes("directions_link") ||
+    normalized === "website" ||
+    normalized.startsWith("website") ||
+    normalized.endsWith("website") ||
+    normalized.includes("website_url") ||
+    normalized.includes("google_map")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const DEFAULT_CUSTOM_FIELD_PRESETS: CustomFieldDefinition[] = [
-  { id: "website_url", label: "Website URL", type: "url", placeholder: "https://mybusiness.com", category: "contact", is_active: false },
-  { id: "google_maps_link", label: "Google Maps / Place Link", type: "url", placeholder: "https://maps.google.com/...", category: "location", is_active: false },
   { id: "gst_number", label: "GST / Tax ID", type: "text", placeholder: "24AAAAA0000A1Z5", category: "billing", is_active: false },
   { id: "full_address", label: "Full Address / Street", type: "text", placeholder: "Shop 12, Ground Floor, Sunrise Mall", category: "location", is_active: false },
   { id: "linkedin_link", label: "LinkedIn Profile", type: "url", placeholder: "https://linkedin.com/company/...", category: "social", is_active: false },
   { id: "youtube_link", label: "YouTube Channel", type: "url", placeholder: "https://youtube.com/@...", category: "social", is_active: false },
-  { id: "upi_id", label: "Business UPI ID", type: "text", placeholder: "business@upi", category: "billing", is_active: false },
+  { id: "fssai_license", label: "FSSAI Food License", type: "text", placeholder: "100XXXXXXXXXX", category: "general", is_active: false },
+  { id: "branch_code", label: "Store / Branch Code", type: "text", placeholder: "BR-01", category: "general", is_active: false },
 ];
 
 export function getCustomFieldDefinitions(): CustomFieldDefinition[] {
@@ -727,7 +797,17 @@ export function getCustomFieldDefinitions(): CustomFieldDefinition[] {
       return DEFAULT_CUSTOM_FIELD_PRESETS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CUSTOM_FIELD_PRESETS;
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return DEFAULT_CUSTOM_FIELD_PRESETS;
+    }
+    // Automatically purge any standard fields (e.g. legacy directions, website, etc.)
+    const cleaned = parsed.filter(
+      (f: any) => f && f.id && !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem("zentap_custom_field_definitions", JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return DEFAULT_CUSTOM_FIELD_PRESETS;
   }
@@ -736,8 +816,11 @@ export function getCustomFieldDefinitions(): CustomFieldDefinition[] {
 export function saveCustomFieldDefinitions(defs: CustomFieldDefinition[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem("zentap_custom_field_definitions", JSON.stringify(defs));
-    window.dispatchEvent(new CustomEvent("zentap_custom_fields_updated", { detail: defs }));
+    const cleaned = defs.filter(
+      (f) => f && f.id && !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)
+    );
+    localStorage.setItem("zentap_custom_field_definitions", JSON.stringify(cleaned));
+    window.dispatchEvent(new CustomEvent("zentap_custom_fields_updated", { detail: cleaned }));
   } catch (err) {
     console.error("Failed to save custom field definitions:", err);
   }
@@ -746,6 +829,10 @@ export function saveCustomFieldDefinitions(defs: CustomFieldDefinition[]): void 
 export function addCustomFieldDefinition(def: Omit<CustomFieldDefinition, "id"> & { id?: string }): CustomFieldDefinition[] {
   const current = getCustomFieldDefinitions();
   const slug = def.id || def.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || `field_${Date.now()}`;
+  if (isStandardBusinessField(slug) || isStandardBusinessField(def.label)) {
+    console.warn(`Skipping addition of field "${def.label}": matches standard native field.`);
+    return current;
+  }
   const existingIdx = current.findIndex((f) => f.id === slug);
   const newDef: CustomFieldDefinition = {
     ...def,

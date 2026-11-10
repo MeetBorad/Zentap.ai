@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Building2,
   Search,
@@ -39,7 +39,7 @@ import {
   getAllDeletedBusinesses,
   getAllQrNfcTags,
   getCustomFieldDefinitions,
-  addCustomFieldDefinition,
+  isStandardBusinessField,
   addClientServer,
   updateClientServer,
   generateNextBusinessIdCode,
@@ -64,9 +64,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
   // Custom Fields from Settings
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
-  const [showAddCustomFieldInline, setShowAddCustomFieldInline] = useState(false);
-  const [inlineFieldLabel, setInlineFieldLabel] = useState("");
-  const [inlineFieldType, setInlineFieldType] = useState<"text" | "url" | "tel" | "email" | "number">("text");
 
   // Add Business Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -179,34 +176,11 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
   const nextIdPreview = generateNextBusinessIdCode(clients);
 
-  const activeCustomFields = customFieldDefs.filter((f) => f.is_active);
-
-  const handleSaveInlineField = () => {
-    if (!inlineFieldLabel.trim()) {
-      onShowToast("Please enter a field label");
-      return;
-    }
-    const updated = addCustomFieldDefinition({
-      label: inlineFieldLabel.trim(),
-      type: inlineFieldType,
-      is_active: true,
-    });
-    setCustomFieldDefs(updated);
-    const added = updated.find((f) => f.label.toLowerCase() === inlineFieldLabel.trim().toLowerCase());
-    const fieldId = added?.id || inlineFieldLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    
-    // Automatically focus or initialize this field for active modal
-    if (isAddModalOpen) {
-      setNewCustomFields((prev) => ({ ...prev, [fieldId]: "" }));
-    }
-    if (isEditModalOpen) {
-      setEditCustomFields((prev) => ({ ...prev, [fieldId]: "" }));
-    }
-
-    setInlineFieldLabel("");
-    setShowAddCustomFieldInline(false);
-    onShowToast(`✓ Added custom field "${inlineFieldLabel.trim()}" to forms!`);
-  };
+  const activeCustomFields = useMemo(() => {
+    return customFieldDefs.filter(
+      (f) => f.is_active && !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)
+    );
+  }, [customFieldDefs]);
 
   const openEditModal = (client: ClientRecord) => {
     setEditTarget(client);
@@ -609,14 +583,12 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   <th className="py-3.5 px-4 whitespace-nowrap">Website</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Directions link</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">UPI ID</th>
-                  {/* Dynamic Custom Field Columns configured from Settings (excluding existing dedicated columns) */}
-                  {activeCustomFields
-                    .filter((f) => !["contact_phone", "google_business_page", "google_business", "twitter_link", "twitter", "upi_id", "directions_link", "directions", "website_url", "website", "google_maps_link"].includes(f.id))
-                    .map((f) => (
-                      <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100">
-                        {f.label}
-                      </th>
-                    ))}
+                  {/* Dynamic Custom Field Columns configured from Settings */}
+                  {activeCustomFields.map((f) => (
+                    <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100 font-semibold text-xs">
+                      {f.label}
+                    </th>
+                  ))}
                   <th className="py-3.5 px-4 whitespace-nowrap">Hardware / Tags</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
                   <th className="py-3.5 px-4 text-right whitespace-nowrap sticky right-0 bg-zinc-50 shadow-xs">Actions</th>
@@ -882,10 +854,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         </td>
 
                         {/* 17. Dynamic Custom Field Values */}
-                        {activeCustomFields
-                          .filter((f) => !["contact_phone", "google_business_page", "google_business", "twitter_link", "twitter", "upi_id", "directions_link", "directions", "website_url", "website", "google_maps_link"].includes(f.id))
-                          .map((field) => {
-                            const val = cf[field.id];
+                        {activeCustomFields.map((field) => {
+                          const val = cf[field.id];
                             if (!val || !String(val).trim()) {
                               return (
                                 <td key={field.id} className="py-3 px-4 whitespace-nowrap text-zinc-400 border-l border-r border-zinc-100/60">
@@ -1232,7 +1202,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-xs font-bold text-zinc-900">Business Info (AI Context &amp; Keywords)</span>
+                    <span className="text-xs font-bold text-zinc-900">Business Info (Context &amp; Keywords)</span>
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
                 </div>
@@ -1349,55 +1319,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              {/* Custom Business Details & Extended Options */}
-              <div className="pt-3 border-t border-zinc-100 space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Custom Business Details (Configured in Settings) */}
+              {activeCustomFields.length > 0 && (
+                <div className="pt-3 border-t border-zinc-100 space-y-3">
                   <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-zinc-600" />
                     <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
-                    {activeCustomFields.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
-                        {activeCustomFields.length} active
-                      </span>
-                    )}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                      {activeCustomFields.length} active
+                    </span>
                   </div>
-                  
-                  {onNavigateToSettings && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddModalOpen(false);
-                        onNavigateToSettings();
-                      }}
-                      className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                      title="Manage custom fields in Settings tab"
-                    >
-                      <Settings className="w-3 h-3" />
-                      <span>Manage Fields in Settings</span>
-                    </button>
-                  )}
-                </div>
 
-                {/* Active Custom Fields Inputs */}
-                {activeCustomFields.length === 0 && (
-                  <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
-                    <span>No custom fields configured yet. Add them in Settings tab.</span>
-                    {onNavigateToSettings && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAddModalOpen(false);
-                          onNavigateToSettings();
-                        }}
-                        className="font-bold text-blue-600 hover:underline cursor-pointer"
-                      >
-                        Configure in Settings &rarr;
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {activeCustomFields.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {activeCustomFields.map((field) => (
                       <div key={field.id} className={field.type === "url" || field.id.includes("address") ? "sm:col-span-2" : ""}>
@@ -1415,8 +1347,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
                 <button
@@ -1592,7 +1524,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-xs font-bold text-zinc-900">Business Info (AI Context &amp; Keywords)</span>
+                    <span className="text-xs font-bold text-zinc-900">Business Info (Context &amp; Keywords)</span>
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
                 </div>
@@ -1706,55 +1638,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              {/* Custom Business Details & Extended Options */}
-              <div className="pt-3 border-t border-zinc-100 space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Custom Business Details (Configured in Settings) */}
+              {activeCustomFields.length > 0 && (
+                <div className="pt-3 border-t border-zinc-100 space-y-3">
                   <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-blue-600" />
                     <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
-                    {activeCustomFields.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
-                        {activeCustomFields.length} active
-                      </span>
-                    )}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
+                      {activeCustomFields.length} active
+                    </span>
                   </div>
-                  
-                  {onNavigateToSettings && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditModalOpen(false);
-                        onNavigateToSettings();
-                      }}
-                      className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 flex items-center gap-1 cursor-pointer"
-                      title="Manage custom fields in Settings tab"
-                    >
-                      <Settings className="w-3 h-3" />
-                      <span>Manage Fields in Settings</span>
-                    </button>
-                  )}
-                </div>
 
-                {/* Active Custom Fields Inputs */}
-                {activeCustomFields.length === 0 && (
-                  <div className="p-3 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
-                    <span>No custom fields configured yet. Add them in Settings tab.</span>
-                    {onNavigateToSettings && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsEditModalOpen(false);
-                          onNavigateToSettings();
-                        }}
-                        className="font-bold text-blue-600 hover:underline cursor-pointer"
-                      >
-                        Configure in Settings &rarr;
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {activeCustomFields.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {activeCustomFields.map((field) => (
                       <div key={field.id} className={field.type === "url" || field.id.includes("address") ? "sm:col-span-2" : ""}>
@@ -1772,8 +1666,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
                 <button

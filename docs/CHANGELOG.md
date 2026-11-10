@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.20] — 2026-11-10
+### Enhanced (Strict Settings-Governed Custom Business Fields & Full Database Persistence)
+- **Removal of Redundant Fields & Options from Business Modals (`ClientsWebpageTab.tsx`)**:
+  - Removed "Directions" and "Website" from the "Custom Business Details" section in both "Add New Business" and "Edit Business Entry" modals (since they already exist as dedicated first-class fields).
+  - Completely removed "Manage Fields in Settings" buttons and navigation shortcuts from both business modals.
+  - Custom fields can now ONLY be added or managed from Super Admin Settings (`PlatformSettingsTab.tsx`).
+  - If no custom fields are active, the "Custom Business Details" section is hidden completely with zero visual clutter.
+- **Dynamic Table Columns & Live Form Synchronisation (`ClientsWebpageTab.tsx`, `adminPlatformStore.ts`)**:
+  - Added strict standard-field filtering (`isStandardBusinessField`) preventing native fields (`website`, `directions`, `upi_id`, `contact_phone`, etc.) from being treated as custom fields.
+  - Automatically purges any legacy cached standard fields from local store and settings presets.
+  - Any custom field created in Settings (e.g. GST Number, Full Address, LinkedIn, YouTube, FSSAI License, Branch Code) automatically renders a dedicated column in the Clients table and an input field in both Add and Edit modals.
+- **End-to-End Database Persistence Verification**:
+  - Verified that all native fields and custom fields entered in "Add New Business" or "Edit Business Entry" are saved into Supabase PostgreSQL (`clients` table with `custom_fields` JSONB) via `/api/admin/platform`.
+  - Re-labeled "Business Info (AI Context & Keywords)" to "Business Info (Context & Keywords)" across both modals to strictly avoid user-facing "AI" terminology.
+
 ## [1.54.19] — 2026-11-10
 ### Enhanced (Review Assistant Clean Layout, Language Simplification & Strict Zero AI Exposure)
 - **Review Page Section Repositioning & Clean Flow (`ZenTapReviewAssistant.tsx`)**:

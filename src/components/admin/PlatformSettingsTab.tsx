@@ -53,6 +53,7 @@ import {
   addCustomFieldDefinition,
   toggleCustomFieldDefinition,
   removeCustomFieldDefinition,
+  isStandardBusinessField,
   getAllClients,
   getAllQrNfcTags,
   getAllPayments,
@@ -304,6 +305,11 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
       return;
     }
 
+    if (isStandardBusinessField(newFieldLabel.trim())) {
+      showToast(`"${newFieldLabel.trim()}" is already a built-in standard field on the business profile.`);
+      return;
+    }
+
     const updated = addCustomFieldDefinition({
       label: newFieldLabel.trim(),
       type: newFieldType,
@@ -359,6 +365,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
   };
 
   const handleQuickAddPreset = (preset: CustomFieldDefinition) => {
+    if (isStandardBusinessField(preset.id) || isStandardBusinessField(preset.label)) {
+      showToast(`"${preset.label}" is already a built-in standard field on the business profile.`);
+      return;
+    }
     const existing = customFields.find((f) => f.id === preset.id);
     if (existing) {
       handleToggleCustomField(preset.id);
@@ -419,9 +429,12 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
   // Filtered fields if search is used
   const filteredCustomFields = useMemo(() => {
-    if (!searchQuery.trim()) return customFields;
+    const list = customFields.filter(
+      (f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)
+    );
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return customFields.filter(
+    return list.filter(
       (f) =>
         f.label.toLowerCase().includes(q) ||
         f.id.toLowerCase().includes(q) ||
@@ -809,7 +822,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-500 font-semibold">
-                  {customFields.filter((f) => f.is_active).length} of {customFields.length} active in forms
+                  {customFields.filter((f) => f.is_active && !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length} of {customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length} active in forms
                 </span>
               </div>
             </div>
@@ -820,7 +833,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                 1-Click Preset Activations:
               </span>
               <div className="flex flex-wrap gap-2">
-                {DEFAULT_CUSTOM_FIELD_PRESETS.map((preset) => {
+                {DEFAULT_CUSTOM_FIELD_PRESETS.filter((p) => !isStandardBusinessField(p.id) && !isStandardBusinessField(p.label)).map((preset) => {
                   const existing = customFields.find((f) => f.id === preset.id);
                   const isEnabled = existing?.is_active;
                   return (
