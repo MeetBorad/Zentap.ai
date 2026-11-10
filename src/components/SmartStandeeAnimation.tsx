@@ -157,7 +157,7 @@ body{display:flex;align-items:center;justify-content:center}
 <div class="phone in-r" style="right:6cqw;top:18cqw">
  <div class="scr"><h4>Rate your experience</h4><p>Loved it? Tell Google in 10 seconds</p>
  <div class="stars"><span style="animation-delay:1.6s">★</span><span style="animation-delay:1.8s">★</span><span style="animation-delay:2s">★</span><span style="animation-delay:2.2s">★</span><span style="animation-delay:2.4s">★</span></div>
- <div class="draft">“Great service and friendly staff — highly recommend!”<br><small>AI-drafted for you</small></div><div class="btn">Post on Google</div></div>
+ <div class="draft">“Great service and friendly staff — highly recommend!”<br><small>Smart-drafted for you</small></div><div class="btn">Post on Google</div></div>
 </div>
 <div class="wave" style="left:46cqw;top:44cqw;width:16cqw;height:16cqw"></div><div class="wave" style="left:46cqw;top:44cqw;width:16cqw;height:16cqw"></div>
 <div class="lab" style="bottom:9cqw"><b>JUST TAP</b><i>Your Phone</i></div>
@@ -176,7 +176,7 @@ body{display:flex;align-items:center;justify-content:center}
 <section class="scene" id="s5">
 <div class="feat" style="top:8cqw">
 <div class="f"><u>✓</u>ALL IN ONE<br>SOLUTION</div><div class="f"><u>✓</u>UNLIMITED<br>TAP / SCAN</div>
-<div class="f"><u>✓</u>DYNAMIC<br>QR</div><div class="f"><u>✓</u>AI REVIEW<br>ASSISTANT</div></div>
+<div class="f"><u>✓</u>DYNAMIC<br>QR</div><div class="f"><u>✓</u>SMART REVIEW<br>ASSISTANT</div></div>
 <div class="stand pop" style="width:68cqw;top:44cqw"><svg viewBox="0 0 300 400"><use href="#st"/></svg></div>
 </section>
 

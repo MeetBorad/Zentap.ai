@@ -1828,7 +1828,7 @@ export default function ClientPortalView({
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-amber-500" />
                       <span className="text-xs font-bold text-on-surface">
-                        Business Info (AI Review Context &amp; Keywords)
+                        Business Info (Review Context &amp; Keywords)
                       </span>
                     </div>
                     <button
@@ -1843,7 +1843,7 @@ export default function ClientPortalView({
                     </button>
                   </div>
                   <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    Helps AI draft authentic customer reviews with exact business names, matching service terminology, and local context. Owner values always override fetched data.
+                    Helps draft authentic customer reviews with exact business names, matching service terminology, and local context. Owner values always override fetched data.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">

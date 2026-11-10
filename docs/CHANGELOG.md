@@ -1,5 +1,27 @@
 # ZenTap — Changelog
 
+## [1.54.21] — 2026-11-10
+### Enhanced (Client Columns Owner Panel Access Control & Zero Public AI Exposure Enforcement)
+- **Super Admin Owner Panel Access Permissions (`PlatformSettingsTab.tsx`, `adminPlatformStore.ts`)**:
+  - Implemented the "Owner Panel Fields & Access" control center under Super Admin Settings.
+  - Lists all 19 standard `clients` table columns (`business_name`, `city`, `category`, `owner_name`, `owner_phone`, `contact_phone`, `owner_email`, `google_review_link`, `google_business_page`, `whatsapp`, `instagram_link`, `facebook_link`, `website_url`, `area`, `services`, `keywords`, `twitter_link`, `upi_id`, `directions_link`) alongside all custom fields.
+  - Added individual access toggle button on every row:
+    - **Green button ("Turn off to remove access")**: Indicates access is granted to edit and save that field in the Business Owner Panel.
+    - **Red button ("Turn on to give access")**: Indicates access is revoked; field is completely hidden from the Business Owner Panel.
+  - Added batch toggle actions ("Grant All", "Revoke All") and real-time search & filter tabs ("All", "Standard Columns", "Custom Fields", "Access Granted (Green)", "Access Revoked (Red)").
+  - Provided direct "Create New Custom Field" workflow inside Settings to add new custom attributes with instantaneous permission synchronization.
+- **Dynamic Business Owner Panel Field Filtering (`OwnerAccessModal.tsx`, `api/card/update`)**:
+  - Wired all 17 standard fields and all custom fields in the Business Owner Panel modal to check permissions via `isPermitted(field_id)`.
+  - Only fields explicitly granted access (green) in Settings are visible and editable by the merchant.
+  - Restricted fields are omitted from display while existing values in PostgreSQL remain safe and untouched during saves.
+  - Owner edits to custom fields are persisted to Supabase via updated `/api/card/update/route.ts` JSONB merging.
+  - Renamed "Business Info (AI Review Context)" to "Business Info (Review Context)".
+- **Global Zero AI & Language Terminology Purge across Public Pages**:
+  - Purged "Hinglish" mention in `PricingView.tsx` (`Supports English, Gujarati & Hindi`).
+  - Purged "AI" copy from `HyperFramesPlayer.tsx` and `SmartStandeeAnimation.tsx` (`Smart-drafted for you`, `Smart Review Assistant`).
+  - Purged "AI Review Context" references in `ClientPortalView.tsx`.
+
+
 ## [1.54.20] — 2026-11-10
 ### Enhanced (Strict Settings-Governed Custom Business Fields & Full Database Persistence)
 - **Removal of Redundant Fields & Options from Business Modals (`ClientsWebpageTab.tsx`)**:

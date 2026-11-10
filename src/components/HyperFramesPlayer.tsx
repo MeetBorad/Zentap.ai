@@ -70,9 +70,9 @@ const FRAMES: HyperFrame[] = [
   },
   {
     id: 4,
-    tagline: "FRAME 04 / 06 · AI REVIEW DRAFTS",
+    tagline: "FRAME 04 / 06 · SMART REVIEW DRAFTS",
     headline: "Zero typing friction with",
-    highlightText: "Instant AI Suggestions.",
+    highlightText: "Instant Smart Suggestions.",
     subtext: "Customers tap the standee and get thoughtful, customized review drafts highlighting food, ambience, and service in seconds—posted directly to Google Maps.",
     badge: "1-Tap Review Drafts",
     duration: 4500,

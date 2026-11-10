@@ -865,6 +865,73 @@ export function removeCustomFieldDefinition(id: string): CustomFieldDefinition[]
   return updated;
 }
 
+export interface StandardClientColumnDef {
+  id: string;
+  label: string;
+  category: "basic" | "contact" | "social" | "links" | "context" | "payment" | "location";
+  type: "text" | "url" | "tel" | "email" | "number";
+  placeholder: string;
+  description: string;
+}
+
+export const STANDARD_CLIENT_COLUMNS: StandardClientColumnDef[] = [
+  { id: "business_name", label: "Business Name", category: "basic", type: "text", placeholder: "e.g. Zentap Digital Solutions", description: "Official business title displayed across client cards and hub." },
+  { id: "city", label: "City / Location", category: "basic", type: "text", placeholder: "e.g. Ahmedabad", description: "Primary operating city or jurisdiction." },
+  { id: "category", label: "Category / Subtitle", category: "basic", type: "text", placeholder: "e.g. Service • Digital Agency", description: "Business category and tagline." },
+  { id: "owner_name", label: "Owner Name", category: "contact", type: "text", placeholder: "e.g. Meet Borad", description: "Full legal or operating name of the business owner." },
+  { id: "owner_phone", label: "Owner Phone", category: "contact", type: "tel", placeholder: "+91 92745 60880", description: "Direct private contact phone for the owner." },
+  { id: "contact_phone", label: "Contact Phone", category: "contact", type: "tel", placeholder: "+91 96627 60880", description: "Customer-facing business hotline / reception line." },
+  { id: "owner_email", label: "Owner Email", category: "contact", type: "email", placeholder: "contact@zentapdigitalsolutions.com", description: "Official billing and notification email address." },
+  { id: "google_review_link", label: "Google Review Link", category: "links", type: "url", placeholder: "https://g.page/r/.../review", description: "Destination target URL for customer Google Reviews." },
+  { id: "google_business_page", label: "Google Business Page", category: "links", type: "url", placeholder: "https://maps.app.goo.gl/...", description: "Public Google Maps listing or Business Profile page." },
+  { id: "whatsapp", label: "WhatsApp Number", category: "contact", type: "tel", placeholder: "+91 92745 60880", description: "Direct customer messaging WhatsApp number." },
+  { id: "instagram_link", label: "Instagram Link / Handle", category: "social", type: "text", placeholder: "https://instagram.com/...", description: "Instagram profile or username." },
+  { id: "facebook_link", label: "Facebook Page URL", category: "social", type: "url", placeholder: "https://facebook.com/...", description: "Official Facebook page link." },
+  { id: "website_url", label: "Website / Portfolio URL", category: "links", type: "url", placeholder: "https://yourwebsite.com", description: "Official company website or portfolio." },
+  { id: "area", label: "Area / Locality", category: "context", type: "text", placeholder: "e.g. Bodakdev / SG Highway", description: "Neighborhood or area used for local context in reviews." },
+  { id: "services", label: "Services / Products List", category: "context", type: "text", placeholder: "e.g. NFC Standees, Tap Cards", description: "Comma-separated list of offerings." },
+  { id: "keywords", label: "Focus Keywords (3–5)", category: "context", type: "text", placeholder: "e.g. Smart NFC, Tap Review, Fast Setup", description: "Keywords emphasized in smart review drafts." },
+  { id: "twitter_link", label: "Twitter / X Profile", category: "social", type: "text", placeholder: "https://x.com/... or @handle", description: "Twitter/X handle or URL." },
+  { id: "upi_id", label: "Business UPI ID", category: "payment", type: "text", placeholder: "e.g. merchant@okhdfcbank", description: "VPA for instant customer UPI payments." },
+  { id: "directions_link", label: "Directions Link / Full Address Note", category: "location", type: "text", placeholder: "e.g. https://maps.app.goo.gl/... or Ahmedabad", description: "Google Maps directions link or detailed physical address." },
+];
+
+export function getOwnerFieldPermissions(): Record<string, boolean> {
+  const defaultPerms: Record<string, boolean> = {};
+  STANDARD_CLIENT_COLUMNS.forEach((col) => {
+    defaultPerms[col.id] = true;
+  });
+  if (typeof window === "undefined") return defaultPerms;
+  try {
+    const raw = localStorage.getItem("zentap_owner_field_permissions");
+    if (!raw) return defaultPerms;
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null ? { ...defaultPerms, ...parsed } : defaultPerms;
+  } catch {
+    return defaultPerms;
+  }
+}
+
+export function saveOwnerFieldPermissions(permissions: Record<string, boolean>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("zentap_owner_field_permissions", JSON.stringify(permissions));
+    window.dispatchEvent(new CustomEvent("zentap_owner_field_permissions_updated", { detail: permissions }));
+  } catch (err) {
+    console.error("Failed to save owner field permissions:", err);
+  }
+}
+
+export function toggleOwnerFieldPermission(fieldId: string): Record<string, boolean> {
+  const current = getOwnerFieldPermissions();
+  const updated = {
+    ...current,
+    [fieldId]: current[fieldId] === false ? true : false,
+  };
+  saveOwnerFieldPermissions(updated);
+  return updated;
+}
+
 // Server-side Client Creation (Direct to Supabase with auto UUID)
 export async function addClientServer(params: {
   business_name: string;

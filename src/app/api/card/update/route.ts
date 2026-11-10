@@ -78,6 +78,9 @@ export async function POST(req: NextRequest) {
           }
 
           const customFields = { ...(existingClient.custom_fields || {}) };
+          if (updates.custom_fields && typeof updates.custom_fields === "object") {
+            Object.assign(customFields, updates.custom_fields);
+          }
           if (updates.contact_phone !== undefined) customFields.contact_phone = updates.contact_phone.trim();
           if (updates.google_business_page !== undefined) customFields.google_business_page = updates.google_business_page.trim();
           if (updates.twitter !== undefined || updates.twitter_link !== undefined) {

@@ -268,7 +268,7 @@ export default function PricingView({ onNavigate, onOpenAuth, onOpenUpcomingDraw
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />
-                <span>Supports English, Gujarati, Hindi &amp; Hinglish</span>
+                <span>Supports English, Gujarati &amp; Hindi</span>
               </li>
               <li className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-secondary-fixed flex-shrink-0" />

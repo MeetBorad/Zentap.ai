@@ -54,6 +54,11 @@ import {
   toggleCustomFieldDefinition,
   removeCustomFieldDefinition,
   isStandardBusinessField,
+  STANDARD_CLIENT_COLUMNS,
+  StandardClientColumnDef,
+  getOwnerFieldPermissions,
+  saveOwnerFieldPermissions,
+  toggleOwnerFieldPermission,
   getAllClients,
   getAllQrNfcTags,
   getAllPayments,
@@ -97,6 +102,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
   const [editLabel, setEditLabel] = useState("");
   const [editType, setEditType] = useState<"text" | "url" | "tel" | "email" | "number">("text");
   const [editPlaceholder, setEditPlaceholder] = useState("");
+
+  // Owner Field Permissions State
+  const [ownerPermissions, setOwnerPermissions] = useState<Record<string, boolean>>({});
+  const [permissionFilter, setPermissionFilter] = useState<"all" | "standard" | "custom" | "granted" | "revoked">("all");
 
   // Section 3: Security & PIN Controls
   const [lockoutThreshold, setLockoutThreshold] = useState<number>(5);
@@ -156,6 +165,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
       // Custom fields
       setCustomFields(getCustomFieldDefinitions());
+      setOwnerPermissions(getOwnerFieldPermissions());
 
       // Stats
       setStats({
@@ -318,9 +328,53 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
       is_active: true,
     });
     setCustomFields(updated);
+    const added = updated.find((f) => f.label.toLowerCase() === newFieldLabel.trim().toLowerCase());
+    if (added) {
+      const perms = getOwnerFieldPermissions();
+      perms[added.id] = true;
+      saveOwnerFieldPermissions(perms);
+      setOwnerPermissions({ ...perms });
+    }
     setNewFieldLabel("");
     setNewFieldPlaceholder("");
-    showToast(`✓ Custom field "${newFieldLabel.trim()}" created!`);
+    showToast(`✓ Custom field "${newFieldLabel.trim()}" created & access enabled!`);
+  };
+
+  const handleToggleOwnerPermission = (fieldId: string, label: string) => {
+    const updated = toggleOwnerFieldPermission(fieldId);
+    setOwnerPermissions(updated);
+    const isGranted = updated[fieldId] !== false;
+    showToast(
+      isGranted
+        ? `✓ Access granted (Turned ON) for "${label}" in Business Owner Panel`
+        : `✓ Access revoked (Turned OFF) for "${label}" from Business Owner Panel`
+    );
+  };
+
+  const handleGrantAllOwnerPermissions = () => {
+    const perms: Record<string, boolean> = {};
+    STANDARD_CLIENT_COLUMNS.forEach((col) => {
+      perms[col.id] = true;
+    });
+    customFields.forEach((cf) => {
+      perms[cf.id] = true;
+    });
+    saveOwnerFieldPermissions(perms);
+    setOwnerPermissions(perms);
+    showToast("✓ Granted access to all fields in Business Owner Panel");
+  };
+
+  const handleRevokeAllOwnerPermissions = () => {
+    const perms: Record<string, boolean> = {};
+    STANDARD_CLIENT_COLUMNS.forEach((col) => {
+      perms[col.id] = false;
+    });
+    customFields.forEach((cf) => {
+      perms[cf.id] = false;
+    });
+    saveOwnerFieldPermissions(perms);
+    setOwnerPermissions(perms);
+    showToast("✓ Revoked access to all fields from Business Owner Panel");
   };
 
   const handleStartEditField = (field: CustomFieldDefinition) => {
@@ -427,6 +481,68 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
     showToast("✓ Platform configuration exported!");
   };
 
+  // Master Combined List of Standard Columns and Custom Fields with Owner Access state
+  const combinedColumnsAndFields = useMemo(() => {
+    // 1. Standard Client Table Columns
+    const standardItems = STANDARD_CLIENT_COLUMNS.map((col) => ({
+      id: col.id,
+      label: col.label,
+      category: col.category,
+      type: col.type,
+      placeholder: col.placeholder,
+      description: col.description,
+      isStandard: true,
+      isOwnerAccessible: ownerPermissions[col.id] !== false,
+      isActiveInClientsTable: true,
+      customFieldRef: undefined as CustomFieldDefinition | undefined,
+    }));
+
+    // 2. Custom Business Fields
+    const customItems = customFields
+      .filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label))
+      .map((f) => ({
+        id: f.id,
+        label: f.label,
+        category: f.category || "general",
+        type: f.type,
+        placeholder: f.placeholder,
+        description: "Custom attribute configured in settings & saved to custom_fields JSONB.",
+        isStandard: false,
+        isOwnerAccessible: ownerPermissions[f.id] === true,
+        isActiveInClientsTable: f.is_active,
+        customFieldRef: f as CustomFieldDefinition | undefined,
+      }));
+
+    const all = [...standardItems, ...customItems];
+
+    // Filter by category or status
+    let filtered = all;
+    if (permissionFilter === "standard") {
+      filtered = filtered.filter((f) => f.isStandard);
+    } else if (permissionFilter === "custom") {
+      filtered = filtered.filter((f) => !f.isStandard);
+    } else if (permissionFilter === "granted") {
+      filtered = filtered.filter((f) => f.isOwnerAccessible);
+    } else if (permissionFilter === "revoked") {
+      filtered = filtered.filter((f) => !f.isOwnerAccessible);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (f) =>
+          f.label.toLowerCase().includes(q) ||
+          f.id.toLowerCase().includes(q) ||
+          f.category.toLowerCase().includes(q) ||
+          (f.placeholder && f.placeholder.toLowerCase().includes(q)) ||
+          (f.description && f.description.toLowerCase().includes(q))
+      );
+    }
+
+    return filtered;
+  }, [ownerPermissions, customFields, permissionFilter, searchQuery]);
+
   // Filtered fields if search is used
   const filteredCustomFields = useMemo(() => {
     const list = customFields.filter(
@@ -531,9 +647,9 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             }`}
           >
             <Sliders className="w-4 h-4 text-blue-600" />
-            <span>Custom Business Fields</span>
+            <span>Owner Panel Fields &amp; Access</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 font-mono">
-              {customFields.filter((f) => f.is_active).length}
+              {combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).length} / {combinedColumnsAndFields.length}
             </span>
           </button>
 
@@ -798,39 +914,64 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
       )}
 
       {/* ========================================================================= */}
-      {/* 4. SECTION 2: CUSTOM BUSINESS FIELDS (EXTENDED OPTIONS)                   */}
+      {/* 4. SECTION 2: BUSINESS FIELDS & OWNER ACCESS PERMISSIONS                  */}
       {/* ========================================================================= */}
       {activeSection === "custom_fields" && (
         <div className="space-y-6 animate-in fade-in duration-200">
           
           {/* Header Banner */}
           <div className="p-6 sm:p-7 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200 shrink-0">
                   <Sliders className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
                   <h3 className="font-headline font-bold text-base text-zinc-900">
-                    Business Custom Fields &amp; Extended Options Manager
+                    Clients Table Columns &amp; Business Owner Panel Permissions
                   </h3>
                   <p className="text-xs text-zinc-500">
-                    Define, edit, and activate custom attributes that appear when adding or editing businesses.
+                    View every column/field of the clients table. Use the button to <strong>Turn on (green)</strong> or <strong>Turn off (red)</strong> to give or remove access in the Business Owner Panel.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 font-semibold">
-                  {customFields.filter((f) => f.is_active && !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length} of {customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length} active in forms
-                </span>
+              {/* Stat Counters & Batch Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).length} Granted</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-xs font-bold">
+                  <X className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{combinedColumnsAndFields.filter((f) => !f.isOwnerAccessible).length} Revoked</span>
+                </div>
+
+                <div className="flex items-center gap-1 ml-1">
+                  <button
+                    type="button"
+                    onClick={handleGrantAllOwnerPermissions}
+                    className="tactile-btn px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold cursor-pointer transition-colors"
+                    title="Turn on access for all fields in Owner Panel"
+                  >
+                    Grant All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRevokeAllOwnerPermissions}
+                    className="tactile-btn px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold cursor-pointer transition-colors"
+                    title="Turn off access for all fields in Owner Panel"
+                  >
+                    Revoke All
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Quick 1-Click Presets */}
             <div className="pt-3 border-t border-zinc-100">
               <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">
-                1-Click Preset Activations:
+                1-Click Custom Field Presets:
               </span>
               <div className="flex flex-wrap gap-2">
                 {DEFAULT_CUSTOM_FIELD_PRESETS.filter((p) => !isStandardBusinessField(p.id) && !isStandardBusinessField(p.label)).map((preset) => {
@@ -868,7 +1009,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                 <Plus className="w-4 h-4 text-blue-600" />
                 <h4 className="text-sm font-bold text-zinc-900">Create New Custom Field</h4>
               </div>
-              <span className="text-[11px] text-zinc-400">Instantly available in business creation &amp; edit dialogs</span>
+              <span className="text-[11px] text-zinc-400">Instantly creates column, adds to forms, and configures owner access</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -919,7 +1060,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-[11px] text-zinc-500">
-                Created fields persist across sessions and synchronize with all team members.
+                Custom fields appear in Add/Edit business forms and can be toggled on/off for the Business Owner Panel below.
               </span>
               <button
                 type="submit"
@@ -931,34 +1072,91 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             </div>
           </form>
 
-          {/* Configured Fields List with Inline Editing */}
+          {/* Master Field Permissions Directory */}
           <div className="p-6 sm:p-7 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-zinc-700" />
                 <h4 className="text-sm font-bold text-zinc-900">
-                  Configured Fields ({filteredCustomFields.length})
+                  Clients Table Fields &amp; Owner Access ({combinedColumnsAndFields.length})
                 </h4>
               </div>
-              <span className="text-[11px] text-zinc-500">
-                Click <strong>Edit</strong> on any field to modify its label, type, or placeholder.
-              </span>
+
+              {/* Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPermissionFilter("all")}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                    permissionFilter === "all"
+                      ? "bg-zinc-900 text-white font-bold"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  }`}
+                >
+                  All ({STANDARD_CLIENT_COLUMNS.length + customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPermissionFilter("standard")}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                    permissionFilter === "standard"
+                      ? "bg-purple-900 text-white font-bold"
+                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  }`}
+                >
+                  Standard Columns ({STANDARD_CLIENT_COLUMNS.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPermissionFilter("custom")}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                    permissionFilter === "custom"
+                      ? "bg-blue-900 text-white font-bold"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  }`}
+                >
+                  Custom Fields ({customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPermissionFilter("granted")}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                    permissionFilter === "granted"
+                      ? "bg-emerald-700 text-white font-bold"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                  }`}
+                >
+                  Access Granted (Green) ({combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPermissionFilter("revoked")}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                    permissionFilter === "revoked"
+                      ? "bg-rose-700 text-white font-bold"
+                      : "bg-rose-50 text-rose-800 hover:bg-rose-100"
+                  }`}
+                >
+                  Access Revoked (Red) ({combinedColumnsAndFields.filter((f) => !f.isOwnerAccessible).length})
+                </button>
+              </div>
             </div>
 
-            {filteredCustomFields.length === 0 ? (
+            {/* Field Rows */}
+            {combinedColumnsAndFields.length === 0 ? (
               <div className="text-center py-8 text-zinc-400 text-xs">
-                No custom fields found matching your criteria.
+                No fields match the selected filter or search query.
               </div>
             ) : (
               <div className="divide-y divide-zinc-100">
-                {filteredCustomFields.map((field) => {
-                  const isEditing = editingFieldId === field.id;
+                {combinedColumnsAndFields.map((field) => {
+                  const isEditingCustom = editingFieldId === field.id && !field.isStandard;
 
-                  if (isEditing) {
+                  if (isEditingCustom) {
                     return (
                       <div key={field.id} className="py-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-200 space-y-3 animate-in fade-in">
                         <div className="flex items-center justify-between text-xs font-bold text-blue-900">
-                          <span>Editing Field: {field.id}</span>
+                          <span>Editing Custom Field: {field.id}</span>
                           <button
                             type="button"
                             onClick={() => setEditingFieldId(null)}
@@ -1024,64 +1222,84 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                   }
 
                   return (
-                    <div key={field.id} className="py-3.5 flex items-center justify-between gap-4">
+                    <div key={field.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-50/60 transition-colors px-2 rounded-xl">
                       <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-xs font-bold text-zinc-900">{field.label}</span>
                           <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
                             {field.id}
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100 uppercase">
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                              field.isStandard
+                                ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                : "bg-blue-50 text-blue-700 border border-blue-200"
+                            }`}
+                          >
+                            {field.isStandard ? "Standard Column" : "Custom Field"}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-mono">
                             {field.type}
                           </span>
                         </div>
+                        {field.description && (
+                          <p className="text-[11px] text-zinc-500">
+                            {field.description}
+                          </p>
+                        )}
                         {field.placeholder && (
-                          <p className="text-[11px] text-zinc-400 truncate">
-                            Placeholder: <span className="font-mono text-zinc-600">{field.placeholder}</span>
+                          <p className="text-[10.5px] text-zinc-400 font-mono truncate">
+                            Sample: {field.placeholder}
                           </p>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditField(field)}
-                          className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-colors"
-                          title="Edit field label and type"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
+                      {/* Right Side: Owner Access Button + Custom Actions */}
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {/* The exact Toggle Button: Turn on to give access in green & Turn off to remove access in red */}
+                        {field.isOwnerAccessible ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleOwnerPermission(field.id, field.label)}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-[0.978]"
+                            title="Access is currently given. Click to Turn Off (Red) to remove access from Business Owner Panel"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                            <span>Turn off to remove access</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleOwnerPermission(field.id, field.label)}
+                            className="tactile-btn inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-transform active:scale-[0.978]"
+                            title="Access is currently removed. Click to Turn On (Green) to give access in Business Owner Panel"
+                          >
+                            <X className="w-3.5 h-3.5 text-white" />
+                            <span>Turn on to give access</span>
+                          </button>
+                        )}
 
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCustomField(field.id)}
-                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                            field.is_active
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                              : "bg-zinc-100 text-zinc-500 border border-zinc-200 hover:bg-zinc-200"
-                          }`}
-                        >
-                          {field.is_active ? (
-                            <>
-                              <ToggleRight className="w-4 h-4 text-emerald-600" />
-                              <span>Active</span>
-                            </>
-                          ) : (
-                            <>
-                              <ToggleLeft className="w-4 h-4 text-zinc-400" />
-                              <span>Disabled</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCustomField(field.id, field.label)}
-                          className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                          title="Delete field"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Edit & Delete for Custom Fields */}
+                        {!field.isStandard && field.customFieldRef && (
+                          <div className="flex items-center gap-1 border-l border-zinc-200 pl-2">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditField(field.customFieldRef!)}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-colors"
+                              title="Edit custom field"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCustomField(field.id, field.label)}
+                              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                              title="Delete custom field"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1090,34 +1308,41 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             )}
           </div>
 
-          {/* Interactive Form Simulation Preview */}
-          <div className="p-6 rounded-3xl bg-zinc-50 border border-zinc-200/90 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700">
-              <Eye className="w-4 h-4 text-blue-600" />
-              <span>How your custom fields look inside the Add &amp; Edit Business Modals:</span>
+          {/* Interactive Live Preview of Business Owner Panel */}
+          <div className="p-6 rounded-3xl bg-zinc-900 text-white border border-zinc-800 shadow-md space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center gap-2 text-amber-400">
+                <Eye className="w-4 h-4" />
+                <span>Live Preview: Visible Fields in Business Owner Panel ({combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).length} fields permitted)</span>
+              </div>
+              <span className="text-[11px] text-zinc-400 font-mono">Changes apply to all owner logins instantly</span>
             </div>
-            <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-2xs space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {customFields.filter((f) => f.is_active).slice(0, 4).map((f) => (
-                  <div key={f.id}>
-                    <label className="block text-[11px] font-bold text-zinc-800 mb-1 flex items-center justify-between">
-                      <span>{f.label}</span>
-                      <span className="text-[9px] font-mono text-zinc-400">({f.type})</span>
-                    </label>
-                    <input
-                      disabled
-                      type="text"
-                      placeholder={f.placeholder || `Enter ${f.label.toLowerCase()}`}
-                      className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-500 cursor-not-allowed"
-                    />
-                  </div>
+            
+            <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2.5">
+              <div className="flex flex-wrap gap-2">
+                {combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).map((f) => (
+                  <span
+                    key={f.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 text-xs font-medium text-gray-200"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>{f.label}</span>
+                  </span>
                 ))}
               </div>
-              <p className="text-[10px] text-zinc-400 text-center pt-1">
-                {customFields.filter((f) => f.is_active).length > 4 ? `+ ${customFields.filter((f) => f.is_active).length - 4} more active custom fields rendered in full modal.` : ""}
-              </p>
+              {combinedColumnsAndFields.filter((f) => !f.isOwnerAccessible).length > 0 && (
+                <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                  <span className="font-bold text-rose-400">Hidden from Owner:</span>
+                  {combinedColumnsAndFields.filter((f) => !f.isOwnerAccessible).map((f) => (
+                    <span key={f.id} className="line-through text-gray-500">
+                      {f.label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
         </div>
       )}
 

@@ -34,6 +34,11 @@ import {
   Navigation,
   Mail
 } from "lucide-react";
+import {
+  getOwnerFieldPermissions,
+  getCustomFieldDefinitions,
+  CustomFieldDefinition,
+} from "@/lib/adminPlatformStore";
 
 interface OwnerAccessModalProps {
   isOpen: boolean;
@@ -113,6 +118,48 @@ export default function OwnerAccessModal({
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Field Permissions & Custom Fields
+  const [ownerPerms, setOwnerPerms] = useState<Record<string, boolean>>({});
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [ownerCustomFields, setOwnerCustomFields] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setOwnerPerms(getOwnerFieldPermissions());
+    setCustomFieldDefs(getCustomFieldDefinitions());
+
+    const handlePermsUpdate = (e: Event) => {
+      const customEv = e as CustomEvent<Record<string, boolean>>;
+      if (customEv.detail) {
+        setOwnerPerms(customEv.detail);
+      } else {
+        setOwnerPerms(getOwnerFieldPermissions());
+      }
+    };
+
+    const handleCustomFieldsUpdate = (e: Event) => {
+      const customEv = e as CustomEvent<CustomFieldDefinition[]>;
+      if (customEv.detail) {
+        setCustomFieldDefs(customEv.detail);
+      } else {
+        setCustomFieldDefs(getCustomFieldDefinitions());
+      }
+    };
+
+    window.addEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
+    window.addEventListener("zentap_custom_fields_updated", handleCustomFieldsUpdate);
+    return () => {
+      window.removeEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
+      window.removeEventListener("zentap_custom_fields_updated", handleCustomFieldsUpdate);
+    };
+  }, []);
+
+  const isPermitted = (fieldId: string) => {
+    if (ownerPerms[fieldId] !== undefined) {
+      return ownerPerms[fieldId] === true;
+    }
+    return true; // Default standard fields to true
+  };
 
   // Sync default code whenever tagCode, businessSlug, or clientBusinessId changes
   useEffect(() => {
@@ -198,6 +245,7 @@ export default function OwnerAccessModal({
     );
     setEditDirections(b.directions_link || b.directions || b.address || "");
     setEditAddress(b.address || b.directions_link || b.directions || "");
+    setOwnerCustomFields(custom);
   };
 
   // 15-Minute Countdown Timer
@@ -351,35 +399,39 @@ export default function OwnerAccessModal({
       const activeDirections = (editDirections || editAddress).trim();
 
       const payloadUpdates = {
-        name: editName.trim(),
-        city: editCity.trim(),
-        area: editArea.trim(),
-        services: editServices.trim(),
-        keywords: editKeywords.trim(),
-        owner_name: editOwnerName.trim(),
-        owner_phone: activeOwnerPhone,
-        contact_phone: activeContactPhone,
+        name: isPermitted("business_name") ? editName.trim() : bizData?.name || editName.trim(),
+        city: isPermitted("city") ? editCity.trim() : bizData?.city || editCity.trim(),
+        area: isPermitted("area") ? editArea.trim() : bizData?.area || editArea.trim(),
+        services: isPermitted("services") ? editServices.trim() : bizData?.services || editServices.trim(),
+        keywords: isPermitted("keywords") ? editKeywords.trim() : bizData?.keywords || editKeywords.trim(),
+        owner_name: isPermitted("owner_name") ? editOwnerName.trim() : bizData?.owner_name || editOwnerName.trim(),
+        owner_phone: isPermitted("owner_phone") ? activeOwnerPhone : bizData?.owner_phone || activeOwnerPhone,
+        contact_phone: isPermitted("contact_phone") ? activeContactPhone : bizData?.contact_phone || activeContactPhone,
         phone: activePhone,
-        owner_email: editEmail.trim(),
-        email: editEmail.trim(),
-        whatsapp_number: editWhatsapp.trim(),
+        owner_email: isPermitted("owner_email") ? editEmail.trim() : bizData?.owner_email || editEmail.trim(),
+        email: isPermitted("owner_email") ? editEmail.trim() : bizData?.email || editEmail.trim(),
+        whatsapp_number: isPermitted("whatsapp") ? editWhatsapp.trim() : bizData?.whatsapp_number || editWhatsapp.trim(),
         whatsapp_message: editWhatsappMsg.trim(),
-        google_review_link: editReviewUrl.trim(),
-        review_url: editReviewUrl.trim(),
-        google_business_page: editGoogleBusinessPage.trim(),
-        instagram_handle: editInstagram.trim(),
-        instagram_url: editInstagram.trim(),
-        facebook_link: editFacebook.trim(),
-        facebook_url: editFacebook.trim(),
-        twitter: editTwitter.trim(),
-        twitter_link: editTwitter.trim(),
-        upi_id: editUpiId.trim(),
-        website: editWebsite.trim(),
-        website_url: editWebsite.trim(),
-        category: editCategory.trim(),
-        directions: activeDirections,
-        directions_link: activeDirections,
-        address: activeDirections,
+        google_review_link: isPermitted("google_review_link") ? editReviewUrl.trim() : bizData?.google_review_link || editReviewUrl.trim(),
+        review_url: isPermitted("google_review_link") ? editReviewUrl.trim() : bizData?.review_url || editReviewUrl.trim(),
+        google_business_page: isPermitted("google_business_page") ? editGoogleBusinessPage.trim() : bizData?.google_business_page || editGoogleBusinessPage.trim(),
+        instagram_handle: isPermitted("instagram_link") ? editInstagram.trim() : bizData?.instagram_handle || editInstagram.trim(),
+        instagram_url: isPermitted("instagram_link") ? editInstagram.trim() : bizData?.instagram_url || editInstagram.trim(),
+        facebook_link: isPermitted("facebook_link") ? editFacebook.trim() : bizData?.facebook_link || editFacebook.trim(),
+        facebook_url: isPermitted("facebook_link") ? editFacebook.trim() : bizData?.facebook_url || editFacebook.trim(),
+        twitter: isPermitted("twitter_link") ? editTwitter.trim() : bizData?.twitter || editTwitter.trim(),
+        twitter_link: isPermitted("twitter_link") ? editTwitter.trim() : bizData?.twitter_link || editTwitter.trim(),
+        upi_id: isPermitted("upi_id") ? editUpiId.trim() : bizData?.upi_id || editUpiId.trim(),
+        website: isPermitted("website_url") ? editWebsite.trim() : bizData?.website || editWebsite.trim(),
+        website_url: isPermitted("website_url") ? editWebsite.trim() : bizData?.website_url || editWebsite.trim(),
+        category: isPermitted("category") ? editCategory.trim() : bizData?.category || editCategory.trim(),
+        directions: isPermitted("directions_link") ? activeDirections : bizData?.directions || activeDirections,
+        directions_link: isPermitted("directions_link") ? activeDirections : bizData?.directions_link || activeDirections,
+        address: isPermitted("directions_link") ? activeDirections : bizData?.address || activeDirections,
+        custom_fields: {
+          ...(bizData?.custom_fields || {}),
+          ...ownerCustomFields,
+        },
       };
 
       const res = await fetch("/api/card/update", {
@@ -766,249 +818,287 @@ export default function OwnerAccessModal({
                 </span>
               </div>
 
-              {/* Business Name */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                  Business Name *
-                </label>
-                <div className="relative">
-                  <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="e.g. Zentap Digital Solutions"
-                    className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              {/* City & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* 1. Business Name */}
+              {isPermitted("business_name") && (
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    City / Location
+                    Business Name *
                   </label>
                   <div className="relative">
-                    <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                    <Building2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      value={editCity}
-                      onChange={(e) => setEditCity(e.target.value)}
-                      placeholder="e.g. Ahmedabad"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                      required
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="e.g. Zentap Digital Solutions"
+                      className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                     />
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Category / Subtitle
-                  </label>
-                  <input
-                    type="text"
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    placeholder="e.g. Service • Digital Agency"
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+              {/* 2. City & Category */}
+              {(isPermitted("city") || isPermitted("category")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("city") && (
+                    <div className={!isPermitted("category") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        City / Location
+                      </label>
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                        <input
+                          type="text"
+                          value={editCity}
+                          onChange={(e) => setEditCity(e.target.value)}
+                          placeholder="e.g. Ahmedabad"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Owner Name & Owner Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Owner Name
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={editOwnerName}
-                      onChange={(e) => setEditOwnerName(e.target.value)}
-                      placeholder="e.g. Meet Borad"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  {isPermitted("category") && (
+                    <div className={!isPermitted("city") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Category / Subtitle
+                      </label>
+                      <input
+                        type="text"
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        placeholder="e.g. Service • Digital Agency"
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Owner Phone
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
-                    <input
-                      type="tel"
-                      value={editOwnerPhone}
-                      onChange={(e) => setEditOwnerPhone(e.target.value)}
-                      placeholder="+91 92745 60880"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* 3. Owner Name & Owner Phone */}
+              {(isPermitted("owner_name") || isPermitted("owner_phone")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("owner_name") && (
+                    <div className={!isPermitted("owner_phone") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Owner Name
+                      </label>
+                      <div className="relative">
+                        <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={editOwnerName}
+                          onChange={(e) => setEditOwnerName(e.target.value)}
+                          placeholder="e.g. Meet Borad"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Contact Phone & Owner Email */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Contact Phone
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
-                    <input
-                      type="tel"
-                      value={editContactPhone}
-                      onChange={(e) => setEditContactPhone(e.target.value)}
-                      placeholder="+91 96627 60880"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  {isPermitted("owner_phone") && (
+                    <div className={!isPermitted("owner_name") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Owner Phone
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                        <input
+                          type="tel"
+                          value={editOwnerPhone}
+                          onChange={(e) => setEditOwnerPhone(e.target.value)}
+                          placeholder="+91 92745 60880"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Owner Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
-                    <input
-                      type="email"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="e.g. contact@zentapdigitalsolutions.com"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* 4. Contact Phone & Owner Email */}
+              {(isPermitted("contact_phone") || isPermitted("owner_email")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("contact_phone") && (
+                    <div className={!isPermitted("owner_email") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Contact Phone
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                        <input
+                          type="tel"
+                          value={editContactPhone}
+                          onChange={(e) => setEditContactPhone(e.target.value)}
+                          placeholder="+91 96627 60880"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Google Review Link & Google Business Page */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-gray-300">
-                      Google Review Link
-                    </label>
-                    {editReviewUrl && (
-                      <a
-                        href={editReviewUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] text-amber-400 hover:underline inline-flex items-center gap-1"
-                      >
-                        <span>Test link</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    )}
-                  </div>
-                  <input
-                    type="url"
-                    placeholder="https://g.page/r/.../review"
-                    value={editReviewUrl}
-                    onChange={(e) => setEditReviewUrl(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
+                  {isPermitted("owner_email") && (
+                    <div className={!isPermitted("contact_phone") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Owner Email
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          placeholder="e.g. contact@zentapdigitalsolutions.com"
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Google Business Page
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://maps.app.goo.gl/... or business profile"
-                    value={editGoogleBusinessPage}
-                    onChange={(e) => setEditGoogleBusinessPage(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+              {/* 5. Google Review Link & Google Business Page */}
+              {(isPermitted("google_review_link") || isPermitted("google_business_page")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("google_review_link") && (
+                    <div className={!isPermitted("google_business_page") ? "sm:col-span-2" : ""}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-gray-300">
+                          Google Review Link
+                        </label>
+                        {editReviewUrl && (
+                          <a
+                            href={editReviewUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-amber-400 hover:underline inline-flex items-center gap-1"
+                          >
+                            <span>Test link</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        placeholder="https://g.page/r/.../review"
+                        value={editReviewUrl}
+                        onChange={(e) => setEditReviewUrl(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  )}
 
-              {/* WhatsApp Number & Instagram */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    WhatsApp Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
-                    <input
-                      type="text"
-                      placeholder="+91 92745 60880"
-                      value={editWhatsapp}
-                      onChange={(e) => setEditWhatsapp(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  {isPermitted("google_business_page") && (
+                    <div className={!isPermitted("google_review_link") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Google Business Page
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://maps.app.goo.gl/... or business profile"
+                        value={editGoogleBusinessPage}
+                        onChange={(e) => setEditGoogleBusinessPage(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Instagram Link / Handle
-                  </label>
-                  <div className="relative">
-                    <Instagram className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-pink-400" />
-                    <input
-                      type="text"
-                      placeholder="https://instagram.com/..."
-                      value={editInstagram}
-                      onChange={(e) => setEditInstagram(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* 6. WhatsApp Number & Instagram */}
+              {(isPermitted("whatsapp") || isPermitted("instagram_link")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("whatsapp") && (
+                    <div className={!isPermitted("instagram_link") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        WhatsApp Number
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                        <input
+                          type="text"
+                          placeholder="+91 92745 60880"
+                          value={editWhatsapp}
+                          onChange={(e) => setEditWhatsapp(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              {/* Facebook & Website */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Facebook Page URL
-                  </label>
-                  <div className="relative">
-                    <Facebook className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" />
-                    <input
-                      type="url"
-                      placeholder="https://facebook.com/..."
-                      value={editFacebook}
-                      onChange={(e) => setEditFacebook(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  {isPermitted("instagram_link") && (
+                    <div className={!isPermitted("whatsapp") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Instagram Link / Handle
+                      </label>
+                      <div className="relative">
+                        <Instagram className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-pink-400" />
+                        <input
+                          type="text"
+                          placeholder="https://instagram.com/..."
+                          value={editInstagram}
+                          onChange={(e) => setEditInstagram(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-gray-300">
-                      Website / Portfolio URL
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleAutoFillFromWebsite}
-                      disabled={autoFilling || !editWebsite.trim()}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[10px] text-amber-300 hover:bg-amber-500/30 font-semibold cursor-pointer disabled:opacity-40 transition-colors"
-                      title="Extract business info, services & keywords from website"
-                    >
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      <span>{autoFilling ? "Extracting..." : "Auto-fill from website"}</span>
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
-                    <input
-                      type="url"
-                      placeholder="https://yourwebsite.com"
-                      value={editWebsite}
-                      onChange={(e) => setEditWebsite(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+              {/* 7. Facebook & Website */}
+              {(isPermitted("facebook_link") || isPermitted("website_url")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("facebook_link") && (
+                    <div className={!isPermitted("website_url") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Facebook Page URL
+                      </label>
+                      <div className="relative">
+                        <Facebook className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-blue-400" />
+                        <input
+                          type="url"
+                          placeholder="https://facebook.com/..."
+                          value={editFacebook}
+                          onChange={(e) => setEditFacebook(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {isPermitted("website_url") && (
+                    <div className={!isPermitted("facebook_link") ? "sm:col-span-2" : ""}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-gray-300">
+                          Website / Portfolio URL
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleAutoFillFromWebsite}
+                          disabled={autoFilling || !editWebsite.trim()}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[10px] text-amber-300 hover:bg-amber-500/30 font-semibold cursor-pointer disabled:opacity-40 transition-colors"
+                          title="Extract business info, services & keywords from website"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                          <span>{autoFilling ? "Extracting..." : "Auto-fill from website"}</span>
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                        <input
+                          type="url"
+                          placeholder="https://yourwebsite.com"
+                          value={editWebsite}
+                          onChange={(e) => setEditWebsite(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {autoFillMsg && (
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-center gap-2 animate-in fade-in">
@@ -1017,129 +1107,211 @@ export default function OwnerAccessModal({
                 </div>
               )}
 
-              {/* Business Info for AI Reviews (Context, Services, Area, Keywords) */}
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-amber-500/20 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                      Business Info (AI Review Context)
-                    </span>
+              {/* 8. Business Info for Reviews (Context, Services, Area, Keywords) */}
+              {(isPermitted("area") || isPermitted("services") || isPermitted("keywords")) && (
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-amber-500/20 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                        Business Info (Review Context)
+                      </span>
+                    </div>
+                    {isPermitted("website_url") && (
+                      <button
+                        type="button"
+                        onClick={handleAutoFillFromWebsite}
+                        disabled={autoFilling || !editWebsite.trim()}
+                        className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-300 transition-colors cursor-pointer disabled:opacity-40"
+                        title="Re-fetch and refresh business info from website"
+                      >
+                        <RotateCcw className={`w-2.5 h-2.5 ${autoFilling ? "animate-spin" : ""}`} />
+                        <span>Refresh business info</span>
+                      </button>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAutoFillFromWebsite}
-                    disabled={autoFilling || !editWebsite.trim()}
-                    className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-300 transition-colors cursor-pointer disabled:opacity-40"
-                    title="Re-fetch and refresh business info from website"
-                  >
-                    <RotateCcw className={`w-2.5 h-2.5 ${autoFilling ? "animate-spin" : ""}`} />
-                    <span>Refresh business info</span>
-                  </button>
+                  <p className="text-[10.5px] text-gray-400 leading-relaxed">
+                    Used by the Smart Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {isPermitted("area") && (
+                      <div className={!isPermitted("services") ? "sm:col-span-2" : ""}>
+                        <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                          Area / Locality
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
+                          value={editArea}
+                          onChange={(e) => setEditArea(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    )}
+
+                    {isPermitted("services") && (
+                      <div className={!isPermitted("area") ? "sm:col-span-2" : ""}>
+                        <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                          Services / Products List
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Smart NFC Standee, Google Review Card, Tap Card"
+                          value={editServices}
+                          onChange={(e) => setEditServices(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {isPermitted("keywords") && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        3–5 Focus Keywords
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. NFC Standee, Tap Review, Smart Business Card, Fast Setup"
+                        value={editKeywords}
+                        onChange={(e) => setEditKeywords(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="text-[9.5px] text-gray-500 mt-1 block">
+                        Comma separated. Never invents details — only naturally weaves relevant keywords if customer selects matching chips.
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[10.5px] text-gray-400 leading-relaxed">
-                  Used by the Smart Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
-                </p>
+              )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                      Area / Locality
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
-                      value={editArea}
-                      onChange={(e) => setEditArea(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+              {/* 9. Twitter / X & UPI ID */}
+              {(isPermitted("twitter_link") || isPermitted("upi_id")) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {isPermitted("twitter_link") && (
+                    <div className={!isPermitted("upi_id") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Twitter / X Profile
+                      </label>
+                      <div className="relative">
+                        <Twitter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                        <input
+                          type="text"
+                          placeholder="https://x.com/... or @handle"
+                          value={editTwitter}
+                          onChange={(e) => setEditTwitter(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                      Services / Products List
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Smart NFC Standee, Google Review Card, Tap Card"
-                      value={editServices}
-                      onChange={(e) => setEditServices(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
+                  {isPermitted("upi_id") && (
+                    <div className={!isPermitted("twitter_link") ? "sm:col-span-2" : ""}>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
+                        Business UPI ID
+                      </label>
+                      <div className="relative">
+                        <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                        <input
+                          type="text"
+                          placeholder="e.g. zentap@oksbi"
+                          value={editUpiId}
+                          onChange={(e) => setEditUpiId(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
+              {/* 10. Directions Link / Full Address */}
+              {isPermitted("directions_link") && (
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    3–5 Focus Keywords
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. NFC Standee, Tap Review, Smart Business Card, Fast Setup"
-                    value={editKeywords}
-                    onChange={(e) => setEditKeywords(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                  <span className="text-[9.5px] text-gray-500 mt-1 block">
-                    Comma separated. Model never invents false details — only naturally weaves relevant keywords if customer selects matching chips.
-                  </span>
-                </div>
-              </div>
-
-              {/* Twitter / X & UPI ID */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Twitter / X Profile
+                    Directions Link / Full Address Note
                   </label>
                   <div className="relative">
-                    <Twitter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+                    <Navigation className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
                     <input
                       type="text"
-                      placeholder="https://x.com/... or @handle"
-                      value={editTwitter}
-                      onChange={(e) => setEditTwitter(e.target.value)}
+                      placeholder="e.g. https://maps.app.goo.gl/... or Ahmedabad, Gujarat, India"
+                      value={editDirections}
+                      onChange={(e) => {
+                        setEditDirections(e.target.value);
+                        setEditAddress(e.target.value);
+                      }}
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                     />
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                    Business UPI ID
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
-                    <input
-                      type="text"
-                      placeholder="e.g. zentap@oksbi"
-                      value={editUpiId}
-                      onChange={(e) => setEditUpiId(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white font-mono placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                    />
+              {/* 11. Permitted Custom Fields Configured in Settings */}
+              {customFieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length > 0 && (
+                <div className="pt-2.5 border-t border-white/10 space-y-2.5">
+                  <div className="flex items-center gap-1.5 pb-0.5">
+                    <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                      Custom Business Details
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                      {customFieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length} active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {customFieldDefs
+                      .filter((f) => f.is_active && isPermitted(f.id))
+                      .map((field) => (
+                        <div key={field.id} className={field.type === "url" || field.id.includes("address") ? "sm:col-span-2" : ""}>
+                          <label className="block text-[11px] font-bold text-gray-300 mb-1 flex items-center justify-between">
+                            <span>{field.label}</span>
+                            <span className="text-[10px] font-mono text-gray-500">({field.type})</span>
+                          </label>
+                          <input
+                            type={field.type === "url" ? "url" : field.type === "email" ? "email" : field.type === "tel" ? "tel" : field.type === "number" ? "number" : "text"}
+                            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                            value={ownerCustomFields[field.id] || ""}
+                            onChange={(e) => setOwnerCustomFields({ ...ownerCustomFields, [field.id]: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      ))}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Directions Link / Full Address */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                  Directions Link / Full Address Note
-                </label>
-                <div className="relative">
-                  <Navigation className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-amber-400" />
-                  <input
-                    type="text"
-                    placeholder="e.g. https://maps.app.goo.gl/... or Ahmedabad, Gujarat, India"
-                    value={editDirections}
-                    onChange={(e) => {
-                      setEditDirections(e.target.value);
-                      setEditAddress(e.target.value);
-                    }}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
+              {/* Empty state notice if all fields are turned off in Settings */}
+              {!isPermitted("business_name") &&
+                !isPermitted("city") &&
+                !isPermitted("category") &&
+                !isPermitted("owner_name") &&
+                !isPermitted("owner_phone") &&
+                !isPermitted("contact_phone") &&
+                !isPermitted("owner_email") &&
+                !isPermitted("google_review_link") &&
+                !isPermitted("google_business_page") &&
+                !isPermitted("whatsapp") &&
+                !isPermitted("instagram_link") &&
+                !isPermitted("facebook_link") &&
+                !isPermitted("website_url") &&
+                !isPermitted("area") &&
+                !isPermitted("services") &&
+                !isPermitted("keywords") &&
+                !isPermitted("twitter_link") &&
+                !isPermitted("upi_id") &&
+                !isPermitted("directions_link") &&
+                customFieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length === 0 && (
+                  <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1.5 py-6">
+                    <p className="text-xs text-amber-300 font-bold">No editable fields permitted</p>
+                    <p className="text-[11px] text-gray-400">
+                      Field editing access has been turned off in settings. Contact your administrator if you need to update any business details.
+                    </p>
+                  </div>
+                )}
 
               {/* Save Updates Button */}
               <div className="pt-3 flex items-center justify-between border-t border-white/10">
