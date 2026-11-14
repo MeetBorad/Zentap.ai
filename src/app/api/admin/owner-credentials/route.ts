@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashSecret, DEFAULT_PIN_HASH } from "@/lib/ownerAccess";
+import { notifyFounderOwnerCredentials, generateDeterministicPassword } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +18,6 @@ export interface OwnerCredentialItem {
   login_id: string;
   password: string;
   updated_at?: string;
-}
-
-function generateDeterministicPassword(businessId: string): string {
-  const digits = (businessId.match(/\d+/) || [""])[0];
-  const num = parseInt(digits || "1", 10);
-  const code = (num * 7393 + 1234) % 10000;
-  return `ZT@${String(code).padStart(4, "0")}`;
 }
 
 export async function GET() {
@@ -161,6 +155,25 @@ export async function POST(req: NextRequest) {
       } catch {
         // Ignored if tags table schema differs
       }
+
+      // Automatically dispatch credentials to founder Telegram
+      const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.zentapdigitalsolutions.com";
+      const matchedPage = existingPage?.config_data;
+      const pageSlug = existingPage?.tag_id || cleanBid.toLowerCase();
+      const pageUrl = `${domain}/r/${pageSlug}`;
+
+      await notifyFounderOwnerCredentials({
+        business_id: cleanBid,
+        business_name: existingClient?.business_name || matchedPage?.title || cleanBid,
+        city: existingClient?.city || matchedPage?.address || "Ahmedabad",
+        owner_name: existingClient?.owner_name || matchedPage?.owner_name || "",
+        owner_phone: existingClient?.owner_phone || existingClient?.whatsapp || matchedPage?.phone || "",
+        owner_email: existingClient?.owner_email || matchedPage?.email || "",
+        login_id: newLoginId,
+        password: newPassword,
+        page_url: pageUrl,
+        action_type: body.action === "send_telegram" ? "created" : body.password ? "updated" : "regenerated",
+      }).catch((tgErr) => console.warn("Telegram dispatch notice:", tgErr));
     }
 
     return NextResponse.json({
@@ -168,6 +181,7 @@ export async function POST(req: NextRequest) {
       business_id: cleanBid,
       login_id: newLoginId,
       password: newPassword,
+      sent_to_telegram: true,
     });
   } catch (err: any) {
     console.error("POST /api/admin/owner-credentials error:", err);

@@ -41,6 +41,7 @@ import {
   Eye,
   EyeOff,
   Copy,
+  Send,
   X
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -194,7 +195,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
         setOwnerCredentials((prev) =>
           prev.map((c) => (c.business_id === bid ? { ...c, password: data.password } : c))
         );
-        showToast(`✓ Generated new password for ${bid}: ${data.password}`);
+        showToast(`✓ Generated new password for ${bid} and sent to your Telegram!`);
       }
     } catch {
       showToast("Failed to regenerate password");
@@ -215,10 +216,34 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           prev.map((c) => (c.business_id === bid ? { ...c, password: data.password } : c))
         );
         setEditingPasswordBid(null);
-        showToast(`✓ Password updated for ${bid}!`);
+        showToast(`✓ Password updated and sent to your Telegram!`);
       }
     } catch {
       showToast("Failed to update password");
+    }
+  };
+
+  const handleSendToTelegram = async (c: OwnerCredentialItem) => {
+    try {
+      showToast(`📤 Sending credentials for ${c.business_name} to Telegram...`);
+      const res = await fetch("/api/admin/owner-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: c.business_id,
+          login_id: c.login_id,
+          password: c.password,
+          action: "send_telegram",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✓ Sent credentials for ${c.business_name} to your Telegram!`);
+      } else {
+        showToast(data.error || "Failed to send to Telegram");
+      }
+    } catch {
+      showToast("Failed to connect to Telegram");
     }
   };
 
@@ -1535,14 +1560,25 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCustomerKit(c)}
-                            className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs cursor-pointer shadow-2xs transition-transform active:scale-[0.978]"
-                          >
-                            <Copy className="w-3 h-3 text-black" />
-                            <span>Copy for Customer</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSendToTelegram(c)}
+                              className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold text-xs cursor-pointer shadow-2xs transition-transform active:scale-[0.978]"
+                              title="Send credentials directly to your Telegram"
+                            >
+                              <Send className="w-3 h-3 text-sky-600" />
+                              <span>Telegram</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCustomerKit(c)}
+                              className="tactile-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs cursor-pointer shadow-2xs transition-transform active:scale-[0.978]"
+                            >
+                              <Copy className="w-3 h-3 text-black" />
+                              <span>Copy for Customer</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

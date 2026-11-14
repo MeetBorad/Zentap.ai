@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { invalidateCachedTag } from "@/lib/tagCache";
+import { notifyFounderOwnerCredentials, generateDeterministicPassword } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -930,6 +931,27 @@ function sanitizeRowForTable(item: any, table: string) {
           if (insertRes.error) {
             console.error("Client insert error:", insertRes.error);
             return NextResponse.json({ error: insertRes.error.message }, { status: 500 });
+          }
+
+          // Automatically dispatch new client credentials to founder Telegram
+          try {
+            const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.zentapdigitalsolutions.com";
+            const newPassword = clean.custom_fields?.owner_password || generateDeterministicPassword(targetBid);
+            const loginId = clean.custom_fields?.owner_login_id || targetBid;
+            notifyFounderOwnerCredentials({
+              business_id: targetBid,
+              business_name: clean.business_name || targetBid,
+              city: clean.city || "Ahmedabad",
+              owner_name: clean.owner_name || "",
+              owner_phone: clean.owner_phone || clean.whatsapp || "",
+              owner_email: clean.owner_email || "",
+              login_id: loginId,
+              password: newPassword,
+              page_url: `${domain}/r/${targetBid.toLowerCase()}`,
+              action_type: "created",
+            }).catch((tgErr) => console.warn("Telegram dispatch notice on new client:", tgErr));
+          } catch (e) {
+            console.warn("Notice: Telegram notification error on new client:", e);
           }
 
           return NextResponse.json({ success: true, data: insertRes.data });
