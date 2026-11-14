@@ -116,10 +116,8 @@ import QrNfcGeneratorWebpageTab from "@/components/admin/tabs/QrNfcGeneratorWebp
 import GoogleLinksWebpageTab from "@/components/admin/tabs/GoogleLinksWebpageTab";
 import SocialLinksWebpageTab from "@/components/admin/tabs/SocialLinksWebpageTab";
 import PageEditorWebpageTab from "@/components/admin/tabs/PageEditorWebpageTab";
-import ManualPaymentsTab from "@/components/admin/ManualPaymentsTab";
 import LinksAndQrSettingsTab from "@/components/admin/LinksAndQrSettingsTab";
 import SocialLinksAndQrSettingsTab from "@/components/admin/SocialLinksAndQrSettingsTab";
-import { getManualPaymentStats, saveManualPayment, getAllManualPayments } from "@/lib/manualPaymentStore";
 import BulkAssignCardsModal from "@/components/admin/BulkAssignCardsModal";
 import QuickSocialEditModal from "@/components/admin/QuickSocialEditModal";
 import { useAuth } from "@/context/AuthContext";
@@ -135,6 +133,8 @@ import {
   getAllDeletedBusinesses,
   getAllPayments,
   getAllDeletedPayments,
+  addPayment,
+  updatePayment,
   getAllQrNfcTags,
   getAllGoogleReviewLinks,
   getAllSocialLinks,
@@ -814,16 +814,16 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
       custom_solution: 2499,
     };
     const agreedAmount = planPrices[newBizPlan] || 999;
-    saveManualPayment({
+    addPayment({
       business_id: newRecord.id,
       business_name: newRecord.name,
-      product_purchased: newBizPlan,
-      total_agreed_amount: agreedAmount,
-      amount_received: 0,
+      product: newBizPlan,
+      product_price: agreedAmount,
+      selling_rate: agreedAmount,
       payment_date: new Date().toISOString().split("T")[0],
-      payment_method: "upi",
-      payment_status: "pending",
-      admin_notes: "Initial registration (Awaiting payment confirmation to activate hardware)",
+      payment_method: "UPI",
+      payment_status: "Pending Unpaid",
+      notes: "Initial registration (Awaiting payment confirmation to activate hardware)",
     });
 
     const updated = [newRecord, ...businesses.filter((b) => b.id !== newRecord.id && b.slug !== newRecord.slug)];
@@ -854,15 +854,13 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
     adminUpdateBusinessRecord(biz.id, { payment_status: "paid", active: true });
     adminUpdateDbBusiness(biz.id, { payment_status: "paid", active: true }).catch((e) => console.warn(e));
 
-    // 2. Synchronize with manual payment ledger
-    const payments = getAllManualPayments();
+    // 2. Synchronize with platform payment ledger
+    const payments = getAllPayments();
     const existing = payments.find((p) => p.business_id === biz.id || p.business_name === biz.name);
     if (existing) {
-      saveManualPayment({
-        ...existing,
-        amount_received: existing.total_agreed_amount,
-        payment_status: "completed",
-        admin_notes: (existing.admin_notes ? existing.admin_notes + " • " : "") + "Payment confirmed via 1-click admin action.",
+      updatePayment(existing.id, {
+        payment_status: "Completed paid",
+        notes: (existing.notes ? existing.notes + " • " : "") + "Payment confirmed via 1-click admin action.",
       });
     }
 
@@ -1771,7 +1769,7 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                         </div>
                       )}
 
-                      {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount > 0 && (
+                      {getAllPayments().filter((p) => p.payment_status !== "Completed paid").length > 0 && (
                         <div 
                           onClick={() => {
                             setAdminMenu("manual_payments");
@@ -1782,14 +1780,14 @@ export default function AdminConsoleView({ onOpenAuthModal, onNavigate }: AdminC
                           <DollarSign className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
                           <div>
                             <p className="font-bold text-zinc-900">
-                              {getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount} Pending / Partial Payments
+                              {getAllPayments().filter((p) => p.payment_status !== "Completed paid").length} Pending / Partial Payments
                             </p>
-                            <p className="text-[11px] text-zinc-500">Click to open Manual Payments ledger.</p>
+                            <p className="text-[11px] text-zinc-500">Click to open Payments ledger.</p>
                           </div>
                         </div>
                       )}
 
-                      {pendingLinksCount === 0 && getManualPaymentStats().pendingCount + getManualPaymentStats().partialCount === 0 && (
+                      {pendingLinksCount === 0 && getAllPayments().filter((p) => p.payment_status !== "Completed paid").length === 0 && (
                         <p className="text-center text-zinc-400 py-3">All clear! Fleet operating smoothly.</p>
                       )}
                     </div>
