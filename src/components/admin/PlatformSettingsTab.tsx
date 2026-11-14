@@ -2,16 +2,16 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Settings, 
-  Lock, 
-  KeyRound, 
-  Phone, 
-  Globe, 
-  ShieldCheck, 
-  Sparkles, 
-  Check, 
-  Save, 
+import {
+  Settings,
+  Lock,
+  KeyRound,
+  Phone,
+  Globe,
+  ShieldCheck,
+  Sparkles,
+  Check,
+  Save,
   AlertTriangle,
   RotateCcw,
   Clock,
@@ -415,11 +415,11 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
     const updated = current.map((f) =>
       f.id === editingFieldId
         ? {
-            ...f,
-            label: editLabel.trim(),
-            type: editType,
-            placeholder: editPlaceholder.trim() || undefined,
-          }
+          ...f,
+          label: editLabel.trim(),
+          type: editType,
+          placeholder: editPlaceholder.trim() || undefined,
+        }
         : f
     );
     saveCustomFieldDefinitions(updated);
@@ -585,7 +585,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-300 pb-16">
-      
+
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & TELEMETRY BAR                                            */}
       {/* ========================================================================= */}
@@ -652,11 +652,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("general")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "general"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "general"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <Globe className="w-4 h-4 text-emerald-600" />
             <span>General &amp; Routing</span>
@@ -665,11 +664,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("custom_fields")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "custom_fields"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "custom_fields"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <Sliders className="w-4 h-4 text-blue-600" />
             <span>Owner Panel Fields &amp; Access</span>
@@ -681,11 +679,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("owner_logins")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "owner_logins"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "owner_logins"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <KeyRound className="w-4 h-4 text-amber-500" />
             <span>Owner Passwords &amp; Logins</span>
@@ -697,11 +694,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("security")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "security"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "security"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <ShieldCheck className="w-4 h-4 text-amber-600" />
             <span>Security &amp; PIN</span>
@@ -710,11 +706,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("ai_models")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "ai_models"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "ai_models"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <Sparkles className="w-4 h-4 text-amber-500" />
             <span>AI Models &amp; Failover</span>
@@ -723,11 +718,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
           <button
             type="button"
             onClick={() => setActiveSection("database")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeSection === "database"
-                ? "bg-white text-zinc-900 shadow-xs font-extrabold"
-                : "hover:text-zinc-900 hover:bg-white/40"
-            }`}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeSection === "database"
+              ? "bg-white text-zinc-900 shadow-xs font-extrabold"
+              : "hover:text-zinc-900 hover:bg-white/40"
+              }`}
           >
             <Database className="w-4 h-4 text-purple-600" />
             <span>System &amp; DB</span>
@@ -879,11 +873,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <label
                   onClick={() => setDefaultRouting("zentap_review")}
-                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    defaultRouting === "zentap_review"
-                      ? "bg-white border-zinc-900 shadow-xs"
-                      : "bg-zinc-100/60 border-zinc-200 hover:bg-white"
-                  }`}
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${defaultRouting === "zentap_review"
+                    ? "bg-white border-zinc-900 shadow-xs"
+                    : "bg-zinc-100/60 border-zinc-200 hover:bg-white"
+                    }`}
                 >
                   <input
                     type="radio"
@@ -902,11 +895,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
                 <label
                   onClick={() => setDefaultRouting("direct_google")}
-                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                    defaultRouting === "direct_google"
-                      ? "bg-white border-zinc-900 shadow-xs"
-                      : "bg-zinc-100/60 border-zinc-200 hover:bg-white"
-                  }`}
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${defaultRouting === "direct_google"
+                    ? "bg-white border-zinc-900 shadow-xs"
+                    : "bg-zinc-100/60 border-zinc-200 hover:bg-white"
+                    }`}
                 >
                   <input
                     type="radio"
@@ -943,7 +935,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
       {/* ========================================================================= */}
       {activeSection === "custom_fields" && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          
+
           {/* Header Banner */}
           <div className="p-6 sm:p-7 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1007,11 +999,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                       key={preset.id}
                       type="button"
                       onClick={() => handleQuickAddPreset(preset)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                        isEnabled
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold"
-                          : "bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100 hover:border-zinc-300"
-                      }`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${isEnabled
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold"
+                        : "bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100 hover:border-zinc-300"
+                        }`}
                     >
                       {isEnabled ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -1112,55 +1103,50 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                 <button
                   type="button"
                   onClick={() => setPermissionFilter("all")}
-                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                    permissionFilter === "all"
-                      ? "bg-zinc-900 text-white font-bold"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-                  }`}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${permissionFilter === "all"
+                    ? "bg-zinc-900 text-white font-bold"
+                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                    }`}
                 >
                   All ({STANDARD_CLIENT_COLUMNS.length + customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setPermissionFilter("standard")}
-                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                    permissionFilter === "standard"
-                      ? "bg-purple-900 text-white font-bold"
-                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
-                  }`}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${permissionFilter === "standard"
+                    ? "bg-purple-900 text-white font-bold"
+                    : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                    }`}
                 >
                   Standard Columns ({STANDARD_CLIENT_COLUMNS.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setPermissionFilter("custom")}
-                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                    permissionFilter === "custom"
-                      ? "bg-blue-900 text-white font-bold"
-                      : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                  }`}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${permissionFilter === "custom"
+                    ? "bg-blue-900 text-white font-bold"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
                 >
                   Additional Fields ({customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setPermissionFilter("granted")}
-                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                    permissionFilter === "granted"
-                      ? "bg-emerald-700 text-white font-bold"
-                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                  }`}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${permissionFilter === "granted"
+                    ? "bg-emerald-700 text-white font-bold"
+                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    }`}
                 >
                   Access Granted (Green) ({combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setPermissionFilter("revoked")}
-                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
-                    permissionFilter === "revoked"
-                      ? "bg-rose-700 text-white font-bold"
-                      : "bg-rose-50 text-rose-800 hover:bg-rose-100"
-                  }`}
+                  className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${permissionFilter === "revoked"
+                    ? "bg-rose-700 text-white font-bold"
+                    : "bg-rose-50 text-rose-800 hover:bg-rose-100"
+                    }`}
                 >
                   Access Revoked (Red) ({combinedColumnsAndFields.filter((f) => !f.isOwnerAccessible).length})
                 </button>
@@ -1255,11 +1241,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                             {field.id}
                           </span>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                              field.isStandard
-                                ? "bg-purple-50 text-purple-700 border border-purple-200"
-                                : "bg-blue-50 text-blue-700 border border-blue-200"
-                            }`}
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${field.isStandard
+                              ? "bg-purple-50 text-purple-700 border border-purple-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
+                              }`}
                           >
                             {field.isStandard ? "Standard Column" : "Added Field"}
                           </span>
@@ -1342,7 +1327,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
               </div>
               <span className="text-[11px] text-zinc-400 font-mono">Changes apply to all owner logins instantly</span>
             </div>
-            
+
             <div className="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2.5">
               <div className="flex flex-wrap gap-2">
                 {combinedColumnsAndFields.filter((f) => f.isOwnerAccessible).map((f) => (

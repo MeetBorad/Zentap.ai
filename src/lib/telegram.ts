@@ -24,8 +24,9 @@ export interface OwnerCredentialsNotification {
   action_type?: "created" | "regenerated" | "updated";
 }
 
-export function generateDeterministicPassword(businessId: string): string {
-  const digits = (businessId.match(/\d+/) || [""])[0];
+export function generateDeterministicPassword(businessId?: string): string {
+  const bid = businessId || "ZT-0001";
+  const digits = (bid.match(/\d+/) || [""])[0];
   const num = parseInt(digits || "1", 10);
   const code = (num * 7393 + 1234) % 10000;
   return `ZT@${String(code).padStart(4, "0")}`;
@@ -33,7 +34,7 @@ export function generateDeterministicPassword(businessId: string): string {
 
 function escapeHtml(str?: string): string {
   if (!str) return "";
-  return str
+  return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -96,7 +97,8 @@ export async function notifyFounderOwnerCredentials(creds: OwnerCredentialsNotif
   const ownerPhone = creds.owner_phone || creds.ownerPhone || "";
 
   const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.zentapdigitalsolutions.com";
-  const portalUrl = creds.page_url || creds.pageUrl || creds.liveUrl || `${domain}/r/${(businessId || "").toLowerCase()}`;
+  const portalUrl =
+    creds.page_url || creds.pageUrl || creds.liveUrl || `${domain}/r/${(businessId || "").toLowerCase()}`;
 
   const safeBizName = escapeHtml(businessName);
   const safeOwnerName = escapeHtml(ownerName);
