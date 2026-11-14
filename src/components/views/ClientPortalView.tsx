@@ -98,6 +98,11 @@ import {
 } from "@/lib/supabase/service";
 import StandeeVisual from "@/components/StandeeVisuals";
 import RazorpayCheckoutModal from "@/components/modals/RazorpayCheckoutModal";
+import { 
+  getOwnerFieldPermissions, 
+  getCustomFieldDefinitions, 
+  CustomFieldDefinition 
+} from "@/lib/adminPlatformStore";
 
 interface ClientPortalViewProps {
   initialPlan?: ProductPlan | null;
@@ -202,6 +207,50 @@ export default function ClientPortalView({
   const [formServices, setFormServices] = useState("");
   const [formKeywords, setFormKeywords] = useState("");
   const [formAutoFilling, setFormAutoFilling] = useState(false);
+
+  // Field Permissions & Additional Business Fields (Controlled by Admin in Settings)
+  const [ownerPerms, setOwnerPerms] = useState<Record<string, boolean>>({});
+  const [fieldDefs, setFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [formCustomFields, setFormCustomFields] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setOwnerPerms(getOwnerFieldPermissions());
+    setFieldDefs(getCustomFieldDefinitions());
+
+    const handlePermsUpdate = (e: Event) => {
+      const customEv = e as CustomEvent<Record<string, boolean>>;
+      if (customEv.detail) {
+        setOwnerPerms(customEv.detail);
+      } else {
+        setOwnerPerms(getOwnerFieldPermissions());
+      }
+    };
+
+    const handleFieldsUpdate = (e: Event) => {
+      const customEv = e as CustomEvent<CustomFieldDefinition[]>;
+      if (customEv.detail) {
+        setFieldDefs(customEv.detail);
+      } else {
+        setFieldDefs(getCustomFieldDefinitions());
+      }
+    };
+
+    window.addEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
+    window.addEventListener("zentap_custom_fields_updated", handleFieldsUpdate);
+
+    return () => {
+      window.removeEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
+      window.removeEventListener("zentap_custom_fields_updated", handleFieldsUpdate);
+    };
+  }, []);
+
+  const isPermitted = (fieldId: string) => {
+    // Area, services, keywords (Business Info) are strictly admin only - never editable in owner login
+    if (fieldId === "area" || fieldId === "services" || fieldId === "keywords") {
+      return false;
+    }
+    return ownerPerms[fieldId] !== false;
+  };
 
   // Custom Review Categories ("What did you like most?") State
   const [customChipsList, setCustomChipsList] = useState<string[]>([]);
@@ -494,6 +543,7 @@ export default function ClientPortalView({
     setFormEmail(b.email || "");
     setFormAddress(b.address || "");
     const cf = (b as any).custom_fields || {};
+    setFormCustomFields(cf);
     setFormArea(cf.area || (b as any).area || b.city || "");
     const rawServices = cf.services ?? (b as any).services;
     setFormServices(
@@ -619,24 +669,22 @@ export default function ClientPortalView({
 
     const customFieldsObj = {
       ...((business as any).custom_fields || {}),
-      area: formArea.trim(),
-      services: formServices.trim(),
-      keywords: formKeywords.trim(),
-      category: formCategory.trim(),
+      ...formCustomFields,
+      category: isPermitted("category") ? formCategory.trim() : (((business as any).custom_fields?.category) || business.category),
     };
 
     const updates = {
-      name: formName.trim(),
-      category: formCategory.trim() || business.category,
-      gbp_link: formGbp.trim(),
-      review_url: formReviewUrl.trim() || null,
-      phone: formPhone.trim(),
-      city: formCity.trim(),
+      name: isPermitted("business_name") ? formName.trim() : business.name,
+      category: isPermitted("category") ? formCategory.trim() || business.category : business.category,
+      gbp_link: isPermitted("google_business_page") ? formGbp.trim() : (business.gbp_link || ""),
+      review_url: isPermitted("google_review_link") ? (formReviewUrl.trim() || null) : (business.review_url || null),
+      phone: isPermitted("contact_phone") ? formPhone.trim() : business.phone,
+      city: isPermitted("city") ? formCity.trim() : business.city,
       state: formState.trim(),
       country: formCountry.trim() || "India",
       pincode: formPincode.trim(),
-      email: formEmail.trim() || business.email,
-      address: formAddress.trim(),
+      email: isPermitted("owner_email") ? (formEmail.trim() || business.email) : business.email,
+      address: isPermitted("directions_link") ? formAddress.trim() : business.address,
       custom_fields: customFieldsObj,
     };
 
@@ -1705,78 +1753,88 @@ export default function ClientPortalView({
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Business Name */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Business / Store Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      placeholder="e.g. Royal Cafe & Bakers"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("business_name") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Business / Store Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        placeholder="e.g. Royal Cafe & Bakers"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
 
                   {/* Business Category */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Business Category / Industry *
-                    </label>
-                    <input
-                      type="text"
-                      value={formCategory}
-                      onChange={(e) => setFormCategory(e.target.value)}
-                      placeholder="e.g. Fine Dining Restaurant / Gold Jewellery"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("category") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Business Category / Industry *
+                      </label>
+                      <input
+                        type="text"
+                        value={formCategory}
+                        onChange={(e) => setFormCategory(e.target.value)}
+                        placeholder="e.g. Fine Dining Restaurant / Gold Jewellery"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
 
                   {/* Contact Phone */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Contact Number (For Private Alerts &amp; WhatsApp) *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                      placeholder="+91 92745 60880"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("contact_phone") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Contact Number (For Private Alerts &amp; WhatsApp) *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value)}
+                        placeholder="+91 92745 60880"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
 
                   {/* Email */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Owner Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      placeholder="owner@yourstore.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("owner_email") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Owner Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formEmail}
+                        onChange={(e) => setFormEmail(e.target.value)}
+                        placeholder="owner@yourstore.com"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
 
                   {/* City */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formCity}
-                      onChange={(e) => setFormCity(e.target.value)}
-                      placeholder="e.g. Ahmedabad"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("city") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formCity}
+                        onChange={(e) => setFormCity(e.target.value)}
+                        placeholder="e.g. Ahmedabad"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
 
                   {/* State */}
                   <div>
@@ -1808,87 +1866,60 @@ export default function ClientPortalView({
                   </div>
 
                   {/* Physical Address */}
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Store Physical Address (Courier Delivery)
-                    </label>
-                    <input
-                      type="text"
-                      value={formAddress}
-                      onChange={(e) => setFormAddress(e.target.value)}
-                      placeholder="Shop 12-14, Commercial Complex, Main Road"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                  </div>
+                  {isPermitted("directions_link") && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Store Physical Address (Courier Delivery)
+                      </label>
+                      <input
+                        type="text"
+                        value={formAddress}
+                        onChange={(e) => setFormAddress(e.target.value)}
+                        placeholder="Shop 12-14, Commercial Complex, Main Road"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Business Info / Context for AI Reviews */}
-                <div className="p-4 rounded-2xl bg-surface-variant/20 border border-secondary/30 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      <span className="text-xs font-bold text-on-surface">
-                        Business Info (Review Context &amp; Keywords)
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAutoFillFromWebsite}
-                      disabled={formAutoFilling}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary/15 hover:bg-secondary/25 text-secondary text-[11px] font-bold cursor-pointer disabled:opacity-40 transition-colors"
-                      title="Auto-fill details from website URL"
-                    >
-                      <Sparkles className="w-3 h-3 text-secondary" />
-                      <span>{formAutoFilling ? "Extracting..." : "Auto-fill from website"}</span>
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-zinc-500 leading-relaxed">
-                    Helps draft authentic customer reviews with exact business names, matching service terminology, and local context. Owner values always override fetched data.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface mb-1">
-                        Area / Locality
-                      </label>
-                      <input
-                        type="text"
-                        value={formArea}
-                        onChange={(e) => setFormArea(e.target.value)}
-                        placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface mb-1">
-                        Services / Products List
-                      </label>
-                      <input
-                        type="text"
-                        value={formServices}
-                        onChange={(e) => setFormServices(e.target.value)}
-                        placeholder="e.g. Smart NFC Standees, Tap Cards, Review Booster"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Focus Keywords (3–5)
-                    </label>
-                    <input
-                      type="text"
-                      value={formKeywords}
-                      onChange={(e) => setFormKeywords(e.target.value)}
-                      placeholder="e.g. Smart NFC, Google Review Card, Tap Standee, Fast Delivery"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
-                    />
-                    <span className="text-[10px] text-zinc-400 mt-1 block">
-                      Comma separated. These keywords provide natural search context when customers choose matching highlights.
+                {/* Additional Business Fields configured by Admin in Settings */}
+                {fieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length > 0 && (
+                  <div className="p-4 rounded-2xl bg-surface-variant/20 border border-secondary/30 space-y-3">
+                    <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-secondary" />
+                      <span>Additional Business Fields</span>
                     </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {fieldDefs.filter((f) => f.is_active && isPermitted(f.id)).map((field) => (
+                        <div key={field.id} className={field.type === "url" ? "md:col-span-2" : ""}>
+                          <label className="block text-xs font-bold text-on-surface mb-1">
+                            {field.label}
+                          </label>
+                          <input
+                            type={field.type === "url" ? "url" : field.type === "email" ? "email" : field.type === "tel" ? "tel" : field.type === "number" ? "number" : "text"}
+                            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                            value={formCustomFields[field.id] || ""}
+                            onChange={(e) => setFormCustomFields({ ...formCustomFields, [field.id]: e.target.value })}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-surface-variant/50 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 shadow-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {!isPermitted("business_name") &&
+                 !isPermitted("category") &&
+                 !isPermitted("contact_phone") &&
+                 !isPermitted("owner_email") &&
+                 !isPermitted("city") &&
+                 !isPermitted("directions_link") &&
+                 fieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length === 0 && (
+                   <div className="p-6 rounded-2xl bg-surface-variant/20 border border-surface-variant/40 text-center space-y-1">
+                     <p className="text-xs font-bold text-on-surface">No editable fields permitted</p>
+                     <p className="text-[11px] text-zinc-500">Field editing access has been turned off by your administrator.</p>
+                   </div>
+                 )}
 
                 <div className="pt-3">
                   <button

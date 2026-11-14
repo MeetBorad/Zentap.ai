@@ -337,7 +337,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
     }
     setNewFieldLabel("");
     setNewFieldPlaceholder("");
-    showToast(`✓ Custom field "${newFieldLabel.trim()}" created & access enabled!`);
+    showToast(`✓ Business field "${newFieldLabel.trim()}" created & access enabled!`);
   };
 
   const handleToggleOwnerPermission = (fieldId: string, label: string) => {
@@ -411,10 +411,10 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
   };
 
   const handleDeleteCustomField = (id: string, label: string) => {
-    if (window.confirm(`Are you sure you want to remove the custom field "${label}"?`)) {
+    if (window.confirm(`Are you sure you want to remove the business field "${label}"?`)) {
       const updated = removeCustomFieldDefinition(id);
       setCustomFields(updated);
-      showToast(`✓ Custom field "${label}" deleted`);
+      showToast(`✓ Business field "${label}" deleted`);
     }
   };
 
@@ -715,7 +715,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search custom fields..."
+              placeholder="Search business fields..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900"
@@ -971,7 +971,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             {/* Quick 1-Click Presets */}
             <div className="pt-3 border-t border-zinc-100">
               <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">
-                1-Click Custom Field Presets:
+                1-Click Business Field Presets:
               </span>
               <div className="flex flex-wrap gap-2">
                 {DEFAULT_CUSTOM_FIELD_PRESETS.filter((p) => !isStandardBusinessField(p.id) && !isStandardBusinessField(p.label)).map((preset) => {
@@ -1002,12 +1002,12 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
             </div>
           </div>
 
-          {/* Form to Add New Custom Field */}
+          {/* Form to Add New Business Field */}
           <form onSubmit={handleCreateCustomField} className="p-6 sm:p-7 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
               <div className="flex items-center gap-2">
                 <Plus className="w-4 h-4 text-blue-600" />
-                <h4 className="text-sm font-bold text-zinc-900">Create New Custom Field</h4>
+                <h4 className="text-sm font-bold text-zinc-900">Add New Business Field</h4>
               </div>
               <span className="text-[11px] text-zinc-400">Instantly creates column, adds to forms, and configures owner access</span>
             </div>
@@ -1060,14 +1060,14 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
 
             <div className="flex items-center justify-between pt-2">
               <span className="text-[11px] text-zinc-500">
-                Custom fields appear in Add/Edit business forms and can be toggled on/off for the Business Owner Panel below.
+                These business fields appear in the Clients Table and Add/Edit Business forms, and can be toggled on/off for the Business Owner Panel below.
               </span>
               <button
                 type="submit"
                 className="tactile-btn flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
               >
                 <Plus className="w-3.5 h-3.5 text-white" />
-                <span>Save New Custom Field</span>
+                <span>Save Business Field</span>
               </button>
             </div>
           </form>
@@ -1115,7 +1115,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                       : "bg-blue-50 text-blue-700 hover:bg-blue-100"
                   }`}
                 >
-                  Custom Fields ({customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
+                  Additional Fields ({customFields.filter((f) => !isStandardBusinessField(f.id) && !isStandardBusinessField(f.label)).length})
                 </button>
                 <button
                   type="button"
@@ -1156,7 +1156,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                     return (
                       <div key={field.id} className="py-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-200 space-y-3 animate-in fade-in">
                         <div className="flex items-center justify-between text-xs font-bold text-blue-900">
-                          <span>Editing Custom Field: {field.id}</span>
+                          <span>Editing Business Field: {field.id}</span>
                           <button
                             type="button"
                             onClick={() => setEditingFieldId(null)}
@@ -1236,7 +1236,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                                 : "bg-blue-50 text-blue-700 border border-blue-200"
                             }`}
                           >
-                            {field.isStandard ? "Standard Column" : "Custom Field"}
+                            {field.isStandard ? "Standard Column" : "Added Field"}
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-mono">
                             {field.type}
@@ -1279,14 +1279,14 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                           </button>
                         )}
 
-                        {/* Edit & Delete for Custom Fields */}
+                        {/* Edit & Delete for Business Fields */}
                         {!field.isStandard && field.customFieldRef && (
                           <div className="flex items-center gap-1 border-l border-zinc-200 pl-2">
                             <button
                               type="button"
                               onClick={() => handleStartEditField(field.customFieldRef!)}
                               className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-600 hover:bg-blue-50 cursor-pointer transition-colors"
-                              title="Edit custom field"
+                              title="Edit business field"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
@@ -1294,7 +1294,7 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                               type="button"
                               onClick={() => handleDeleteCustomField(field.id, field.label)}
                               className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                              title="Delete custom field"
+                              title="Delete business field"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

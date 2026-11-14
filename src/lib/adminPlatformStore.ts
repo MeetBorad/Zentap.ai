@@ -899,14 +899,23 @@ export const STANDARD_CLIENT_COLUMNS: StandardClientColumnDef[] = [
 export function getOwnerFieldPermissions(): Record<string, boolean> {
   const defaultPerms: Record<string, boolean> = {};
   STANDARD_CLIENT_COLUMNS.forEach((col) => {
-    defaultPerms[col.id] = true;
+    // Area, services, keywords are strictly Admin-only (Business Info context)
+    if (col.id === "area" || col.id === "services" || col.id === "keywords") {
+      defaultPerms[col.id] = false;
+    } else {
+      defaultPerms[col.id] = true;
+    }
   });
   if (typeof window === "undefined") return defaultPerms;
   try {
     const raw = localStorage.getItem("zentap_owner_field_permissions");
     if (!raw) return defaultPerms;
     const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? { ...defaultPerms, ...parsed } : defaultPerms;
+    const merged = typeof parsed === "object" && parsed !== null ? { ...defaultPerms, ...parsed } : defaultPerms;
+    merged.area = false;
+    merged.services = false;
+    merged.keywords = false;
+    return merged;
   } catch {
     return defaultPerms;
   }

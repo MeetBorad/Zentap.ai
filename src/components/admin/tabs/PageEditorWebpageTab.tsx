@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Palette,
   Search,
@@ -43,6 +43,8 @@ import {
   Building2,
   Twitter,
   CreditCard,
+  ChevronDown,
+  Layers,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -65,6 +67,7 @@ import {
   serverFetchPlatformData,
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
+import { onClientsUpdated, resolveClientField } from "@/lib/clientEvents";
 import {
   getPageDesign,
   savePageDesign,
@@ -131,6 +134,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       business_name: item.business_name,
       business_google_review_link: matching?.business_google_review_link,
     });
+
+    // If changing destination for ST3 or st3, automatically keep demo sample tag 'zentap' in exact 100% sync
+    if (item.tag_id.toLowerCase() === "st3") {
+      await updateGoogleReviewLinkServer("zentap", {
+        destination: newDest,
+        business_id: item.business_id,
+        business_name: item.business_name,
+        business_google_review_link: matching?.business_google_review_link,
+      }).catch((e) => console.warn("Failed to sync zentap demo tag destination:", e));
+    }
 
     if (res.success) {
       onShowToast(
@@ -204,6 +217,31 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     };
     reader.readAsDataURL(file);
   };
+
+  // Pending checklist items required for a complete live digital review page & standee
+  const pendingItems = useMemo(() => {
+    if (!activeItem) return [];
+    const pending: { key: string; label: string; action: string }[] = [];
+    if (!editLogoUrl || editLogoUrl === "/logo.png") {
+      pending.push({ key: "logo", label: "Logo Image", action: "Upload profile logo" });
+    }
+    if (!editBannerUrl || editBannerUrl === "/standees/standee_01.jpg") {
+      pending.push({ key: "banner", label: "Cover Banner", action: "Upload cover banner" });
+    }
+    if (!editGoogleLink) {
+      pending.push({ key: "google_review", label: "Google Review Link", action: "Add Google review URL" });
+    }
+    if (!editPhone && !editWhatsapp) {
+      pending.push({ key: "contact", label: "Contact Phone / WhatsApp", action: "Add contact phone" });
+    }
+    if (!editAboutUs) {
+      pending.push({ key: "about", label: "About Us Text", action: "Write brief business intro" });
+    }
+    if (!editAddress && !editMapsLink) {
+      pending.push({ key: "location", label: "Address & Maps", action: "Add address / maps link" });
+    }
+    return pending;
+  }, [activeItem, editLogoUrl, editBannerUrl, editGoogleLink, editPhone, editWhatsapp, editAboutUs, editAddress, editMapsLink]);
 
   const handleFetchFromClient = async (businessId: string) => {
     let allC = getAllClients();
@@ -436,6 +474,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       }
     }
     refreshData();
+
+    // 🔔 Re-fetch when Clients tab mutates data
+    const unsubClients = onClientsUpdated(() => {
+      refreshData();
+    });
+    return () => unsubClients();
   }, []);
 
   const setTabAndUrl = (status: "all" | "deleted") => {
@@ -473,10 +517,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
 
     const allC = getAllClients();
-    const client = allC.find((c) => c.business_id.toLowerCase() === item.business_id.toLowerCase());
+    const client = allC.find((c) => 
+      c.business_id.toLowerCase() === item.business_id.toLowerCase() ||
+      (item.tag_id && (c.id === item.tag_id || c.business_id === item.tag_id))
+    );
+    const cf = client?.custom_fields || {};
 
     const resolvedTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-    const resolvedGoogleLink = cfg.google_link || matchingGLink?.business_google_review_link || client?.google_review_link || "";
+    const resolvedGoogleLink = client?.google_review_link || matchingGLink?.business_google_review_link || cfg.google_link || "";
 
     const isZenTap = item.tag_id.toLowerCase() === "zentap" || item.business_id.toLowerCase() === "sample-demo-biz-01";
 
@@ -485,34 +533,36 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     const validSizes = ["compact", "default", "large"] as const;
     setEditFontSize(validSizes.includes(cfg.font_size) ? cfg.font_size : "default");
     setEditAccentColor(cfg.accent_color || "");
-    setEditTitle(cfg.title || item.business_name || client?.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
-    setEditSubtitle(cfg.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : (isZenTap ? "Ahmedabad • Welcome to our official digital hub" : "Customer Satisfaction Hub")));
+
+    // Prioritize latest Client Profile values so Design Review Page is always in sync with Clients Table:
+    setEditTitle(client?.business_name || cfg.title || item.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
+    setEditSubtitle(cf.category || cf.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : (cfg.subtitle || (isZenTap ? "Ahmedabad • Welcome to our official digital hub" : "Customer Satisfaction Hub"))));
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
     setEditLogoUrl(cfg.logo_url || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png"));
     setEditWallpaperUrl(cfg.wallpaper_url || "");
     setEditCtaText(cfg.cta_text || (isZenTap ? "Loved your visit? Tap to write a rapid 5-Star Google Review" : "Leave a 5-Star Review on Google"));
     setEditGoogleLink(resolvedGoogleLink || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
-    setEditPhone(cfg.contact_phone || cfg.phone || client?.contact_phone || client?.owner_phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
-    setEditOwnerName(cfg.owner_name || client?.owner_name || "");
-    setEditOwnerPhone(cfg.owner_phone || client?.owner_phone || "");
-    setEditGoogleBusinessPage(cfg.google_business_page || client?.google_business_page || client?.custom_fields?.google_business_page || client?.custom_fields?.google_business || "");
-    setEditTwitter(cfg.twitter || cfg.twitter_link || client?.twitter_link || client?.custom_fields?.twitter_link || client?.custom_fields?.twitter || "");
-    setEditUpiId(cfg.upi_id || client?.upi_id || client?.custom_fields?.upi_id || "");
-    setEditWhatsapp(cfg.whatsapp || client?.whatsapp || client?.owner_phone || (isZenTap ? "919274560880" : "919825012345"));
-    setEditInstagram(cfg.instagram || client?.instagram_link || (isZenTap ? "https://instagram.com" : ""));
-    setEditFacebook(cfg.facebook || client?.facebook_link || (isZenTap ? "https://facebook.com" : ""));
-    setEditWebsite(cfg.website || client?.website_url || client?.website || client?.custom_fields?.website_url || client?.custom_fields?.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
-    setEditEmail(cfg.email || client?.owner_email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
-    setEditAddress(cfg.address || client?.city || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
-    setEditMapsLink(cfg.maps_link || cfg.directions_link || client?.directions_link || client?.custom_fields?.google_maps_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
-    setEditAboutUs(cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
-    setEditOpeningHours(cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
+    setEditPhone(client?.contact_phone || client?.owner_phone || cfg.contact_phone || cfg.phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
+    setEditOwnerName(client?.owner_name || cfg.owner_name || "");
+    setEditOwnerPhone(client?.owner_phone || cfg.owner_phone || "");
+    setEditGoogleBusinessPage(client?.google_business_page || cf.google_business_page || cf.google_business || cfg.google_business_page || "");
+    setEditTwitter(client?.twitter_link || cf.twitter_link || cf.twitter || cfg.twitter || cfg.twitter_link || "");
+    setEditUpiId(client?.upi_id || cf.upi_id || cfg.upi_id || "");
+    setEditWhatsapp(client?.whatsapp || client?.owner_phone || cfg.whatsapp || (isZenTap ? "919274560880" : "919825012345"));
+    setEditInstagram(client?.instagram_link || cfg.instagram || (isZenTap ? "https://instagram.com" : ""));
+    setEditFacebook(client?.facebook_link || cfg.facebook || (isZenTap ? "https://facebook.com" : ""));
+    setEditWebsite(client?.website_url || client?.website || cf.website_url || cf.website || cfg.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
+    setEditEmail(client?.owner_email || cfg.email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
+    setEditAddress(client?.city || cfg.address || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
+    setEditMapsLink(client?.directions_link || cf.directions_link || cf.google_maps_link || cfg.maps_link || cfg.directions_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
+    setEditAboutUs(cf.about_us || cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
+    setEditOpeningHours(cf.opening_hours || cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
     setEditFaqs(Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
       { question: "Do you offer parking?", answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises." },
       { question: "What payment modes are accepted?", answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash." },
     ] : []));
     setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
-    setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : ""));
+    setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : (client?.city || "")));
     const initialTags = Array.isArray(cfg.tags) && cfg.tags.length > 0
       ? cfg.tags.join(", ")
       : Array.isArray(cfg.categories) && cfg.categories.length > 0
@@ -601,6 +651,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     // Two-way interconnected sync: Update clients table from Design Review Page
     if (activeItem.business_id) {
+      const allC = getAllClients();
+      const existingClient = allC.find((c) => c.business_id.toLowerCase() === activeItem.business_id.toLowerCase());
       savePromises.push(
         updateClientServer(activeItem.business_id, {
           business_name: editTitle.trim(),
@@ -619,6 +671,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           website: editWebsite.trim() || undefined,
           upi_id: editUpiId.trim() || undefined,
           city: editAddress.trim() || undefined,
+          custom_fields: {
+            ...(existingClient?.custom_fields || {}),
+            category: editSubtitle.trim(),
+            subtitle: editSubtitle.trim(),
+            about_us: editAboutUs.trim(),
+            opening_hours: editOpeningHours.trim(),
+          },
         }).catch((e) => console.warn("Clients table sync notice:", e))
       );
     }
@@ -934,6 +993,19 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   // Destination filter state
   const [destFilter, setDestFilter] = useState<"all" | "zentap">("all");
 
+  // ── Group-by-business toggle ──────────────────────────────────────────────
+  const [groupByBusiness, setGroupByBusiness] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (bizId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(bizId)) next.delete(bizId);
+      else next.add(bizId);
+      return next;
+    });
+  };
+
   // Filter to entries whose Destination in Google Links & QR sharing is "zentap_google" or "business_page"
   const zentapOnlyConfigs = editorConfigs.filter((item) => {
     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
@@ -946,6 +1018,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   // Search filter
   const q = searchQuery.toLowerCase().trim();
   const filteredConfigs = activeConfigsList.filter((item) => {
+    // Hide 'zentap' sample tag from the displayed list as it mirrors ST3
+    if (item.tag_id && item.tag_id.toLowerCase() === "zentap") return false;
+
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||
@@ -958,6 +1033,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   });
 
   const filteredDeleted = deletedConfigs.filter((item) => {
+    // Hide 'zentap' sample tag from deleted list as well
+    if (item.tag_id && item.tag_id.toLowerCase() === "zentap") return false;
+
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||
@@ -1037,6 +1115,20 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition-all font-medium"
             />
           </div>
+
+          {/* Group-by-business toggle */}
+          <button
+            onClick={() => setGroupByBusiness((v) => !v)}
+            className={`tactile-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              groupByBusiness
+                ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100"
+                : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
+            }`}
+            title="Toggle group-by-business view"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>{groupByBusiness ? "Grouped" : "Flat"}</span>
+          </button>
         </div>
       </div>
 
@@ -1067,7 +1159,238 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       No Standee entries found. To design a custom review assistant page, configure a Standee below.
                     </td>
                   </tr>
+                ) : groupByBusiness ? (
+                  // ── GROUPED VIEW ────────────────────────────────────────────
+                  (() => {
+                    // Build ordered groups: map bizId → items[], primary = most scans
+                    const groupMap = new Map<string, typeof filteredConfigs>();
+                    for (const item of filteredConfigs) {
+                      const key = item.business_id.toLowerCase();
+                      if (!groupMap.has(key)) groupMap.set(key, []);
+                      groupMap.get(key)!.push(item);
+                    }
+                    // Sort each group by scans desc so primary tag is first
+                    for (const [, items] of groupMap) {
+                      items.sort((a, b) => (b.config_data?.scans || 0) - (a.config_data?.scans || 0));
+                    }
+
+                    return Array.from(groupMap.entries()).flatMap(([bizKey, items]) => {
+                      const primaryItem = items[0];
+                      const hasExtras = items.length > 1;
+                      const isExpanded = expandedGroups.has(bizKey);
+
+                      return items.map((item, idx) => {
+                        const isPrimary = idx === 0;
+                        const isHidden = !isPrimary && !isExpanded;
+                        if (isHidden) return null;
+
+                        const isCompleted = item.setup_status === "completed";
+                        const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
+                        const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
+                        const currentCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                        const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
+
+                        return (
+                          <tr
+                            key={item.id}
+                            className={`transition-colors ${
+                              isPrimary
+                                ? "hover:bg-zinc-50/70"
+                                : "hover:bg-purple-50/30 bg-zinc-50/40 border-l-2 border-l-purple-200"
+                            }`}
+                          >
+                            {/* 1. Business ID — only on primary row; expand toggle on primary */}
+                            <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
+                              {isPrimary ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-900 border border-zinc-200 text-[11px]">
+                                    {item.business_id}
+                                  </span>
+                                  {hasExtras && (
+                                    <button
+                                      onClick={() => toggleGroup(bizKey)}
+                                      title={isExpanded ? "Collapse tags" : `Expand ${items.length - 1} more tag(s)`}
+                                      className="tactile-btn inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[10px] font-bold cursor-pointer transition-all"
+                                    >
+                                      <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                      <span>+{items.length - 1}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="pl-6 text-zinc-400 text-[11px] font-normal">↳ tag</span>
+                              )}
+                            </td>
+
+                            {/* 2. Business Name — only on primary row */}
+                            <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
+                              {isPrimary ? item.business_name : ""}
+                            </td>
+
+                            {/* 3. Category */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => openEditWhole(item)}
+                                className="tactile-btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-purple-50 text-zinc-800 hover:text-purple-900 text-[11px] font-semibold border border-zinc-200 hover:border-purple-300 transition-colors cursor-pointer group"
+                                title="Click to edit category"
+                              >
+                                <Tag className="w-3 h-3 text-purple-600" />
+                                <span className="max-w-[140px] truncate">{currentCategory}</span>
+                                <Edit2 className="w-2.5 h-2.5 text-zinc-400 group-hover:text-purple-600" />
+                              </button>
+                            </td>
+
+                            {/* 4. Tag ID */}
+                            <td className="py-3 px-4 font-mono font-bold whitespace-nowrap">
+                              <span className="px-2.5 py-1 rounded-md bg-zinc-900 text-white text-xs tracking-wider">
+                                {item.tag_id}
+                              </span>
+                            </td>
+
+                            {/* 5. Link of Tag ID */}
+                            <td className="py-3 px-4 font-mono text-[11px] whitespace-nowrap">
+                              <a
+                                href={displayTagLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-semibold"
+                                title={displayTagLink}
+                              >
+                                <span className="truncate max-w-[170px]">{displayTagLink}</span>
+                                <ExternalLink className="w-3 h-3 opacity-60" />
+                              </a>
+                            </td>
+
+                            {/* 6. QR Code */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => handleOpenQr(item)}
+                                className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold border border-zinc-200 transition-all cursor-pointer"
+                              >
+                                <QrCode className="w-3.5 h-3.5 text-zinc-700" />
+                                <span>QR</span>
+                              </button>
+                            </td>
+
+                            {/* 7. NFC Link */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => handleCopyNfc(item.tag_id, displayTagLink)}
+                                className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-black text-white text-[11px] font-bold shadow-2xs transition-all cursor-pointer"
+                                title="Copy NFC Link"
+                              >
+                                {copiedNfcTagId === item.tag_id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Radio className="w-3.5 h-3.5 text-zinc-300" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+
+                            {/* 8. Setup Status */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {isCompleted ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Completed</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 text-[11px] font-bold">
+                                  <AlertCircle className="w-3 h-3 text-rose-600" />
+                                  <span>Pending</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 9. Status of Design */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {isCompleted ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Completed</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 text-[11px] font-bold">
+                                  <AlertCircle className="w-3 h-3 text-rose-600" />
+                                  <span>Pending</span>
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 10. Destination */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <select
+                                value={currentDest}
+                                onChange={(e) => handleDestinationChange(item, e.target.value as any)}
+                                className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
+                                  currentDest === "business_page"
+                                    ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
+                                    : currentDest === "zentap_google"
+                                    ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                    : currentDest === "direct_google"
+                                    ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                    : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                                }`}
+                              >
+                                <option value="business_page">Business Page (Blue)</option>
+                                <option value="zentap_google">ZenTap Google Review (Green)</option>
+                                <option value="direct_google">Direct Google Review (Amber)</option>
+                                <option value="not_assigned">Not Assigned (Grey)</option>
+                              </select>
+                            </td>
+
+                            {/* 11. Actions */}
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <a
+                                  href={displayTagLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Live Preview Standee Page"
+                                  className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold border border-zinc-200 transition-transform active:scale-[0.978] cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-zinc-700" />
+                                  <span>Live Preview</span>
+                                </a>
+                                <button
+                                  onClick={() => handleOpenEditor(item)}
+                                  title="Open Visual Page Designer"
+                                  className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold shadow-2xs transition-transform active:scale-[0.978] cursor-pointer"
+                                >
+                                  <Sliders className="w-3 h-3" />
+                                  <span>Design</span>
+                                </button>
+                                <button
+                                  onClick={() => openEditWhole(item)}
+                                  title="Edit Whole Entry"
+                                  className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold border border-blue-200 transition-transform active:scale-[0.978] cursor-pointer"
+                                >
+                                  <Edit2 className="w-3 h-3 text-blue-600" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => setDeleteTarget(item)}
+                                  title="Delete Entry"
+                                  className="tactile-btn p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })
+                  })()
                 ) : (
+                  // ── FLAT VIEW (original) ─────────────────────────────────
                   filteredConfigs.map((item) => {
                     const isCompleted = item.setup_status === "completed";
                     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
@@ -1186,16 +1509,11 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           )}
                         </td>
 
-                        {/* 10. Destination from the Google Links & QR sharing (Interactive Dropdown) */}
+                        {/* 10. Destination */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <select
                             value={currentDest}
-                            onChange={(e) =>
-                              handleDestinationChange(
-                                item,
-                                e.target.value as any
-                              )
-                            }
+                            onChange={(e) => handleDestinationChange(item, e.target.value as any)}
                             className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
                               currentDest === "business_page"
                                 ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
@@ -1213,7 +1531,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </select>
                         </td>
 
-                        {/* 10. Actions: Live Preview, Design, Edit Whole Entry, Delete */}
+                        {/* 11. Actions */}
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
                             <a
@@ -1747,6 +2065,45 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     }}
                   />
 
+                  {/* Live Sync Status & Pending Setup Checklist */}
+                  <div className="p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-xs font-bold text-zinc-900">
+                          Synced with Client Profile: <strong className="text-purple-700">{editTitle}</strong> ({activeItem.business_id})
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        pendingItems.length === 0 
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                      }`}>
+                        {pendingItems.length === 0 ? "✓ 100% Ready to Publish" : `${pendingItems.length} Setup Items Pending`}
+                      </span>
+                    </div>
+
+                    {pendingItems.length > 0 ? (
+                      <div className="pt-1.5 border-t border-zinc-100">
+                        <span className="text-[10.5px] font-semibold text-zinc-500 block mb-1">
+                          Pending items to complete on Design Review Page:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {pendingItems.map((p) => (
+                            <span key={p.key} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-900 text-[10px] font-semibold">
+                              <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
+                              <span>{p.label}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-emerald-700 font-medium">
+                        All required business details &amp; design assets are synced and populated. Click <strong>Save &amp; Publish Live</strong> to push changes live instantly.
+                      </p>
+                    )}
+                  </div>
+
                   {/* Theme Presets (8 Curated Themes) */}
                   <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
                     <div className="flex items-center justify-between">
@@ -1935,113 +2292,17 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-xs font-bold text-zinc-900">Category / Subtitle</label>
-                        {currentDesignerCategories.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setEditSubtitle("")}
-                            className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
-                          >
-                            Clear all
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Active Category Badges (Removable with ×) */}
-                      <div className="min-h-[38px] p-1.5 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-wrap items-center gap-1.5 mb-1.5">
-                        {currentDesignerCategories.length === 0 ? (
-                          <span className="text-[11px] text-zinc-400 italic px-1">
-                            No categories selected. Type to add or click a preset below.
-                          </span>
-                        ) : (
-                          currentDesignerCategories.map((cat) => (
-                            <span
-                              key={cat}
-                              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200 text-[11px] font-bold shadow-2xs group"
-                            >
-                              <Tag className="w-2.5 h-2.5 text-purple-600 shrink-0" />
-                              <span>{cat}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveDesignerCategory(cat)}
-                                title={`Remove ${cat}`}
-                                className="w-3.5 h-3.5 rounded hover:bg-purple-200 text-purple-700 flex items-center justify-center cursor-pointer transition-colors"
-                              >
-                                <X className="w-2.5 h-2.5" />
-                              </button>
-                            </span>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Add Custom Category Input with + Add button */}
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <input
-                          type="text"
-                          placeholder="Type category & press Enter..."
-                          value={designerCatInputText}
-                          onChange={(e) => setDesignerCatInputText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === ",") {
-                              e.preventDefault();
-                              handleAddDesignerCategory(designerCatInputText);
-                            }
-                          }}
-                          className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAddDesignerCategory(designerCatInputText)}
-                          disabled={!designerCatInputText.trim()}
-                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
-                        >
-                          <span>+ Add</span>
-                        </button>
-                      </div>
-
-                      {/* Preset Categories (Click to Add / Remove toggle) */}
-                      <div>
-                        <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider block mb-1">
-                          Click preset to add or remove:
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {PRESET_CATEGORIES.map((preset) => {
-                            const isSelected = currentDesignerCategories.some(
-                              (c) => c.toLowerCase() === preset.toLowerCase()
-                            );
-                            return (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={() => handleToggleDesignerCategory(preset)}
-                                className={`text-[10px] px-2 py-0.5 rounded-md border font-medium cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
-                                  isSelected
-                                    ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
-                                    : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
-                                }`}
-                              >
-                                {isSelected ? (
-                                  <>
-                                    <Check className="w-2.5 h-2.5 text-white" />
-                                    <span>{preset}</span>
-                                    <X className="w-2.5 h-2.5 text-white/70 hover:text-white ml-0.5" />
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-zinc-400 font-bold">+</span>
-                                    <span>{preset}</span>
-                                  </>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[10.5px] text-zinc-500 mt-1.5 flex items-center gap-1">
-                          <Check className="w-3 h-3 text-purple-600 shrink-0" />
-                          <span>Categories added here automatically appear under <strong>&quot;What stood out?&quot;</strong> on your Google Review page.</span>
-                        </p>
-                      </div>
+                      <label className="block text-xs font-bold text-zinc-900 mb-1">Category / Subtitle</label>
+                      <input
+                        type="text"
+                        value={editSubtitle}
+                        onChange={(e) => setEditSubtitle(e.target.value)}
+                        placeholder="e.g. Fine Dining Restaurant / Customer Satisfaction Hub"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-medium"
+                      />
+                      <span className="text-[10px] text-zinc-500 mt-1 block">
+                        Displays below business title on the digital standee &amp; review page (synced with Clients profile).
+                      </span>
                     </div>
                   </div>
 

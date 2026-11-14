@@ -37,8 +37,11 @@ import {
 import {
   getOwnerFieldPermissions,
   getCustomFieldDefinitions,
+  getAllClients,
   CustomFieldDefinition,
+  ClientRecord,
 } from "@/lib/adminPlatformStore";
+import { onClientsUpdated, resolveClientField } from "@/lib/clientEvents";
 
 interface OwnerAccessModalProps {
   isOpen: boolean;
@@ -148,9 +151,52 @@ export default function OwnerAccessModal({
 
     window.addEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
     window.addEventListener("zentap_custom_fields_updated", handleCustomFieldsUpdate);
+
+    // 🔔 When Clients tab saves a client, merge fresh data into the open owner session
+    const unsubClients = onClientsUpdated((updatedClients: ClientRecord[]) => {
+      // Only auto-merge if owner is already authenticated (session exists)
+      setBizData((prev: any) => {
+        if (!prev) return prev;
+        const matchBid = (prev.business_id || "").toLowerCase();
+        const matchName = (prev.name || "").toLowerCase();
+        const freshClient = updatedClients.find((c) => {
+          const bid = (c.business_id || "").toLowerCase();
+          const name = (c.business_name || "").toLowerCase();
+          return bid === matchBid || name === matchName;
+        });
+        if (!freshClient) return prev;
+
+        // Merge client fields into bizData so populateFields picks them up
+        const cf = freshClient.custom_fields || {};
+        const merged = {
+          ...prev,
+          name: freshClient.business_name || prev.name,
+          city: freshClient.city || prev.city,
+          owner_name: freshClient.owner_name || prev.owner_name,
+          owner_phone: freshClient.owner_phone || prev.owner_phone,
+          contact_phone: freshClient.contact_phone || cf.contact_phone || prev.contact_phone,
+          phone: freshClient.contact_phone || freshClient.owner_phone || cf.contact_phone || prev.phone,
+          owner_email: freshClient.owner_email || prev.owner_email,
+          whatsapp_number: freshClient.whatsapp || prev.whatsapp_number,
+          google_review_link: freshClient.google_review_link || prev.google_review_link,
+          google_business_page: freshClient.google_business_page || cf.google_business_page || prev.google_business_page,
+          instagram_url: freshClient.instagram_link || prev.instagram_url,
+          facebook_url: freshClient.facebook_link || prev.facebook_url,
+          twitter_link: freshClient.twitter_link || cf.twitter_link || prev.twitter_link,
+          upi_id: freshClient.upi_id || cf.upi_id || prev.upi_id,
+          website_url: freshClient.website_url || freshClient.website || cf.website_url || prev.website_url,
+          directions_link: freshClient.directions_link || cf.directions_link || prev.directions_link,
+          custom_fields: { ...cf },
+        };
+        populateFields(merged);
+        return merged;
+      });
+    });
+
     return () => {
       window.removeEventListener("zentap_owner_field_permissions_updated", handlePermsUpdate);
       window.removeEventListener("zentap_custom_fields_updated", handleCustomFieldsUpdate);
+      unsubClients();
     };
   }, []);
 
@@ -401,9 +447,9 @@ export default function OwnerAccessModal({
       const payloadUpdates = {
         name: isPermitted("business_name") ? editName.trim() : bizData?.name || editName.trim(),
         city: isPermitted("city") ? editCity.trim() : bizData?.city || editCity.trim(),
-        area: isPermitted("area") ? editArea.trim() : bizData?.area || editArea.trim(),
-        services: isPermitted("services") ? editServices.trim() : bizData?.services || editServices.trim(),
-        keywords: isPermitted("keywords") ? editKeywords.trim() : bizData?.keywords || editKeywords.trim(),
+        area: bizData?.area || bizData?.custom_fields?.area || "",
+        services: bizData?.services || bizData?.custom_fields?.services || "",
+        keywords: bizData?.keywords || bizData?.custom_fields?.keywords || "",
         owner_name: isPermitted("owner_name") ? editOwnerName.trim() : bizData?.owner_name || editOwnerName.trim(),
         owner_phone: isPermitted("owner_phone") ? activeOwnerPhone : bizData?.owner_phone || activeOwnerPhone,
         contact_phone: isPermitted("contact_phone") ? activeContactPhone : bizData?.contact_phone || activeContactPhone,
@@ -1107,86 +1153,7 @@ export default function OwnerAccessModal({
                 </div>
               )}
 
-              {/* 8. Business Info for Reviews (Context, Services, Area, Keywords) */}
-              {(isPermitted("area") || isPermitted("services") || isPermitted("keywords")) && (
-                <div className="p-3 rounded-2xl bg-white/[0.03] border border-amber-500/20 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                        Business Info (Review Context)
-                      </span>
-                    </div>
-                    {isPermitted("website_url") && (
-                      <button
-                        type="button"
-                        onClick={handleAutoFillFromWebsite}
-                        disabled={autoFilling || !editWebsite.trim()}
-                        className="inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-amber-300 transition-colors cursor-pointer disabled:opacity-40"
-                        title="Re-fetch and refresh business info from website"
-                      >
-                        <RotateCcw className={`w-2.5 h-2.5 ${autoFilling ? "animate-spin" : ""}`} />
-                        <span>Refresh business info</span>
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[10.5px] text-gray-400 leading-relaxed">
-                    Used by the Smart Review Assistant for exact name spelling, service naming, and local context. Owner values always override fetched data.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                    {isPermitted("area") && (
-                      <div className={!isPermitted("services") ? "sm:col-span-2" : ""}>
-                        <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                          Area / Locality
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Sindhu Bhavan Road, Bodakdev"
-                          value={editArea}
-                          onChange={(e) => setEditArea(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                        />
-                      </div>
-                    )}
-
-                    {isPermitted("services") && (
-                      <div className={!isPermitted("area") ? "sm:col-span-2" : ""}>
-                        <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                          Services / Products List
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Smart NFC Standee, Google Review Card, Tap Card"
-                          value={editServices}
-                          onChange={(e) => setEditServices(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {isPermitted("keywords") && (
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-300 mb-1">
-                        3–5 Focus Keywords
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. NFC Standee, Tap Review, Smart Business Card, Fast Setup"
-                        value={editKeywords}
-                        onChange={(e) => setEditKeywords(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
-                      />
-                      <span className="text-[9.5px] text-gray-500 mt-1 block">
-                        Comma separated. Never invents details — only naturally weaves relevant keywords if customer selects matching chips.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* 9. Twitter / X & UPI ID */}
+              {/* 8. Twitter / X & UPI ID */}
               {(isPermitted("twitter_link") || isPermitted("upi_id")) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {isPermitted("twitter_link") && (
@@ -1298,9 +1265,6 @@ export default function OwnerAccessModal({
                 !isPermitted("instagram_link") &&
                 !isPermitted("facebook_link") &&
                 !isPermitted("website_url") &&
-                !isPermitted("area") &&
-                !isPermitted("services") &&
-                !isPermitted("keywords") &&
                 !isPermitted("twitter_link") &&
                 !isPermitted("upi_id") &&
                 !isPermitted("directions_link") &&

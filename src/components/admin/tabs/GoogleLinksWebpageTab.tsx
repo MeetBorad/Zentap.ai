@@ -134,6 +134,15 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
       business_id: quickEditTarget.business_id,
       business_name: quickEditTarget.business_name,
     });
+
+    // If updating page link for ST3 or st3, automatically sync demo sample tag 'zentap'
+    if (quickEditTarget.tag_id.toLowerCase() === "st3") {
+      await updateGoogleReviewLinkServer("zentap", {
+        business_google_review_link: cleanUrl,
+        business_id: quickEditTarget.business_id,
+        business_name: quickEditTarget.business_name,
+      }).catch((e) => console.warn("Failed to sync zentap demo tag review link:", e));
+    }
     setIsSubmitting(false);
 
     if (res.success) {
@@ -161,6 +170,16 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
       business_name: item.business_name,
       business_google_review_link: item.business_google_review_link,
     });
+
+    // If changing destination for ST3 or st3, automatically keep demo sample tag 'zentap' in exact 100% sync
+    if (item.tag_id.toLowerCase() === "st3") {
+      await updateGoogleReviewLinkServer("zentap", {
+        destination: newDest,
+        business_id: item.business_id,
+        business_name: item.business_name,
+        business_google_review_link: item.business_google_review_link,
+      }).catch((e) => console.warn("Failed to sync zentap demo tag destination:", e));
+    }
 
     if (res.success) {
       const destLabel =
@@ -288,6 +307,9 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
   // Search filter
   const q = searchQuery.toLowerCase().trim();
   const filteredLinks = links.filter((item) => {
+    // Hide 'zentap' demo tag from the displayed list as it mirrors ST3
+    if (item.tag_id && item.tag_id.toLowerCase() === "zentap") return false;
+
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||
@@ -299,6 +321,9 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
   });
 
   const filteredDeleted = deletedLinks.filter((item) => {
+    // Hide 'zentap' demo tag from deleted list as well
+    if (item.tag_id && item.tag_id.toLowerCase() === "zentap") return false;
+
     if (!q) return true;
     return (
       (item.business_id && item.business_id.toLowerCase().includes(q)) ||

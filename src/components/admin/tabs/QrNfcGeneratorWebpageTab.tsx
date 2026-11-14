@@ -322,6 +322,9 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   // Filter Logic: Default Unassigned
   const q = searchQuery.toLowerCase().trim();
   const filteredTags = tags.filter((t) => {
+    // Hide 'zentap' sample tag from the displayed list as it mirrors ST3
+    if (t.tag_id && t.tag_id.toLowerCase() === "zentap") return false;
+
     // 1. Status Filter (Default: unassigned)
     if (statusFilter === "unassigned" && t.business_id) return false;
     if (statusFilter === "assigned" && !t.business_id) return false;
@@ -342,6 +345,9 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
   });
 
   const filteredDeleted = deletedTags.filter((t) => {
+    // Hide 'zentap' sample tag from deleted list as well
+    if (t.tag_id && t.tag_id.toLowerCase() === "zentap") return false;
+
     if (!q) return true;
     return (
       (t.tag_id && t.tag_id.toLowerCase().includes(q)) ||

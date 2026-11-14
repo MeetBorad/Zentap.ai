@@ -1,6 +1,23 @@
 # ZenTap — Changelog
 
-## [1.54.21] — 2026-11-10
+## [1.54.22] — 2026-11-14
+### Enhanced (Admin-Only Business Info, Two-Way Design Review Page Synchronization & Business Field Governance)
+- **Business Info (Context & Keywords) Restricted to Admin Only**:
+  - Removed "Business Info (Context & Keywords)" (Area / Locality, Services / Products, Focus Keywords) completely from Business Owner login portals (`ClientPortalView.tsx` and `OwnerAccessModal.tsx`).
+  - Business owners can no longer view or alter these sensitive review keywords and context; they remain strictly configurable by Super Admin in the Clients Directory (`ClientsWebpageTab.tsx`).
+  - Added backend protection in `adminPlatformStore.ts` locking `area`, `services`, and `keywords` permissions as strictly admin-only.
+- **Two-Way Design Review Page & Clients Table Synchronization (`PageEditorWebpageTab.tsx`)**:
+  - Connected the Design Review Page (Page Editor) directly to the `clients` table.
+  - When opening the Design Review Page, business name, category, subtitle, city, owner contact, hotline, WhatsApp, email, links, address, and UPI ID are automatically fetched and populated directly from the client profile.
+  - Added a smart **Live Sync Status & Pending Setup Checklist** banner displaying synced status and clearly highlighting pending items (e.g. Logo, Cover Banner, Review Link, Description) required for publication.
+  - Removed redundant duplicate category chip management clutter from the Headline section.
+  - On clicking **"Save & Publish Live"**, all updated fields simultaneously update `page_editor_configs` and the `clients` table in Supabase PostgreSQL, ensuring both are 100% in sync with zero discrepancies.
+- **Business Field Terminology Purge & Strict Settings Governance (`PlatformSettingsTab.tsx`, `ClientsWebpageTab.tsx`)**:
+  - Purged all user-facing mentions of "Custom field / Custom fields", renaming them cleanly to "Business Fields" / "Additional Business Fields".
+  - Confirmed that new fields can only be added and edited from Platform Settings under **Clients Table Columns & Business Owner Panel Permissions**.
+  - All added fields dynamically show up in the Clients Table and in the Add New Business / Edit Business modal.
+  - Permission toggles (Turn on green / Turn off red) dynamically control whether each field is visible and editable for the merchant in the Business Owner Portal (`ClientPortalView.tsx` & `OwnerAccessModal.tsx`).
+
 ### Enhanced (Client Columns Owner Panel Access Control & Zero Public AI Exposure Enforcement)
 - **Super Admin Owner Panel Access Permissions (`PlatformSettingsTab.tsx`, `adminPlatformStore.ts`)**:
   - Implemented the "Owner Panel Fields & Access" control center under Super Admin Settings.

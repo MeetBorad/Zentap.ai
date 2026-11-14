@@ -48,6 +48,7 @@ import {
   permanentDeleteClientServer,
   serverFetchPlatformData,
 } from "@/lib/adminPlatformStore";
+import { emitClientsUpdated } from "@/lib/clientEvents";
 
 interface ClientsWebpageTabProps {
   onShowToast: (msg: string) => void;
@@ -166,11 +167,14 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setTags(getAllQrNfcTags());
     const res = await serverFetchPlatformData();
     if (res.success && res.data) {
-      setClients(res.data.clients || []);
+      const freshClients = res.data.clients || [];
+      setClients(freshClients);
       setDeletedBusinesses(res.data.deletedBusinesses || []);
       if (res.data.tags) {
         setTags(res.data.tags || []);
       }
+      // 🔔 Notify all subscribed components (PageEditor, OwnerAccess, etc.)
+      emitClientsUpdated(freshClients);
     }
   };
 
@@ -1319,12 +1323,12 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              {/* Custom Business Details (Configured in Settings) */}
+              {/* Business Fields (Configured in Settings) */}
               {activeCustomFields.length > 0 && (
                 <div className="pt-3 border-t border-zinc-100 space-y-3">
                   <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-zinc-600" />
-                    <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
+                    <span className="text-xs font-bold text-zinc-900">Additional Business Fields</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
                       {activeCustomFields.length} active
                     </span>
@@ -1638,12 +1642,12 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              {/* Custom Business Details (Configured in Settings) */}
+              {/* Business Fields (Configured in Settings) */}
               {activeCustomFields.length > 0 && (
                 <div className="pt-3 border-t border-zinc-100 space-y-3">
                   <div className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-xs font-bold text-zinc-900">Custom Business Details</span>
+                    <span className="text-xs font-bold text-zinc-900">Additional Business Fields</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-100">
                       {activeCustomFields.length} active
                     </span>
