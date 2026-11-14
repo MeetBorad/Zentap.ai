@@ -35,9 +35,11 @@ import {
   DeletedBusinessRecord,
   CustomFieldDefinition,
   QrNfcTagItemRecord,
+  PageEditorConfigItemRecord,
   getAllClients,
   getAllDeletedBusinesses,
   getAllQrNfcTags,
+  getAllPageEditorConfigs,
   getCustomFieldDefinitions,
   isStandardBusinessField,
   addClientServer,
@@ -59,6 +61,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [deletedBusinesses, setDeletedBusinesses] = useState<DeletedBusinessRecord[]>([]);
   const [tags, setTags] = useState<QrNfcTagItemRecord[]>([]);
+  const [pageConfigs, setPageConfigs] = useState<PageEditorConfigItemRecord[]>([]);
   const [viewFilter, setViewFilter] = useState<"all" | "deleted">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,6 +168,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setClients(getAllClients());
     setDeletedBusinesses(getAllDeletedBusinesses());
     setTags(getAllQrNfcTags());
+    setPageConfigs(getAllPageEditorConfigs());
     const res = await serverFetchPlatformData();
     if (res.success && res.data) {
       const freshClients = res.data.clients || [];
@@ -172,6 +176,9 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       setDeletedBusinesses(res.data.deletedBusinesses || []);
       if (res.data.tags) {
         setTags(res.data.tags || []);
+      }
+      if (res.data.pageEditorConfigs) {
+        setPageConfigs(res.data.pageEditorConfigs || []);
       }
       // 🔔 Notify all subscribed components (PageEditor, OwnerAccess, etc.)
       emitClientsUpdated(freshClients);
@@ -187,26 +194,31 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   }, [customFieldDefs]);
 
   const openEditModal = (client: ClientRecord) => {
+    const cf = client.custom_fields || {};
+    const matchingPage = pageConfigs.find((p) =>
+      (p.business_id || "").toLowerCase() === (client.business_id || "").toLowerCase()
+    );
+    const cfg = matchingPage?.config_data || {};
+
     setEditTarget(client);
     setEditBusinessId(client.business_id);
-    setEditBizName(client.business_name || "");
-    setEditOwnerName(client.owner_name || "");
-    setEditOwnerPhone(client.owner_phone || "");
-    setEditContactPhone(client.contact_phone || client.custom_fields?.contact_phone || client.custom_fields?.phone || "");
-    setEditOwnerEmail(client.owner_email || "");
-    setEditWhatsapp(client.whatsapp || "");
-    setEditGoogleReviewLink(client.google_review_link || "");
-    setEditGoogleBusinessPage(client.google_business_page || client.custom_fields?.google_business_page || client.custom_fields?.google_business || client.custom_fields?.google_maps_link || "");
-    setEditInstagram(client.instagram_link || "");
-    setEditFacebook(client.facebook_link || "");
-    setEditTwitter(client.twitter_link || client.custom_fields?.twitter_link || client.custom_fields?.twitter || "");
-    setEditDirectionsLink(client.directions_link || client.custom_fields?.directions_link || client.custom_fields?.directions || "");
-    setEditWebsite(client.website_url || client.website || client.custom_fields?.website_url || client.custom_fields?.website || "");
-    setEditUpiId(client.upi_id || client.custom_fields?.upi_id || "");
-    setEditCity(client.city || "Ahmedabad");
+    setEditBizName(client.business_name || cfg.title || "");
+    setEditOwnerName(client.owner_name || cfg.owner_name || "");
+    setEditOwnerPhone(client.owner_phone || cfg.owner_phone || "");
+    setEditContactPhone(client.contact_phone || cf.contact_phone || cf.phone || cfg.contact_phone || cfg.phone || "");
+    setEditOwnerEmail(client.owner_email || cfg.email || "");
+    setEditWhatsapp(client.whatsapp || cfg.whatsapp || "");
+    setEditGoogleReviewLink(client.google_review_link || cfg.google_link || "");
+    setEditGoogleBusinessPage(client.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cfg.google_business_page || "");
+    setEditInstagram(client.instagram_link || cfg.instagram || "");
+    setEditFacebook(client.facebook_link || cfg.facebook || "");
+    setEditTwitter(client.twitter_link || cf.twitter_link || cf.twitter || cfg.twitter || cfg.twitter_link || "");
+    setEditDirectionsLink(client.directions_link || cf.directions_link || cf.directions || cfg.directions_link || cfg.maps_link || "");
+    setEditWebsite(client.website_url || client.website || cf.website_url || cf.website || cfg.website || "");
+    setEditUpiId(client.upi_id || cf.upi_id || cfg.upi_id || "");
+    setEditCity(client.city || cfg.address || "Ahmedabad");
 
-    const cf = client.custom_fields || {};
-    setEditCategory((client as any).category || cf.category || "");
+    setEditCategory((client as any).category || cf.category || cfg.category || cfg.subtitle || "");
     setEditArea(cf.area || (client as any).area || "");
     const rawServices = cf.services ?? (client as any).services;
     setEditServices(
@@ -608,12 +620,16 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 ) : (
                   filteredClients.map((client) => {
                     const cf = client.custom_fields || {};
-                    const contactPhone = client.contact_phone || cf.contact_phone || cf.phone || "";
-                    const googleBizPage = client.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || "";
-                    const twitterUrl = client.twitter_link || cf.twitter_link || cf.twitter || "";
-                    const websiteUrl = client.website_url || client.website || cf.website_url || cf.website || "";
-                    const directionsUrl = client.directions_link || cf.directions_link || cf.directions || "";
-                    const upiId = client.upi_id || cf.upi_id || "";
+                    const matchingPage = pageConfigs.find((p) =>
+                      (p.business_id || "").toLowerCase() === (client.business_id || "").toLowerCase()
+                    );
+                    const cfg = matchingPage?.config_data || {};
+                    const contactPhone = client.contact_phone || cf.contact_phone || cf.phone || cfg.contact_phone || cfg.phone || "";
+                    const googleBizPage = client.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cfg.google_business_page || "";
+                    const twitterUrl = client.twitter_link || cf.twitter_link || cf.twitter || cfg.twitter || cfg.twitter_link || "";
+                    const websiteUrl = client.website_url || client.website || cf.website_url || cf.website || cfg.website || "";
+                    const directionsUrl = client.directions_link || cf.directions_link || cf.directions || cfg.directions_link || cfg.maps_link || "";
+                    const upiId = client.upi_id || cf.upi_id || cfg.upi_id || "";
 
                     return (
                       <tr key={client.id} className="hover:bg-zinc-50/70 transition-colors">

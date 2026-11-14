@@ -210,15 +210,26 @@ const INITIAL_CLIENTS: ClientRecord[] = [
     business_name: "Zentap Digital Solutions",
     owner_name: "Meet",
     owner_phone: "+91 96627 60880",
+    contact_phone: "+91 92745 60880",
     owner_email: "meetborad@hotmail.com",
     whatsapp: "+91 92745 60880",
     instagram_link: "https://www.instagram.com/zenttap/",
     facebook_link: "",
     google_review_link: "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    directions_link: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
+    upi_id: "mbborad143bmb@okicici",
+    website_url: "https://www.zentapdigitalsolutions.com",
+    website: "https://www.zentapdigitalsolutions.com",
     city: "Ahmedabad",
     custom_fields: {
-      directions: "Ahmedabad, Gujarat, India",
+      directions: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
+      directions_link: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
+      google_maps_link: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
+      upi_id: "mbborad143bmb@okicici",
+      contact_phone: "+91 92745 60880",
+      phone: "+91 92745 60880",
       website: "https://www.zentapdigitalsolutions.com",
+      website_url: "https://www.zentapdigitalsolutions.com",
       category: "Digital Growth & Smart NFC Systems"
     },
     created_at: "2026-11-02T13:20:00Z",
@@ -262,7 +273,7 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     tag_id: "ST3",
     product_type: "Counter Standee",
     business_id: "ZT-0004",
-    business_name: "XYZ",
+    business_name: "Zentap Digital Solutions",
     link: `${DOMAIN_BASE}/t/ST3`,
     destination: "business_page",
     scans_count: 36,
@@ -351,9 +362,9 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     id: "gl_03",
     tag_id: "ST3",
     business_id: "ZT-0004",
-    business_name: "XYZ",
+    business_name: "Zentap Digital Solutions",
     link_of_tag_id: `${DOMAIN_BASE}/t/ST3`,
-    business_google_review_link: "https://search.google.com/local/writereview?placeid=ChIJudXhNva7woAR9Q9ALHZaF50",
+    business_google_review_link: "https://g.page/r/CdJX2OGu1yhoEAI/review",
     destination: "business_page",
     setup_status: "completed",
     total_scans: 36,
@@ -469,20 +480,27 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
     id: "pe_03",
     tag_id: "ST3",
     business_id: "ZT-0004",
-    business_name: "XYZ",
+    business_name: "Zentap Digital Solutions",
     link_url: `${DOMAIN_BASE}/t/ST3`,
     setup_status: "completed",
     config_data: {
       theme: "clean_light",
-      title: "XYZ",
+      title: "Zentap Digital Solutions",
       subtitle: "Ahmedabad • Customer Satisfaction Hub",
       category: "Customer Satisfaction Hub",
       cover_image: "/standees/standee_01.jpg",
-      logo_url: "/logo.png",
+      logo_url: "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A",
       cta_text: "Leave a 5-Star Review on Google",
-      google_link: "https://search.google.com/local/writereview?placeid=ChIJudXhNva7woAR9Q9ALHZaF50",
-      phone: "+91 91919 19192",
-      whatsapp: "9191919192",
+      google_link: "https://g.page/r/CdJX2OGu1yhoEAI/review",
+      phone: "+91 92745 60880",
+      contact_phone: "+91 92745 60880",
+      whatsapp: "919274560880",
+      instagram: "https://www.instagram.com/zenttap/",
+      website: "https://www.zentapdigitalsolutions.com",
+      email: "meetborad@hotmail.com",
+      upi_id: "mbborad143bmb@okicici",
+      maps_link: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
+      directions_link: "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D",
     },
     updated_at: "2026-11-02T13:22:00Z",
   },
@@ -1497,6 +1515,28 @@ export async function savePageEditorConfigServer(
       }
     }
 
+    // Two-Way Sync: Update clients table locally from page editor config
+    if (extra?.business_id) {
+      updateClient(extra.business_id, {
+        business_name: configData?.title || extra?.business_name,
+        contact_phone: configData?.phone || configData?.contact_phone,
+        owner_name: configData?.owner_name,
+        owner_phone: configData?.owner_phone,
+        owner_email: configData?.email,
+        whatsapp: configData?.whatsapp,
+        google_review_link: configData?.google_link,
+        google_business_page: configData?.google_business_page,
+        instagram_link: configData?.instagram,
+        facebook_link: configData?.facebook,
+        twitter_link: configData?.twitter || configData?.twitter_link,
+        website_url: configData?.website,
+        website: configData?.website,
+        directions_link: configData?.directions_link || configData?.maps_link,
+        upi_id: configData?.upi_id,
+        city: configData?.address,
+      });
+    }
+
     await serverFetchPlatformData();
     return { success: true, data: json.data };
   } catch (err: any) {
@@ -1517,7 +1557,70 @@ export async function permanentDeletePageEditorServer(tagId: string, confirmatio
 }
 
 export function getAllClients(): ClientRecord[] {
-  return getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);
+  const clients = getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);
+  // Auto-reconciliation: ensure clients are hydrated from pageEditorConfigs if any fields (like upi_id or directions_link) are missing
+  try {
+    const pConfigs = getAllPageEditorConfigs();
+    if (Array.isArray(pConfigs) && pConfigs.length > 0) {
+      let anyChanged = false;
+      const reconciled = clients.map((c) => {
+        const matchingCfg = pConfigs.find((p) =>
+          (p.business_id || "").toLowerCase() === (c.business_id || "").toLowerCase()
+        )?.config_data;
+        if (!matchingCfg) return c;
+        const cf = { ...(c.custom_fields || {}) };
+        let updated = false;
+
+        const effectiveUpi = c.upi_id || cf.upi_id || matchingCfg.upi_id;
+        if (effectiveUpi && (!c.upi_id || !cf.upi_id)) {
+          c.upi_id = effectiveUpi;
+          cf.upi_id = effectiveUpi;
+          updated = true;
+        }
+
+        const effectiveDirections = c.directions_link || cf.directions_link || cf.google_maps_link || matchingCfg.directions_link || matchingCfg.maps_link;
+        if (effectiveDirections && (!c.directions_link || !cf.directions_link)) {
+          c.directions_link = effectiveDirections;
+          cf.directions_link = effectiveDirections;
+          updated = true;
+        }
+
+        const effectiveWebsite = c.website_url || c.website || cf.website_url || cf.website || matchingCfg.website;
+        if (effectiveWebsite && (!c.website_url || !cf.website_url)) {
+          c.website_url = effectiveWebsite;
+          c.website = effectiveWebsite;
+          cf.website_url = effectiveWebsite;
+          cf.website = effectiveWebsite;
+          updated = true;
+        }
+
+        const effectivePhone = c.contact_phone || cf.contact_phone || matchingCfg.contact_phone || matchingCfg.phone;
+        if (effectivePhone && (!c.contact_phone || !cf.contact_phone)) {
+          c.contact_phone = effectivePhone;
+          cf.contact_phone = effectivePhone;
+          updated = true;
+        }
+
+        const effectiveGoogleBiz = c.google_business_page || cf.google_business_page || matchingCfg.google_business_page;
+        if (effectiveGoogleBiz && (!c.google_business_page || !cf.google_business_page)) {
+          c.google_business_page = effectiveGoogleBiz;
+          cf.google_business_page = effectiveGoogleBiz;
+          updated = true;
+        }
+
+        if (updated) {
+          anyChanged = true;
+          return { ...c, custom_fields: cf };
+        }
+        return c;
+      });
+      if (anyChanged) {
+        setStored(KEY_CLIENTS, reconciled);
+        return reconciled;
+      }
+    }
+  } catch {}
+  return clients;
 }
 
 export function generateNextBusinessIdCode(existing?: ClientRecord[]): string {
@@ -1620,7 +1723,9 @@ export function restoreDeletedBusiness(businessId: string): boolean {
 
 export function updateClient(businessId: string, updates: Partial<ClientRecord>): ClientRecord | null {
   const clients = getAllClients();
-  const index = clients.findIndex((c) => c.business_id === businessId || c.id === businessId);
+  const index = clients.findIndex(
+    (c) => (c.business_id || "").toLowerCase() === businessId.toLowerCase() || (c.id || "").toLowerCase() === businessId.toLowerCase()
+  );
   if (index === -1) return null;
 
   const oldBusinessId = clients[index].business_id;
@@ -1632,12 +1737,98 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
   setStored(KEY_CLIENTS, clients);
   asyncDbUpsert("clients", updatedClient, "business_id");
 
-  // If business_id or business_name changed, cascade to other tables
-  if ((updates.business_id && updates.business_id !== oldBusinessId) || updates.business_name) {
-    const newBid = updatedClient.business_id;
-    const newName = updatedClient.business_name;
+  const newBid = updatedClient.business_id;
+  const newName = updatedClient.business_name;
 
-    // Payments
+  // 1. Two-Way Sync to Page Editor Configs (Every edited field cascades to Design Review!)
+  const pConfigs = getAllPageEditorConfigs();
+  let pUpdated = false;
+  for (const pe of pConfigs) {
+    if (
+      (pe.business_id || "").toLowerCase() === oldBusinessId.toLowerCase() ||
+      (pe.business_id || "").toLowerCase() === newBid.toLowerCase()
+    ) {
+      pe.business_id = newBid;
+      if (newName) pe.business_name = newName;
+      const cfg = { ...(pe.config_data || {}) };
+      if (updatedClient.business_name) cfg.title = updatedClient.business_name;
+      if (updatedClient.owner_name) cfg.owner_name = updatedClient.owner_name;
+      if (updatedClient.owner_phone) cfg.owner_phone = updatedClient.owner_phone;
+      if (updatedClient.contact_phone || updatedClient.custom_fields?.contact_phone) {
+        const ph = updatedClient.contact_phone || updatedClient.custom_fields?.contact_phone;
+        cfg.contact_phone = ph;
+        cfg.phone = ph;
+      }
+      if (updatedClient.whatsapp) cfg.whatsapp = updatedClient.whatsapp;
+      if (updatedClient.owner_email) cfg.email = updatedClient.owner_email;
+      if (updatedClient.google_review_link) cfg.google_link = updatedClient.google_review_link;
+      if (updatedClient.google_business_page || updatedClient.custom_fields?.google_business_page) {
+        cfg.google_business_page = updatedClient.google_business_page || updatedClient.custom_fields?.google_business_page;
+      }
+      if (updatedClient.instagram_link) cfg.instagram = updatedClient.instagram_link;
+      if (updatedClient.facebook_link) cfg.facebook = updatedClient.facebook_link;
+      if (updatedClient.twitter_link || updatedClient.custom_fields?.twitter_link) {
+        cfg.twitter = updatedClient.twitter_link || updatedClient.custom_fields?.twitter_link;
+      }
+      if (updatedClient.website_url || updatedClient.website || updatedClient.custom_fields?.website_url) {
+        const w = updatedClient.website_url || updatedClient.website || updatedClient.custom_fields?.website_url;
+        cfg.website = w;
+      }
+      if (updatedClient.directions_link || updatedClient.custom_fields?.directions_link) {
+        const d = updatedClient.directions_link || updatedClient.custom_fields?.directions_link;
+        cfg.directions_link = d;
+        cfg.maps_link = d;
+      }
+      if (updatedClient.upi_id || updatedClient.custom_fields?.upi_id) {
+        cfg.upi_id = updatedClient.upi_id || updatedClient.custom_fields?.upi_id;
+      }
+      if (updatedClient.city) cfg.address = updatedClient.city;
+      if (updatedClient.custom_fields?.about_us) cfg.about_us = updatedClient.custom_fields.about_us;
+      if (updatedClient.custom_fields?.opening_hours) cfg.opening_hours = updatedClient.custom_fields.opening_hours;
+      pe.config_data = cfg;
+      pUpdated = true;
+    }
+  }
+  if (pUpdated) setStored(KEY_PAGE_EDITOR, pConfigs);
+
+  // 2. Cascade to Google Review Links
+  const gLinks = getAllGoogleReviewLinks();
+  let gUpdated = false;
+  for (const g of gLinks) {
+    if (
+      (g.business_id || "").toLowerCase() === oldBusinessId.toLowerCase() ||
+      (g.business_id || "").toLowerCase() === newBid.toLowerCase()
+    ) {
+      g.business_id = newBid;
+      if (newName) g.business_name = newName;
+      if (updatedClient.google_review_link) {
+        g.business_google_review_link = updatedClient.google_review_link;
+      }
+      gUpdated = true;
+    }
+  }
+  if (gUpdated) setStored(KEY_GOOGLE_LINKS, gLinks);
+
+  // 3. Cascade to QR NFC Tags
+  const tags = getAllQrNfcTags();
+  let tagUpdated = false;
+  for (const t of tags) {
+    if (
+      (t.business_id || "").toLowerCase() === oldBusinessId.toLowerCase() ||
+      (t.business_id || "").toLowerCase() === newBid.toLowerCase()
+    ) {
+      t.business_id = newBid;
+      if (newName) t.business_name = newName;
+      if (updatedClient.google_review_link) {
+        t.google_review_link = updatedClient.google_review_link;
+      }
+      tagUpdated = true;
+    }
+  }
+  if (tagUpdated) setStored(KEY_QR_NFC_TAGS, tags);
+
+  // 4. Cascade to Payments & Social Links if business_id or business_name changed
+  if ((updates.business_id && updates.business_id !== oldBusinessId) || updates.business_name) {
     const payments = getAllPayments();
     let payUpdated = false;
     for (const p of payments) {
@@ -1649,31 +1840,6 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
     }
     if (payUpdated) setStored(KEY_PAYMENTS, payments);
 
-    // Tags
-    const tags = getAllQrNfcTags();
-    let tagUpdated = false;
-    for (const t of tags) {
-      if (t.business_id === oldBusinessId) {
-        t.business_id = newBid;
-        if (newName) t.business_name = newName;
-        tagUpdated = true;
-      }
-    }
-    if (tagUpdated) setStored(KEY_QR_NFC_TAGS, tags);
-
-    // Google Links
-    const gLinks = getAllGoogleReviewLinks();
-    let gUpdated = false;
-    for (const g of gLinks) {
-      if (g.business_id === oldBusinessId) {
-        g.business_id = newBid;
-        if (newName) g.business_name = newName;
-        gUpdated = true;
-      }
-    }
-    if (gUpdated) setStored(KEY_GOOGLE_LINKS, gLinks);
-
-    // Social Links
     const sLinks = getAllSocialLinks();
     let sUpdated = false;
     for (const s of sLinks) {
@@ -1684,18 +1850,6 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
       }
     }
     if (sUpdated) setStored(KEY_SOCIAL_LINKS, sLinks);
-
-    // Page Editor
-    const pConfigs = getAllPageEditorConfigs();
-    let pUpdated = false;
-    for (const pe of pConfigs) {
-      if (pe.business_id === oldBusinessId) {
-        pe.business_id = newBid;
-        if (newName) pe.business_name = newName;
-        pUpdated = true;
-      }
-    }
-    if (pUpdated) setStored(KEY_PAGE_EDITOR, pConfigs);
   }
 
   return updatedClient;

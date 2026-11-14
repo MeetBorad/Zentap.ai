@@ -147,14 +147,13 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     if (res.success) {
       onShowToast(
-        `✓ Synced destination for ${item.business_name} (${item.tag_id}) to ${
-          newDest === "business_page"
-            ? "Business Page"
-            : newDest === "zentap_google"
+        `✓ Synced destination for ${item.business_name} (${item.tag_id}) to ${newDest === "business_page"
+          ? "Business Page"
+          : newDest === "zentap_google"
             ? "ZenTap Google Review"
             : newDest === "direct_google"
-            ? "Direct Google Review"
-            : "Not Assigned"
+              ? "Direct Google Review"
+              : "Not Assigned"
         } in Google Links & QR Sharing!`
       );
       await refreshData();
@@ -517,7 +516,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
 
     const allC = getAllClients();
-    const client = allC.find((c) => 
+    const client = allC.find((c) =>
       c.business_id.toLowerCase() === item.business_id.toLowerCase() ||
       (item.tag_id && (c.id === item.tag_id || c.business_id === item.tag_id))
     );
@@ -566,8 +565,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     const initialTags = Array.isArray(cfg.tags) && cfg.tags.length > 0
       ? cfg.tags.join(", ")
       : Array.isArray(cfg.categories) && cfg.categories.length > 0
-      ? cfg.categories.join(", ")
-      : (typeof cfg.tags === "string" ? cfg.tags : "");
+        ? cfg.categories.join(", ")
+        : (typeof cfg.tags === "string" ? cfg.tags : "");
     setEditTags(initialTags);
     setEditTagLink(resolvedTagLink);
   };
@@ -696,31 +695,31 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           ...defaultDesign,
           hub_enabled: true,
           theme_preset: editTheme === "slate" ? "modern_slate"
-                      : editTheme === "emerald" ? "emerald_luxe"
-                      : editTheme === "sunset" ? "midnight_amber"
-                      : editTheme === "clean_light" ? "clean_minimal"
-                      : editTheme === "royal_indigo" ? "royal_indigo"
-                      : editTheme === "midnight_rose" ? "midnight_rose"
+            : editTheme === "emerald" ? "emerald_luxe"
+              : editTheme === "sunset" ? "midnight_amber"
+                : editTheme === "clean_light" ? "clean_minimal"
+                  : editTheme === "royal_indigo" ? "royal_indigo"
+                    : editTheme === "midnight_rose" ? "midnight_rose"
                       : editTheme === "champagne_gold" ? "champagne_gold"
-                      : "modern_slate",
+                        : "modern_slate",
           primary_color: editAccentColor.trim() || (
             editTheme === "sunset" ? "#f97316" :
-            editTheme === "emerald" ? "#10b981" :
-            editTheme === "slate" ? "#38bdf8" :
-            editTheme === "royal_indigo" ? "#818cf8" :
-            editTheme === "midnight_rose" ? "#fb7185" :
-            editTheme === "champagne_gold" ? "#eab308" :
-            editTheme === "clean_light" ? "#ea580c" :
-            "#f59e0b"
+              editTheme === "emerald" ? "#10b981" :
+                editTheme === "slate" ? "#38bdf8" :
+                  editTheme === "royal_indigo" ? "#818cf8" :
+                    editTheme === "midnight_rose" ? "#fb7185" :
+                      editTheme === "champagne_gold" ? "#eab308" :
+                        editTheme === "clean_light" ? "#ea580c" :
+                          "#f59e0b"
           ),
           bg_color: editTheme === "clean_light" ? "#ffffff"
-                  : editTheme === "slate" ? "#0f172a"
-                  : editTheme === "emerald" ? "#062016"
-                  : editTheme === "sunset" ? "#1c0d06"
+            : editTheme === "slate" ? "#0f172a"
+              : editTheme === "emerald" ? "#062016"
+                : editTheme === "sunset" ? "#1c0d06"
                   : editTheme === "royal_indigo" ? "#0c0f24"
-                  : editTheme === "midnight_rose" ? "#1a0b16"
-                  : editTheme === "champagne_gold" ? "#12100b"
-                  : "#0B0F17",
+                    : editTheme === "midnight_rose" ? "#1a0b16"
+                      : editTheme === "champagne_gold" ? "#12100b"
+                        : "#0B0F17",
           dark_mode: editTheme === "clean_light" ? "light" : "dark",
           cover_url: editBannerUrl.trim(),
           logo_url: editLogoUrl.trim(),
@@ -899,7 +898,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           },
           onConflict: "tag_id",
         }),
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err) {
       console.warn("Failed to persist whole entry edits to server", err);
     }
@@ -1081,25 +1080,22 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl w-fit">
             <button
               onClick={() => { setActiveTab("all"); setDestFilter("all"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "all" && destFilter === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === "all" && destFilter === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
+                }`}
             >
               All Standees ({editorConfigs.length})
             </button>
             <button
               onClick={() => { setActiveTab("all"); setDestFilter("zentap"); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "all" && destFilter === "zentap" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-zinc-600 hover:text-zinc-900"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === "all" && destFilter === "zentap" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-zinc-600 hover:text-zinc-900"
+                }`}
             >
               ZenTap Google Review ({zentapOnlyConfigs.length})
             </button>
             <button
               onClick={() => setTabAndUrl("deleted")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "deleted" ? "bg-white text-rose-700 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === "deleted" ? "bg-white text-rose-700 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
+                }`}
             >
               Deleted ({deletedConfigs.length})
             </button>
@@ -1119,11 +1115,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           {/* Group-by-business toggle */}
           <button
             onClick={() => setGroupByBusiness((v) => !v)}
-            className={`tactile-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-              groupByBusiness
+            className={`tactile-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${groupByBusiness
                 ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100"
                 : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
-            }`}
+              }`}
             title="Toggle group-by-business view"
           >
             <Layers className="w-3.5 h-3.5" />
@@ -1193,11 +1188,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         return (
                           <tr
                             key={item.id}
-                            className={`transition-colors ${
-                              isPrimary
+                            className={`transition-colors ${isPrimary
                                 ? "hover:bg-zinc-50/70"
                                 : "hover:bg-purple-50/30 bg-zinc-50/40 border-l-2 border-l-purple-200"
-                            }`}
+                              }`}
                           >
                             {/* 1. Business ID — only on primary row; expand toggle on primary */}
                             <td className="py-3 px-4 font-mono font-bold text-zinc-900 whitespace-nowrap">
@@ -1329,15 +1323,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               <select
                                 value={currentDest}
                                 onChange={(e) => handleDestinationChange(item, e.target.value as any)}
-                                className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
-                                  currentDest === "business_page"
+                                className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${currentDest === "business_page"
                                     ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
                                     : currentDest === "zentap_google"
-                                    ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
-                                    : currentDest === "direct_google"
-                                    ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-                                    : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
-                                }`}
+                                      ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                      : currentDest === "direct_google"
+                                        ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                        : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                                  }`}
                               >
                                 <option value="business_page">Business Page (Blue)</option>
                                 <option value="zentap_google">ZenTap Google Review (Green)</option>
@@ -1514,15 +1507,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           <select
                             value={currentDest}
                             onChange={(e) => handleDestinationChange(item, e.target.value as any)}
-                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${
-                              currentDest === "business_page"
+                            className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${currentDest === "business_page"
                                 ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
                                 : currentDest === "zentap_google"
-                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
-                                : currentDest === "direct_google"
-                                ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-                                : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
-                            }`}
+                                  ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                  : currentDest === "direct_google"
+                                    ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                    : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                              }`}
                           >
                             <option value="business_page">Business Page (Blue)</option>
                             <option value="zentap_google">ZenTap Google Review (Green)</option>
@@ -1802,11 +1794,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           key={preset}
                           type="button"
                           onClick={() => handleToggleWholeCategory(preset)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
-                            isSelected
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${isSelected
                               ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
                               : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
-                          }`}
+                            }`}
                         >
                           {isSelected ? (
                             <>
@@ -2074,11 +2065,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           Synced with Client Profile: <strong className="text-purple-700">{editTitle}</strong> ({activeItem.business_id})
                         </span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        pendingItems.length === 0 
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pendingItems.length === 0
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                           : "bg-amber-50 text-amber-800 border border-amber-200"
-                      }`}>
+                        }`}>
                         {pendingItems.length === 0 ? "✓ 100% Ready to Publish" : `${pendingItems.length} Setup Items Pending`}
                       </span>
                     </div>
@@ -2129,11 +2119,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           key={t.id}
                           type="button"
                           onClick={() => setEditTheme(t.id)}
-                          className={`p-2.5 rounded-xl text-left cursor-pointer transition-all border ${
-                            editTheme === t.id
+                          className={`p-2.5 rounded-xl text-left cursor-pointer transition-all border ${editTheme === t.id
                               ? "ring-2 ring-amber-500 border-amber-500 shadow-md bg-white scale-[1.02]"
                               : "border-zinc-200/80 hover:border-zinc-300 bg-white/70 hover:bg-white"
-                          }`}
+                            }`}
                         >
                           <div className={`w-full h-8 rounded-lg ${t.bg} flex items-center justify-between px-2.5 shadow-2xs mb-1.5`}>
                             <span className="text-[11px] font-black tracking-tight">Aa</span>
@@ -2175,11 +2164,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             type="button"
                             onClick={() => setEditFont(f.id)}
                             style={{ fontFamily: f.family }}
-                            className={`p-2 rounded-xl text-left border cursor-pointer transition-all ${
-                              editFont === f.id
+                            className={`p-2 rounded-xl text-left border cursor-pointer transition-all ${editFont === f.id
                                 ? "bg-purple-50/80 border-purple-500 ring-2 ring-purple-500/30 text-purple-950 font-bold shadow-2xs"
                                 : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100/50"
-                            }`}
+                              }`}
                           >
                             <div className="text-xs font-bold truncate leading-tight">{f.label}</div>
                             <div className="text-[9px] text-zinc-500 font-normal truncate mt-0.5">{f.desc}</div>
@@ -2204,11 +2192,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               key={sz.id}
                               type="button"
                               onClick={() => setEditFontSize(sz.id as any)}
-                              className={`py-2 px-1 rounded-xl text-center border cursor-pointer transition-all ${
-                                editFontSize === sz.id
+                              className={`py-2 px-1 rounded-xl text-center border cursor-pointer transition-all ${editFontSize === sz.id
                                   ? "bg-purple-600 text-white border-purple-600 font-bold shadow-xs"
                                   : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300"
-                              }`}
+                                }`}
                             >
                               <div className="text-xs font-bold leading-tight">{sz.label}</div>
                               <div className={`text-[9px] mt-0.5 ${editFontSize === sz.id ? "text-purple-100" : "text-zinc-500"}`}>
@@ -2250,11 +2237,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               type="button"
                               title={c.label}
                               onClick={() => setEditAccentColor(c.hex)}
-                              className={`w-6 h-6 rounded-full cursor-pointer transition-transform border border-white shadow-xs ${
-                                editAccentColor.toLowerCase() === c.hex.toLowerCase()
+                              className={`w-6 h-6 rounded-full cursor-pointer transition-transform border border-white shadow-xs ${editAccentColor.toLowerCase() === c.hex.toLowerCase()
                                   ? "scale-125 ring-2 ring-purple-600 ring-offset-1"
                                   : "hover:scale-110"
-                              }`}
+                                }`}
                               style={{ backgroundColor: c.hex }}
                             />
                           ))}
@@ -2947,14 +2933,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               {(() => {
                 const hasQuickActions = !!(editPhone.trim() || editMapsLink.trim() || editAddress.trim());
                 const hasSocials = !!(
-                  editWhatsapp.trim() || 
-                  editInstagram.trim() || 
-                  editPhone.trim() || 
-                  editFacebook.trim() || 
-                  editTwitter.trim() || 
-                  editGoogleBusinessPage.trim() || 
-                  editUpiId.trim() || 
-                  editWebsite.trim() || 
+                  editWhatsapp.trim() ||
+                  editInstagram.trim() ||
+                  editPhone.trim() ||
+                  editFacebook.trim() ||
+                  editTwitter.trim() ||
+                  editGoogleBusinessPage.trim() ||
+                  editUpiId.trim() ||
+                  editWebsite.trim() ||
                   editEmail.trim()
                 );
 
@@ -3105,7 +3091,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       <span>Live Theme Preview • <strong>{currentP.themeName}</strong> ({editFont})</span>
                     </div>
 
-                    <div 
+                    <div
                       className={`w-[290px] max-h-[700px] overflow-y-auto ${currentP.containerBg} ${currentP.textColor} rounded-[36px] border-[5px] border-zinc-800 shadow-2xl flex flex-col relative transition-all duration-300 select-none pb-4`}
                       style={{
                         fontFamily: activeFontFamily
@@ -3124,12 +3110,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         {/* Profile & NFC Hero Card */}
                         <div className={`relative overflow-hidden rounded-xl ${currentP.cardBg} p-3 shadow-md border ${currentP.borderColor} space-y-2`}>
                           <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-80" />
-                          
+
                           <div className="flex items-center gap-2.5">
                             <div className={`relative shrink-0 w-11 h-11 rounded-lg ${currentP.cardBg} p-0.5 shadow border ${currentP.borderColor} flex items-center justify-center`}>
-                              <img 
-                                src={editLogoUrl || "/logo.png"} 
-                                alt="Logo" 
+                              <img
+                                src={editLogoUrl || "/logo.png"}
+                                alt="Logo"
                                 className="w-full h-full object-contain rounded-md"
                                 onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
                               />
@@ -3302,7 +3288,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         {/* Location Card (Only if not blank) */}
                         {(editAddress.trim() || editLocationImage.trim()) && (
                           <div className={`rounded-xl overflow-hidden relative h-20 bg-zinc-800 flex items-end p-2 border ${currentP.borderColor}`}>
-                            <img 
+                            <img
                               src={editLocationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}
                               alt="Location"
                               className="absolute inset-0 w-full h-full object-cover"

@@ -243,16 +243,38 @@ export async function GET(req: Request) {
     };
 
     const mappedClients = clients.map((c: any) => {
-      const cf = typeof c.custom_fields === "object" && c.custom_fields !== null ? c.custom_fields : {};
+      const cf = typeof c.custom_fields === "object" && c.custom_fields !== null ? { ...c.custom_fields } : {};
+      
+      // Auto-reconciliation: cross-reference pageEditorConfigs to backfill any missing fields (like upi_id or directions_link)
+      const matchingPage = pageEditorConfigs.find((p: any) =>
+        (p.business_id && c.business_id && p.business_id.toLowerCase() === c.business_id.toLowerCase())
+      );
+      const pageCfg = matchingPage && typeof matchingPage.config_data === "object" ? matchingPage.config_data : {};
+
+      const resolvedUpi = c.upi_id || cf.upi_id || pageCfg.upi_id || "";
+      const resolvedDirections = c.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || pageCfg.directions_link || pageCfg.maps_link || "";
+      const resolvedWebsite = c.website_url || c.website || cf.website_url || cf.website || pageCfg.website || "";
+      const resolvedGoogleBiz = c.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cf.maps_link || pageCfg.google_business_page || "";
+      const resolvedPhone = c.contact_phone || cf.contact_phone || cf.phone || pageCfg.contact_phone || pageCfg.phone || "";
+      const resolvedTwitter = c.twitter_link || cf.twitter_link || cf.twitter || pageCfg.twitter || pageCfg.twitter_link || "";
+
+      // Ensure custom_fields keeps these in sync
+      if (resolvedUpi && !cf.upi_id) cf.upi_id = resolvedUpi;
+      if (resolvedDirections && !cf.directions_link) cf.directions_link = resolvedDirections;
+      if (resolvedWebsite && !cf.website_url) cf.website_url = resolvedWebsite;
+      if (resolvedPhone && !cf.contact_phone) cf.contact_phone = resolvedPhone;
+      if (resolvedGoogleBiz && !cf.google_business_page) cf.google_business_page = resolvedGoogleBiz;
+
       return {
         ...c,
-        contact_phone: c.contact_phone || cf.contact_phone || cf.phone || "",
-        google_business_page: c.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cf.maps_link || "",
-        twitter_link: c.twitter_link || cf.twitter_link || cf.twitter || "",
-        upi_id: c.upi_id || cf.upi_id || "",
-        directions_link: c.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || "",
-        website_url: c.website_url || c.website || cf.website_url || cf.website || "",
-        website: c.website || c.website_url || cf.website || cf.website_url || "",
+        contact_phone: resolvedPhone,
+        google_business_page: resolvedGoogleBiz,
+        twitter_link: resolvedTwitter,
+        upi_id: resolvedUpi,
+        directions_link: resolvedDirections,
+        website_url: resolvedWebsite,
+        website: resolvedWebsite,
+        custom_fields: cf,
       };
     });
 
@@ -697,12 +719,20 @@ function sanitizeRowForTable(item: any, table: string) {
 
   if (table === "clients") {
     const existingCf = typeof item.custom_fields === "object" && item.custom_fields !== null ? { ...item.custom_fields } : {};
-    if (item.contact_phone && !existingCf.contact_phone) existingCf.contact_phone = item.contact_phone;
-    if (item.google_business_page && !existingCf.google_business_page) existingCf.google_business_page = item.google_business_page;
-    if ((item.twitter_link || item.twitter) && !existingCf.twitter_link) existingCf.twitter_link = item.twitter_link || item.twitter;
-    if (item.upi_id && !existingCf.upi_id) existingCf.upi_id = item.upi_id;
-    if ((item.directions_link || item.directions) && !existingCf.directions_link) existingCf.directions_link = item.directions_link || item.directions;
-    if ((item.website_url || item.website) && !existingCf.website_url) existingCf.website_url = item.website_url || item.website;
+    if (item.contact_phone !== undefined) existingCf.contact_phone = item.contact_phone;
+    if (item.google_business_page !== undefined) existingCf.google_business_page = item.google_business_page;
+    if (item.twitter_link !== undefined || item.twitter !== undefined) existingCf.twitter_link = item.twitter_link || item.twitter;
+    if (item.upi_id !== undefined) existingCf.upi_id = item.upi_id;
+    if (item.directions_link !== undefined || item.directions !== undefined) {
+      const d = item.directions_link || item.directions;
+      existingCf.directions_link = d;
+      existingCf.directions = d;
+    }
+    if (item.website_url !== undefined || item.website !== undefined) {
+      const w = item.website_url || item.website;
+      existingCf.website_url = w;
+      existingCf.website = w;
+    }
     copy.custom_fields = existingCf;
   }
 
@@ -802,6 +832,61 @@ function sanitizeRowForTable(item: any, table: string) {
               (supabase as any).from("page_editor_configs").update(cascadePayload).eq("business_id", targetBizId),
               (supabase as any).from("payments").update(cascadePayload).eq("business_id", targetBizId),
             ]);
+          }
+
+          // Two-Way Sync: Cascade all updated fields to linked page_editor_configs in Supabase
+          try {
+            const { data: linkedPages } = await (supabase as any)
+              .from("page_editor_configs")
+              .select("id, config_data")
+              .or(`business_id.eq.${targetBizId},business_id.eq.${newBizId}`);
+            if (linkedPages && linkedPages.length > 0) {
+              const cf = clean.custom_fields || {};
+              for (const lp of linkedPages) {
+                const cfg = typeof lp.config_data === "string" ? JSON.parse(lp.config_data) : { ...(lp.config_data || {}) };
+                if (newName) cfg.title = newName;
+                if (clean.owner_name) cfg.owner_name = clean.owner_name;
+                if (clean.owner_phone) cfg.owner_phone = clean.owner_phone;
+                if (cf.contact_phone || clean.contact_phone) {
+                  const p = cf.contact_phone || clean.contact_phone;
+                  cfg.contact_phone = p;
+                  cfg.phone = p;
+                }
+                if (clean.owner_email) cfg.email = clean.owner_email;
+                if (clean.whatsapp) cfg.whatsapp = clean.whatsapp;
+                if (clean.google_review_link) cfg.google_link = clean.google_review_link;
+                if (cf.google_business_page || clean.google_business_page) {
+                  cfg.google_business_page = cf.google_business_page || clean.google_business_page;
+                }
+                if (clean.instagram_link) cfg.instagram = clean.instagram_link;
+                if (clean.facebook_link) cfg.facebook = clean.facebook_link;
+                if (cf.twitter_link || clean.twitter_link) cfg.twitter = cf.twitter_link || clean.twitter_link;
+                if (cf.directions_link || clean.directions_link) {
+                  const d = cf.directions_link || clean.directions_link;
+                  cfg.directions_link = d;
+                  cfg.maps_link = d;
+                }
+                if (cf.upi_id || clean.upi_id) cfg.upi_id = cf.upi_id || clean.upi_id;
+                if (cf.website_url || clean.website_url || cf.website) {
+                  cfg.website = cf.website_url || clean.website_url || cf.website;
+                }
+                if (clean.city) cfg.address = clean.city;
+                if (cf.about_us) cfg.about_us = cf.about_us;
+                if (cf.opening_hours) cfg.opening_hours = cf.opening_hours;
+
+                await (supabase as any)
+                  .from("page_editor_configs")
+                  .update({
+                    business_name: newName,
+                    business_id: newBizId,
+                    config_data: cfg,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", lp.id);
+              }
+            }
+          } catch (cascadeErr) {
+            console.warn("Notice: page_editor_configs cascade:", cascadeErr);
           }
 
           return NextResponse.json({ success: true, data: updateRes.data });
@@ -970,6 +1055,73 @@ function sanitizeRowForTable(item: any, table: string) {
               console.error("page_editor_configs update error:", upErr);
               return NextResponse.json({ error: upErr.message }, { status: 500 });
             }
+
+            // Two-Way Sync: Update clients table in Supabase from page editor config
+            const targetBizId = checkItem.business_id || clean.business_id;
+            const cfgData = clean.config_data;
+            if (targetBizId && cfgData && typeof cfgData === "object") {
+              try {
+                const { data: clRow } = await (supabase as any)
+                  .from("clients")
+                  .select("id, custom_fields")
+                  .eq("business_id", targetBizId)
+                  .maybeSingle();
+                if (clRow) {
+                  const existingCf = clRow.custom_fields && typeof clRow.custom_fields === "object" ? { ...clRow.custom_fields } : {};
+                  const clientPatch: any = {};
+                  if (cfgData.title) clientPatch.business_name = cfgData.title;
+                  if (cfgData.email) clientPatch.owner_email = cfgData.email;
+                  if (cfgData.phone || cfgData.contact_phone) {
+                    const ph = cfgData.phone || cfgData.contact_phone;
+                    clientPatch.contact_phone = ph;
+                    existingCf.contact_phone = ph;
+                  }
+                  if (cfgData.whatsapp) clientPatch.whatsapp = cfgData.whatsapp;
+                  if (cfgData.google_link) clientPatch.google_review_link = cfgData.google_link;
+                  if (cfgData.google_business_page) {
+                    clientPatch.google_business_page = cfgData.google_business_page;
+                    existingCf.google_business_page = cfgData.google_business_page;
+                  }
+                  if (cfgData.instagram) clientPatch.instagram_link = cfgData.instagram;
+                  if (cfgData.facebook) clientPatch.facebook_link = cfgData.facebook;
+                  if (cfgData.twitter) {
+                    clientPatch.twitter_link = cfgData.twitter;
+                    existingCf.twitter_link = cfgData.twitter;
+                  }
+                  if (cfgData.upi_id) {
+                    clientPatch.upi_id = cfgData.upi_id;
+                    existingCf.upi_id = cfgData.upi_id;
+                  }
+                  if (cfgData.directions_link || cfgData.maps_link) {
+                    const d = cfgData.directions_link || cfgData.maps_link;
+                    clientPatch.directions_link = d;
+                    existingCf.directions_link = d;
+                    existingCf.directions = d;
+                  }
+                  if (cfgData.website) {
+                    clientPatch.website_url = cfgData.website;
+                    clientPatch.website = cfgData.website;
+                    existingCf.website_url = cfgData.website;
+                    existingCf.website = cfgData.website;
+                  }
+                  if (cfgData.about_us) existingCf.about_us = cfgData.about_us;
+                  if (cfgData.opening_hours) existingCf.opening_hours = cfgData.opening_hours;
+                  if (cfgData.address) clientPatch.city = cfgData.address;
+
+                  await (supabase as any)
+                    .from("clients")
+                    .update({
+                      ...clientPatch,
+                      custom_fields: existingCf,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", clRow.id);
+                }
+              } catch (clientSyncErr) {
+                console.warn("Notice: client sync from page editor in DB:", clientSyncErr);
+              }
+            }
+
             invalidateCachedTag(checkItem.tag_id);
             return NextResponse.json({ success: true, data: updated });
           }

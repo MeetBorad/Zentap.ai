@@ -101,7 +101,8 @@ import RazorpayCheckoutModal from "@/components/modals/RazorpayCheckoutModal";
 import { 
   getOwnerFieldPermissions, 
   getCustomFieldDefinitions, 
-  CustomFieldDefinition 
+  CustomFieldDefinition,
+  updateClient
 } from "@/lib/adminPlatformStore";
 
 interface ClientPortalViewProps {
@@ -712,6 +713,44 @@ export default function ClientPortalView({
       }
     } else {
       setBusiness((prev) => ({ ...prev, ...updates }));
+    }
+
+    // Two-Way Sync to Admin Master Table (clients table & page configs)
+    try {
+      const targetBid = (business as any).business_id || business.slug?.toUpperCase() || "ZT-0004";
+      updateClient(targetBid, {
+        business_name: updates.name,
+        city: updates.city,
+        contact_phone: updates.phone,
+        owner_email: updates.email,
+        google_business_page: updates.gbp_link,
+        google_review_link: updates.review_url || undefined,
+        directions_link: updates.address,
+        custom_fields: customFieldsObj,
+      });
+
+      fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "clients",
+          data: {
+            business_id: targetBid,
+            business_name: updates.name,
+            city: updates.city,
+            contact_phone: updates.phone,
+            owner_email: updates.email,
+            google_business_page: updates.gbp_link,
+            google_review_link: updates.review_url || undefined,
+            directions_link: updates.address,
+            custom_fields: customFieldsObj,
+          },
+          onConflict: "business_id",
+        }),
+      }).catch(() => {});
+    } catch (syncErr) {
+      console.warn("ClientPortal sync notice:", syncErr);
     }
 
     showToast("✓ Business Details updated and synced with Admin Master Table!");
