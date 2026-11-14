@@ -202,12 +202,12 @@ export default function ZenTapHubPage({
   const subtitle = liveBusiness.category || cfg.subtitle || cfg.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
   const address = liveBusiness.address || cfg.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
-  const rawMaps = liveBusiness.maps_link || liveBusiness.gbp_link || liveBusiness.google_review_link || liveBusiness.review_url || cfg.maps_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
+  const rawMaps = liveBusiness.maps_link || cfg.maps_link || "";
   const mapsUrl = rawMaps
     ? (rawMaps.startsWith("http://") || rawMaps.startsWith("https://") ? rawMaps : `https://${rawMaps}`)
-    : (address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : "");
+    : "";
 
-  const rawReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "") || mapsUrl || "https://g.page/r/CdJX2OGu1yhoEAI/review";
+  const rawReviewLink = liveBusiness.google_review_link || liveBusiness.review_url || cfg.google_link || (isZenTapDemo ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : "");
   const googleReviewLink = rawReviewLink
     ? (rawReviewLink.startsWith("http://") || rawReviewLink.startsWith("https://") ? rawReviewLink : `https://${rawReviewLink}`)
     : "https://g.page/r/CdJX2OGu1yhoEAI/review";
@@ -243,10 +243,10 @@ export default function ZenTapHubPage({
   const upiIdRaw = liveBusiness.upi_id || cfg.upi_id || cfg.upi || "";
   const upiUrl = upiIdRaw ? `upi://pay?pa=${encodeURIComponent(upiIdRaw)}&pn=${encodeURIComponent(businessName)}&cu=INR` : "";
 
-  const directionsRaw = liveBusiness.directions_link || liveBusiness.directions || cfg.directions_link || cfg.directions || mapsUrl;
+  const directionsRaw = liveBusiness.directions_link || liveBusiness.directions || cfg.directions_link || cfg.directions || rawMaps;
   const directionsUrl = directionsRaw
     ? (directionsRaw.startsWith("http://") || directionsRaw.startsWith("https://") ? directionsRaw : `https://${directionsRaw}`)
-    : mapsUrl;
+    : "";
 
   const whatsapp = liveBusiness.whatsapp || liveBusiness.whatsapp_number || cfg.whatsapp || (isZenTapDemo ? "+91 92745 60880" : "");
   const cleanWhatsApp = whatsapp ? whatsapp.replace(/[^0-9]/g, "") : "";
@@ -695,9 +695,9 @@ export default function ZenTapHubPage({
                 </div>
               </div>
 
-              {/* Quick Action Bar (Only shown if phone or directionsUrl/mapsUrl is not blank!) */}
-              {(cleanPhone || directionsUrl || mapsUrl) && (
-                <div className={`grid ${cleanPhone && (directionsUrl || mapsUrl) ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
+              {/* Quick Action Bar (Only shown if phone or directionsUrl is not blank!) */}
+              {(cleanPhone || directionsUrl) && (
+                <div className={`grid ${cleanPhone && directionsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
                   {cleanPhone && (
                     <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
@@ -708,10 +708,10 @@ export default function ZenTapHubPage({
                       <span>Call Us</span>
                     </a>
                   )}
-                  {(directionsUrl || mapsUrl) && (
+                  {directionsUrl && (
                     <a
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
-                      href={directionsUrl || mapsUrl}
+                      href={directionsUrl}
                       rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("directions_quick")}

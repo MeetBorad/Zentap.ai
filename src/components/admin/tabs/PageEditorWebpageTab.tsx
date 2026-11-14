@@ -554,7 +554,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWebsite(client?.website_url || client?.website || cf.website_url || cf.website || cfg.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
     setEditEmail(client?.owner_email || cfg.email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
     setEditAddress(client?.city || cfg.address || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
-    setEditMapsLink(client?.directions_link || cf.directions_link || cf.google_maps_link || cfg.maps_link || cfg.directions_link || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
+    setEditMapsLink(client?.directions_link || cf.directions_link || cf.google_maps_link || cfg.maps_link || cfg.directions_link || "");
     setEditAboutUs(cf.about_us || cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
     setEditOpeningHours(cf.opening_hours || cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
     setEditFaqs(Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [

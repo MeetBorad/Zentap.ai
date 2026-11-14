@@ -311,8 +311,8 @@ export default function AiReviewCustomerFlow({
       ? "bg-zinc-900/70 backdrop-blur-md border border-white/10 shadow-lg text-white" 
       : "bg-white/80 backdrop-blur-md border border-black/5 shadow-lg text-zinc-900";
 
-  const callBtn = hubButtons.find((b) => b.type === "call") || (business.phone ? { type: "call", url_or_value: business.phone, label: "Call" } : null);
-  const directionsBtn = hubButtons.find((b) => b.type === "directions" || b.type === "maps") || { type: "directions", url_or_value: business.google_review_link || business.address || "", label: "Directions" };
+  const callBtn = hubButtons.find((b) => b.type === "call" && b.url_or_value?.trim()) || (business.phone ? { type: "call", url_or_value: business.phone, label: "Call" } : null);
+  const directionsBtn = hubButtons.find((b) => (b.type === "directions" || b.type === "maps") && b.url_or_value?.trim()) || (business.directions_link?.trim() ? { type: "directions", url_or_value: business.directions_link.trim(), label: "Directions" } : null);
   const waBtn = hubButtons.find((b) => b.type === "whatsapp") || (business.whatsapp_number ? { type: "whatsapp", url_or_value: business.whatsapp_number, label: "WhatsApp" } : null);
   const igBtn = hubButtons.find((b) => b.type === "instagram") || (business.instagram ? { type: "instagram", url_or_value: business.instagram, label: "Instagram" } : null);
   const fbBtn = hubButtons.find((b) => b.type === "facebook") || (config.facebook_url ? { type: "facebook", url_or_value: config.facebook_url, label: "Facebook" } : null);
