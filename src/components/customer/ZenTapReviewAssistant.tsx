@@ -246,41 +246,29 @@ export default function ZenTapReviewAssistant({
     return link || "https://g.page/r/CdJX2OGu1yhoEAI/review";
   }, [googleReviewUrl, pageConfig?.google_link, liveBusiness.google_review_link, liveBusiness.review_url, liveBusiness.slug, liveBusiness.id, cleanTagCode]);
 
-  // Read categories & tags directly from editor config & merchant custom chips
+  // Read "What Stood Out?" custom chips directly from editor config or merchant record
   const customMerchantChips = useMemo(() => {
-    const customCats = Array.isArray(pageConfig?.categories)
-      ? pageConfig.categories
-      : typeof pageConfig?.categories === "string"
-        ? pageConfig.categories.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
-        : [];
+    // 1. Direct review tags from Page Editor
+    const rawReviewTags = pageConfig?.review_tags !== undefined ? pageConfig.review_tags : pageConfig?.tags;
+    if (Array.isArray(rawReviewTags) && rawReviewTags.length > 0) {
+      const catSet = new Set(Array.isArray(pageConfig?.categories) ? pageConfig.categories : []);
+      const pureTags = rawReviewTags
+        .map((s: string) => String(s).trim())
+        .filter((s: string) => Boolean(s) && !catSet.has(s));
+      if (pureTags.length > 0) return pureTags;
+      return rawReviewTags.map((s: string) => String(s).trim()).filter(Boolean);
+    }
+    if (typeof rawReviewTags === "string" && rawReviewTags.trim()) {
+      return rawReviewTags.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
 
-    const customTags = Array.isArray(pageConfig?.tags)
-      ? pageConfig.tags
-      : typeof pageConfig?.tags === "string"
-        ? pageConfig.tags.split(",").map((s: string) => s.trim()).filter(Boolean)
-        : [];
+    // 2. Custom chips on the business record
+    if (Array.isArray((liveBusiness as any)?.custom_chips) && (liveBusiness as any).custom_chips.length > 0) {
+      return (liveBusiness as any).custom_chips.map((s: string) => String(s).trim()).filter(Boolean);
+    }
 
-    const singleCat = typeof pageConfig?.category === "string"
-      ? pageConfig.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
-      : [];
-
-    const bizCat = typeof liveBusiness?.category === "string"
-      ? liveBusiness.category.split(/[•|,]/).map((s: string) => s.trim()).filter(Boolean)
-      : [];
-
-    const bizChips = Array.isArray((liveBusiness as any)?.custom_chips)
-      ? (liveBusiness as any).custom_chips
-      : [];
-
-    const subtitleCategories = pageConfig?.subtitle
-      ? String(pageConfig.subtitle)
-        .split(/[•|,]/)
-        .map((s: string) => s.trim())
-        .filter((s: string) => s && !s.toLowerCase().includes("welcome") && !s.toLowerCase().includes("official digital hub"))
-      : [];
-
-    return Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
-  }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, liveBusiness?.category, (liveBusiness as any)?.custom_chips]);
+    return [];
+  }, [pageConfig?.review_tags, pageConfig?.tags, pageConfig?.categories, (liveBusiness as any)?.custom_chips]);
 
   // Dynamic tags that adapt based on the selected star level
   const allTags = useMemo(() => {

@@ -562,11 +562,15 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     ] : []));
     setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
     setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : (client?.city || "")));
-    const initialTags = Array.isArray(cfg.tags) && cfg.tags.length > 0
-      ? cfg.tags.join(", ")
-      : Array.isArray(cfg.categories) && cfg.categories.length > 0
-        ? cfg.categories.join(", ")
-        : (typeof cfg.tags === "string" ? cfg.tags : "");
+    const rawReviewTags = cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags;
+    let initialTags = "";
+    if (Array.isArray(rawReviewTags) && rawReviewTags.length > 0) {
+      const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
+      const pureTags = rawReviewTags.filter((t: string) => !catSet.has(t));
+      initialTags = (pureTags.length > 0 ? pureTags : rawReviewTags).join(", ");
+    } else if (typeof rawReviewTags === "string" && rawReviewTags.trim()) {
+      initialTags = rawReviewTags;
+    }
     setEditTags(initialTags);
     setEditTagLink(resolvedTagLink);
   };
@@ -611,8 +615,11 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       location_image: editLocationImage.trim(),
       location_title: editLocationTitle.trim(),
       tags: editTags
-        ? Array.from(new Set([...currentDesignerCategories, ...editTags.split(",").map((s) => s.trim()).filter(Boolean)]))
-        : currentDesignerCategories,
+        ? editTags.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+      review_tags: editTags
+        ? editTags.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
       link_url: editTagLink.trim(),
     };
 

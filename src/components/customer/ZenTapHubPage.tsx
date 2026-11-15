@@ -309,14 +309,25 @@ export default function ZenTapHubPage({
   const locationImage = cfg.location_image || business.location_image || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : "");
   const locationTitle = cfg.location_title || business.location_title || (isZenTapDemo ? "Ahmedabad Central Hub" : address);
 
-  const availableTags: string[] =
-    Array.isArray(cfg.tags) && cfg.tags.length > 0
-      ? cfg.tags
-      : Array.isArray(cfg.categories) && cfg.categories.length > 0
-        ? cfg.categories
-        : Array.isArray(business.custom_chips) && business.custom_chips.length > 0
-          ? business.custom_chips
-          : DEFAULT_TAGS;
+  const availableTags: string[] = useMemo(() => {
+    const raw = cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags;
+    let customList: string[] = [];
+    if (Array.isArray(raw) && raw.length > 0) {
+      const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
+      const clean = raw.map((s: string) => String(s).trim()).filter((s: string) => Boolean(s) && !catSet.has(s));
+      customList = clean.length > 0 ? clean : raw.map((s: string) => String(s).trim()).filter(Boolean);
+    } else if (typeof raw === "string" && raw.trim()) {
+      customList = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+    } else if (Array.isArray(business.custom_chips) && business.custom_chips.length > 0) {
+      customList = business.custom_chips.map((s: string) => String(s).trim()).filter(Boolean);
+    }
+
+    if (customList.length > 0) {
+      return customList;
+    }
+
+    return DEFAULT_TAGS;
+  }, [cfg.review_tags, cfg.tags, cfg.categories, business.custom_chips]);
 
   const effectiveTheme = cfg.theme || (
     design.theme_preset === 'emerald_luxe' ? 'emerald' :

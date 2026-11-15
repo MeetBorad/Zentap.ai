@@ -86,28 +86,28 @@ export const RATING_SPECIFIC_TAGS: Record<"positive" | "neutral" | "negative", s
 
 /**
  * Returns dynamic tags based on customer's star rating (1-2 negative/constructive, 3 neutral, 4-5 positive),
- * blending in any merchant custom chips.
+ * strictly prioritizing merchant's custom configured chips when set.
  */
 export function getRatingSpecificTags(rating: number, customChips: string[] = []): string[] {
-  let baseList: string[] = [];
-  if (rating <= 2 && rating > 0) {
-    baseList = [...RATING_SPECIFIC_TAGS.negative];
-  } else if (rating === 3) {
-    baseList = [...RATING_SPECIFIC_TAGS.neutral];
-  } else {
-    // 4 or 5 stars (or unselected default)
-    baseList = [...RATING_SPECIFIC_TAGS.positive];
-  }
+  const cleanCustom = (customChips || []).map((s) => String(s).trim()).filter(Boolean);
 
-  // Prepend or blend customChips if positive or neutral
-  if (customChips && customChips.length > 0) {
-    const cleanCustom = customChips.filter(Boolean);
+  // If merchant explicitly configured custom chips in "What Stood Out?", show strictly those!
+  if (cleanCustom.length > 0) {
     if (rating >= 3 || rating === 0) {
-      return Array.from(new Set([...cleanCustom, ...baseList]));
+      return cleanCustom;
     }
+    // For 1-2 stars, show constructive resolution tags
+    return [...RATING_SPECIFIC_TAGS.negative];
   }
 
-  return baseList;
+  // Fall back to standard defaults if merchant has not set custom chips
+  if (rating <= 2 && rating > 0) {
+    return [...RATING_SPECIFIC_TAGS.negative];
+  } else if (rating === 3) {
+    return [...RATING_SPECIFIC_TAGS.neutral];
+  }
+
+  return [...RATING_SPECIFIC_TAGS.positive];
 }
 
 /**
