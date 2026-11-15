@@ -263,8 +263,10 @@ PROMPT RULES & STRICT ANTI-HALLUCINATION CONTRACT:
    - Known services for correct naming: ${bizContext.services.length > 0 ? bizContext.services.join(", ") : "None"}
    - RULE: If business context suggests a detail or service the customer DID NOT refer to, DO NOT include it!
 4. Tone & Rating: Must match ${ratingNum}/5 stars. ${toneInstruction}
-5. Diversity & Opening Variations:
-   - Each of the 3 drafts must lead with a DIFFERENT angle. Suggested opening direction: ${randomAngle}
+5. The 3 Required Humanized Personas (EXACTLY 3 OPTIONS IN STRICT ORDER):
+   - Option 1 (Natural): Spoken naturally from the customer's own perspective and words/voice note. Feels organic, spontaneous, and personal.
+   - Option 2 (Specific): Built tightly around one concrete detail or highlight chosen by the customer (e.g. specific product, staff interaction, or service aspect) with focused descriptive depth.
+   - Option 3 (Casual): Warm, relaxed, everyday conversational tone — reads like a personal message or recommendation texted to a friend.
    - DO NOT start with or reuse these past review openings: ${JSON.stringify(avoidOpenings.slice(0, 10))}
    - AVOID repeating these signature phrases: ${JSON.stringify(frequentPhrases.slice(0, 6))}
    - Never copy or paraphrase another review.
@@ -272,7 +274,11 @@ PROMPT RULES & STRICT ANTI-HALLUCINATION CONTRACT:
 7. Length: ${lengthInstructions}
 8. Output strictly raw JSON. No markdown backticks, no explanatory text outside the JSON.`;
 
-    const userPrompt = `Generate 3 distinct, genuine review drafts for ${bizContext.business_name} with ${ratingNum} stars. Customer highlights: [${chips.join(", ")}]. Customer note: "${notes}".`;
+    const userPrompt = `Generate 3 distinct, genuine review drafts for ${bizContext.business_name} with ${ratingNum} stars.
+- Draft 1 must be Natural (from the customer's perspective and words)
+- Draft 2 must be Specific (focused on one concrete detail from highlights)
+- Draft 3 must be Casual (relaxed, like a text to a friend)
+Customer highlights: [${chips.join(", ")}]. Customer note: "${notes}". Length: ${length}.`;
 
     let drafts: string[] = [];
 
@@ -375,9 +381,23 @@ PROMPT RULES & STRICT ANTI-HALLUCINATION CONTRACT:
       } catch {}
     }
 
+    const personaMeta = [
+      { id: "natural", style: "natural", label: "Natural (Your Words)" },
+      { id: "specific", style: "specific", label: "Specific (Concrete Detail)" },
+      { id: "casual", style: "casual", label: "Casual (Friend-to-Friend)" },
+    ];
+
+    const formattedOptions = sanitizedDrafts.slice(0, 3).map((text, idx) => ({
+      id: personaMeta[idx]?.id || `option-${idx + 1}`,
+      style: personaMeta[idx]?.style || "natural",
+      label: personaMeta[idx]?.label || `Option ${idx + 1}`,
+      text,
+    }));
+
     return NextResponse.json({
       success: true,
       drafts: sanitizedDrafts.slice(0, 3),
+      options: formattedOptions,
       context: {
         business_name: bizContext.business_name,
         category: bizContext.category,

@@ -47,6 +47,69 @@ export const DEFAULT_REVIEW_TAGS = [
   "Easy Parking",
 ] as const;
 
+export const RATING_SPECIFIC_TAGS: Record<"positive" | "neutral" | "negative", string[]> = {
+  positive: [
+    "Cleanliness",
+    "Nice Staff",
+    "Good Behaviour",
+    "Excellent Quality",
+    "Fair Pricing",
+    "Fast Service",
+    "Good Ambience",
+    "Value for Money",
+    "Hygiene",
+    "Professional Team",
+    "On-time Delivery",
+    "Highly Recommended",
+  ],
+  neutral: [
+    "Average Wait Time",
+    "Decent Quality",
+    "Standard Service",
+    "Fair Pricing",
+    "Satisfactory",
+    "Room for Improvement",
+    "Basic Amenities",
+    "Ordinary Ambience",
+  ],
+  negative: [
+    "Slow Service",
+    "Billing Issue",
+    "Staff Inattentive",
+    "High Waiting Time",
+    "Quality Concern",
+    "Cleanliness Issue",
+    "Communication Gap",
+    "Unsatisfactory Experience",
+  ],
+};
+
+/**
+ * Returns dynamic tags based on customer's star rating (1-2 negative/constructive, 3 neutral, 4-5 positive),
+ * blending in any merchant custom chips.
+ */
+export function getRatingSpecificTags(rating: number, customChips: string[] = []): string[] {
+  let baseList: string[] = [];
+  if (rating <= 2 && rating > 0) {
+    baseList = [...RATING_SPECIFIC_TAGS.negative];
+  } else if (rating === 3) {
+    baseList = [...RATING_SPECIFIC_TAGS.neutral];
+  } else {
+    // 4 or 5 stars (or unselected default)
+    baseList = [...RATING_SPECIFIC_TAGS.positive];
+  }
+
+  // Prepend or blend customChips if positive or neutral
+  if (customChips && customChips.length > 0) {
+    const cleanCustom = customChips.filter(Boolean);
+    if (rating >= 3 || rating === 0) {
+      return Array.from(new Set([...cleanCustom, ...baseList]));
+    }
+  }
+
+  return baseList;
+}
+
 /**
  * Format a list of tag strings into a grammatically natural clause.
  */

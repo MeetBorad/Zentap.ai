@@ -6,6 +6,7 @@ import {
   generateReviewSuggestions,
   REVIEW_RATING_METAS,
   DEFAULT_REVIEW_TAGS,
+  getRatingSpecificTags,
 } from "@/services/reviewService";
 import {
   Sparkles,
@@ -245,8 +246,8 @@ export default function ZenTapReviewAssistant({
     return link || "https://g.page/r/CdJX2OGu1yhoEAI/review";
   }, [googleReviewUrl, pageConfig?.google_link, liveBusiness.google_review_link, liveBusiness.review_url, liveBusiness.slug, liveBusiness.id, cleanTagCode]);
 
-  // Read categories & tags directly from editor config
-  const allTags = useMemo(() => {
+  // Read categories & tags directly from editor config & merchant custom chips
+  const customMerchantChips = useMemo(() => {
     const customCats = Array.isArray(pageConfig?.categories)
       ? pageConfig.categories
       : typeof pageConfig?.categories === "string"
@@ -278,18 +279,17 @@ export default function ZenTapReviewAssistant({
         .filter((s: string) => s && !s.toLowerCase().includes("welcome") && !s.toLowerCase().includes("official digital hub"))
       : [];
 
-    const userDefined = Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
-
-    if (userDefined.length > 0) {
-      return userDefined;
-    }
-
-    return Array.from(DEFAULT_REVIEW_TAGS);
+    return Array.from(new Set([...customCats, ...customTags, ...singleCat, ...subtitleCategories, ...bizCat, ...bizChips])).filter(Boolean);
   }, [pageConfig?.tags, pageConfig?.categories, pageConfig?.category, pageConfig?.subtitle, liveBusiness?.category, (liveBusiness as any)?.custom_chips]);
 
-  // Has user provided a chip or written notes?
+  // Dynamic tags that adapt based on the selected star level
+  const allTags = useMemo(() => {
+    return getRatingSpecificTags(currentRating, customMerchantChips);
+  }, [currentRating, customMerchantChips]);
+
+  // Has user provided a chip or written notes? Star rating is strictly required!
   const hasUserInput = selectedTags.size > 0 || customExperience.trim().length > 0;
-  const shouldShowReviews = hasUserInput || hasGenerated;
+  const shouldShowReviews = currentRating > 0 && (hasUserInput || hasGenerated);
 
   // Request 3 distinct suggestions from /api/suggest
   const fetchAiSuggestions = useCallback(
@@ -300,13 +300,14 @@ export default function ZenTapReviewAssistant({
       lang?: string;
       len?: "short" | "medium" | "detailed";
     }) => {
-      const effStars = override?.stars !== undefined ? override.stars : (currentRating > 0 ? currentRating : 5);
+      const effStars = override?.stars !== undefined ? override.stars : currentRating;
       const effChips = override?.chips !== undefined ? override.chips : Array.from(selectedTags);
       const effNote = override?.note !== undefined ? override.note : customExperience;
       const effLang = override?.lang !== undefined ? override.lang : currentLang;
       const effLen = override?.len !== undefined ? override.len : reviewLength;
 
-      if (effChips.length === 0 && !effNote.trim()) {
+      // Gate: Must select a star rating first before generating drafts
+      if (effStars === 0 || (effChips.length === 0 && !effNote.trim())) {
         setSuggestions([]);
         setReviewDraft("");
         return;
@@ -383,13 +384,20 @@ export default function ZenTapReviewAssistant({
 
   // Trigger when chip is clicked
   const toggleTag = (tag: string) => {
+    // If user hasn't selected a star rating yet, default to 5 stars
+    let activeStars = currentRating;
+    if (activeStars === 0) {
+      activeStars = 5;
+      setCurrentRating(5);
+    }
+
     const next = new Set(selectedTags);
     if (next.has(tag)) next.delete(tag);
     else next.add(tag);
     setSelectedTags(next);
 
     if (next.size > 0 || customExperience.trim().length > 0) {
-      fetchAiSuggestions({ chips: Array.from(next) });
+      fetchAiSuggestions({ stars: activeStars, chips: Array.from(next) });
     } else {
       setSuggestions([]);
       setReviewDraft("");
@@ -398,21 +406,42 @@ export default function ZenTapReviewAssistant({
 
   // Trigger when note changes from typing, speech, or translation
   const handleNoteChange = (payload: ExperienceNoteChangePayload) => {
+    // If user hasn't selected a star rating yet, default to 5 stars
+    let activeStars = currentRating;
+    if (activeStars === 0 && payload.text.trim().length > 0) {
+      activeStars = 5;
+      setCurrentRating(5);
+    }
+
     setCustomExperience(payload.text);
     setCurrentLang(payload.lang);
     if (selectedTags.size > 0 || payload.text.trim().length > 0) {
-      fetchAiSuggestions({ note: payload.text, lang: payload.lang });
+      fetchAiSuggestions({ stars: activeStars, note: payload.text, lang: payload.lang });
     } else {
       setSuggestions([]);
       setReviewDraft("");
     }
   };
 
-  // Trigger when rating star changes
+  // Trigger when rating star changes (Dynamic star adaptation)
   const handleRatingSelect = (starVal: number) => {
+    // Check if sentiment tier shifted (negative 1-2 vs neutral 3 vs positive 4-5)
+    const wasNegative = currentRating > 0 && currentRating <= 2;
+    const isNowNegative = starVal <= 2;
+    const wasNeutral = currentRating === 3;
+    const isNowNeutral = starVal === 3;
+
+    let nextTags = selectedTags;
+    // Clear tags if crossing sentiment categories so negative tags don't stay on 5 stars
+    if ((wasNegative !== isNowNegative) || (wasNeutral !== isNowNeutral)) {
+      nextTags = new Set();
+      setSelectedTags(nextTags);
+    }
+
     setCurrentRating(starVal);
-    if (selectedTags.size > 0 || customExperience.trim().length > 0) {
-      fetchAiSuggestions({ stars: starVal });
+
+    if (nextTags.size > 0 || customExperience.trim().length > 0) {
+      fetchAiSuggestions({ stars: starVal, chips: Array.from(nextTags) });
     }
   };
 
@@ -614,18 +643,31 @@ export default function ZenTapReviewAssistant({
                 </div>
               )}
 
-              {/* What Stood Out / Categories & Aspects */}
+              {/* What Stood Out / Dynamic Categories & Aspects based on Star Level */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold flex items-center gap-1.5">
                     <Tag className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                    <span>What stood out?</span>
-                    <span className="opacity-60 font-normal text-[11px]">(Tap 1 or more)</span>
+                    <span>
+                      {currentRating >= 4
+                        ? "What did you love most?"
+                        : currentRating === 3
+                        ? "What was your experience like?"
+                        : currentRating > 0
+                        ? "What needs improvement?"
+                        : "What stood out?"}
+                    </span>
+                    <span className="opacity-60 font-normal text-[11px]">
+                      {currentRating === 0 ? "(Select rating first)" : "(Tap 1 or more)"}
+                    </span>
                   </label>
-                  <span className={`text-[10px] font-bold ${themeClasses.accentText} bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/20`}>
-                    {selectedTags.size} selected
-                  </span>
+                  {selectedTags.size > 0 && (
+                    <span className={`text-[10px] font-bold ${themeClasses.accentText} bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/20`}>
+                      {selectedTags.size} selected
+                    </span>
+                  )}
                 </div>
+
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {allTags.map((tag) => {
                     const isSelected = selectedTags.has(tag);
@@ -659,17 +701,96 @@ export default function ZenTapReviewAssistant({
                 onLanguageChange={handleLanguageSelect}
               />
 
-              {/* Part E: 3 Unique Review Suggestions displayed HORIZONTALLY */}
+              {/* Step 3: Settings — Language & Length Selectors */}
+              <div className={`p-3.5 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex flex-col gap-3`}>
+                {/* Language Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
+                      <Globe className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
+                      <span>Review Language</span>
+                    </span>
+                    <span className="text-[10px] opacity-60">EN / HI / GU</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "en-IN", label: "English" },
+                      { id: "hi-IN", label: "Hindi (Hinglish)" },
+                      { id: "gu-IN", label: "Gujarati (Gujlish)" },
+                    ].map((l) => {
+                      const isSelected = currentLang === l.id;
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => handleLanguageSelect(l.id)}
+                          className={`tactile-btn py-2 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
+                            isSelected
+                              ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
+                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                          }`}
+                        >
+                          <div className="text-xs font-semibold leading-tight">{l.label}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Length Selector */}
+                <div className="flex flex-col gap-1.5 pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
+                      <Sliders className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
+                      <span>Review Length</span>
+                    </span>
+                    <span className="text-[10px] opacity-60">
+                      {reviewLength === "short"
+                        ? "1–3 sentences (Default)"
+                        : reviewLength === "detailed"
+                        ? "5+ sentences"
+                        : "3–4 sentences"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "short", label: "Short", desc: "1–2 sentences" },
+                      { id: "medium", label: "Medium", desc: "3–4 sentences" },
+                      { id: "detailed", label: "Detailed", desc: "5+ sentences" },
+                    ].map((opt) => {
+                      const isSelected = reviewLength === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleLengthChange(opt.id as "short" | "medium" | "detailed")}
+                          className={`tactile-btn py-1.5 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
+                            isSelected
+                              ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
+                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                          }`}
+                        >
+                          <div className="text-xs font-semibold leading-tight">{opt.label}</div>
+                          <div className="text-[9px] opacity-60 mt-0.5">{opt.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4: 3 AI Generated Humanized Options */}
               <div className="flex flex-col gap-2 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
                     <Sparkles className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                    <span>Review Suggestions</span>
+                    <span>AI Review Suggestions</span>
                     {shouldShowReviews && suggestions.length > 0 && (
-                      <span className="opacity-60 font-normal text-[11px]">(Swipe &amp; tap to choose)</span>
+                      <span className="opacity-60 font-normal text-[11px]">(3 Humanized Options)</span>
                     )}
                   </span>
-                  {hasUserInput && (
+                  {hasUserInput && currentRating > 0 && (
                     <button
                       type="button"
                       onClick={handleRegenerate}
@@ -687,20 +808,22 @@ export default function ZenTapReviewAssistant({
                   <div className={`p-4 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-4`}>
                     <RefreshCw className={`w-4 h-4 animate-spin ${themeClasses.accentText} shrink-0`} />
                     <div className="flex flex-col">
-                      <span className="text-xs font-semibold">Crafting genuine review drafts...</span>
-                      <span className="text-[10.5px] opacity-60">Synthesizing your highlights into 3 unique options</span>
+                      <span className="text-xs font-semibold">Generating 3 humanized options...</span>
+                      <span className="text-[10.5px] opacity-60">Personalizing Natural, Specific, and Casual drafts</span>
                     </div>
                   </div>
                 ) : shouldShowReviews && suggestions.length > 0 ? (
-                  /* Horizontal Scrolling Review Cards */
+                  /* Horizontal Scrolling Review Cards with Personas */
                   <div className="flex flex-row gap-2.5 overflow-x-auto pb-2 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-none snap-x snap-mandatory">
                     {suggestions.map((sug, idx) => {
                       const isSelected = selectedSuggestionIndex === idx;
-                      const labels = [
-                        "Experience Focus",
-                        "Hospitality Focus",
-                        "Recommendation Focus",
+                      const personaMeta = [
+                        { label: "Natural", desc: "From your own words" },
+                        { label: "Specific", desc: "Concrete detail" },
+                        { label: "Casual", desc: "Like to a friend" },
                       ];
+                      const currentPersona = personaMeta[idx] || { label: `Option ${idx + 1}`, desc: "Draft" };
+
                       return (
                         <button
                           key={idx}
@@ -709,7 +832,7 @@ export default function ZenTapReviewAssistant({
                             setSelectedSuggestionIndex(idx);
                             setReviewDraft(sug);
                           }}
-                          className={`min-w-[240px] max-w-[270px] flex-1 shrink-0 snap-start p-3 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
+                          className={`min-w-[245px] max-w-[275px] flex-1 shrink-0 snap-start p-3 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
                             isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
                               : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
@@ -718,14 +841,16 @@ export default function ZenTapReviewAssistant({
                           <div>
                             <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${themeClasses.accentText} flex items-center gap-1`}>
-                                <span>Option {idx + 1}</span>
-                                <span className="opacity-60 font-normal">• {labels[idx] || "Draft"}</span>
+                                <span>Option {idx + 1}: {currentPersona.label}</span>
                               </span>
-                              <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all ${
                                 isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
                               }`}>
                                 {isSelected ? "Active" : "Use"}
                               </span>
+                            </div>
+                            <div className="text-[10px] opacity-60 mb-1.5 italic">
+                              {currentPersona.desc}
                             </div>
                             <p className="line-clamp-3 leading-relaxed text-[11px]">
                               {sug}
@@ -740,55 +865,28 @@ export default function ZenTapReviewAssistant({
                     })}
                   </div>
                 ) : (
-                  /* Waiting state card: Pick a highlight or write a few words first */
+                  /* Waiting state card */
                   <div className={`p-3.5 rounded-xl ${themeClasses.inner} border ${themeClasses.innerBorder} flex items-center gap-3 py-3`}>
                     <div className={`w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center ${themeClasses.accentText} shrink-0`}>
                       <Sparkles className="w-4 h-4 animate-pulse" />
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-semibold">Pick a highlight or write a few words first</span>
+                      <span className="text-xs font-semibold">
+                        {currentRating === 0
+                          ? "Select your star rating above first"
+                          : "Tap highlights or speak a note to generate"}
+                      </span>
                       <span className="text-[11px] opacity-65 leading-snug">
-                        Tap highlights above or type/speak your note. Review suggestions will generate automatically.
+                        {currentRating === 0
+                          ? "Star rating is required before generating review drafts."
+                          : "Review suggestions will automatically appear in 3 humanized styles."}
                       </span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Step 5: Language selector (English, Hindi, Gujarati) */}
-              <div className="flex flex-col gap-1.5 pt-1">
-                <div className="flex items-center px-0.5">
-                  <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
-                    <Globe className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                    <span>Review Language</span>
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: "en-IN", label: "English" },
-                    { id: "hi-IN", label: "Hindi" },
-                    { id: "gu-IN", label: "Gujarati" },
-                  ].map((l) => {
-                    const isSelected = currentLang === l.id;
-                    return (
-                      <button
-                        key={l.id}
-                        type="button"
-                        onClick={() => handleLanguageSelect(l.id)}
-                        className={`tactile-btn py-2.5 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
-                          isSelected
-                            ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
-                            : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
-                        }`}
-                      >
-                        <div className="text-xs font-semibold leading-tight">{l.label}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Step 6: Selected Review Shown in the Box (Editable) */}
+              {/* Step 5: Selected Review Shown in the Box (Editable) */}
               <div className="flex flex-col gap-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold flex items-center gap-1.5">
@@ -823,55 +921,15 @@ export default function ZenTapReviewAssistant({
                     placeholder={
                       shouldShowReviews
                         ? "Select an option above or type your customized review here..."
-                        : "Your review draft will appear here once you pick what stood out above or write a note..."
+                        : currentRating === 0
+                        ? "Select your star rating above to begin..."
+                        : "Your review draft will appear here once you pick highlights or write a note..."
                     }
                     className={`w-full ${themeClasses.inner} rounded-xl p-3 text-base sm:text-xs leading-relaxed border ${themeClasses.innerBorder} focus:outline-none focus:ring-1 focus:ring-amber-500/40 transition-colors resize-none`}
                   />
                   <div className="absolute bottom-2.5 right-3 flex items-center gap-1 opacity-40 text-[10px] pointer-events-none">
                     <Edit3 className="w-3 h-3" />
                     <span>Editable</span>
-                  </div>
-                </div>
-
-                {/* Review Length Customizer (Short (1–3 sentences - Default) / Medium / Detailed) */}
-                <div className="flex flex-col gap-1.5 pt-1.5">
-                  <div className="flex items-center justify-between px-0.5">
-                    <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
-                      <Sliders className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                      <span>Review Length</span>
-                    </span>
-                    <span className="text-[10px] opacity-60">
-                      {reviewLength === "short"
-                        ? "1–3 sentences • Quick (Default)"
-                        : reviewLength === "detailed"
-                        ? "Detailed • 5+ sentences"
-                        : "3–4 sentences • Balanced"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: "short", label: "Short", desc: "1–3 sentences" },
-                      { id: "medium", label: "Medium", desc: "3–4 sentences" },
-                      { id: "detailed", label: "Detailed", desc: "5+ sentences" },
-                    ].map((opt) => {
-                      const isSelected = reviewLength === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleLengthChange(opt.id as "short" | "medium" | "detailed")}
-                          className={`tactile-btn py-2 px-2.5 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
-                            isSelected
-                              ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
-                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
-                          }`}
-                        >
-                          <div className="text-xs font-semibold leading-tight">{opt.label}</div>
-                          <div className="text-[9.5px] opacity-60 mt-0.5">{opt.desc}</div>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               </div>

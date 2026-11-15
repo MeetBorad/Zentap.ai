@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.54.24] — 2026-11-15
+### Enhanced (Repository Bloat Purge, Dynamic Star-Level Review Chips & 3-Persona Humanized AI Options)
+- **Repository & Skills Cleanup (~1.8 GB Reclaimed)**:
+  - Pruned 17 unused skills (OpenSEO suite, HyperFrames video rendering, and Impeccable framework), keeping only the 8 core ZenTap design, mobile, and security skills.
+  - Eliminated duplicate `.claude` and `.gemini` skill trees and removed 4,769 dangling files in `open-design/`.
+  - Resolved `next/font/google` variable font compilation issue for production builds.
+- **Dynamic Star-Level Chips (`reviewService.ts`, `ZenTapReviewAssistant.tsx`)**:
+  - Gated review generation on star rating selection (1–5 stars required before draft suggestions generate).
+  - Dynamically switches highlight chips based on rating: positive praise chips for 4–5★, neutral/balanced chips for 3★, and constructive feedback chips for 1–2★.
+- **3-Persona Humanized Review Drafts (`/api/suggest`, `ZenTapReviewAssistant.tsx`)**:
+  - Structured drafts into 3 clear customer personas:
+    - **Option 1 (Natural)**: Spoken naturally from customer's perspective and voice notes.
+    - **Option 2 (Specific)**: Focused deeply on one concrete highlight/detail.
+    - **Option 3 (Casual)**: Relaxed, friendly tone like a text to a friend.
+  - Reordered assistant layout: Star Rating → Dynamic Chips & Mic Note → Settings (EN/HI/GU & Length) → 3 Personas → Editable Draft Box → 1-Tap Copy & Post on Google.
+
 ## [1.54.23] — 2026-11-15
 ### Enhanced (WhatsApp Dispatch, Defused Negative Feedback Alerts, PWA Fast-Tap, Dynamic Merchant Analytics & Print-Ready Vector QR)
 - **1-Click WhatsApp Dispatch for Merchant Credentials (`telegram.ts`, `PlatformSettingsTab.tsx`, `owner-credentials/route.ts`)**:

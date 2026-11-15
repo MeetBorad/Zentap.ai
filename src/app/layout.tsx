@@ -7,14 +7,12 @@ import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-plus-jakarta",
   display: "swap",
 });
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-space-grotesk",
   display: "swap",
 });
