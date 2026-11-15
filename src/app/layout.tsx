@@ -49,6 +49,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://www.zentapdigitalsolutions.com",
   },
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -230,6 +231,20 @@ export default function RootLayout({
                 page_path: window.location.pathname,
                 cookie_flags: 'SameSite=None;Secure'
               });
+            `,
+          }}
+        />
+
+        {/* Service Worker Registration for Instant Tap & Offline Resilience */}
+        <script
+          id="sw-register"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
             `,
           }}
         />

@@ -312,6 +312,21 @@ export default function ZenTapReviewAssistant({
         return;
       }
 
+      // 1. Instant zero-latency local generation (ensures 0ms feedback on physical standee taps)
+      const instantList = generateReviewSuggestions({
+        businessName,
+        city,
+        rating: effStars,
+        length: effLen,
+        selectedTags: effChips,
+        customNotes: effNote,
+      });
+      if (instantList.length > 0) {
+        setSuggestions(instantList);
+        setHasGenerated(true);
+        setReviewDraft(instantList[0] || "");
+      }
+
       setIsLoadingSuggestions(true);
       try {
         const res = await fetch("/api/suggest", {

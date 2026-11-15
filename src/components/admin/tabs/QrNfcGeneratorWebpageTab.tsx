@@ -311,6 +311,47 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
     onShowToast(`✓ Downloaded dynamic QR code for ${tag.tag_id}`);
   };
 
+  const handleDownloadSvg = async (tag: QrNfcTagItemRecord) => {
+    try {
+      const dynamicUrl = `${DOMAIN_BASE}/t/${tag.tag_id}`;
+      const svgString = await QRCode.toString(dynamicUrl, {
+        type: "svg",
+        margin: 2,
+        color: { dark: "#0f172a", light: "#ffffff" },
+      });
+      const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `zentap-qr-${tag.tag_id.toLowerCase()}.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onShowToast(`✓ Downloaded Vector SVG for ${tag.tag_id}`);
+    } catch (err) {
+      console.warn("SVG generation error", err);
+      onShowToast("Failed to generate SVG QR code");
+    }
+  };
+
+  const handleDownloadHighResPng = async (tag: QrNfcTagItemRecord) => {
+    try {
+      const dynamicUrl = `${DOMAIN_BASE}/t/${tag.tag_id}`;
+      const highResUrl = await QRCode.toDataURL(dynamicUrl, {
+        width: 2048,
+        margin: 2,
+        color: { dark: "#0f172a", light: "#ffffff" },
+      });
+      const a = document.createElement("a");
+      a.href = highResUrl;
+      a.download = `zentap-qr-${tag.tag_id.toLowerCase()}-print-2048px.png`;
+      a.click();
+      onShowToast(`✓ Downloaded 2048px Print-Ready PNG for ${tag.tag_id}`);
+    } catch (err) {
+      console.warn("High-res QR error", err);
+      onShowToast("Failed to generate High-Res PNG");
+    }
+  };
+
   const handleCopyNfcLink = (tag: QrNfcTagItemRecord) => {
     const nfcUrl = `${DOMAIN_BASE}/t/${tag.tag_id}?s=nfc`;
     navigator.clipboard.writeText(nfcUrl);
@@ -1207,20 +1248,44 @@ export default function QrNfcGeneratorWebpageTab({ onShowToast }: QrNfcGenerator
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleDownloadQr(qrModalTag, qrDataUrl)}
-                className="tactile-btn flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download PNG</span>
-              </button>
-              <button
-                onClick={() => setQrModalTag(null)}
-                className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 cursor-pointer"
-              >
-                Close
-              </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadSvg(qrModalTag)}
+                  className="tactile-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  title="Download vector SVG format (infinitely scalable for printing/engraving)"
+                >
+                  <Download className="w-3.5 h-3.5 text-black" />
+                  <span>Vector SVG</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadHighResPng(qrModalTag)}
+                  className="tactile-btn flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  title="Download ultra high-resolution 2048px PNG for acrylic standee printing"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-400" />
+                  <span>2048px Print</span>
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadQr(qrModalTag, qrDataUrl)}
+                  className="flex-1 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-medium cursor-pointer"
+                >
+                  Standard PNG (320px)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrModalTag(null)}
+                  className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-600 text-xs font-medium hover:bg-zinc-200 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

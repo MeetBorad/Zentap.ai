@@ -2,7 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashSecret, DEFAULT_PIN_HASH } from "@/lib/ownerAccess";
-import { notifyFounderOwnerCredentials, generateDeterministicPassword } from "@/lib/telegram";
+import { 
+  notifyFounderOwnerCredentials, 
+  generateDeterministicPassword,
+  buildCredentialsWhatsAppUrl 
+} from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +21,7 @@ export interface OwnerCredentialItem {
   page_url: string;
   login_id: string;
   password: string;
+  whatsapp_share_url?: string;
   updated_at?: string;
 }
 
@@ -65,6 +70,16 @@ export async function GET() {
       const existingPass = customFields.owner_password || matchedPage?.config_data?.owner_password;
       const password = existingPass || generateDeterministicPassword(bid);
 
+      const waShareUrl = buildCredentialsWhatsAppUrl({
+        business_id: bid,
+        business_name: c.business_name,
+        login_id: loginId,
+        password: password,
+        owner_name: c.owner_name,
+        owner_phone: c.owner_phone || c.whatsapp,
+        page_url: pageUrl,
+      });
+
       return {
         business_id: bid,
         business_name: c.business_name || "Business",
@@ -76,6 +91,7 @@ export async function GET() {
         page_url: pageUrl,
         login_id: loginId,
         password: password,
+        whatsapp_share_url: waShareUrl,
         updated_at: c.updated_at || c.created_at,
       };
     });
@@ -103,13 +119,19 @@ export async function POST(req: NextRequest) {
     const newPassword = (password || generateDeterministicPassword(cleanBid)).trim();
     const pinHash = hashSecret(newPassword);
 
+    const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.zentapdigitalsolutions.com";
+    let existingClient: any = null;
+    let pageUrl = `${domain}/r/${cleanBid.toLowerCase()}`;
+
     if (db) {
       // 1. Update in clients table (inside custom_fields)
-      const { data: existingClient } = await db
+      const { data: clientRow } = await db
         .from("clients")
         .select("*")
         .eq("business_id", cleanBid)
         .maybeSingle();
+
+      existingClient = clientRow;
 
       if (existingClient) {
         const customFields = existingClient.custom_fields || {};
@@ -157,10 +179,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Automatically dispatch credentials to founder Telegram
-      const domain = process.env.NEXT_PUBLIC_APP_URL || "https://www.zentapdigitalsolutions.com";
       const matchedPage = existingPage?.config_data;
       const pageSlug = existingPage?.tag_id || cleanBid.toLowerCase();
-      const pageUrl = `${domain}/r/${pageSlug}`;
+      pageUrl = `${domain}/r/${pageSlug}`;
 
       await notifyFounderOwnerCredentials({
         business_id: cleanBid,
@@ -176,12 +197,23 @@ export async function POST(req: NextRequest) {
       }).catch((tgErr) => console.warn("Telegram dispatch notice:", tgErr));
     }
 
+    const waShareUrl = buildCredentialsWhatsAppUrl({
+      business_id: cleanBid,
+      business_name: existingClient?.business_name || cleanBid,
+      login_id: newLoginId,
+      password: newPassword,
+      owner_name: existingClient?.owner_name || "",
+      owner_phone: existingClient?.owner_phone || existingClient?.whatsapp || "",
+      page_url: pageUrl,
+    });
+
     return NextResponse.json({
       success: true,
       business_id: cleanBid,
       login_id: newLoginId,
       password: newPassword,
       sent_to_telegram: true,
+      whatsapp_share_url: waShareUrl,
     });
   } catch (err: any) {
     console.error("POST /api/admin/owner-credentials error:", err);

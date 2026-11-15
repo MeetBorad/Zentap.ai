@@ -42,6 +42,7 @@ import {
   EyeOff,
   Copy,
   Send,
+  MessageCircle,
   X
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -1545,7 +1546,19 @@ export default function PlatformSettingsTab({ showToast, onOpenPasswordModal }: 
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            {c.whatsapp_share_url && (
+                              <a
+                                href={c.whatsapp_share_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs cursor-pointer shadow-2xs transition-transform active:scale-[0.978]"
+                                title="Open WhatsApp directly with merchant credentials"
+                              >
+                                <MessageCircle className="w-3 h-3 text-emerald-600" />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleSendToTelegram(c)}

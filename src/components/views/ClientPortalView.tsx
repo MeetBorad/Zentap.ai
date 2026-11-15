@@ -1638,129 +1638,206 @@ export default function ClientPortalView({
                 )}
 
                 {/* The Analytics Visuals (Blurred if unpaid) */}
-                <div className={`space-y-6 ${!isPaid ? "filter blur-[3px] select-none pointer-events-none opacity-60" : ""}`}>
-                  
-                  {/* Stat Cards Grid */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Total Customer Scans */}
-                    <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
-                      <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
-                        Total Customer Scans
-                      </span>
-                      <div className="my-2">
-                        <span className="font-headline font-black text-3xl sm:text-4xl text-on-surface">
-                          {displayAnalytics.totalScans}
-                        </span>
-                        <span className="block text-[11px] text-emerald-600 font-semibold mt-1">
-                          NFC: {displayAnalytics.nfcScans} • QR: {displayAnalytics.qrScans}
-                        </span>
-                      </div>
-                      <div className="w-full bg-surface-variant/30 h-1.5 rounded-full overflow-hidden mt-1">
-                        <div 
-                          className="bg-emerald-500 h-full rounded-full" 
-                          style={{ width: `${Math.min(100, (displayAnalytics.nfcScans / (displayAnalytics.totalScans || 1)) * 100)}%` }} 
-                        />
-                      </div>
-                    </div>
+                {(() => {
+                  const calculatedConversion = displayAnalytics.totalScans > 0 
+                    ? Math.min(100, Math.round((displayAnalytics.reviewClicks / displayAnalytics.totalScans) * 100)) 
+                    : (displayAnalytics.reviewClicks > 0 ? 100 : 0);
 
-                    {/* Google Review Clicks */}
-                    <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
-                      <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
-                        Google Review Clicks
-                      </span>
-                      <div className="my-2">
-                        <span className="font-headline font-black text-3xl sm:text-4xl text-secondary">
-                          {displayAnalytics.reviewClicks}
-                        </span>
-                        <span className="block text-[11px] text-secondary font-semibold mt-1">
-                          ~88% Conversion to Google
-                        </span>
-                      </div>
-                      <div className="w-full bg-secondary/20 h-1.5 rounded-full overflow-hidden mt-1">
-                        <div className="bg-secondary h-full rounded-full w-[88%]" />
-                      </div>
-                    </div>
+                  const totalRatingsCount = 
+                    (displayAnalytics.starsCount[5] || 0) + 
+                    (displayAnalytics.starsCount[4] || 0) + 
+                    (displayAnalytics.starsCount[3] || 0) + 
+                    (displayAnalytics.starsCount[2] || 0) + 
+                    (displayAnalytics.starsCount[1] || 0);
 
-                    {/* Private Feedbacks Defused */}
-                    <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
-                      <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
-                        Private Feedbacks (1-2★)
-                      </span>
-                      <div className="my-2">
-                        <span className="font-headline font-black text-3xl sm:text-4xl text-red-500">
-                          {displayAnalytics.privateFeedbackCount}
-                        </span>
-                        <span className="block text-[11px] text-red-500 font-semibold mt-1">
-                          Resolved out of public view
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-on-surface-variant">
-                        Saved from Google rating drop
-                      </span>
-                    </div>
+                  const calculatedPositiveRatio = totalRatingsCount > 0
+                    ? Math.round((((displayAnalytics.starsCount[5] || 0) + (displayAnalytics.starsCount[4] || 0)) / totalRatingsCount) * 100)
+                    : 100;
 
-                    {/* Stars Distribution */}
-                    <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
-                      <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
-                        Stars Distribution
-                      </span>
-                      <div className="space-y-1 my-1 text-[11px]">
-                        <div className="flex justify-between">
-                          <span>5 Stars:</span>
-                          <span className="font-bold text-amber-500">{displayAnalytics.starsCount[5] || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>4 Stars:</span>
-                          <span className="font-bold text-amber-500">{displayAnalytics.starsCount[4] || 0}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>1-3 Stars:</span>
-                          <span className="font-bold text-zinc-400">{(displayAnalytics.starsCount[1] || 0) + (displayAnalytics.starsCount[2] || 0) + (displayAnalytics.starsCount[3] || 0)}</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-emerald-600 font-semibold">91% Positive Ratio</span>
-                    </div>
-                  </div>
-
-                  {/* Visual Growth Chart */}
-                  <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-headline font-bold text-sm text-on-surface">
-                          Weekly Tap Activity &amp; Google Review Velocity
-                        </h4>
-                        <p className="text-[11px] text-on-surface-variant">
-                          Telemetry across the last 7 business days.
-                        </p>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-emerald-600 flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5" />
-                        <span>+28% Review Lift</span>
-                      </span>
-                    </div>
-
-                    {/* Daily Bar Visualization */}
-                    <div className="grid grid-cols-7 gap-2 pt-4 items-end h-36 border-b border-surface-variant/30 pb-2">
-                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => {
-                        const val = displayAnalytics.scansPerDay[idx] || (idx * 12 + 25);
-                        const pct = Math.min(100, Math.max(15, (val / 100) * 100));
-                        return (
-                          <div key={day} className="flex flex-col items-center gap-1 h-full justify-end">
-                            <span className="text-[9px] font-mono text-on-surface-variant font-bold">{val}</span>
-                            <div className="w-full bg-surface-variant/30 rounded-t-xl h-full flex items-end overflow-hidden max-w-[40px]">
-                              <div 
-                                className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-xl transition-all"
-                                style={{ height: `${pct}%` }} 
-                              />
-                            </div>
-                            <span className="text-[10px] font-medium text-on-surface-variant">{day}</span>
+                  return (
+                    <div className={`space-y-6 ${!isPaid ? "filter blur-[3px] select-none pointer-events-none opacity-60" : ""}`}>
+                      
+                      {/* Stat Cards Grid */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Total Customer Scans */}
+                        <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+                          <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
+                            Total Customer Scans
+                          </span>
+                          <div className="my-2">
+                            <span className="font-headline font-black text-3xl sm:text-4xl text-on-surface">
+                              {displayAnalytics.totalScans}
+                            </span>
+                            <span className="block text-[11px] text-emerald-600 font-semibold mt-1">
+                              NFC: {displayAnalytics.nfcScans} • QR: {displayAnalytics.qrScans}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                          <div className="w-full bg-surface-variant/30 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${Math.min(100, (displayAnalytics.nfcScans / (displayAnalytics.totalScans || 1)) * 100)}%` }} 
+                            />
+                          </div>
+                        </div>
 
-                </div>
+                        {/* Google Review Clicks */}
+                        <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+                          <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
+                            Google Review Clicks
+                          </span>
+                          <div className="my-2">
+                            <span className="font-headline font-black text-3xl sm:text-4xl text-secondary">
+                              {displayAnalytics.reviewClicks}
+                            </span>
+                            <span className="block text-[11px] text-secondary font-semibold mt-1">
+                              {calculatedConversion}% Conversion to Google
+                            </span>
+                          </div>
+                          <div className="w-full bg-secondary/20 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div 
+                              className="bg-secondary h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${Math.max(8, calculatedConversion)}%` }} 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Private Feedbacks Defused */}
+                        <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+                          <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
+                            Private Feedbacks (1-2★)
+                          </span>
+                          <div className="my-2">
+                            <span className="font-headline font-black text-3xl sm:text-4xl text-red-500">
+                              {displayAnalytics.privateFeedbackCount}
+                            </span>
+                            <span className="block text-[11px] text-red-500 font-semibold mt-1">
+                              Resolved out of public view
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-on-surface-variant">
+                            Saved from Google rating drop
+                          </span>
+                        </div>
+
+                        {/* Stars Distribution */}
+                        <div className="p-5 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm flex flex-col justify-between">
+                          <span className="text-[11px] font-mono text-on-surface-variant uppercase tracking-wider">
+                            Stars Distribution
+                          </span>
+                          <div className="space-y-1 my-1 text-[11px]">
+                            <div className="flex justify-between">
+                              <span>5 Stars:</span>
+                              <span className="font-bold text-amber-500">{displayAnalytics.starsCount[5] || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>4 Stars:</span>
+                              <span className="font-bold text-amber-500">{displayAnalytics.starsCount[4] || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>1-3 Stars:</span>
+                              <span className="font-bold text-zinc-400">{(displayAnalytics.starsCount[1] || 0) + (displayAnalytics.starsCount[2] || 0) + (displayAnalytics.starsCount[3] || 0)}</span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-emerald-600 font-semibold">{calculatedPositiveRatio}% Positive Ratio</span>
+                        </div>
+                      </div>
+
+                      {/* Visual Growth Chart & Channel Breakdown Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Weekly Activity (2 cols) */}
+                        <div className="lg:col-span-2 p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-headline font-bold text-sm text-on-surface">
+                                Weekly Tap Activity &amp; Google Review Velocity
+                              </h4>
+                              <p className="text-[11px] text-on-surface-variant">
+                                Telemetry across the last 7 business days.
+                              </p>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-emerald-600 flex items-center gap-1">
+                              <TrendingUp className="w-3.5 h-3.5" />
+                              <span>Live Telemetry</span>
+                            </span>
+                          </div>
+
+                          {/* Daily Bar Visualization */}
+                          <div className="grid grid-cols-7 gap-2 pt-4 items-end h-36 border-b border-surface-variant/30 pb-2">
+                            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => {
+                              const val = displayAnalytics.scansPerDay[idx] || 0;
+                              const maxVal = Math.max(...displayAnalytics.scansPerDay, 10);
+                              const pct = Math.min(100, Math.max(8, (val / maxVal) * 100));
+                              return (
+                                <div key={day} className="flex flex-col items-center gap-1 h-full justify-end">
+                                  <span className="text-[9px] font-mono text-on-surface-variant font-bold">{val}</span>
+                                  <div className="w-full bg-surface-variant/30 rounded-t-xl h-full flex items-end overflow-hidden max-w-[40px]">
+                                    <div 
+                                      className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-xl transition-all"
+                                      style={{ height: `${pct}%` }} 
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-medium text-on-surface-variant">{day}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Standee Channel Breakdown (1 col) */}
+                        <div className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-variant/40 shadow-sm space-y-4 flex flex-col justify-between">
+                          <div>
+                            <h4 className="font-headline font-bold text-sm text-on-surface">
+                              Standee Channels &amp; Protection
+                            </h4>
+                            <p className="text-[11px] text-on-surface-variant">
+                              Physical hardware distribution ratio.
+                            </p>
+                          </div>
+
+                          <div className="space-y-3 text-xs">
+                            <div className="p-3 rounded-2xl bg-surface border border-surface-variant/30 space-y-1.5">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-medium text-on-surface flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                                  NFC Phone Taps
+                                </span>
+                                <span className="font-bold text-on-surface">{displayAnalytics.nfcScans}</span>
+                              </div>
+                              <div className="w-full bg-surface-variant/20 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className="bg-emerald-500 h-full rounded-full" 
+                                  style={{ width: `${Math.min(100, (displayAnalytics.nfcScans / (displayAnalytics.totalScans || 1)) * 100)}%` }} 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="p-3 rounded-2xl bg-surface border border-surface-variant/30 space-y-1.5">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-medium text-on-surface flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+                                  Camera QR Scans
+                                </span>
+                                <span className="font-bold text-on-surface">{displayAnalytics.qrScans}</span>
+                              </div>
+                              <div className="w-full bg-surface-variant/20 h-1.5 rounded-full overflow-hidden">
+                                <div 
+                                  className="bg-blue-500 h-full rounded-full" 
+                                  style={{ width: `${Math.min(100, (displayAnalytics.qrScans / (displayAnalytics.totalScans || 1)) * 100)}%` }} 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-300 text-[11px] flex items-center gap-2">
+                              <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+                              <span>{displayAnalytics.privateFeedbackCount} negative ratings safely redirected to private feedback.</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
