@@ -118,6 +118,8 @@ export default function OwnerAccessModal({
   const [autoFillMsg, setAutoFillMsg] = useState("");
   const [editDirections, setEditDirections] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [editReviewTags, setEditReviewTags] = useState("");
+  const [editFaqs, setEditFaqs] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -291,6 +293,10 @@ export default function OwnerAccessModal({
     );
     setEditDirections(b.directions_link || b.directions || b.address || "");
     setEditAddress(b.address || b.directions_link || b.directions || "");
+    const rawR = b.review_tags || custom.review_tags || custom.tags || "";
+    setEditReviewTags(Array.isArray(rawR) ? rawR.join(", ") : (typeof rawR === "string" ? rawR : ""));
+    const rawF = b.faqs || custom.faqs || "";
+    setEditFaqs(Array.isArray(rawF) ? JSON.stringify(rawF) : (typeof rawF === "string" ? rawF : ""));
     setOwnerCustomFields(custom);
   };
 
@@ -474,9 +480,15 @@ export default function OwnerAccessModal({
         directions: isPermitted("directions_link") ? activeDirections : bizData?.directions || activeDirections,
         directions_link: isPermitted("directions_link") ? activeDirections : bizData?.directions_link || activeDirections,
         address: isPermitted("directions_link") ? activeDirections : bizData?.address || activeDirections,
+        review_tags: isPermitted("review_tags") ? editReviewTags.trim() : bizData?.review_tags || editReviewTags.trim(),
+        tags: isPermitted("review_tags") ? editReviewTags.trim() : bizData?.tags || editReviewTags.trim(),
+        faqs: isPermitted("faqs") ? editFaqs : bizData?.faqs || editFaqs,
         custom_fields: {
           ...(bizData?.custom_fields || {}),
           ...ownerCustomFields,
+          review_tags: isPermitted("review_tags") ? editReviewTags.trim() : (bizData?.custom_fields?.review_tags || editReviewTags.trim()),
+          tags: isPermitted("review_tags") ? editReviewTags.trim() : (bizData?.custom_fields?.tags || editReviewTags.trim()),
+          faqs: isPermitted("faqs") ? editFaqs : (bizData?.custom_fields?.faqs || editFaqs),
         },
       };
 
@@ -1216,6 +1228,40 @@ export default function OwnerAccessModal({
                 </div>
               )}
 
+              {/* 10b. Google Review Modal Tags */}
+              {isPermitted("review_tags") && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Review Modal Tags (Comma separated)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cleanliness, Fast Service, Great Ambience"
+                    value={editReviewTags}
+                    onChange={(e) => setEditReviewTags(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400 font-medium"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Visitors tap these tags when composing 5-star Google reviews.</p>
+                </div>
+              )}
+
+              {/* 10c. Google Review FAQs */}
+              {isPermitted("faqs") && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-300 mb-1 flex items-center gap-1.5">
+                    <span>Business FAQs (JSON or summary)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder='e.g. [{"question": "Do you offer parking?", "answer": "Yes, free parking available"}]'
+                    value={editFaqs}
+                    onChange={(e) => setEditFaqs(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400 font-mono text-[11px]"
+                  />
+                </div>
+              )}
+
               {/* 11. Permitted Custom Fields Configured in Settings */}
               {customFieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length > 0 && (
                 <div className="pt-2.5 border-t border-white/10 space-y-2.5">
@@ -1268,6 +1314,8 @@ export default function OwnerAccessModal({
                 !isPermitted("twitter_link") &&
                 !isPermitted("upi_id") &&
                 !isPermitted("directions_link") &&
+                !isPermitted("review_tags") &&
+                !isPermitted("faqs") &&
                 customFieldDefs.filter((f) => f.is_active && isPermitted(f.id)).length === 0 && (
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center space-y-1.5 py-6">
                     <p className="text-xs text-amber-300 font-bold">No editable fields permitted</p>

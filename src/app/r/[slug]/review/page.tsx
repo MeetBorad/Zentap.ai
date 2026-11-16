@@ -240,9 +240,9 @@ export default async function ReviewPage({
     whatsapp_number: clientRecord?.whatsapp || parsedBiz.whatsapp_number,
     instagram: clientRecord?.instagram_link || parsedBiz.instagram,
     facebook: clientRecord?.facebook_link || parsedBiz.facebook,
-    website: clientRecord?.custom_fields?.website || parsedBiz.website,
-    category: clientRecord?.custom_fields?.category || clientRecord?.custom_fields?.subtitle || parsedBiz.category,
-    address: clientRecord?.custom_fields?.directions || clientRecord?.custom_fields?.address || parsedBiz.address,
+    website: clientRecord?.website_url || clientRecord?.website || clientRecord?.custom_fields?.website_url || clientRecord?.custom_fields?.website || parsedBiz.website,
+    category: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || clientRecord?.custom_fields?.subtitle || parsedBiz.category,
+    address: clientRecord?.directions_link || clientRecord?.custom_fields?.directions_link || clientRecord?.custom_fields?.directions || clientRecord?.custom_fields?.address || parsedBiz.address,
   } : fallbackBiz;
 
   // Determine effective destination

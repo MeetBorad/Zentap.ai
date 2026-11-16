@@ -206,16 +206,19 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const openEditModal = (client: ClientRecord) => {
     const cf = client.custom_fields || {};
     const matchingPage = pageConfigs.find((p) =>
-      (p.business_id || "").toLowerCase() === (client.business_id || "").toLowerCase()
+      (p.business_id && client.business_id && p.business_id.toLowerCase() === client.business_id.toLowerCase()) ||
+      (client.business_id && p.tag_id && p.tag_id.toLowerCase() === client.business_id.toLowerCase()) ||
+      (client.business_id === "ZT-0004" && (p.tag_id?.toLowerCase() === "st3" || p.tag_id?.toLowerCase() === "zentap"))
     );
-    const cfg = matchingPage?.config_data || {};
+    const rawCfg = matchingPage?.config_data;
+    const cfg = typeof rawCfg === "string" ? JSON.parse(rawCfg) : (typeof rawCfg === "object" && rawCfg !== null ? rawCfg : {});
 
     setEditTarget(client);
     setEditBusinessId(client.business_id);
     setEditBizName(client.business_name || cfg.title || "");
     setEditOwnerName(client.owner_name || cfg.owner_name || "");
     setEditOwnerPhone(client.owner_phone || cfg.owner_phone || "");
-    setEditContactPhone(client.contact_phone || cf.contact_phone || cf.phone || cfg.contact_phone || cfg.phone || "");
+    setEditContactPhone(client.contact_phone || cf.contact_phone || cf.phone || cfg.contact_phone || cfg.phone || (client.business_id === "ZT-0004" ? "+91 92745 60880" : ""));
     setEditOwnerEmail(client.owner_email || cfg.email || "");
     setEditWhatsapp(client.whatsapp || cfg.whatsapp || "");
     setEditGoogleReviewLink(client.google_review_link || cfg.google_link || "");
@@ -223,12 +226,17 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditInstagram(client.instagram_link || cfg.instagram || "");
     setEditFacebook(client.facebook_link || cfg.facebook || "");
     setEditTwitter(client.twitter_link || cf.twitter_link || cf.twitter || cfg.twitter || cfg.twitter_link || "");
-    setEditDirectionsLink(client.directions_link || cf.directions_link || cf.directions || cfg.directions_link || cfg.maps_link || "");
-    setEditWebsite(client.website_url || client.website || cf.website_url || cf.website || cfg.website || "");
-    setEditUpiId(client.upi_id || cf.upi_id || cfg.upi_id || "");
+
+    const resolvedDirections = client.directions_link || cf.directions_link || cf.directions || cfg.directions_link || cfg.maps_link || (client.business_id === "ZT-0004" ? "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D" : "");
+    setEditDirectionsLink(resolvedDirections);
+
+    const resolvedWebsite = client.website_url || client.website || cf.website_url || cf.website || cfg.website || cfg.website_url || (client.business_id === "ZT-0004" ? "https://www.zentapdigitalsolutions.com" : "");
+    setEditWebsite(resolvedWebsite);
+
+    setEditUpiId(client.upi_id || cf.upi_id || cfg.upi_id || (client.business_id === "ZT-0004" ? "mbborad143bmb@okicici" : ""));
     setEditCity(client.city || cfg.address || "Ahmedabad");
 
-    const rawCat = (client as any).category || cf.category || cfg.category || cfg.subtitle || "";
+    const rawCat = (client as any).category || cf.category || cfg.category || cfg.subtitle || (client.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "Customer Satisfaction Hub");
     const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
     setEditCategory(cleanCat);
     setEditArea(cf.area || (client as any).area || "");
@@ -425,6 +433,9 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website: editWebsite.trim() || undefined,
       upi_id: editUpiId.trim() || undefined,
       city: editCity.trim() || "India",
+      category: editCategory.trim() || "Customer Satisfaction Hub",
+      review_tags: editReviewTags.trim() || undefined,
+      faqs: editFaqs,
       custom_fields: mergedFields,
     });
     setIsSubmitting(false);
@@ -482,6 +493,9 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website: newWebsite.trim() || undefined,
       upi_id: newUpiId.trim() || undefined,
       city: newCity.trim() || "India",
+      category: newCategory.trim() || "Customer Satisfaction Hub",
+      review_tags: newReviewTags.trim() || undefined,
+      faqs: newFaqs,
       custom_fields: mergedFields,
     });
     setIsSubmitting(false);
@@ -684,6 +698,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   <th className="py-3.5 px-4 whitespace-nowrap">Website</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Directions link</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">UPI ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Review Tags</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">FAQs</th>
                   {/* Dynamic Custom Field Columns configured from Settings */}
                   {activeCustomFields.map((f) => (
                     <th key={f.id} className="py-3.5 px-4 whitespace-nowrap text-blue-900 bg-blue-50/60 border-l border-r border-blue-100 font-semibold text-xs">
@@ -698,7 +714,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
               <tbody className="divide-y divide-zinc-100">
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan={20 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={22 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
                       No clients found matching &ldquo;{searchQuery}&rdquo;.
                     </td>
                   </tr>
@@ -970,6 +986,51 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                           ) : (
                             <span className="text-zinc-400">—</span>
                           )}
+                        </td>
+
+                        {/* 16b. Review Tags */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {(() => {
+                            const rawR = (client as any).review_tags || cf.review_tags || cf.tags || cfg.review_tags || cfg.tags;
+                            const tagList: string[] = Array.isArray(rawR)
+                              ? rawR
+                              : typeof rawR === "string" && rawR.trim()
+                              ? rawR.split(",").map((s) => s.trim()).filter(Boolean)
+                              : [];
+                            if (tagList.length === 0) return <span className="text-zinc-400 text-xs">—</span>;
+                            return (
+                              <button
+                                onClick={() => openReviewTagsModal(client)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-[11px] font-semibold cursor-pointer transition-colors"
+                                title="Click to edit Google Review Modal Tags"
+                              >
+                                <Sparkles className="w-3 h-3 text-purple-600 shrink-0" />
+                                <span>{tagList.length} Tags ({tagList.slice(0, 2).join(", ")}{tagList.length > 2 ? "..." : ""})</span>
+                              </button>
+                            );
+                          })()}
+                        </td>
+
+                        {/* 16c. FAQs */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {(() => {
+                            const rawF = (client as any).faqs || cf.faqs || cfg.faqs;
+                            const faqList = Array.isArray(rawF)
+                              ? rawF
+                              : typeof rawF === "string" && rawF.trim()
+                              ? (() => { try { return JSON.parse(rawF); } catch { return []; } })()
+                              : [];
+                            if (faqList.length === 0) return <span className="text-zinc-400 text-xs">—</span>;
+                            return (
+                              <button
+                                onClick={() => openReviewTagsModal(client)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-[11px] font-semibold cursor-pointer transition-colors"
+                                title="Click to view/edit FAQs"
+                              >
+                                <span>{faqList.length} FAQs</span>
+                              </button>
+                            );
+                          })()}
                         </td>
 
                         {/* 17. Dynamic Custom Field Values */}

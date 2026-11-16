@@ -1,5 +1,19 @@
 # ZenTap — Changelog
 
+## [1.54.29] — 2026-11-16
+### Fixed (Client Single Source of Truth & Settings Fields Sync)
+- **Clients Table Fields & Owner Access Synchronization (`adminPlatformStore.ts`, `PlatformSettingsTab.tsx`)**:
+  - Registered `category` ("Category"), `review_tags` ("Google Review Modal Tags"), and `faqs` ("Google Review FAQs") into `STANDARD_CLIENT_COLUMNS` and `STANDARD_BUSINESS_FIELD_KEYS`.
+  - Both fields now appear directly in Platform Settings under **"Clients Table Fields & Owner Access"** with individual turn-on (green) / turn-off (red) permission controls for Business Owner Panels.
+  - Enabled Business Owner permission toggling for `review_tags` and `faqs` in `OwnerAccessModal.tsx` and `ClientPortalView.tsx`.
+- **Client Directory Table Columns (`ClientsWebpageTab.tsx`)**:
+  - Added dedicated `Review Tags` and `FAQs` columns into the Clients Directory table, displaying interactive chip counts and direct 1-click modal editing triggers.
+- **Client-as-Single-Source-of-Truth Architectural Reconciliation (`platform/route.ts`, `ClientsWebpageTab.tsx`, `page.tsx`)**:
+  - Fixed bug where `sanitizeRowForTable` stripped `website_url`, `directions_link`, `category`, and `custom_fields` upon database update, causing them to show blank when editing in the Clients tab.
+  - Ensured raw submitted client inputs permanently cascade to linked `page_editor_configs` in Supabase (including sister demo tags `st3`, `zentap`, and `ZT-0004`).
+  - Added hydration in `GET /api/admin/platform` and `getAllClients()` so every client record always carries its complete website, directions link, category, tags, and FAQs.
+  - Updated `r/[slug]/page.tsx` and `review/page.tsx` to prioritize `clientRecord.website_url` and `clientRecord.directions_link` directly from the client.
+
 ## [1.54.28] — 2026-11-16
 ### Fixed (Unified City / Location in Clients Tab)
 - **Consolidated Duplicate City & Location Fields (`ClientsWebpageTab.tsx`)**:

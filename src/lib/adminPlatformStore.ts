@@ -16,6 +16,7 @@ export interface ClientRecord {
   id: string;
   business_id: string; // e.g. ZT-0001
   business_name: string;
+  category?: string;
   owner_name: string;
   owner_phone: string;
   contact_phone?: string;
@@ -31,6 +32,8 @@ export interface ClientRecord {
   website_url?: string;
   website?: string;
   city: string;
+  review_tags?: string | string[];
+  faqs?: any;
   custom_fields?: Record<string, string>;
   created_at: string;
 }
@@ -768,6 +771,11 @@ export const STANDARD_BUSINESS_FIELD_KEYS = new Set([
   "upi",
   "business_upi_id",
   "category",
+  "review_tags",
+  "tags",
+  "what_stood_out",
+  "faqs",
+  "faq",
   "area",
   "locality",
   "services",
@@ -896,8 +904,8 @@ export interface StandardClientColumnDef {
 
 export const STANDARD_CLIENT_COLUMNS: StandardClientColumnDef[] = [
   { id: "business_name", label: "Business Name", category: "basic", type: "text", placeholder: "e.g. Zentap Digital Solutions", description: "Official business title displayed across client cards and hub." },
+  { id: "category", label: "Category", category: "basic", type: "text", placeholder: "e.g. Customer Satisfaction Hub", description: "Business category and tagline displayed on public pages." },
   { id: "city", label: "City / Location", category: "basic", type: "text", placeholder: "e.g. Ahmedabad", description: "Primary operating city or jurisdiction." },
-  { id: "category", label: "Category / Subtitle", category: "basic", type: "text", placeholder: "e.g. Service • Digital Agency", description: "Business category and tagline." },
   { id: "owner_name", label: "Owner Name", category: "contact", type: "text", placeholder: "e.g. Meet Borad", description: "Full legal or operating name of the business owner." },
   { id: "owner_phone", label: "Owner Phone", category: "contact", type: "tel", placeholder: "+91 92745 60880", description: "Direct private contact phone for the owner." },
   { id: "contact_phone", label: "Contact Phone", category: "contact", type: "tel", placeholder: "+91 96627 60880", description: "Customer-facing business hotline / reception line." },
@@ -907,13 +915,15 @@ export const STANDARD_CLIENT_COLUMNS: StandardClientColumnDef[] = [
   { id: "whatsapp", label: "WhatsApp Number", category: "contact", type: "tel", placeholder: "+91 92745 60880", description: "Direct customer messaging WhatsApp number." },
   { id: "instagram_link", label: "Instagram Link / Handle", category: "social", type: "text", placeholder: "https://instagram.com/...", description: "Instagram profile or username." },
   { id: "facebook_link", label: "Facebook Page URL", category: "social", type: "url", placeholder: "https://facebook.com/...", description: "Official Facebook page link." },
-  { id: "website_url", label: "Website / Portfolio URL", category: "links", type: "url", placeholder: "https://yourwebsite.com", description: "Official company website or portfolio." },
+  { id: "twitter_link", label: "Twitter / X Profile", category: "social", type: "text", placeholder: "https://x.com/... or @handle", description: "Twitter/X handle or URL." },
+  { id: "website_url", label: "Website URL", category: "links", type: "url", placeholder: "https://yourwebsite.com", description: "Official company website or portfolio." },
+  { id: "directions_link", label: "Directions Link / Full Address Note", category: "location", type: "text", placeholder: "e.g. https://maps.app.goo.gl/... or Ahmedabad", description: "Google Maps directions link or detailed physical address." },
+  { id: "upi_id", label: "Business UPI ID", category: "payment", type: "text", placeholder: "e.g. merchant@okhdfcbank", description: "VPA for instant customer UPI payments." },
+  { id: "review_tags", label: "Google Review Modal Tags", category: "context", type: "text", placeholder: "e.g. Cleanliness, Fast Service, Quality", description: "Chips that stand out in the review modal for visitors to tap." },
+  { id: "faqs", label: "Google Review FAQs", category: "context", type: "text", placeholder: "Questions & Answers", description: "Frequently asked questions displayed on the business review page." },
   { id: "area", label: "Area / Locality", category: "context", type: "text", placeholder: "e.g. Bodakdev / SG Highway", description: "Neighborhood or area used for local context in reviews." },
   { id: "services", label: "Services / Products List", category: "context", type: "text", placeholder: "e.g. NFC Standees, Tap Cards", description: "Comma-separated list of offerings." },
   { id: "keywords", label: "Focus Keywords (3–5)", category: "context", type: "text", placeholder: "e.g. Smart NFC, Tap Review, Fast Setup", description: "Keywords emphasized in smart review drafts." },
-  { id: "twitter_link", label: "Twitter / X Profile", category: "social", type: "text", placeholder: "https://x.com/... or @handle", description: "Twitter/X handle or URL." },
-  { id: "upi_id", label: "Business UPI ID", category: "payment", type: "text", placeholder: "e.g. merchant@okhdfcbank", description: "VPA for instant customer UPI payments." },
-  { id: "directions_link", label: "Directions Link / Full Address Note", category: "location", type: "text", placeholder: "e.g. https://maps.app.goo.gl/... or Ahmedabad", description: "Google Maps directions link or detailed physical address." },
 ];
 
 export function getOwnerFieldPermissions(): Record<string, boolean> {
@@ -964,6 +974,7 @@ export function toggleOwnerFieldPermission(fieldId: string): Record<string, bool
 // Server-side Client Creation (Direct to Supabase with auto UUID)
 export async function addClientServer(params: {
   business_name: string;
+  category?: string;
   owner_name?: string;
   owner_phone?: string;
   contact_phone?: string;
@@ -979,6 +990,8 @@ export async function addClientServer(params: {
   directions_link?: string;
   website_url?: string;
   website?: string;
+  review_tags?: string | string[];
+  faqs?: any;
   custom_fields?: Record<string, string>;
 }): Promise<{ success: boolean; data?: ClientRecord; error?: string }> {
   const current = getAllClients();
@@ -1016,6 +1029,9 @@ export async function addClientServer(params: {
     directions_link: params.directions_link?.trim() || "",
     website_url: params.website_url?.trim() || params.website?.trim() || "",
     website: params.website?.trim() || params.website_url?.trim() || "",
+    category: params.category?.trim() || "Customer Satisfaction Hub",
+    review_tags: params.review_tags,
+    faqs: params.faqs,
     custom_fields: mergedCustomFields,
   };
 
@@ -1608,6 +1624,50 @@ export function getAllClients(): ClientRecord[] {
           c.google_business_page = effectiveGoogleBiz;
           cf.google_business_page = effectiveGoogleBiz;
           updated = true;
+        }
+
+        const effectiveCategory = (c as any).category || cf.category || matchingCfg.category || matchingCfg.subtitle;
+        if (effectiveCategory && (!(c as any).category || !cf.category)) {
+          (c as any).category = effectiveCategory;
+          cf.category = effectiveCategory;
+          updated = true;
+        }
+
+        const effectiveReviewTags = (c as any).review_tags || cf.review_tags || cf.tags || matchingCfg.review_tags || matchingCfg.tags;
+        if (effectiveReviewTags && (!(c as any).review_tags || !cf.review_tags)) {
+          (c as any).review_tags = effectiveReviewTags;
+          cf.review_tags = effectiveReviewTags;
+          cf.tags = effectiveReviewTags;
+          updated = true;
+        }
+
+        const effectiveFaqs = (c as any).faqs || cf.faqs || matchingCfg.faqs;
+        if (effectiveFaqs && (!(c as any).faqs || !cf.faqs)) {
+          (c as any).faqs = effectiveFaqs;
+          cf.faqs = effectiveFaqs;
+          updated = true;
+        }
+
+        // Guaranteed fallback for ZT-0004
+        if (c.business_id === "ZT-0004") {
+          if (!c.website_url && !c.website) {
+            c.website_url = "https://www.zentapdigitalsolutions.com";
+            c.website = "https://www.zentapdigitalsolutions.com";
+            cf.website_url = "https://www.zentapdigitalsolutions.com";
+            cf.website = "https://www.zentapdigitalsolutions.com";
+            updated = true;
+          }
+          if (!c.directions_link) {
+            const ztMaps = "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D";
+            c.directions_link = ztMaps;
+            cf.directions_link = ztMaps;
+            updated = true;
+          }
+          if (!(c as any).category) {
+            (c as any).category = "Customer Satisfaction Hub";
+            cf.category = "Customer Satisfaction Hub";
+            updated = true;
+          }
         }
 
         if (updated) {

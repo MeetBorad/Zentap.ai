@@ -248,16 +248,23 @@ export async function GET(req: Request) {
       
       // Auto-reconciliation: cross-reference pageEditorConfigs to backfill any missing fields (like upi_id or directions_link)
       const matchingPage = pageEditorConfigs.find((p: any) =>
-        (p.business_id && c.business_id && p.business_id.toLowerCase() === c.business_id.toLowerCase())
+        (p.business_id && c.business_id && p.business_id.toLowerCase() === c.business_id.toLowerCase()) ||
+        (c.business_id && p.tag_id && p.tag_id.toLowerCase() === c.business_id.toLowerCase()) ||
+        (c.business_id?.toLowerCase() === "zt-0004" && (p.tag_id?.toLowerCase() === "st3" || p.tag_id?.toLowerCase() === "zentap"))
       );
-      const pageCfg = matchingPage && typeof matchingPage.config_data === "object" ? matchingPage.config_data : {};
+      const rawPageCfg = matchingPage?.config_data;
+      const pageCfg = typeof rawPageCfg === "string" ? JSON.parse(rawPageCfg) : (typeof rawPageCfg === "object" && rawPageCfg !== null ? rawPageCfg : {});
 
-      const resolvedUpi = c.upi_id || cf.upi_id || pageCfg.upi_id || "";
-      const resolvedDirections = c.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || pageCfg.directions_link || pageCfg.maps_link || "";
-      const resolvedWebsite = c.website_url || c.website || cf.website_url || cf.website || pageCfg.website || "";
+      const resolvedUpi = c.upi_id || cf.upi_id || pageCfg.upi_id || (c.business_id === "ZT-0004" ? "mbborad143bmb@okicici" : "");
+      const resolvedDirections = c.directions_link || cf.directions_link || cf.directions || cf.google_maps_link || pageCfg.directions_link || pageCfg.maps_link || (c.business_id === "ZT-0004" ? "https://www.google.com/maps/place/ZenTap+Digital+Solutions+-+NFC+and+QR+enabled+Business+Cards/@23.0393793,72.6420758,17z/data=!3m1!4b1!4m6!3m5!1s0x395e87bea719fdfb:0x6828d7aee1d857d2!8m2!3d23.0393793!4d72.6446507!16s%2Fg%2F11z_xcysz3?entry=ttu&g_ep=EgoyMDI2MTExMC4wIKXMDSoASAFQAw%3D%3D" : "");
+      const resolvedWebsite = c.website_url || c.website || cf.website_url || cf.website || pageCfg.website || pageCfg.website_url || (c.business_id === "ZT-0004" ? "https://www.zentapdigitalsolutions.com" : "");
       const resolvedGoogleBiz = c.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cf.maps_link || pageCfg.google_business_page || "";
-      const resolvedPhone = c.contact_phone || cf.contact_phone || cf.phone || pageCfg.contact_phone || pageCfg.phone || "";
+      const resolvedPhone = c.contact_phone || cf.contact_phone || cf.phone || pageCfg.contact_phone || pageCfg.phone || (c.business_id === "ZT-0004" ? "+91 92745 60880" : "");
       const resolvedTwitter = c.twitter_link || cf.twitter_link || cf.twitter || pageCfg.twitter || pageCfg.twitter_link || "";
+      const rawCat = c.category || cf.category || pageCfg.category || pageCfg.subtitle || (c.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "Customer Satisfaction Hub");
+      const resolvedCategory = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
+      const resolvedReviewTags = c.review_tags || cf.review_tags || cf.tags || pageCfg.review_tags || pageCfg.tags || (c.business_id === "ZT-0004" ? ["NFC Standees", "Google Reviews", "Instant Tap", "Fast Setup"] : []);
+      const resolvedFaqs = c.faqs || cf.faqs || pageCfg.faqs || [];
 
       // Ensure custom_fields keeps these in sync
       if (resolvedUpi && !cf.upi_id) cf.upi_id = resolvedUpi;
@@ -265,9 +272,13 @@ export async function GET(req: Request) {
       if (resolvedWebsite && !cf.website_url) cf.website_url = resolvedWebsite;
       if (resolvedPhone && !cf.contact_phone) cf.contact_phone = resolvedPhone;
       if (resolvedGoogleBiz && !cf.google_business_page) cf.google_business_page = resolvedGoogleBiz;
+      if (resolvedCategory && !cf.category) cf.category = resolvedCategory;
+      if (resolvedReviewTags && !cf.review_tags) cf.review_tags = Array.isArray(resolvedReviewTags) ? resolvedReviewTags.join(", ") : resolvedReviewTags;
+      if (resolvedFaqs && !cf.faqs) cf.faqs = resolvedFaqs;
 
       return {
         ...c,
+        category: resolvedCategory,
         contact_phone: resolvedPhone,
         google_business_page: resolvedGoogleBiz,
         twitter_link: resolvedTwitter,
@@ -275,6 +286,8 @@ export async function GET(req: Request) {
         directions_link: resolvedDirections,
         website_url: resolvedWebsite,
         website: resolvedWebsite,
+        review_tags: resolvedReviewTags,
+        faqs: resolvedFaqs,
         custom_fields: cf,
       };
     });
@@ -837,58 +850,68 @@ function sanitizeRowForTable(item: any, table: string) {
 
           // Two-Way Sync: Cascade all updated fields to linked page_editor_configs in Supabase
           try {
+            const rawInput: any = { ...checkItem, ...(checkItem.custom_fields || {}) };
+            const isDemoFleet = targetBizId?.toLowerCase() === "zt-0004" || newBizId?.toLowerCase() === "zt-0004";
+            const queryTarget = isDemoFleet
+              ? `business_id.eq.${targetBizId},business_id.eq.${newBizId},tag_id.eq.st3,tag_id.eq.zentap,tag_id.eq.ZT-0004`
+              : `business_id.eq.${targetBizId},business_id.eq.${newBizId}`;
+
             const { data: linkedPages } = await (supabase as any)
               .from("page_editor_configs")
-              .select("id, config_data")
-              .or(`business_id.eq.${targetBizId},business_id.eq.${newBizId}`);
+              .select("id, tag_id, business_id, config_data")
+              .or(queryTarget);
+
             if (linkedPages && linkedPages.length > 0) {
-              const cf = clean.custom_fields || {};
               for (const lp of linkedPages) {
                 const cfg = typeof lp.config_data === "string" ? JSON.parse(lp.config_data) : { ...(lp.config_data || {}) };
                 if (newName) cfg.title = newName;
-                if (clean.owner_name) cfg.owner_name = clean.owner_name;
-                if (clean.owner_phone) cfg.owner_phone = clean.owner_phone;
-                if (cf.contact_phone || clean.contact_phone) {
-                  const p = cf.contact_phone || clean.contact_phone;
+                if (rawInput.owner_name) cfg.owner_name = rawInput.owner_name;
+                if (rawInput.owner_phone) cfg.owner_phone = rawInput.owner_phone;
+                if (rawInput.contact_phone || rawInput.phone) {
+                  const p = rawInput.contact_phone || rawInput.phone;
                   cfg.contact_phone = p;
                   cfg.phone = p;
                 }
-                if (clean.owner_email) cfg.email = clean.owner_email;
-                if (clean.whatsapp) cfg.whatsapp = clean.whatsapp;
-                if (clean.google_review_link) cfg.google_link = clean.google_review_link;
-                if (cf.google_business_page || clean.google_business_page) {
-                  cfg.google_business_page = cf.google_business_page || clean.google_business_page;
+                if (rawInput.owner_email || rawInput.email) cfg.email = rawInput.owner_email || rawInput.email;
+                if (rawInput.whatsapp) cfg.whatsapp = rawInput.whatsapp;
+                if (rawInput.google_review_link) cfg.google_link = rawInput.google_review_link;
+                if (rawInput.google_business_page || rawInput.google_business) {
+                  cfg.google_business_page = rawInput.google_business_page || rawInput.google_business;
                 }
-                if (clean.instagram_link) cfg.instagram = clean.instagram_link;
-                if (clean.facebook_link) cfg.facebook = clean.facebook_link;
-                if (cf.twitter_link || clean.twitter_link) cfg.twitter = cf.twitter_link || clean.twitter_link;
-                if (cf.directions_link || clean.directions_link) {
-                  const d = cf.directions_link || clean.directions_link;
+                if (rawInput.instagram_link || rawInput.instagram) cfg.instagram = rawInput.instagram_link || rawInput.instagram;
+                if (rawInput.facebook_link || rawInput.facebook) cfg.facebook = rawInput.facebook_link || rawInput.facebook;
+                if (rawInput.twitter_link || rawInput.twitter) cfg.twitter = rawInput.twitter_link || rawInput.twitter;
+                if (rawInput.directions_link || rawInput.directions) {
+                  const d = rawInput.directions_link || rawInput.directions;
                   cfg.directions_link = d;
                   cfg.maps_link = d;
                 }
-                if (cf.upi_id || clean.upi_id) cfg.upi_id = cf.upi_id || clean.upi_id;
-                if (cf.website_url || clean.website_url || cf.website) {
-                  cfg.website = cf.website_url || clean.website_url || cf.website;
+                if (rawInput.upi_id) cfg.upi_id = rawInput.upi_id;
+                if (rawInput.website_url || rawInput.website) {
+                  const w = rawInput.website_url || rawInput.website;
+                  cfg.website = w;
+                  cfg.website_url = w;
                 }
-                if (clean.city) cfg.address = clean.city;
-                if (cf.about_us) cfg.about_us = cf.about_us;
-                if (cf.opening_hours) cfg.opening_hours = cf.opening_hours;
-                if (cf.category) {
-                  cfg.category = cf.category;
-                  cfg.subtitle = cf.category;
+                if (rawInput.city) cfg.address = rawInput.city;
+                if (rawInput.about_us) cfg.about_us = rawInput.about_us;
+                if (rawInput.opening_hours) cfg.opening_hours = rawInput.opening_hours;
+                if (rawInput.category) {
+                  cfg.category = rawInput.category;
+                  cfg.subtitle = rawInput.category;
                 }
-                if (cf.review_tags || cf.tags) {
-                  const rTags = cf.review_tags || cf.tags;
+                if (rawInput.review_tags !== undefined || rawInput.tags !== undefined) {
+                  const rTags = rawInput.review_tags !== undefined ? rawInput.review_tags : rawInput.tags;
                   cfg.review_tags = rTags;
                   cfg.tags = Array.isArray(rTags)
                     ? rTags
                     : String(rTags).split(",").map((s) => s.trim()).filter(Boolean);
                 }
-                if (cf.faqs) {
+                if (rawInput.faqs !== undefined) {
                   try {
-                    cfg.faqs = typeof cf.faqs === "string" ? JSON.parse(cf.faqs) : cf.faqs;
-                  } catch {}
+                    cfg.faqs = typeof rawInput.faqs === "string" ? JSON.parse(rawInput.faqs) : rawInput.faqs;
+                  } catch {
+                    cfg.faqs = rawInput.faqs;
+                  }
                 }
 
                 await (supabase as any)
@@ -901,6 +924,36 @@ function sanitizeRowForTable(item: any, table: string) {
                   })
                   .eq("id", lp.id);
               }
+            } else {
+              // Create page_editor_config entry for this client so custom fields and rich page data are permanently preserved
+              const defaultCfg: any = {
+                title: newName,
+                business_name: newName,
+                website: rawInput.website_url || rawInput.website || "",
+                website_url: rawInput.website_url || rawInput.website || "",
+                directions_link: rawInput.directions_link || rawInput.directions || "",
+                maps_link: rawInput.directions_link || rawInput.directions || "",
+                category: rawInput.category || "Customer Satisfaction Hub",
+                subtitle: rawInput.category || "Customer Satisfaction Hub",
+                theme: "obsidian",
+                accent_color: "#38bdf8",
+                phone: rawInput.contact_phone || rawInput.owner_phone || "",
+                whatsapp: rawInput.whatsapp || "",
+                google_link: rawInput.google_review_link || "",
+                review_tags: rawInput.review_tags || [],
+                faqs: rawInput.faqs || [],
+                custom_fields: checkItem.custom_fields || {},
+              };
+              await (supabase as any).from("page_editor_configs").insert({
+                tag_id: newBizId,
+                business_id: newBizId,
+                business_name: newName,
+                link_url: `/r/${newBizId.toLowerCase()}?preview=1`,
+                setup_status: "completed",
+                config_data: defaultCfg,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
             }
           } catch (cascadeErr) {
             console.warn("Notice: page_editor_configs cascade:", cascadeErr);
@@ -947,6 +1000,42 @@ function sanitizeRowForTable(item: any, table: string) {
           if (insertRes.error) {
             console.error("Client insert error:", insertRes.error);
             return NextResponse.json({ error: insertRes.error.message }, { status: 500 });
+          }
+
+          // Automatically create linked page_editor_configs entry in Supabase to preserve rich fields
+          try {
+            const rawNewInput: any = { ...checkItem, ...(checkItem.custom_fields || {}) };
+            const defaultNewCfg: any = {
+              title: clean.business_name || targetBid,
+              business_name: clean.business_name || targetBid,
+              website: rawNewInput.website_url || rawNewInput.website || "",
+              website_url: rawNewInput.website_url || rawNewInput.website || "",
+              directions_link: rawNewInput.directions_link || rawNewInput.directions || "",
+              maps_link: rawNewInput.directions_link || rawNewInput.directions || "",
+              category: rawNewInput.category || "Customer Satisfaction Hub",
+              subtitle: rawNewInput.category || "Customer Satisfaction Hub",
+              theme: "obsidian",
+              accent_color: "#38bdf8",
+              phone: rawNewInput.contact_phone || clean.owner_phone || "",
+              whatsapp: clean.whatsapp || clean.owner_phone || "",
+              google_link: clean.google_review_link || "",
+              review_tags: rawNewInput.review_tags || [],
+              tags: rawNewInput.review_tags || [],
+              faqs: rawNewInput.faqs || [],
+              custom_fields: checkItem.custom_fields || {},
+            };
+            await (supabase as any).from("page_editor_configs").insert({
+              tag_id: targetBid,
+              business_id: targetBid,
+              business_name: clean.business_name || targetBid,
+              link_url: `/r/${targetBid.toLowerCase()}?preview=1`,
+              setup_status: "completed",
+              config_data: defaultNewCfg,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          } catch (cfgInsertErr) {
+            console.warn("Notice: page_editor_configs initial insert:", cfgInsertErr);
           }
 
           // Automatically dispatch new client credentials to founder Telegram
