@@ -1,5 +1,13 @@
 # ZenTap — Changelog
 
+## [1.54.28] — 2026-11-16
+### Fixed (Unified City / Location in Clients Tab)
+- **Consolidated Duplicate City & Location Fields (`ClientsWebpageTab.tsx`)**:
+  - Unified location input into a single `City / Location` field across both the Add Client and Edit Client modals.
+  - Eliminated redundant `Area / Locality` fields from the Business Info section.
+  - Removed duplicate second `City / Location` input from the bottom UPI ID block in Edit Client modal.
+  - Auto-synchronized `city` and `area` states (`newCity` &rarr; `newArea`, `editCity` &rarr; `editArea`) on change to maintain full backwards compatibility with legacy client records and API payloads without user-facing duplicate fields.
+
 ## [1.54.27] — 2026-11-16
 ### Enhanced (Manual Category Input in Add Client & Review Modal Tags/FAQs in Clients Tab)
 - **Manual Category Input When Adding Clients (`ClientsWebpageTab.tsx`)**:

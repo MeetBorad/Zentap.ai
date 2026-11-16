@@ -1237,6 +1237,32 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ahmedabad, Gujarat"
+                    value={newCity}
+                    onChange={(e) => {
+                      setNewCity(e.target.value);
+                      setNewArea(e.target.value);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. merchant@okhdfcbank"
+                    value={newUpiId}
+                    onChange={(e) => setNewUpiId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-bold text-zinc-800 mb-1">Owner Name</label>
                   <input
                     type="text"
@@ -1346,16 +1372,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     <span className="text-xs font-bold text-zinc-900">Business Info (Context &amp; Keywords)</span>
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Bodakdev / SG Highway"
-                    value={newArea}
-                    onChange={(e) => setNewArea(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
@@ -1517,29 +1533,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ahmedabad, Gujarat"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. merchant@okhdfcbank"
-                    value={newUpiId}
-                    onChange={(e) => setNewUpiId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-              </div>
-
               {/* Business Fields (Configured in Settings) */}
               {activeCustomFields.length > 0 && (
                 <div className="pt-3 border-t border-zinc-100 space-y-3">
@@ -1660,7 +1653,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   <input
                     type="text"
                     value={editCity}
-                    onChange={(e) => setEditCity(e.target.value)}
+                    onChange={(e) => {
+                      setEditCity(e.target.value);
+                      setEditArea(e.target.value);
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
@@ -1772,16 +1768,6 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     <span className="text-xs font-bold text-zinc-900">Business Info (Context &amp; Keywords)</span>
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Bodakdev / SG Highway"
-                    value={editArea}
-                    onChange={(e) => setEditArea(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
@@ -1941,26 +1927,15 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
-                  <input
-                    type="text"
-                    value={editCity}
-                    onChange={(e) => setEditCity(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. merchant@okhdfcbank"
-                    value={editUpiId}
-                    onChange={(e) => setEditUpiId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">Business UPI ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. merchant@okhdfcbank"
+                  value={editUpiId}
+                  onChange={(e) => setEditUpiId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-mono font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                />
               </div>
 
               {/* Business Fields (Configured in Settings) */}
