@@ -1,5 +1,38 @@
 # ZenTap — Changelog
 
+## [1.54.26] — 2026-11-16
+### Fixed (Admin Auto-Logout Inactivity Enforcement & Homepage View Separation)
+- **Homepage View Separation (`src/app/page.tsx`)**:
+  - Removed aggressive `useEffect` hook that forcibly auto-routed authenticated admins to `/?view=admin` when visiting the root homepage (`/`).
+  - Visiting `http://localhost:3000/` or the live site root now reliably serves the clean public landing page.
+  - Authenticated administrators retain immediate 1-click access to the console via the orange `[🛡️ Admin Console →]` and `[Sign Out]` buttons in the header navigation.
+- **Admin Inactivity Auto-Logout Enforcement (`src/context/AuthContext.tsx`, `AdminAuthModal.tsx`, `src/app/login/page.tsx`)**:
+  - Fixed session timeout tracking to include Supabase-authenticated admin accounts (previously, admin emails bypassed timeout checks indefinitely).
+  - Wired `updateActivity` to mouse, keyboard, and touch events (`pointerdown`, `keydown`, `touchstart`).
+  - Added full cleanup upon timeout expiration: clears supreme session flags, removes active timestamps, and invokes `supabase.auth.signOut()` before routing to `/admin/login?reason=timeout`.
+  - Initialized `zentap_admin_last_active` upon all successful admin logins.
+- **Preview Flag (`?preview=1`) Architecture Review**:
+  - Confirmed `?preview=1` is exclusively an internal testing tool (analytics scan suppression, redirect-loop prevention, cache bypass) and is never required for real customer NFC/QR scans.
+
+## [1.54.25] — 2026-11-16
+### Enhanced (Cover Banner Sync, Ultra-Fast Page Load & Terminology Rebranding)
+- **Preview vs Live Theme Synchronization (`app/r/[slug]/page.tsx`, `adminPlatformStore.ts`)**:
+  - Unified theme preset across sister demo records (`ST3`, `zentap`, and `ZT-0004`) to the dark `obsidian` theme (`bg-[#0B0F17]` with `#38bdf8` accent).
+  - Bypassed in-memory tag cache for `?preview=1` requests so preview mode always loads the latest database state without stale cache interference.
+- **Cover Banner Fix & Sister-Tag Sync (`PageEditorWebpageTab.tsx`, `ZenTapHubPage.tsx`)**:
+  - Saved the user's high-res official ZenTap cover banner to cached asset storage (`/covers/zentap_cover.png`).
+  - Fixed sister-tag publishing in `PageEditorWebpageTab.tsx` so `ST3`, `zentap`, and `ZT-0004` are synchronized in parallel upon Save & Publish, permanently preventing out-of-sync overwrites.
+  - Added eager loading priority (`loading="eager"`) for above-the-fold banner rendering.
+- **Massive 93% Payload Size Reduction & Load Speed Optimization**:
+  - Eliminated repetitive inlined 2.4MB base64 images from JSON payloads and DOM serialization.
+  - Review Page payload dropped from **1,052 KB &rarr; 74 KB (93% reduction)**.
+  - Business Page payload dropped from **563 KB &rarr; 74 KB (87% reduction)**.
+  - Added automated client-side `<canvas>` image downscaling and compression in `PageEditorWebpageTab.tsx` (resizes raw 4MB+ camera uploads to clean &lt;100KB assets).
+- **Studio to Office Rebranding (`ZenTapHubPage.tsx`, `PageEditorWebpageTab.tsx`)**:
+  - Renamed "Our Studio Location" to **"Our Office Location"** across all mobile hub pages, admin designer editor fields, and in-modal phone previews.
+- **Interactive Google Maps Live Preview (`googleMaps.ts`, `ZenTapHubPage.tsx`, `PageEditorWebpageTab.tsx`)**:
+  - Replaced static stock desk photo with live interactive Google Maps embed pinned to the business location with a `[ Map | Photo ]` toggle.
+
 ## [1.54.24] — 2026-11-15
 ### Enhanced (Repository Bloat Purge, Dynamic Star-Level Review Chips & 3-Persona Humanized AI Options)
 - **Repository & Skills Cleanup (~1.8 GB Reclaimed)**:

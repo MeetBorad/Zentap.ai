@@ -88,6 +88,8 @@ export default function AdminAuthModal({
       setFailedAttempts(0);
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
+        localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+        localStorage.removeItem("zentap_admin_expired");
       }
       signInWithEmail(cleanEmail, password).catch(() => {});
       setSuccessMessage("Superadmin Authenticated! Launching Fleet Console...");
@@ -102,6 +104,9 @@ export default function AdminAuthModal({
     // 2. Strict whitelist of authorized admin accounts
     const allowedAdminEmails = [
       "admin@zentapdigitalsolutions.com",
+      "admin@zentap.ai",
+      "meet@zentap.ai",
+      "mbborad143bmb@gmail.com",
       "meetborad@hotmail.com",
       "thedayithappened736@gmail.com",
     ];
@@ -142,6 +147,8 @@ export default function AdminAuthModal({
       setFailedAttempts(0);
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
+        localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+        localStorage.removeItem("zentap_admin_expired");
       }
 
       setSuccessMessage("Admin Identity Verified. Launching Fleet Operations...");

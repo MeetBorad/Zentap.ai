@@ -68,6 +68,7 @@ import {
   DOMAIN_BASE,
 } from "@/lib/adminPlatformStore";
 import { onClientsUpdated, resolveClientField } from "@/lib/clientEvents";
+import { getGoogleMapsEmbedUrl } from "@/lib/googleMaps";
 import {
   getPageDesign,
   savePageDesign,
@@ -203,16 +204,51 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
   const handleFileToUrl = (file: File, setter: (url: string) => void, label: string) => {
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      onShowToast("Image size exceeds 4MB. Please choose a smaller image.");
+    if (file.size > 8 * 1024 * 1024) {
+      onShowToast("Image size exceeds 8MB. Please choose a smaller image.");
       return;
     }
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (typeof e.target?.result === "string") {
-        setter(e.target.result);
+      const result = e.target?.result;
+      if (typeof result !== "string") return;
+
+      // Automatically compress & downscale client-side for ultra-fast mobile loads (<100KB)
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1400;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, width, height);
+          const mimeType = file.type === "image/png" && file.size < 400 * 1024 ? "image/png" : "image/jpeg";
+          const compressedDataUrl = canvas.toDataURL(mimeType, 0.85);
+          setter(compressedDataUrl);
+          onShowToast(`✓ ${label} optimized & uploaded successfully!`);
+          return;
+        }
+        setter(result);
         onShowToast(`✓ ${label} uploaded successfully!`);
-      }
+      };
+      img.onerror = () => {
+        setter(result);
+        onShowToast(`✓ ${label} uploaded!`);
+      };
+      img.src = result;
     };
     reader.readAsDataURL(file);
   };
@@ -644,15 +680,19 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     ];
 
     if (isSharedTag) {
-      const sisterTagId = activeItem.tag_id.toLowerCase() === "st3" ? "zentap" : "st3";
-      savePromises.push(
-        savePageEditorConfigServer(sisterTagId, newConfigData, {
-          business_id: activeItem.business_id,
-          business_name: editTitle.trim() || activeItem.business_name,
-          link_url: `${DOMAIN_BASE}/t/${sisterTagId}`,
-          destination: currentDest,
-        }).catch((e) => console.warn("Sister tag sync notice:", e))
-      );
+      const demoTags = ["st3", "zentap", "ZT-0004"];
+      for (const tId of demoTags) {
+        if (tId.toLowerCase() !== activeItem.tag_id.toLowerCase()) {
+          savePromises.push(
+            savePageEditorConfigServer(tId, newConfigData, {
+              business_id: activeItem.business_id || "ZT-0004",
+              business_name: editTitle.trim() || activeItem.business_name,
+              link_url: `${DOMAIN_BASE}/t/${tId}`,
+              destination: currentDest,
+            }).catch((e) => console.warn(`Sister tag sync notice (${tId}):`, e))
+          );
+        }
+      }
     }
 
     // Two-way interconnected sync: Update clients table from Design Review Page
@@ -2059,7 +2099,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileToUrl(file, setEditLocationImage, "Studio Location Banner");
+                      if (file) handleFileToUrl(file, setEditLocationImage, "Office Location Banner");
                     }}
                   />
 
@@ -2716,12 +2756,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     </div>
                   </div>
 
-                  {/* Address & Studio Location */}
+                  {/* Address & Office Location */}
                   <div className="p-4 rounded-2xl bg-white border border-zinc-200 space-y-3 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Address &amp; Studio Location</span>
+                        <span>Address &amp; Office Location</span>
                       </label>
                       <span className="text-[10px] text-zinc-500 font-medium">
                         *Powers Directions button and Location card
@@ -2758,7 +2798,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                       <div>
                         <label className="block text-[11px] font-medium text-zinc-700 mb-1">
-                          Studio Location Title
+                          Office Location Title
                         </label>
                         <input
                           type="text"
@@ -2771,7 +2811,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="text-[11px] font-medium text-zinc-700">
-                            Studio Location Photo / Map URL
+                            Office Location Photo / Map URL
                           </label>
                           <button
                             type="button"
@@ -3114,23 +3154,44 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       </div>
 
                       <div className="px-3 pt-2 space-y-2.5 relative z-10">
-                        {/* Profile & NFC Hero Card */}
-                        <div className={`relative overflow-hidden rounded-xl ${currentP.cardBg} p-3 shadow-md border ${currentP.borderColor} space-y-2`}>
-                          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-[#f59e0b] to-transparent opacity-80" />
+                        {/* Profile & NFC Hero Card with Cover Banner & Overlapping Avatar */}
+                        <div className={`relative overflow-hidden rounded-xl ${currentP.cardBg} shadow-md border ${currentP.borderColor}`}>
+                          {/* Banner */}
+                          <div className="relative w-full h-16 overflow-hidden bg-zinc-800">
+                            <img
+                              src={editBannerUrl || "/locations/st3.jpg"}
+                              alt="Cover"
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).src = "/locations/st3.jpg"; }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                          </div>
 
-                          <div className="flex items-center gap-2.5">
-                            <div className={`relative shrink-0 w-11 h-11 rounded-lg ${currentP.cardBg} p-0.5 shadow border ${currentP.borderColor} flex items-center justify-center`}>
-                              <img
-                                src={editLogoUrl || "/logo.png"}
-                                alt="Logo"
-                                className="w-full h-full object-contain rounded-md"
-                                onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
-                              />
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shadow">
-                                <Check className="w-2 h-2 text-black font-black stroke-[3]" />
+                          <div className="p-3 pt-0 space-y-2">
+                            {/* Avatar + Add to Contacts */}
+                            <div className="relative flex items-end justify-center -mt-6 z-10">
+                              <div className={`relative w-12 h-12 rounded-full ${currentP.cardBg} p-0.5 shadow-md border-2 border-[#0B0F17] flex items-center justify-center shrink-0`}>
+                                <img
+                                  src={editLogoUrl || "/logo.png"}
+                                  alt="Logo"
+                                  className="w-full h-full object-contain rounded-full bg-zinc-950"
+                                  onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
+                                />
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                                  <Check className="w-2 h-2 text-black font-black stroke-[3]" />
+                                </div>
+                              </div>
+
+                              <div className="absolute right-0 bottom-0">
+                                <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white/10 border border-white/15 text-[8px] font-bold text-white shadow-xs">
+                                  <Plus className="w-2.5 h-2.5 text-amber-400" />
+                                  <span>+ Contact</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="min-w-0 flex-1">
+
+                            {/* Identity Info */}
+                            <div className="text-center">
                               <h4 className={`font-bold text-xs ${currentP.textColor} leading-snug truncate`}>
                                 {editTitle || "Business Name"}
                               </h4>
@@ -3138,53 +3199,30 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                                 <p className={`text-[10px] ${currentP.textMuted} truncate`}>{editSubtitle}</p>
                               )}
                               {editAddress && (
-                                <p className={`text-[9px] ${currentP.accentText} truncate flex items-center gap-0.5 mt-0.5`}>
+                                <p className={`text-[9px] ${currentP.accentText} truncate flex items-center justify-center gap-0.5 mt-0.5`}>
                                   <MapPin className="w-2.5 h-2.5 shrink-0" />
                                   <span>{editAddress}</span>
                                 </p>
                               )}
                             </div>
-                          </div>
 
-                          {/* Quick Actions (Call / Directions) */}
-                          {hasQuickActions && (
-                            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                              {editPhone.trim() && (
-                                <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
-                                  <Phone className="w-2.5 h-2.5 text-[#ffc174]" />
-                                  <span>Call Us</span>
-                                </div>
-                              )}
-                              {(editMapsLink.trim() || editAddress.trim()) && (
-                                <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
-                                  <Navigation className="w-2.5 h-2.5 text-[#4cd7f6]" />
-                                  <span>Directions</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Loved your visit? Banner */}
-                        <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${currentP.cardBg} p-3 shadow border ${currentP.borderColor} flex items-center justify-between`}>
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5 text-[#ffc174] fill-[#ffc174]" />
-                              <span className={`text-xs font-bold ${currentP.textColor}`}>Loved your visit?</span>
-                            </div>
-                            <p className={`text-[9px] ${currentP.textMuted} mt-0.5`}>{editCtaText || "Tap to write a rapid 5-Star Review"}</p>
-                            <div className="flex items-center gap-0.5 mt-1 text-[#ffc174]">
-                              {[1, 2, 3, 4, 5].map((s) => (
-                                <Star key={s} className="w-2.5 h-2.5 fill-[#ffc174] text-[#ffc174]" />
-                              ))}
-                              <span className={`text-[9px] ${currentP.accentText} ml-1 font-bold`}>5.0</span>
-                            </div>
-                          </div>
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow transition-colors"
-                            style={{ backgroundColor: customAccentHex }}
-                          >
-                            <Star className="w-4 h-4 fill-black text-black" />
+                            {/* Quick Actions (Call / Directions) */}
+                            {hasQuickActions && (
+                              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                                {editPhone.trim() && (
+                                  <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
+                                    <Phone className="w-2.5 h-2.5 text-[#ffc174]" />
+                                    <span>Call Us</span>
+                                  </div>
+                                )}
+                                {(editMapsLink.trim() || editAddress.trim()) && (
+                                  <div className={`py-1 px-2 rounded-lg ${currentP.innerBg} text-[9px] font-bold ${currentP.textColor} flex items-center justify-center gap-1 border ${currentP.borderColor}`}>
+                                    <Navigation className="w-2.5 h-2.5 text-[#4cd7f6]" />
+                                    <span>Directions</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -3253,6 +3291,29 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </div>
                         )}
 
+                        {/* Loved your visit? Banner */}
+                        <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${currentP.cardBg} p-3 shadow border ${currentP.borderColor} flex items-center justify-between`}>
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-[#ffc174] fill-[#ffc174]" />
+                              <span className={`text-xs font-bold ${currentP.textColor}`}>Loved your visit?</span>
+                            </div>
+                            <p className={`text-[9px] ${currentP.textMuted} mt-0.5`}>{editCtaText || "Tap to write a rapid 5-Star Review"}</p>
+                            <div className="flex items-center gap-0.5 mt-1 text-[#ffc174]">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} className="w-2.5 h-2.5 fill-[#ffc174] text-[#ffc174]" />
+                              ))}
+                              <span className={`text-[9px] ${currentP.accentText} ml-1 font-bold`}>5.0</span>
+                            </div>
+                          </div>
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow transition-colors"
+                            style={{ backgroundColor: customAccentHex }}
+                          >
+                            <Star className="w-4 h-4 fill-black text-black" />
+                          </div>
+                        </div>
+
                         {/* About Us (Only if not blank) */}
                         {editAboutUs.trim() && (
                           <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1`}>
@@ -3292,20 +3353,25 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           </div>
                         )}
 
-                        {/* Location Card (Only if not blank) */}
-                        {(editAddress.trim() || editLocationImage.trim()) && (
-                          <div className={`rounded-xl overflow-hidden relative h-20 bg-zinc-800 flex items-end p-2 border ${currentP.borderColor}`}>
-                            <img
-                              src={editLocationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}
-                              alt="Location"
-                              className="absolute inset-0 w-full h-full object-cover"
+                        {/* Location Card (Live Google Maps Preview) */}
+                        {(editAddress.trim() || editMapsLink.trim() || editLocationImage.trim()) && (
+                          <div className={`rounded-xl overflow-hidden relative h-28 bg-zinc-950 border ${currentP.borderColor} shadow-md`}>
+                            <iframe
+                              title="Google Maps Location Preview"
+                              src={getGoogleMapsEmbedUrl(editMapsLink, editAddress, editTitle)}
+                              className="w-full h-full border-0 pointer-events-none"
+                              loading="lazy"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                            <div className="relative z-10 flex items-center justify-between w-full">
-                              <span className="text-[9px] font-bold text-white truncate flex items-center gap-1">
-                                <MapPin className="w-2.5 h-2.5 text-amber-400" />
-                                <span>{editLocationTitle || editAddress || "Location"}</span>
-                              </span>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                            <div className="absolute bottom-2 left-2 z-10 pointer-events-none">
+                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-white/15 shadow">
+                                <div className="w-3.5 h-3.5 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0">
+                                  <MapPin className="w-2 h-2 text-cyan-400" />
+                                </div>
+                                <span className="text-[9px] font-bold text-white tracking-wide truncate">
+                                  {editLocationTitle || editAddress || "Ahmedabad"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         )}

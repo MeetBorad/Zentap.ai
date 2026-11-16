@@ -14,18 +14,43 @@ export function checkIsAdmin(user: User | null): boolean {
     "meetborad@hotmail.com"
   ];
 
+  // Helper to check if the session has expired due to inactivity
+  const isSessionExpired = () => {
+    if (typeof window === "undefined") return false;
+    const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
+    if (timeoutMinutes > 0) {
+      const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
+      const now = Date.now();
+      if (lastActive > 0 && now - lastActive > timeoutMinutes * 60 * 1000) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   // If a user is logged in, their email/metadata determines authority
   if (user) {
     const email = (user.email || "").toLowerCase().trim();
-    if (
+    const isWhitelisted = (
       adminList.includes(email) ||
       email === "admin@zentapdigitalsolutions.com" ||
       user.user_metadata?.role === "admin" ||
       user.app_metadata?.role === "admin"
-    ) {
+    );
+
+    if (isWhitelisted) {
+      if (isSessionExpired()) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("zentap_admin_supreme");
+          localStorage.removeItem("zentap_admin_last_active");
+          localStorage.setItem("zentap_admin_expired", "true");
+        }
+        return false;
+      }
       return true;
     }
-    // Regular merchant user logged in (e.g. thedayithappened736@gmail.com) - strip any stale admin supreme flag
+
+    // Regular merchant user logged in - strip any stale admin supreme flag
     if (typeof window !== "undefined") {
       localStorage.removeItem("zentap_admin_supreme");
     }
@@ -35,17 +60,11 @@ export function checkIsAdmin(user: User | null): boolean {
   // Check standalone admin supreme session key with inactivity timeout enforcement
   if (typeof window !== "undefined") {
     if (localStorage.getItem("zentap_admin_supreme") === "true") {
-      const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
-      if (timeoutMinutes > 0) {
-        const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
-        const now = Date.now();
-        if (lastActive > 0 && now - lastActive > timeoutMinutes * 60 * 1000) {
-          // Session expired due to inactivity
-          localStorage.removeItem("zentap_admin_supreme");
-          localStorage.removeItem("zentap_admin_last_active");
-          localStorage.setItem("zentap_admin_expired", "true");
-          return false;
-        }
+      if (isSessionExpired()) {
+        localStorage.removeItem("zentap_admin_supreme");
+        localStorage.removeItem("zentap_admin_last_active");
+        localStorage.setItem("zentap_admin_expired", "true");
+        return false;
       }
       return true;
     }
@@ -99,33 +118,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // 3. User activity tracker for admin auto-signout
     const updateActivity = () => {
-      if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
-        localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+      if (typeof window !== "undefined") {
+        const isSupreme = localStorage.getItem("zentap_admin_supreme") === "true";
+        if (isSupreme || user) {
+          localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+        }
       }
     };
     window.addEventListener("pointerdown", updateActivity, { passive: true });
     window.addEventListener("keydown", updateActivity, { passive: true });
+    window.addEventListener("touchstart", updateActivity, { passive: true });
 
-    // Periodic check every 30s for session timeout
+    // Periodic check every 15s for session timeout
     const checkInterval = setInterval(() => {
-      if (typeof window !== "undefined" && localStorage.getItem("zentap_admin_supreme") === "true") {
-        const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
-        if (timeoutMinutes > 0) {
-          const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
-          if (lastActive > 0 && Date.now() - lastActive > timeoutMinutes * 60 * 1000) {
-            localStorage.removeItem("zentap_admin_supreme");
-            localStorage.removeItem("zentap_admin_last_active");
-            localStorage.setItem("zentap_admin_expired", "true");
-            window.location.href = "/admin/login";
+      if (typeof window !== "undefined") {
+        const isSupreme = localStorage.getItem("zentap_admin_supreme") === "true";
+        const hasAdminAuth = isSupreme || (user && checkIsAdmin(user));
+        if (hasAdminAuth) {
+          const timeoutMinutes = parseInt(localStorage.getItem("zentap_admin_session_timeout") || "30", 10);
+          if (timeoutMinutes > 0) {
+            const lastActive = parseInt(localStorage.getItem("zentap_admin_last_active") || "0", 10);
+            if (lastActive > 0 && Date.now() - lastActive > timeoutMinutes * 60 * 1000) {
+              localStorage.removeItem("zentap_admin_supreme");
+              localStorage.removeItem("zentap_admin_last_active");
+              localStorage.setItem("zentap_admin_expired", "true");
+              supabase.auth.signOut().finally(() => {
+                setUser(null);
+                setSession(null);
+                window.location.href = "/admin/login?reason=timeout";
+              });
+            }
           }
         }
       }
-    }, 30000);
+    }, 15000);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener("pointerdown", updateActivity);
       window.removeEventListener("keydown", updateActivity);
+      window.removeEventListener("touchstart", updateActivity);
       clearInterval(checkInterval);
     };
   }, []);
@@ -136,6 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
     });
+    if (!error && typeof window !== "undefined") {
+      localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+      localStorage.removeItem("zentap_admin_expired");
+    }
     return { error };
   };
 
@@ -181,6 +217,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("zentap_admin_supreme");
+      localStorage.removeItem("zentap_admin_last_active");
+      localStorage.removeItem("zentap_admin_authenticated");
+      sessionStorage.clear();
+      document.cookie = "zentap_admin=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
     await supabase.auth.signOut();
     setUser(null);

@@ -88,28 +88,19 @@ export default function Page() {
 
   const hasInitializedAuth = useRef(false);
 
-  // Check URL query parameters on initial load
+  // URL parameters handler on initial load (only routes to admin if explicitly requested via ?view=admin)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const v = params.get("view");
       if (v === "admin") {
         setCurrentView("admin");
-        hasInitializedAuth.current = true;
-      } else if (v === "pricing" || v === "how-it-works" || v === "features") {
+      } else if (v === "pricing" || v === "how-it-works" || v === "features" || v === "portal") {
         setCurrentView(v as ActiveView);
-        hasInitializedAuth.current = true;
       }
+      hasInitializedAuth.current = true;
     }
   }, []);
-
-  // Auto-route to admin console on initial load if admin is authenticated
-  useEffect(() => {
-    if (!loading && isAdmin && !hasInitializedAuth.current) {
-      hasInitializedAuth.current = true;
-      setCurrentView("admin");
-    }
-  }, [isAdmin, loading]);
 
   // Security Guard: Handle access to admin console and merchant portal
   useEffect(() => {

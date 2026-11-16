@@ -25,7 +25,8 @@ import {
   Facebook,
   Building2,
   Twitter,
-  CreditCard
+  CreditCard,
+  Plus
 } from "lucide-react";
 import { BusinessRecord } from "@/lib/businessStore";
 import {
@@ -39,6 +40,7 @@ import {
   getPagePhotos
 } from "@/lib/hubDesignStore";
 import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
+import { getGoogleMapsEmbedUrl } from "@/lib/googleMaps";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
 interface ZenTapHubPageProps {
@@ -504,6 +506,7 @@ export default function ZenTapHubPage({
   const [generatedReview, setGeneratedReview] = useState<string>("");
   const [showReviewBox, setShowReviewBox] = useState<boolean>(false);
   const [copiedReview, setCopiedReview] = useState<boolean>(false);
+  const [locationViewMode, setLocationViewMode] = useState<"map" | "photo">("map");
 
   // Private feedback state for ratings <= 2
   const [privateFeedbackText, setPrivateFeedbackText] = useState("");
@@ -637,6 +640,39 @@ export default function ZenTapHubPage({
     } catch { }
   };
 
+  const coverUrl =
+    cfg.cover_image ||
+    cfg.cover_url ||
+    design.cover_url ||
+    (business as any).cover_url ||
+    "/locations/st3.jpg";
+
+  const handleDownloadVCard = () => {
+    const vcard = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `FN:${businessName}`,
+      `ORG:${businessName}`,
+      cleanPhone || cleanContactPhone ? `TEL;TYPE=WORK,VOICE:${cleanPhone || cleanContactPhone}` : "",
+      cleanWhatsApp ? `TEL;TYPE=CELL,VOICE:${cleanWhatsApp}` : "",
+      email ? `EMAIL:${email}` : "",
+      websiteUrl ? `URL:${websiteUrl}` : "",
+      address ? `ADR;TYPE=WORK:;;${address};;;;` : "",
+      aboutUsText ? `NOTE:${aboutUsText.replace(/\n/g, " ")}` : "",
+      "END:VCARD",
+    ].filter(Boolean).join("\r\n");
+
+    const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", `${(businessName || "contact").replace(/[^a-z0-9]/gi, "_")}.vcf`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Has at least one social / contact channel
   const hasSocialChannels = !!(cleanWhatsApp || instagramUrl || phone || contactPhone || facebookUrl || websiteUrl || email || googleBizPageUrl || twitterUrl || upiIdRaw);
 
@@ -658,121 +694,110 @@ export default function ZenTapHubPage({
           {/* Mobile Hub Shell */}
           <div className="relative z-10 max-w-[480px] w-full mx-auto px-4 pb-8 flex flex-col gap-4">
 
-            {/* 1. Profile & NFC Hero Card */}
-            <div className={`relative overflow-hidden rounded-2xl ${hubTheme.card} backdrop-blur-2xl shadow-2xl p-4 sm:p-5 flex flex-col gap-3.5 border`}>
-              {/* Glow Accent Rim */}
-              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${hubTheme.rim} to-transparent opacity-75`} />
+            {/* 1. Profile & NFC Hero Card with Cover Banner & Overlapping Avatar */}
+            <div className={`relative overflow-hidden rounded-2xl ${hubTheme.card} backdrop-blur-2xl shadow-2xl flex flex-col border`}>
+              {/* Cover Banner */}
+              <div className="relative w-full h-36 sm:h-44 overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
+                <img
+                  src={coverUrl}
+                  alt={businessName}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/locations/st3.jpg";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${hubTheme.rim} to-transparent opacity-80`} />
+              </div>
 
-              {/* Identity Header */}
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {/* Monogram / Logo */}
-                  <div className={`relative shrink-0 w-16 h-16 rounded-xl ${hubTheme.inner} p-1 shadow-lg border border-amber-500/20 flex items-center justify-center`}>
+              {/* Avatar, Title, and Add to Contacts */}
+              <div className="relative px-4 pb-4 pt-0 flex flex-col">
+                <div className="relative flex items-end justify-center -mt-12 sm:-mt-14 z-10">
+                  {/* Centered Circular Avatar */}
+                  <div className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-full ${hubTheme.inner} p-1 shadow-2xl border-4 border-[#0B0F17] flex items-center justify-center shrink-0`}>
                     <img
                       src={logoUrl}
                       alt={businessName}
-                      className="w-full h-full object-contain rounded-lg"
+                      className="w-full h-full object-contain rounded-full bg-zinc-950"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "/logo.png";
                       }}
                     />
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#10B981] flex items-center justify-center shadow-md">
-                      <Check className="w-3 h-3 text-[#0B0F17] font-black stroke-[3]" />
+                    <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center shadow-md border-2 border-[#0B0F17]">
+                      <Check className="w-3.5 h-3.5 text-[#0B0F17] font-black stroke-[3]" />
                     </div>
                   </div>
 
-                  <div className="flex flex-col min-w-0">
-                    <h1 className={`font-bold ${sizeScaleClasses.h1} ${hubTheme.textColor || "text-white"} leading-snug`}>
-                      {businessName}
-                    </h1>
-                    {subtitle && (
-                      <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"} line-clamp-1 mt-0.5`}>
-                        {subtitle}
-                      </span>
-                    )}
-                    {address && (
+                  {/* Add to Contacts Button (Pinned to bottom right matching user sketch) */}
+                  <div className="absolute right-0 bottom-0 sm:bottom-1">
+                    <button
+                      type="button"
+                      onClick={handleDownloadVCard}
+                      className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 text-white text-[10px] sm:text-[11px] font-bold shadow-md transition-all active:scale-[0.978] cursor-pointer"
+                      title="Save contact vCard directly to your phone"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Add to Contacts</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Identity Info */}
+                <div className="mt-2.5 text-center flex flex-col items-center">
+                  <h1 className={`font-bold ${sizeScaleClasses.h1} ${hubTheme.textColor || "text-white"} leading-snug`}>
+                    {businessName}
+                  </h1>
+                  {subtitle && (
+                    <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"} line-clamp-1 mt-0.5`}>
+                      {subtitle}
+                    </span>
+                  )}
+                  {address && (
+                    <a
+                      className={`mt-1 inline-flex items-center gap-1 ${hubTheme.accentText} hover:opacity-80 text-[11px] font-medium transition-colors`}
+                      href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      onClick={() => trackClick("address_pin")}
+                    >
+                      <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: finalAccentHex }} />
+                      <span className="truncate">{address}</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Quick Action Bar (Call Us & Directions) */}
+                {(cleanPhone || directionsUrl) && (
+                  <div className={`grid ${cleanPhone && directionsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-3`}>
+                    {cleanPhone && (
                       <a
-                        className={`mt-1 inline-flex items-center gap-1 ${hubTheme.accentText} hover:opacity-80 text-[11px] font-medium transition-colors`}
-                        href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer border border-white/5`}
+                        href={`tel:${cleanPhone}`}
+                        onClick={() => trackClick("call_quick")}
+                      >
+                        <Phone className="w-4 h-4" style={{ color: finalAccentHex }} />
+                        <span>Call Us</span>
+                      </a>
+                    )}
+                    {directionsUrl && (
+                      <a
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer border border-white/5`}
+                        href={directionsUrl}
                         rel="noopener noreferrer"
                         target="_blank"
-                        onClick={() => trackClick("address_pin")}
+                        onClick={() => trackClick("directions_quick")}
                       >
-                        <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: finalAccentHex }} />
-                        <span className="truncate">{address}</span>
+                        <Navigation className="w-4 h-4 text-cyan-400" />
+                        <span>Directions</span>
                       </a>
                     )}
                   </div>
-                </div>
+                )}
               </div>
-
-              {/* Quick Action Bar (Only shown if phone or directionsUrl is not blank!) */}
-              {(cleanPhone || directionsUrl) && (
-                <div className={`grid ${cleanPhone && directionsUrl ? "grid-cols-2" : "grid-cols-1"} gap-2 pt-1`}>
-                  {cleanPhone && (
-                    <a
-                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
-                      href={`tel:${cleanPhone}`}
-                      onClick={() => trackClick("call_quick")}
-                    >
-                      <Phone className="w-4 h-4" style={{ color: finalAccentHex }} />
-                      <span>Call Us</span>
-                    </a>
-                  )}
-                  {directionsUrl && (
-                    <a
-                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl ${hubTheme.inner} hover:opacity-90 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-all active:scale-[0.98] shadow-md cursor-pointer`}
-                      href={directionsUrl}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      onClick={() => trackClick("directions_quick")}
-                    >
-                      <Navigation className="w-4 h-4 text-cyan-400" />
-                      <span>Directions</span>
-                    </a>
-                  )}
-                </div>
-              )}
             </div>
 
-            {/* 2. Google Review Main Trigger Banner */}
-            <a
-              href={`/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`}
-              className={`relative group cursor-pointer overflow-hidden rounded-2xl ${hubTheme.card} p-4 shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] border block text-left`}
-              onClick={() => trackClick("review_banner")}
-            >
-              <div
-                className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-20 group-hover:opacity-35 transition-all pointer-events-none"
-                style={{ backgroundColor: finalAccentHex }}
-              />
-              <div className="flex items-center justify-between relative z-10">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
-                    <span className={`${sizeScaleClasses.ctaTitle} ${hubTheme.textColor || "text-white"}`}>
-                      Loved your visit?
-                    </span>
-                  </div>
-                  <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"}`}>
-                    {cfg.cta_text || "Tap to write a rapid 5-Star Google Review"}
-                  </span>
-                  <div className="flex items-center gap-1 mt-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} className="w-4 h-4 fill-current" style={{ color: finalAccentHex }} />
-                    ))}
-                    <span className="text-xs ml-1 font-semibold" style={{ color: finalAccentHex }}>5.0 Rating</span>
-                  </div>
-                </div>
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0"
-                  style={{ backgroundColor: finalAccentHex }}
-                >
-                  <Star className="w-6 h-6 fill-black text-black" />
-                </div>
-              </div>
-            </a>
-
-            {/* 3. Connect & Social Channels Grid (Strictly hides any blank client button) */}
+            {/* 2. Connect & Social Channels Grid (Strictly hides any blank client button) */}
             {hasSocialChannels && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
@@ -979,6 +1004,43 @@ export default function ZenTapHubPage({
               </div>
             )}
 
+            {/* 3. Google Review Main Trigger Banner */}
+            <a
+              href={`/r/${business.slug}/review${isPreview ? "?preview=1" : ""}${via ? `${isPreview ? "&" : "?"}via=${via}` : ""}`}
+              className={`relative group cursor-pointer overflow-hidden rounded-2xl ${hubTheme.card} p-4 shadow-xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] border block text-left`}
+              onClick={() => trackClick("review_banner")}
+            >
+              <div
+                className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-20 group-hover:opacity-35 transition-all pointer-events-none"
+                style={{ backgroundColor: finalAccentHex }}
+              />
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
+                    <span className={`${sizeScaleClasses.ctaTitle} ${hubTheme.textColor || "text-white"}`}>
+                      Loved your visit?
+                    </span>
+                  </div>
+                  <span className={`text-xs ${hubTheme.textMuted || "text-zinc-400"}`}>
+                    {cfg.cta_text || "Leave a 5-Star Review on Google"}
+                  </span>
+                  <div className="flex items-center gap-1 mt-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className="w-4 h-4 fill-current" style={{ color: finalAccentHex }} />
+                    ))}
+                    <span className="text-xs ml-1 font-semibold" style={{ color: finalAccentHex }}>5.0 Rating</span>
+                  </div>
+                </div>
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0"
+                  style={{ backgroundColor: finalAccentHex }}
+                >
+                  <Star className="w-6 h-6 fill-black text-black" />
+                </div>
+              </div>
+            </a>
+
             {/* 4. About Us Section (Only shown if client provided text!) */}
             {aboutUsText && (
               <div className={`rounded-2xl ${hubTheme.card} p-4 sm:p-5 flex flex-col gap-2 shadow-lg border`}>
@@ -1045,40 +1107,85 @@ export default function ZenTapHubPage({
               </div>
             )}
 
-            {/* 7. Studio Location View (Only shown if address/mapsUrl/locationImage exists!) */}
+            {/* 7. Office Location View (Google Maps Live Preview) */}
             {(address || mapsUrl || locationImage) && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
-                  <span className={`text-[11px] uppercase tracking-wider ${hubTheme.textMuted || "text-zinc-400"} font-bold`}>
-                    Our Studio Location
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] uppercase tracking-wider ${hubTheme.textMuted || "text-zinc-400"} font-bold`}>
+                      Our Office Location
+                    </span>
+                    {locationImage && (
+                      <div className="inline-flex items-center rounded-lg bg-white/5 p-0.5 border border-white/10 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setLocationViewMode("map")}
+                          className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                            locationViewMode === "map"
+                              ? "bg-white/20 text-white font-bold shadow-xs"
+                              : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
+                          }`}
+                        >
+                          Map
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLocationViewMode("photo")}
+                          className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                            locationViewMode === "photo"
+                              ? "bg-white/20 text-white font-bold shadow-xs"
+                              : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
+                          }`}
+                        >
+                          Photo
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {mapsUrl && (
                     <a
-                      className="text-[11px] hover:underline font-semibold"
+                      className="text-[11px] hover:underline font-semibold flex items-center gap-1"
                       style={{ color: finalAccentHex }}
                       href={mapsUrl}
                       rel="noopener noreferrer"
                       target="_blank"
                       onClick={() => trackClick("location_maps_link")}
                     >
-                      Open in Google Maps
+                      <span>Open in Google Maps</span>
+                      <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>
-                <div
-                  className={`w-full h-44 rounded-2xl shadow-lg relative overflow-hidden ${hubTheme.card} flex items-end p-3.5 border`}
-                  style={{
-                    backgroundImage: `url('${locationImage || "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc"}')`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center"
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
-                  <div className="relative z-10 flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <MapPin className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
-                      <span className="text-xs sm:text-sm font-bold truncate text-white">
-                        {locationTitle || address || "Our Studio Hub"}
+
+                <div className="w-full h-52 sm:h-60 rounded-2xl shadow-xl relative overflow-hidden border border-white/10 bg-zinc-950">
+                  {locationViewMode === "map" ? (
+                    /* Interactive Google Maps Live Preview */
+                    <iframe
+                      title="Google Maps Location Preview"
+                      src={getGoogleMapsEmbedUrl(mapsUrl, address, businessName)}
+                      className="w-full h-full border-0"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  ) : (
+                    /* Storefront / Office Location Photo with edge-to-edge object-cover */
+                    <img
+                      src={locationImage}
+                      alt={locationTitle || address || "Our Office Location"}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+
+                  {/* Gradient Overlay & Frosted Pill Badge */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                  <div className="absolute bottom-3 left-3 z-10 pointer-events-none">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/15 shadow-lg">
+                      <div className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0">
+                        <MapPin className="w-3 h-3 text-cyan-400" />
+                      </div>
+                      <span className="text-xs font-bold text-white tracking-wide">
+                        {locationTitle || address || "Ahmedabad"}
                       </span>
                     </div>
                   </div>

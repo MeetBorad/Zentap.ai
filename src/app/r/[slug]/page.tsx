@@ -84,8 +84,8 @@ export default async function Page({
   const via = rawVia ? rawVia.replace(/[|%#?&\s/]+$/g, "").trim() : undefined;
   const lookupKey = via || cleanCode;
 
-  // 0. Fast Memory Cache lookup (from /t/[code] handover or recent scan)
-  const cached = getCachedTagData(lookupKey);
+  // 0. Fast Memory Cache lookup (from /t/[code] handover or recent scan; bypassed in preview mode)
+  const cached = isPreview ? null : getCachedTagData(lookupKey);
   const db = createAdminClient();
 
   let pageConfig: any = cached?.pageConfig || null;

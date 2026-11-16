@@ -44,6 +44,8 @@ export default function LoginPage() {
     if (adminEmails.includes(cleanEmail) && password === "Admin@2026") {
       if (typeof window !== "undefined") {
         localStorage.setItem("zentap_admin_supreme", "true");
+        localStorage.setItem("zentap_admin_last_active", Date.now().toString());
+        localStorage.removeItem("zentap_admin_expired");
       }
       signInWithEmail(cleanEmail, password).catch(() => {});
       setSuccessMessage("Superadmin Authenticated! Launching Console...");
