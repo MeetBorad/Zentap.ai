@@ -1,5 +1,21 @@
 # ZenTap — Changelog
 
+## [1.54.27] — 2026-11-16
+### Enhanced (Manual Category Input in Add Client & Review Modal Tags/FAQs in Clients Tab)
+- **Manual Category Input When Adding Clients (`ClientsWebpageTab.tsx`)**:
+  - Elevated the `Category` field to the primary position alongside `Business Name` in the Add Client modal.
+  - Implemented as a clean manual text input so admins can type any category directly (e.g., `Customer Satisfaction Hub`, `Cafe`, `Restaurant`) without restrictive presets.
+  - Mirrored prominent Category input in the Edit Client form.
+  - Added dedicated `Category` column to the Clients Directory table.
+- **ST3 Category & Page Entry Clean Display (`PageEditorWebpageTab.tsx`, `adminPlatformStore.ts`)**:
+  - Normalized ST3's category to `Customer Satisfaction Hub` across `adminPlatformStore.ts` and `page_editor_configs`.
+  - Stripped city prefixes (`Ahmedabad • `) from Category column cells and Edit Page Entry modal inputs so categories display cleanly.
+  - Streamlined `Edit Page Entry` modal to allow direct manual typing of the Category.
+- **Google Review Modal Tags & FAQs in Clients Tab (`ClientsWebpageTab.tsx`, `platform/route.ts`, `adminPlatformStore.ts`)**:
+  - Embedded the full "Google Review Modal Tags & FAQs" manager directly inside the Add Client and Edit Client modals.
+  - Added quick `[Tags & FAQs]` button on every client row in the Clients Directory table for 1-click updates.
+  - Synchronized Review Tags (`custom_fields.review_tags`) and FAQs (`custom_fields.faqs`) to all linked `page_editor_configs` in Supabase and local store via two-way cascading.
+
 ## [1.54.26] — 2026-11-16
 ### Fixed (Admin Auto-Logout Inactivity Enforcement & Homepage View Separation)
 - **Homepage View Separation (`src/app/page.tsx`)**:

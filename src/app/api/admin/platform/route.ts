@@ -874,6 +874,22 @@ function sanitizeRowForTable(item: any, table: string) {
                 if (clean.city) cfg.address = clean.city;
                 if (cf.about_us) cfg.about_us = cf.about_us;
                 if (cf.opening_hours) cfg.opening_hours = cf.opening_hours;
+                if (cf.category) {
+                  cfg.category = cf.category;
+                  cfg.subtitle = cf.category;
+                }
+                if (cf.review_tags || cf.tags) {
+                  const rTags = cf.review_tags || cf.tags;
+                  cfg.review_tags = rTags;
+                  cfg.tags = Array.isArray(rTags)
+                    ? rTags
+                    : String(rTags).split(",").map((s) => s.trim()).filter(Boolean);
+                }
+                if (cf.faqs) {
+                  try {
+                    cfg.faqs = typeof cf.faqs === "string" ? JSON.parse(cf.faqs) : cf.faqs;
+                  } catch {}
+                }
 
                 await (supabase as any)
                   .from("page_editor_configs")

@@ -90,6 +90,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [newServices, setNewServices] = useState("");
   const [newKeywords, setNewKeywords] = useState("");
   const [newCategory, setNewCategory] = useState("");
+  const [newReviewTags, setNewReviewTags] = useState("");
+  const [newFaqs, setNewFaqs] = useState<{ question: string; answer: string }[]>([]);
   const [newAutoFilling, setNewAutoFilling] = useState(false);
   const [newCustomFields, setNewCustomFields] = useState<Record<string, string>>({});
 
@@ -116,8 +118,16 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
   const [editServices, setEditServices] = useState("");
   const [editKeywords, setEditKeywords] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editReviewTags, setEditReviewTags] = useState("");
+  const [editFaqs, setEditFaqs] = useState<{ question: string; answer: string }[]>([]);
   const [editAutoFilling, setEditAutoFilling] = useState(false);
   const [editCustomFields, setEditCustomFields] = useState<Record<string, string>>({});
+
+  // Standalone Review Tags & FAQs quick modal
+  const [reviewModalClient, setReviewModalClient] = useState<ClientRecord | null>(null);
+  const [quickReviewTags, setQuickReviewTags] = useState("");
+  const [quickFaqs, setQuickFaqs] = useState<{ question: string; answer: string }[]>([]);
+  const [isSavingQuickReview, setIsSavingQuickReview] = useState(false);
 
   // Soft delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<ClientRecord | null>(null);
@@ -218,7 +228,9 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditUpiId(client.upi_id || cf.upi_id || cfg.upi_id || "");
     setEditCity(client.city || cfg.address || "Ahmedabad");
 
-    setEditCategory((client as any).category || cf.category || cfg.category || cfg.subtitle || "");
+    const rawCat = (client as any).category || cf.category || cfg.category || cfg.subtitle || "";
+    const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
+    setEditCategory(cleanCat);
     setEditArea(cf.area || (client as any).area || "");
     const rawServices = cf.services ?? (client as any).services;
     setEditServices(
@@ -237,8 +249,72 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
         : ""
     );
 
+    const rawR = cf.review_tags || cf.tags || cfg.review_tags || cfg.tags;
+    setEditReviewTags(Array.isArray(rawR) ? rawR.join(", ") : (typeof rawR === "string" ? rawR : ""));
+
+    const rawF = cf.faqs || cfg.faqs;
+    let parsedFaqs: { question: string; answer: string }[] = [];
+    if (Array.isArray(rawF)) {
+      parsedFaqs = rawF;
+    } else if (typeof rawF === "string") {
+      try {
+        parsedFaqs = JSON.parse(rawF);
+      } catch {}
+    }
+    setEditFaqs(parsedFaqs);
+
     setEditCustomFields(client.custom_fields || {});
     setIsEditModalOpen(true);
+  };
+
+  // Open Quick Modal for Google Review Modal Tags & FAQs
+  const openReviewTagsModal = (client: ClientRecord) => {
+    setReviewModalClient(client);
+    const cf = client.custom_fields || {};
+    const matchingPage = getAllPageEditorConfigs().find(
+      (p) => (p.business_id || "").toLowerCase() === (client.business_id || "").toLowerCase()
+    );
+    const cfg = matchingPage?.config_data || {};
+
+    const rawR = cf.review_tags || cf.tags || cfg.review_tags || cfg.tags;
+    setQuickReviewTags(Array.isArray(rawR) ? rawR.join(", ") : (typeof rawR === "string" ? rawR : ""));
+
+    const rawF = cf.faqs || cfg.faqs;
+    let parsedFaqs: { question: string; answer: string }[] = [];
+    if (Array.isArray(rawF)) {
+      parsedFaqs = rawF;
+    } else if (typeof rawF === "string") {
+      try {
+        parsedFaqs = JSON.parse(rawF);
+      } catch {}
+    }
+    setQuickFaqs(parsedFaqs);
+  };
+
+  const handleSaveQuickReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewModalClient) return;
+
+    setIsSavingQuickReview(true);
+    const updatedCustomFields = {
+      ...(reviewModalClient.custom_fields || {}),
+      review_tags: quickReviewTags.trim(),
+      tags: quickReviewTags.trim(),
+      faqs: JSON.stringify(quickFaqs),
+    };
+
+    const res = await updateClientServer(reviewModalClient.business_id, {
+      custom_fields: updatedCustomFields,
+    });
+    setIsSavingQuickReview(false);
+
+    if (res.success) {
+      onShowToast(`✓ Google Review Modal Tags & FAQs updated for "${reviewModalClient.business_name}"!`);
+      setReviewModalClient(null);
+      await refreshData();
+    } else {
+      onShowToast(res.error || "Failed to update review tags and FAQs");
+    }
   };
 
   const handleAutoFillNew = async () => {
@@ -321,10 +397,13 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: editWebsite.trim(),
       website: editWebsite.trim(),
       upi_id: editUpiId.trim(),
-      category: editCategory.trim(),
+      category: editCategory.trim() || "Customer Satisfaction Hub",
       area: editArea.trim(),
       services: editServices.trim(),
       keywords: editKeywords.trim(),
+      review_tags: editReviewTags.trim(),
+      tags: editReviewTags.trim(),
+      faqs: JSON.stringify(editFaqs),
     };
 
     const res = await updateClientServer(editTarget.business_id, {
@@ -377,10 +456,13 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: newWebsite.trim(),
       website: newWebsite.trim(),
       upi_id: newUpiId.trim(),
-      category: newCategory.trim(),
+      category: newCategory.trim() || "Customer Satisfaction Hub",
       area: newArea.trim(),
       services: newServices.trim(),
       keywords: newKeywords.trim(),
+      review_tags: newReviewTags.trim(),
+      tags: newReviewTags.trim(),
+      faqs: JSON.stringify(newFaqs),
     };
 
     const res = await addClientServer({
@@ -427,6 +509,8 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       setNewServices("");
       setNewKeywords("");
       setNewCategory("");
+      setNewReviewTags("");
+      setNewFaqs([]);
       setNewCustomFields({});
       await refreshData();
     } else {
@@ -585,6 +669,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                 <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-700 font-bold tracking-wider uppercase text-[10px]">
                   <th className="py-3.5 px-4 whitespace-nowrap">Business ID</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Business Name</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Category</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">City / Location</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Owner Name</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">Owner Phone</th>
@@ -613,7 +698,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
               <tbody className="divide-y divide-zinc-100">
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan={19 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
+                    <td colSpan={20 + activeCustomFields.length} className="py-12 text-center text-zinc-500 font-medium">
                       No clients found matching &ldquo;{searchQuery}&rdquo;.
                     </td>
                   </tr>
@@ -646,6 +731,20 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                             <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                             <span>{client.business_name}</span>
                           </div>
+                        </td>
+
+                        {/* 2b. Category */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {(() => {
+                            const rawCat = (client as any).category || cf.category || cfg.category || "Customer Satisfaction Hub";
+                            const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
+                            return (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200/80 text-[11px] font-semibold">
+                                <Tag className="w-3 h-3 text-purple-600 shrink-0" />
+                                <span className="truncate max-w-[140px]">{cleanCat}</span>
+                              </span>
+                            );
+                          })()}
                         </td>
 
                         {/* 3. City / Location */}
@@ -955,6 +1054,14 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                       <td className="py-3 px-4 text-right whitespace-nowrap sticky right-0 bg-white/95 backdrop-blur-xs shadow-xs">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => openReviewTagsModal(client)}
+                            title="Google Review Modal Tags & FAQs"
+                            className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 font-bold text-[11px] transition-all cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Tags &amp; FAQs</span>
+                          </button>
+                          <button
                             onClick={() => openEditModal(client)}
                             title="Edit Whole Entry"
                             className="tactile-btn p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all cursor-pointer"
@@ -1102,16 +1209,30 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-800 mb-1">Business Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Royal Chai & Cafe"
-                  value={newBizName}
-                  onChange={(e) => setNewBizName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 font-semibold focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">Business Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Royal Chai & Cafe"
+                    value={newBizName}
+                    onChange={(e) => setNewBizName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 font-semibold focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Category <span className="text-purple-600 font-normal">(Manually type category)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Customer Satisfaction Hub / Cafe"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-50/40 border border-purple-200 text-xs text-zinc-900 font-semibold placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1226,27 +1347,15 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">Category / Subtitle</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Fine Dining Restaurant"
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Bodakdev / SG Highway"
-                      value={newArea}
-                      onChange={(e) => setNewArea(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Bodakdev / SG Highway"
+                    value={newArea}
+                    onChange={(e) => setNewArea(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
@@ -1267,6 +1376,98 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     onChange={(e) => setNewKeywords(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   />
+                </div>
+              </div>
+
+              {/* Google Review Modal Tags & FAQs */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/50 via-white to-purple-50/30 border border-purple-200/80 space-y-3.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-bold text-purple-950">Google Review Modal Tags &amp; FAQs</span>
+                  </div>
+                  <span className="text-[10px] text-purple-700 font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md border border-purple-200/60">
+                    Live Standee &amp; Review Modal Sync
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                    &quot;What Stood Out?&quot; Tag Chips (Comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Cleanliness, Nice Staff, Fast Service, Great Ambience..."
+                    value={newReviewTags}
+                    onChange={(e) => setNewReviewTags(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600 font-medium"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Customers tapping review stars can click these chips to instantly insert praise into their review draft.
+                  </p>
+                </div>
+
+                {/* FAQs Manager */}
+                <div className="space-y-2 pt-2 border-t border-purple-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-zinc-800">
+                      Frequently Asked Questions ({newFaqs.length})
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewFaqs((prev) => [...prev, { question: "", answer: "" }])}
+                      className="tactile-btn text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer bg-purple-100/70 hover:bg-purple-200/70 px-2.5 py-1 rounded-lg border border-purple-200 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-purple-700" />
+                      <span>Add Question</span>
+                    </button>
+                  </div>
+
+                  {newFaqs.length === 0 ? (
+                    <p className="text-[11px] text-zinc-400 italic py-1">
+                      No FAQs added yet. Click &quot;Add Question&quot; to provide helpful customer answers on the standee page.
+                    </p>
+                  ) : (
+                    newFaqs.map((faq, fIdx) => (
+                      <div key={fIdx} className="p-3 rounded-xl bg-white border border-purple-100 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-purple-800 uppercase bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60">
+                            Question {fIdx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setNewFaqs((prev) => prev.filter((_, i) => i !== fIdx))}
+                            className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 cursor-pointer transition-colors"
+                            title="Delete Question"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Question (e.g. Do you offer parking?)"
+                          value={faq.question}
+                          onChange={(e) => {
+                            const updated = [...newFaqs];
+                            updated[fIdx].question = e.target.value;
+                            setNewFaqs(updated);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:bg-white focus:ring-1 focus:ring-purple-600"
+                        />
+                        <textarea
+                          rows={2}
+                          placeholder="Answer text..."
+                          value={faq.answer}
+                          onChange={(e) => {
+                            const updated = [...newFaqs];
+                            updated[fIdx].answer = e.target.value;
+                            setNewFaqs(updated);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:bg-white focus:ring-1 focus:ring-purple-600"
+                        />
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1436,6 +1637,30 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     required
                     value={editBizName}
                     onChange={(e) => setEditBizName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">
+                    Category <span className="text-purple-600 font-normal">(Manually type category)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Customer Satisfaction Hub"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-50/40 border border-purple-200 text-xs text-zinc-900 font-semibold placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-800 mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white"
                   />
                 </div>
@@ -1548,27 +1773,15 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono">Owner values override all</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">Category / Subtitle</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Fine Dining Restaurant"
-                      value={editCategory}
-                      onChange={(e) => setEditCategory(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Bodakdev / SG Highway"
-                      value={editArea}
-                      onChange={(e) => setEditArea(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Area / Locality</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Bodakdev / SG Highway"
+                    value={editArea}
+                    onChange={(e) => setEditArea(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-700 mb-1">Services / Products Offered</label>
@@ -1589,6 +1802,98 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                     onChange={(e) => setEditKeywords(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
                   />
+                </div>
+              </div>
+
+              {/* Google Review Modal Tags & FAQs */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/50 via-white to-purple-50/30 border border-purple-200/80 space-y-3.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-bold text-purple-950">Google Review Modal Tags &amp; FAQs</span>
+                  </div>
+                  <span className="text-[10px] text-purple-700 font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md border border-purple-200/60">
+                    Live Standee &amp; Review Modal Sync
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                    &quot;What Stood Out?&quot; Tag Chips (Comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Cleanliness, Nice Staff, Fast Service, Great Ambience..."
+                    value={editReviewTags}
+                    onChange={(e) => setEditReviewTags(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600 font-medium"
+                  />
+                  <p className="text-[10px] text-zinc-400 mt-1">
+                    Customers tapping review stars can click these chips to instantly insert praise into their review draft.
+                  </p>
+                </div>
+
+                {/* FAQs Manager */}
+                <div className="space-y-2 pt-2 border-t border-purple-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-zinc-800">
+                      Frequently Asked Questions ({editFaqs.length})
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditFaqs((prev) => [...prev, { question: "", answer: "" }])}
+                      className="tactile-btn text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer bg-purple-100/70 hover:bg-purple-200/70 px-2.5 py-1 rounded-lg border border-purple-200 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-purple-700" />
+                      <span>Add Question</span>
+                    </button>
+                  </div>
+
+                  {editFaqs.length === 0 ? (
+                    <p className="text-[11px] text-zinc-400 italic py-1">
+                      No FAQs added yet. Click &quot;Add Question&quot; to provide helpful customer answers on the standee page.
+                    </p>
+                  ) : (
+                    editFaqs.map((faq, fIdx) => (
+                      <div key={fIdx} className="p-3 rounded-xl bg-white border border-purple-100 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-purple-800 uppercase bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60">
+                            Question {fIdx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setEditFaqs((prev) => prev.filter((_, i) => i !== fIdx))}
+                            className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 cursor-pointer transition-colors"
+                            title="Delete Question"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Question (e.g. Do you offer parking?)"
+                          value={faq.question}
+                          onChange={(e) => {
+                            const updated = [...editFaqs];
+                            updated[fIdx].question = e.target.value;
+                            setEditFaqs(updated);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:bg-white focus:ring-1 focus:ring-purple-600"
+                        />
+                        <textarea
+                          rows={2}
+                          placeholder="Answer text..."
+                          value={faq.answer}
+                          onChange={(e) => {
+                            const updated = [...editFaqs];
+                            updated[fIdx].answer = e.target.value;
+                            setEditFaqs(updated);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:bg-white focus:ring-1 focus:ring-purple-600"
+                        />
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1702,6 +2007,136 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   className="tactile-btn px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978]"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: GOOGLE REVIEW MODAL TAGS & FAQS QUICK MANAGER                     */}
+      {/* ========================================================================= */}
+      {reviewModalClient && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-zinc-200 space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-zinc-900">
+                    Google Review Modal Tags &amp; FAQs
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    {reviewModalClient.business_name} ({reviewModalClient.business_id})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReviewModalClient(null)}
+                className="p-1 rounded-full hover:bg-zinc-100 text-zinc-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickReview} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">
+                  &quot;What Stood Out?&quot; Tag Chips (Comma-separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Cleanliness, Nice Staff, Fast Service, Great Ambience..."
+                  value={quickReviewTags}
+                  onChange={(e) => setQuickReviewTags(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white font-medium"
+                />
+                <p className="text-[11px] text-zinc-400 mt-1">
+                  These chips appear in the customer review assistant modal. When tapped, they are automatically inserted into AI drafts.
+                </p>
+              </div>
+
+              {/* FAQs Manager */}
+              <div className="space-y-2.5 pt-2 border-t border-zinc-100">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-zinc-800">
+                    Frequently Asked Questions ({quickFaqs.length})
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFaqs((prev) => [...prev, { question: "", answer: "" }])}
+                    className="tactile-btn text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-purple-700" />
+                    <span>Add Question</span>
+                  </button>
+                </div>
+
+                {quickFaqs.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200/60 text-center text-xs text-zinc-400">
+                    No FAQs added yet for this business. Click &quot;Add Question&quot; above to add one.
+                  </div>
+                ) : (
+                  quickFaqs.map((faq, fIdx) => (
+                    <div key={fIdx} className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2 relative">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-purple-700 uppercase bg-purple-100 px-2 py-0.5 rounded">
+                          Question {fIdx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickFaqs((prev) => prev.filter((_, i) => i !== fIdx))}
+                          className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 cursor-pointer"
+                          title="Delete Question"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Question (e.g. Do you offer parking?)"
+                        value={faq.question}
+                        onChange={(e) => {
+                          const updated = [...quickFaqs];
+                          updated[fIdx].question = e.target.value;
+                          setQuickFaqs(updated);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-200 text-xs font-semibold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600"
+                      />
+                      <textarea
+                        rows={2}
+                        placeholder="Answer text..."
+                        value={faq.answer}
+                        onChange={(e) => {
+                          const updated = [...quickFaqs];
+                          updated[fIdx].answer = e.target.value;
+                          setQuickFaqs(updated);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600"
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalClient(null)}
+                  disabled={isSavingQuickReview}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-100 text-xs font-bold text-zinc-700 hover:bg-zinc-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingQuickReview}
+                  className="tactile-btn px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold cursor-pointer shadow-sm transition-transform active:scale-[0.978] disabled:opacity-50"
+                >
+                  {isSavingQuickReview ? "Saving & Syncing..." : "Save & Sync Live"}
                 </button>
               </div>
             </form>

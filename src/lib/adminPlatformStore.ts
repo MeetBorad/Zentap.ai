@@ -230,7 +230,7 @@ const INITIAL_CLIENTS: ClientRecord[] = [
       phone: "+91 92745 60880",
       website: "https://www.zentapdigitalsolutions.com",
       website_url: "https://www.zentapdigitalsolutions.com",
-      category: "Digital Growth & Smart NFC Systems"
+      category: "Customer Satisfaction Hub"
     },
     created_at: "2026-11-02T13:20:00Z",
   },
@@ -487,7 +487,7 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
       theme: "obsidian",
       accent_color: "#38bdf8",
       title: "Zentap Digital Solutions",
-      subtitle: "Ahmedabad • Customer Satisfaction Hub",
+      subtitle: "Customer Satisfaction Hub",
       category: "Customer Satisfaction Hub",
       cover_image: "/covers/zentap_cover.png",
       cover_url: "/covers/zentap_cover.png",
@@ -1787,6 +1787,23 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
       if (updatedClient.city) cfg.address = updatedClient.city;
       if (updatedClient.custom_fields?.about_us) cfg.about_us = updatedClient.custom_fields.about_us;
       if (updatedClient.custom_fields?.opening_hours) cfg.opening_hours = updatedClient.custom_fields.opening_hours;
+      if (updatedClient.custom_fields?.category) {
+        cfg.category = updatedClient.custom_fields.category;
+        cfg.subtitle = updatedClient.custom_fields.category;
+      }
+      if (updatedClient.custom_fields?.review_tags || updatedClient.custom_fields?.tags) {
+        const rt = updatedClient.custom_fields?.review_tags || updatedClient.custom_fields?.tags;
+        cfg.review_tags = rt;
+        cfg.tags = typeof rt === "string" ? rt.split(",").map((s: string) => s.trim()).filter(Boolean) : rt;
+      }
+      if (updatedClient.custom_fields?.faqs) {
+        const fq = updatedClient.custom_fields.faqs;
+        try {
+          cfg.faqs = typeof fq === "string" ? JSON.parse(fq) : fq;
+        } catch {
+          // ignore parse errors
+        }
+      }
       pe.config_data = cfg;
       pUpdated = true;
     }

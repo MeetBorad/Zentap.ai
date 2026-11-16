@@ -571,7 +571,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     // Prioritize latest Client Profile values so Design Review Page is always in sync with Clients Table:
     setEditTitle(client?.business_name || cfg.title || item.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
-    setEditSubtitle(cf.category || cf.subtitle || (client?.city ? `${client.city} • Customer Satisfaction Hub` : (cfg.subtitle || (isZenTap ? "Ahmedabad • Welcome to our official digital hub" : "Customer Satisfaction Hub"))));
+    const resolvedCat = cf.category || cf.subtitle || cfg.category || cfg.subtitle || "Customer Satisfaction Hub";
+    const cleanSub = resolvedCat.includes("•") ? resolvedCat.split("•").slice(1).join("•").trim() || resolvedCat : resolvedCat;
+    setEditSubtitle(cleanSub);
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
     setEditLogoUrl(cfg.logo_url || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png"));
     setEditWallpaperUrl(cfg.wallpaper_url || "");
@@ -592,13 +594,14 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditMapsLink(client?.directions_link || cf.directions_link || cf.google_maps_link || cfg.maps_link || cfg.directions_link || "");
     setEditAboutUs(cf.about_us || cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
     setEditOpeningHours(cf.opening_hours || cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
-    setEditFaqs(Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
+    const clientFaqs = Array.isArray(cf.faqs) ? cf.faqs : (typeof cf.faqs === "string" ? (() => { try { return JSON.parse(cf.faqs); } catch { return null; } })() : null);
+    setEditFaqs(Array.isArray(clientFaqs) && clientFaqs.length > 0 ? clientFaqs : (Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
       { question: "Do you offer parking?", answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises." },
       { question: "What payment modes are accepted?", answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash." },
-    ] : []));
+    ] : [])));
     setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
     setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : (client?.city || "")));
-    const rawReviewTags = cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags;
+    const rawReviewTags = cf.review_tags || cf.tags || (cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags);
     let initialTags = "";
     if (Array.isArray(rawReviewTags) && rawReviewTags.length > 0) {
       const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
@@ -889,7 +892,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeTagId(item.tag_id);
     setEditWholeBusinessId(item.business_id);
     setEditWholeBusinessName(item.business_name);
-    setEditWholeCategory(item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub");
+    const rawCat = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+    const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
+    setEditWholeCategory(cleanCat);
     setCategoryInputText("");
     setEditWholeLinkUrl(item.link_url);
     const isAlreadyDesigned = item.setup_status === "completed" || Boolean(item.config_data && (item.config_data.title || item.config_data.theme));
@@ -1229,7 +1234,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         const isCompleted = item.setup_status === "completed";
                         const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                         const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                        const currentCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                        const rawCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                        const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                         const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
                         return (
@@ -1435,7 +1441,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     const isCompleted = item.setup_status === "completed";
                     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                     const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                    const currentCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                    const rawCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                    const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                     const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
                     return (
@@ -1759,105 +1766,38 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-zinc-800">
-                    Category / Categories
-                  </label>
-                  {currentWholeCategories.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setEditWholeCategory("")}
-                      className="text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
+                <label className="block text-xs font-bold text-zinc-800 mb-1">
+                  Category <span className="text-purple-600 font-normal">(Manually type category)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Customer Satisfaction Hub"
+                  value={editWholeCategory}
+                  onChange={(e) => setEditWholeCategory(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-purple-50/40 border border-purple-200 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white mb-2"
+                />
 
-                {/* Active Category Badges (Removable with ×) */}
-                <div className="min-h-[42px] p-2 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-wrap items-center gap-1.5 mb-2">
-                  {currentWholeCategories.length === 0 ? (
-                    <span className="text-xs text-zinc-400 italic px-1">
-                      No categories selected. Type below to add or click a preset chip.
-                    </span>
-                  ) : (
-                    currentWholeCategories.map((cat) => (
-                      <span
-                        key={cat}
-                        className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold shadow-2xs group animate-in zoom-in-95 duration-150"
-                      >
-                        <Tag className="w-3 h-3 text-purple-600 shrink-0" />
-                        <span>{cat}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveWholeCategory(cat)}
-                          title={`Remove ${cat}`}
-                          className="w-4 h-4 rounded-md hover:bg-purple-200 text-purple-700 flex items-center justify-center cursor-pointer transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))
-                  )}
-                </div>
-
-                {/* Add Custom Category Input with + Add button */}
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="Type category (e.g. Service, Cafe, Salon) and press Enter..."
-                    value={categoryInputText}
-                    onChange={(e) => setCategoryInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === ",") {
-                        e.preventDefault();
-                        handleAddWholeCategory(categoryInputText);
-                      }
-                    }}
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 shadow-2xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddWholeCategory(categoryInputText)}
-                    disabled={!categoryInputText.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-xs font-bold transition-colors cursor-pointer shadow-2xs flex items-center gap-1 shrink-0"
-                  >
-                    <span>+ Add</span>
-                  </button>
-                </div>
-
-                {/* Preset Categories (Click to Add / Remove toggle) */}
+                {/* Preset Categories (Click to insert or replace) */}
                 <div>
                   <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block mb-1.5">
-                    Click preset to add or remove:
+                    Or select a preset category:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_CATEGORIES.map((preset) => {
-                      const isSelected = currentWholeCategories.some(
-                        (c) => c.toLowerCase() === preset.toLowerCase()
-                      );
+                      const isSelected = editWholeCategory.toLowerCase().trim() === preset.toLowerCase().trim();
                       return (
                         <button
                           key={preset}
                           type="button"
-                          onClick={() => handleToggleWholeCategory(preset)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${isSelected
+                          onClick={() => setEditWholeCategory(preset)}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
+                            isSelected
                               ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
                               : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
-                            }`}
+                          }`}
                         >
-                          {isSelected ? (
-                            <>
-                              <Check className="w-3 h-3 text-white" />
-                              <span>{preset}</span>
-                              <X className="w-3 h-3 text-white/70 hover:text-white ml-0.5" />
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-zinc-400 font-bold">+</span>
-                              <span>{preset}</span>
-                            </>
-                          )}
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                          <span>{preset}</span>
                         </button>
                       );
                     })}
