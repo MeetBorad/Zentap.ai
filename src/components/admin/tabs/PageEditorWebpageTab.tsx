@@ -51,6 +51,7 @@ import {
   PageEditorConfigItemRecord,
   DeletedPageEditorConfigRecord,
   GoogleReviewLinkItemRecord,
+  ClientRecord,
   getAllPageEditorConfigs,
   getAllDeletedPageEditorConfigs,
   getAllGoogleReviewLinks,
@@ -102,6 +103,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const [editorConfigs, setEditorConfigs] = useState<PageEditorConfigItemRecord[]>([]);
   const [deletedConfigs, setDeletedConfigs] = useState<DeletedPageEditorConfigRecord[]>([]);
   const [googleLinks, setGoogleLinks] = useState<GoogleReviewLinkItemRecord[]>([]);
+  const [clientsList, setClientsList] = useState<ClientRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "deleted">("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -349,6 +351,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     if (client.city) {
       setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
       setEditAddress(client.city);
+      setEditLocationTitle(client.city);
     }
     if (client.owner_name) {
       setEditOwnerName(client.owner_name);
@@ -534,12 +537,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditorConfigs(getAllPageEditorConfigs());
     setDeletedConfigs(getAllDeletedPageEditorConfigs());
     setGoogleLinks(getAllGoogleReviewLinks());
+    setClientsList(getAllClients());
     const res = await serverFetchPlatformData();
     if (res.success && res.data) {
       setEditorConfigs(res.data.pageEditorConfigs || []);
       setDeletedConfigs(res.data.deletedPageEditorConfigs || []);
       if (res.data.googleLinks) {
         setGoogleLinks(res.data.googleLinks);
+      }
+      if (res.data.clients) {
+        setClientsList(res.data.clients);
       }
     }
   };
@@ -552,10 +559,42 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
 
     const allC = getAllClients();
-    const client = allC.find((c) =>
-      c.business_id.toLowerCase() === item.business_id.toLowerCase() ||
-      (item.tag_id && (c.id === item.tag_id || c.business_id === item.tag_id))
-    );
+    const cleanBId = (item.business_id || "").toLowerCase().trim();
+    const cleanTagId = (item.tag_id || "").toLowerCase().trim();
+    const cleanBName = (item.business_name || "").toLowerCase().trim();
+
+    // 1. Comprehensive lookup matching by business_id, id, tag_id, or business_name
+    let client = allC.find((c) => {
+      const cBid = (c.business_id || "").toLowerCase().trim();
+      const cId = (c.id || "").toLowerCase().trim();
+      const cName = (c.business_name || "").toLowerCase().trim();
+      return (
+        (cleanBId && (cBid === cleanBId || cId === cleanBId)) ||
+        (cleanTagId && (cBid === cleanTagId || cId === cleanTagId)) ||
+        (cleanBName && cName === cleanBName)
+      );
+    });
+
+    // 2. If not found, check qr_nfc_tags
+    if (!client && cleanTagId) {
+      const allTags = getAllQrNfcTags();
+      const matchingTag = allTags.find((t) => t.tag_id.toLowerCase().trim() === cleanTagId);
+      if (matchingTag?.business_id) {
+        const mBid = matchingTag.business_id.toLowerCase().trim();
+        client = allC.find((c) => (c.business_id || "").toLowerCase().trim() === mBid || (c.id || "").toLowerCase().trim() === mBid);
+      }
+    }
+
+    // 3. If not found, check google_review_links
+    if (!client && cleanTagId) {
+      const allG = getAllGoogleReviewLinks();
+      const matchingG = allG.find((g) => g.tag_id.toLowerCase().trim() === cleanTagId);
+      if (matchingG?.business_id) {
+        const mBid = matchingG.business_id.toLowerCase().trim();
+        client = allC.find((c) => (c.business_id || "").toLowerCase().trim() === mBid || (c.id || "").toLowerCase().trim() === mBid);
+      }
+    }
+
     const cf = client?.custom_fields || {};
 
     const resolvedTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
@@ -571,15 +610,15 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     // Prioritize latest Client Profile values so Design Review Page is always in sync with Clients Table:
     setEditTitle(client?.business_name || cfg.title || item.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
-    const resolvedCat = cf.category || cf.subtitle || cfg.category || cfg.subtitle || "Customer Satisfaction Hub";
-    const cleanSub = resolvedCat.includes("•") ? resolvedCat.split("•").slice(1).join("•").trim() || resolvedCat : resolvedCat;
+    const rawCategory = (client as any)?.category || cf.category || cf.subtitle || cfg.category || cfg.subtitle || "Customer Satisfaction Hub";
+    const cleanSub = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
     setEditSubtitle(cleanSub);
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
     setEditLogoUrl(cfg.logo_url || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuC1v0R5J-iLk5f40ycfMMud4JnJoswjm15FbobEOnF982t6u0ffqZ5svfbrN6qmKCgW6F-ejOC4Wb7QfcaQxHkJ1zNt1_wwvtSXB_tS_LnuUT3Ix44J8qUCCdD5R0FV5uVKI6skyKM5QrdeTcFxjYpSEt1QvFc280v1TA_DIT0JIOkcNc80JTWv6k4ina32ylCuUkv281QHYkmRhBaS2AuAkImi5kyMIeFwMO0zhd8316MT0gk6t2Q50A" : "/logo.png"));
     setEditWallpaperUrl(cfg.wallpaper_url || "");
     setEditCtaText(cfg.cta_text || (isZenTap ? "Loved your visit? Tap to write a rapid 5-Star Google Review" : "Leave a 5-Star Review on Google"));
     setEditGoogleLink(resolvedGoogleLink || (isZenTap ? "https://www.google.com/maps/place//@23.0393793,72.6446507,17z" : ""));
-    setEditPhone(client?.contact_phone || client?.owner_phone || cfg.contact_phone || cfg.phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
+    setEditPhone(client?.contact_phone || (cf as any)?.contact_phone || (cf as any)?.phone || client?.owner_phone || cfg.contact_phone || cfg.phone || (isZenTap ? "+91 92745 60880" : "+91 98250 12345"));
     setEditOwnerName(client?.owner_name || cfg.owner_name || "");
     setEditOwnerPhone(client?.owner_phone || cfg.owner_phone || "");
     setEditGoogleBusinessPage(client?.google_business_page || cf.google_business_page || cf.google_business || cfg.google_business_page || "");
@@ -590,18 +629,19 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditFacebook(client?.facebook_link || cfg.facebook || (isZenTap ? "https://facebook.com" : ""));
     setEditWebsite(client?.website_url || client?.website || cf.website_url || cf.website || cfg.website || (isZenTap ? "https://zentapdigitalsolutions.com" : ""));
     setEditEmail(client?.owner_email || cfg.email || (isZenTap ? "contact@zentapdigitalsolutions.com" : ""));
-    setEditAddress(client?.city || cfg.address || (isZenTap ? "Ahmedabad, Gujarat, India" : ""));
+    const resolvedCity = client?.city || cfg.address || cfg.location_title || (isZenTap ? "Ahmedabad, Gujarat, India" : "");
+    setEditAddress(resolvedCity);
+    setEditLocationTitle(resolvedCity);
     setEditMapsLink(client?.directions_link || cf.directions_link || cf.google_maps_link || cfg.maps_link || cfg.directions_link || "");
     setEditAboutUs(cf.about_us || cfg.about_us || (isZenTap ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : ""));
     setEditOpeningHours(cf.opening_hours || cfg.opening_hours || (isZenTap ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : ""));
-    const clientFaqs = Array.isArray(cf.faqs) ? cf.faqs : (typeof cf.faqs === "string" ? (() => { try { return JSON.parse(cf.faqs); } catch { return null; } })() : null);
+    const clientFaqs = Array.isArray((client as any)?.faqs) ? (client as any).faqs : (Array.isArray(cf.faqs) ? cf.faqs : (typeof cf.faqs === "string" ? (() => { try { return JSON.parse(cf.faqs); } catch { return null; } })() : null));
     setEditFaqs(Array.isArray(clientFaqs) && clientFaqs.length > 0 ? clientFaqs : (Array.isArray(cfg.faqs) && cfg.faqs.length > 0 ? cfg.faqs : (isZenTap ? [
       { question: "Do you offer parking?", answer: "Yes, dedicated on-site parking is available for visitors, with seamless accessibility directly in front of our premises." },
       { question: "What payment modes are accepted?", answer: "We support all major payment types including UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay credit & debit cards, net banking, and cash." },
     ] : [])));
     setEditLocationImage(cfg.location_image || (isZenTap ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : ""));
-    setEditLocationTitle(cfg.location_title || (isZenTap ? "Ahmedabad Central Hub" : (client?.city || "")));
-    const rawReviewTags = cf.review_tags || cf.tags || (cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags);
+    const rawReviewTags = (client as any)?.review_tags || cf.review_tags || cf.tags || (cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags);
     let initialTags = "";
     if (Array.isArray(rawReviewTags) && rawReviewTags.length > 0) {
       const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
@@ -652,7 +692,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       opening_hours: editOpeningHours.trim(),
       faqs: editFaqs,
       location_image: editLocationImage.trim(),
-      location_title: editLocationTitle.trim(),
+      location_title: editAddress.trim(),
       tags: editTags
         ? editTags.split(",").map((s) => s.trim()).filter(Boolean)
         : [],
@@ -720,12 +760,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           website: editWebsite.trim() || undefined,
           upi_id: editUpiId.trim() || undefined,
           city: editAddress.trim() || undefined,
+          review_tags: editTags.trim() || undefined,
+          faqs: editFaqs,
           custom_fields: {
             ...(existingClient?.custom_fields || {}),
             category: editSubtitle.trim(),
             subtitle: editSubtitle.trim(),
             about_us: editAboutUs.trim(),
             opening_hours: editOpeningHours.trim(),
+            review_tags: editTags.trim(),
+            faqs: JSON.stringify(editFaqs),
           },
         }).catch((e) => console.warn("Clients table sync notice:", e))
       );
@@ -891,8 +935,18 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     setEditWholeTarget(item);
     setEditWholeTagId(item.tag_id);
     setEditWholeBusinessId(item.business_id);
-    setEditWholeBusinessName(item.business_name);
-    const rawCat = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+
+    const allC = getAllClients();
+    const cleanBId = (item.business_id || "").toLowerCase().trim();
+    const cleanTagId = (item.tag_id || "").toLowerCase().trim();
+    const client = allC.find((c) => {
+      const cBid = (c.business_id || "").toLowerCase().trim();
+      const cId = (c.id || "").toLowerCase().trim();
+      return (cleanBId && (cBid === cleanBId || cId === cleanBId)) || (cleanTagId && (cBid === cleanTagId || cId === cleanTagId));
+    });
+
+    setEditWholeBusinessName(client?.business_name || item.business_name);
+    const rawCat = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
     const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
     setEditWholeCategory(cleanCat);
     setCategoryInputText("");
@@ -951,6 +1005,18 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           onConflict: "tag_id",
         }),
       }).catch(() => { });
+
+      // Keep clients table in sync
+      if (editWholeBusinessId.trim()) {
+        await updateClientServer(editWholeBusinessId.trim(), {
+          business_name: editWholeBusinessName.trim(),
+          category: editWholeCategory.trim(),
+          custom_fields: {
+            category: editWholeCategory.trim(),
+            subtitle: editWholeCategory.trim(),
+          },
+        }).catch((e) => console.warn("Clients sync notice:", e));
+      }
     } catch (err) {
       console.warn("Failed to persist whole entry edits to server", err);
     }
@@ -1234,7 +1300,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         const isCompleted = item.setup_status === "completed";
                         const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                         const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                        const rawCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                        
+                        const cleanBId = (item.business_id || "").toLowerCase().trim();
+                        const cleanTagId = (item.tag_id || "").toLowerCase().trim();
+                        const client = clientsList.find((c) => {
+                          const cBid = (c.business_id || "").toLowerCase().trim();
+                          const cId = (c.id || "").toLowerCase().trim();
+                          return (cleanBId && (cBid === cleanBId || cId === cleanBId)) || (cleanTagId && (cBid === cleanTagId || cId === cleanTagId));
+                        });
+                        const displayBizName = client?.business_name || item.business_name;
+                        const rawCategory = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
                         const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                         const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
@@ -1271,7 +1346,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                             {/* 2. Business Name — only on primary row */}
                             <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
-                              {isPrimary ? item.business_name : ""}
+                              {isPrimary ? displayBizName : ""}
                             </td>
 
                             {/* 3. Category */}
@@ -1441,7 +1516,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     const isCompleted = item.setup_status === "completed";
                     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                     const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                    const rawCategory = item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                    
+                    const cleanBId = (item.business_id || "").toLowerCase().trim();
+                    const cleanTagId = (item.tag_id || "").toLowerCase().trim();
+                    const client = clientsList.find((c) => {
+                      const cBid = (c.business_id || "").toLowerCase().trim();
+                      const cId = (c.id || "").toLowerCase().trim();
+                      return (cleanBId && (cBid === cleanBId || cId === cleanBId)) || (cleanTagId && (cBid === cleanTagId || cId === cleanTagId));
+                    });
+                    const displayBizName = client?.business_name || item.business_name;
+                    const rawCategory = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
                     const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                     const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
@@ -1456,7 +1540,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                         {/* 2. Business Name */}
                         <td className="py-3 px-4 whitespace-nowrap font-bold text-zinc-900">
-                          {item.business_name}
+                          {displayBizName}
                         </td>
 
                         {/* 3. Category */}
@@ -2710,21 +2794,36 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
-                          Address Text (Pill display)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-medium text-zinc-700 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-purple-600" />
+                            <span>City / Location (Pill Display)</span>
+                          </label>
+                          <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            From Clients Table
+                          </span>
+                        </div>
                         <input
                           type="text"
-                          placeholder="Ahmedabad, Gujarat, India"
+                          placeholder="e.g. Ahmedabad, Gujarat"
                           value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                          onChange={(e) => {
+                            setEditAddress(e.target.value);
+                            setEditLocationTitle(e.target.value);
+                          }}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-medium"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
-                          Google Maps URL (Directions Target)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-medium text-zinc-700 flex items-center gap-1">
+                            <Navigation className="w-3 h-3 text-blue-600" />
+                            <span>Google Maps URL (Directions Target)</span>
+                          </label>
+                          <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            From Clients Table
+                          </span>
+                        </div>
                         <input
                           type="url"
                           placeholder="https://www.google.com/maps/place/..."
@@ -2735,40 +2834,27 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                      <div>
-                        <label className="block text-[11px] font-medium text-zinc-700 mb-1">
-                          Office Location Title
+                    <div className="pt-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-medium text-zinc-700 flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3 text-purple-600" />
+                          <span>Office Location Photo / Map URL</span>
                         </label>
-                        <input
-                          type="text"
-                          placeholder="Ahmedabad Central Hub"
-                          value={editLocationTitle}
-                          onChange={(e) => setEditLocationTitle(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => locationImgInputRef.current?.click()}
+                          className="text-[10px] text-purple-600 hover:text-purple-700 font-bold cursor-pointer"
+                        >
+                          Upload Photo
+                        </button>
                       </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[11px] font-medium text-zinc-700">
-                            Office Location Photo / Map URL
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => locationImgInputRef.current?.click()}
-                            className="text-[10px] text-purple-600 hover:text-purple-700 font-bold cursor-pointer"
-                          >
-                            Upload Photo
-                          </button>
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Image URL..."
-                          value={editLocationImage}
-                          onChange={(e) => setEditLocationImage(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        placeholder="Image URL or upload custom photo..."
+                        value={editLocationImage}
+                        onChange={(e) => setEditLocationImage(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      />
                     </div>
                   </div>
 

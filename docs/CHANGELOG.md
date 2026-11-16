@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.30] — 2026-11-16
+### Fixed (Unified City / Location in Page Editor & Strict Client Single Source of Truth)
+- **Eliminated Duplicate Location Inputs in Page Editor Design Modal (`PageEditorWebpageTab.tsx`)**:
+  - Removed duplicate `Office Location Title` (`editLocationTitle`) input that conflicted with `Address Text (Pill display)` (`editAddress`).
+  - Unified into a single, clean `City / Location (Pill Display)` field pre-filled automatically from `client.city` (the Clients table's City / Location).
+  - Wired `setEditAddress` and `setEditLocationTitle` in lockstep so editing the location pill immediately keeps both config values and the client profile in sync.
+  - Paired `City / Location (Pill Display)` side-by-side with `Google Maps URL (Directions Target)` in the first row, and placed `Office Location Photo / Map URL` underneath with an upload button.
+- **Client Auto-Hydration for Page Editor (`PageEditorWebpageTab.tsx`, `page.tsx`)**:
+  - Added comprehensive client resolution in `handleOpenEditor` (matching by business ID, tag ID, business name, QR/NFC tags, and review links) so opening any merchant card design auto-populates all client details directly from the Client Directory.
+  - Page Editor now strictly prioritizes client profile values (City/Location, Category, Contact info, Website URL, Directions link, Review Tags, and FAQs) over stale config fallbacks.
+  - Page Editor focuses on visual styling and images (Cover Banner, Round Logo, Wallpaper, Theme color, Fonts, Location photo) while inheriting business data cleanly from the Clients table.
+  - Updated `openEditWhole` and `handleSaveWholeEdit` to sync `business_name` and `category` directly with the `clients` table.
+  - Connected `clientsList` to the Standee Page Editor table view (Grouped and Flat views) so business names and categories update in real time when modified in the Clients tab.
+  - Updated `r/[slug]/page.tsx` so `location_title`, `about_us`, `opening_hours`, and `faqs` always draw from `clientRecord` first on live customer landing pages.
+
 ## [1.54.29] — 2026-11-16
 ### Fixed (Client Single Source of Truth & Settings Fields Sync)
 - **Clients Table Fields & Owner Access Synchronization (`adminPlatformStore.ts`, `PlatformSettingsTab.tsx`)**:

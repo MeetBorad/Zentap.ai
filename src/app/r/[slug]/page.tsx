@@ -268,11 +268,11 @@ export default async function Page({
     instagram_url: clientRecord?.instagram_link || cfg.instagram || biz?.instagram_url || "https://www.instagram.com/zenttap/",
     facebook: clientRecord?.facebook_link || cfg.facebook || biz?.facebook || "",
     website: clientRecord?.website_url || clientRecord?.website || clientRecord?.custom_fields?.website_url || clientRecord?.custom_fields?.website || cfg.website || cfg.website_url || biz?.website || "",
-    about_us: cfg.about_us || biz?.about_us,
-    opening_hours: cfg.opening_hours || biz?.opening_hours,
-    faqs: cfg.faqs || biz?.faqs,
+    about_us: (clientRecord?.custom_fields as any)?.about_us || cfg.about_us || biz?.about_us,
+    opening_hours: (clientRecord?.custom_fields as any)?.opening_hours || cfg.opening_hours || biz?.opening_hours,
+    faqs: (clientRecord as any)?.faqs || (clientRecord?.custom_fields as any)?.faqs || cfg.faqs || biz?.faqs,
     location_image: cfg.location_image || biz?.location_image,
-    location_title: cfg.location_title || biz?.location_title,
+    location_title: clientRecord?.city || cfg.location_title || cfg.address || biz?.location_title,
     logo_url: cfg.logo_url || biz?.logo_url,
   };
 
