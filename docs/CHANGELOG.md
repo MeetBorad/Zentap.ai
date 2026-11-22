@@ -1,7 +1,10 @@
 # ZenTap — Changelog
 
 ## [1.54.31] — 2026-11-22
-### Fixed (Opening Hours Matrix Parsing, Redundant Direction Link Removal & Theme Accent Consistency)
+### Fixed (Language Pill Cleanliness, Opening Hours Matrix Parsing, Redundant Direction Link Removal & Theme Accent Consistency)
+- **Purged "(Hinglish)" and "(Gujlish)" Suffixes from Language Selectors (`ZenTapReviewAssistant.tsx`)**:
+  - Simplified the Review Language buttons to display pure, professional language names: **"English"**, **"Hindi"**, and **"Gujarati"**.
+  - Retained intelligent server-side Latin-script generation in the background while ensuring the customer-facing interface remains clean and distraction-free.
 - **Removed Redundant Directions Link Underneath Subtitle (`ZenTapHubPage.tsx`, `PageEditorWebpageTab.tsx`, `r/[slug]/page.tsx`)**:
   - Completely eliminated the extra truncated link line (`{address && <a ...>}`) between the subtitle and Quick Action buttons, as users already have the dedicated full-width `[Directions]` button directly below.
   - Resolved bug in `r/[slug]/page.tsx` where raw Google Maps URLs (`directions_link`) were passed into `effectiveBiz.address`, causing raw coordinate links to leak into the UI.

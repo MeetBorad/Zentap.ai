@@ -703,8 +703,8 @@ export default function ZenTapReviewAssistant({
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { id: "en-IN", label: "English" },
-                      { id: "hi-IN", label: "Hindi (Hinglish)" },
-                      { id: "gu-IN", label: "Gujarati (Gujlish)" },
+                      { id: "hi-IN", label: "Hindi" },
+                      { id: "gu-IN", label: "Gujarati" },
                     ].map((l) => {
                       const isSelected = currentLang === l.id;
                       return (
