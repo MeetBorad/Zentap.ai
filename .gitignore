@@ -41,8 +41,8 @@ next-env.d.ts
 .env*
 
 scratch/
-open-design/
-Photos of standee/
+/open-design/
+/Photos of standee/
 .claude/
 .gemini/
 .impeccable/
