@@ -70,6 +70,7 @@ import {
 } from "@/lib/adminPlatformStore";
 import { onClientsUpdated, resolveClientField } from "@/lib/clientEvents";
 import { getGoogleMapsEmbedUrl } from "@/lib/googleMaps";
+import { parseOpeningHoursLine } from "@/lib/openingHours";
 import {
   getPageDesign,
   savePageDesign,
@@ -1234,8 +1235,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
           <button
             onClick={() => setGroupByBusiness((v) => !v)}
             className={`tactile-btn inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${groupByBusiness
-                ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100"
-                : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
+              ? "bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100"
+              : "bg-zinc-100 text-zinc-600 border-zinc-200 hover:bg-zinc-200"
               }`}
             title="Toggle group-by-business view"
           >
@@ -1300,7 +1301,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         const isCompleted = item.setup_status === "completed";
                         const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                         const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                        
+
                         const cleanBId = (item.business_id || "").toLowerCase().trim();
                         const cleanTagId = (item.tag_id || "").toLowerCase().trim();
                         const client = clientsList.find((c) => {
@@ -1317,8 +1318,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           <tr
                             key={item.id}
                             className={`transition-colors ${isPrimary
-                                ? "hover:bg-zinc-50/70"
-                                : "hover:bg-purple-50/30 bg-zinc-50/40 border-l-2 border-l-purple-200"
+                              ? "hover:bg-zinc-50/70"
+                              : "hover:bg-purple-50/30 bg-zinc-50/40 border-l-2 border-l-purple-200"
                               }`}
                           >
                             {/* 1. Business ID — only on primary row; expand toggle on primary */}
@@ -1452,12 +1453,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                                 value={currentDest}
                                 onChange={(e) => handleDestinationChange(item, e.target.value as any)}
                                 className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${currentDest === "business_page"
-                                    ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
-                                    : currentDest === "zentap_google"
-                                      ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
-                                      : currentDest === "direct_google"
-                                        ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-                                        : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                                  ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
+                                  : currentDest === "zentap_google"
+                                    ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                    : currentDest === "direct_google"
+                                      ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                      : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
                                   }`}
                               >
                                 <option value="business_page">Business Page (Blue)</option>
@@ -1516,7 +1517,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     const isCompleted = item.setup_status === "completed";
                     const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === item.tag_id.toLowerCase());
                     const displayTagLink = matchingGLink?.link_of_tag_id || (item.link_url?.includes("/t/") ? item.link_url : `${DOMAIN_BASE}/t/${item.tag_id}`);
-                    
+
                     const cleanBId = (item.business_id || "").toLowerCase().trim();
                     const cleanTagId = (item.tag_id || "").toLowerCase().trim();
                     const client = clientsList.find((c) => {
@@ -1646,12 +1647,12 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             value={currentDest}
                             onChange={(e) => handleDestinationChange(item, e.target.value as any)}
                             className={`tactile-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer outline-none transition-all ${currentDest === "business_page"
-                                ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
-                                : currentDest === "zentap_google"
-                                  ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
-                                  : currentDest === "direct_google"
-                                    ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
-                                    : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
+                              ? "bg-blue-50 text-blue-900 border-blue-300 hover:bg-blue-100"
+                              : currentDest === "zentap_google"
+                                ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100"
+                                : currentDest === "direct_google"
+                                  ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                                  : "bg-zinc-100 text-zinc-700 border-zinc-300 hover:bg-zinc-200"
                               }`}
                           >
                             <option value="business_page">Business Page (Blue)</option>
@@ -1874,11 +1875,10 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           key={preset}
                           type="button"
                           onClick={() => setEditWholeCategory(preset)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${
-                            isSelected
-                              ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
-                              : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
-                          }`}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold cursor-pointer transition-all flex items-center gap-1 active:scale-95 ${isSelected
+                            ? "bg-purple-600 text-white border-purple-600 shadow-2xs hover:bg-purple-700"
+                            : "bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200 hover:border-zinc-300"
+                            }`}
                         >
                           {isSelected && <Check className="w-3 h-3 text-white" />}
                           <span>{preset}</span>
@@ -2137,8 +2137,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         </span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${pendingItems.length === 0
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          : "bg-amber-50 text-amber-800 border border-amber-200"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
                         }`}>
                         {pendingItems.length === 0 ? "✓ 100% Ready to Publish" : `${pendingItems.length} Setup Items Pending`}
                       </span>
@@ -2191,8 +2191,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           type="button"
                           onClick={() => setEditTheme(t.id)}
                           className={`p-2.5 rounded-xl text-left cursor-pointer transition-all border ${editTheme === t.id
-                              ? "ring-2 ring-amber-500 border-amber-500 shadow-md bg-white scale-[1.02]"
-                              : "border-zinc-200/80 hover:border-zinc-300 bg-white/70 hover:bg-white"
+                            ? "ring-2 ring-amber-500 border-amber-500 shadow-md bg-white scale-[1.02]"
+                            : "border-zinc-200/80 hover:border-zinc-300 bg-white/70 hover:bg-white"
                             }`}
                         >
                           <div className={`w-full h-8 rounded-lg ${t.bg} flex items-center justify-between px-2.5 shadow-2xs mb-1.5`}>
@@ -2236,8 +2236,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                             onClick={() => setEditFont(f.id)}
                             style={{ fontFamily: f.family }}
                             className={`p-2 rounded-xl text-left border cursor-pointer transition-all ${editFont === f.id
-                                ? "bg-purple-50/80 border-purple-500 ring-2 ring-purple-500/30 text-purple-950 font-bold shadow-2xs"
-                                : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100/50"
+                              ? "bg-purple-50/80 border-purple-500 ring-2 ring-purple-500/30 text-purple-950 font-bold shadow-2xs"
+                              : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-100/50"
                               }`}
                           >
                             <div className="text-xs font-bold truncate leading-tight">{f.label}</div>
@@ -2264,8 +2264,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               type="button"
                               onClick={() => setEditFontSize(sz.id as any)}
                               className={`py-2 px-1 rounded-xl text-center border cursor-pointer transition-all ${editFontSize === sz.id
-                                  ? "bg-purple-600 text-white border-purple-600 font-bold shadow-xs"
-                                  : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300"
+                                ? "bg-purple-600 text-white border-purple-600 font-bold shadow-xs"
+                                : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300"
                                 }`}
                             >
                               <div className="text-xs font-bold leading-tight">{sz.label}</div>
@@ -2309,8 +2309,8 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               title={c.label}
                               onClick={() => setEditAccentColor(c.hex)}
                               className={`w-6 h-6 rounded-full cursor-pointer transition-transform border border-white shadow-xs ${editAccentColor.toLowerCase() === c.hex.toLowerCase()
-                                  ? "scale-125 ring-2 ring-purple-600 ring-offset-1"
-                                  : "hover:scale-110"
+                                ? "scale-125 ring-2 ring-purple-600 ring-offset-1"
+                                : "hover:scale-110"
                                 }`}
                               style={{ backgroundColor: c.hex }}
                             />
@@ -2889,6 +2889,9 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                         onChange={(e) => setEditOpeningHours(e.target.value)}
                         className="w-full p-2.5 rounded-xl bg-white border border-zinc-200 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono text-[11px]"
                       />
+                      <p className="text-[10px] text-zinc-500 mt-1">
+                        Formats supported: &quot;Monday to Saturday - 09:00 AM to 06:00 PM&quot;, &quot;Sunday - Closed&quot;, &quot;Mon – Sat: 10:00 AM – 09:00 PM&quot;.
+                      </p>
                     </div>
                   </div>
 
@@ -3353,15 +3356,30 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
                         {/* Opening Hours (Only if not blank) */}
                         {editOpeningHours.trim() && (
-                          <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1`}>
+                          <div className={`p-2.5 rounded-xl ${currentP.cardBg} border ${currentP.borderColor} space-y-1.5`}>
                             <span className={`text-[10px] font-bold ${currentP.textColor} flex items-center gap-1`}>
-                              <Clock className="w-3 h-3 text-[#4cd7f6]" />
+                              <Clock className="w-3 h-3" style={{ color: customAccentHex }} />
                               <span>Opening Hours</span>
                             </span>
-                            <div className="text-[9px] text-amber-300 font-mono leading-tight">
-                              {editOpeningHours.split("\n").slice(0, 2).map((l, i) => (
-                                <p key={i} className="truncate">{l}</p>
-                              ))}
+                            <div className="flex flex-col gap-1 pt-0.5 text-[9px]">
+                              {editOpeningHours.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 3).map((l, i) => {
+                                const parsed = parseOpeningHoursLine(l);
+                                if (!parsed) return null;
+                                return (
+                                  <div key={i} className={`flex items-center justify-between py-1 px-2 rounded-lg ${currentP.innerBg} border ${currentP.borderColor}`}>
+                                    <span className={`${currentP.textColor} font-medium truncate max-w-[120px]`}>{parsed.day}</span>
+                                    {parsed.time && (
+                                      <span
+                                        className={`font-semibold shrink-0 ${parsed.isClosed ? "text-rose-400 flex items-center gap-1" : ""}`}
+                                        style={!parsed.isClosed ? { color: customAccentHex } : undefined}
+                                      >
+                                        {parsed.isClosed && <span className="w-1 h-1 rounded-full bg-rose-400 shrink-0" />}
+                                        {parsed.time}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

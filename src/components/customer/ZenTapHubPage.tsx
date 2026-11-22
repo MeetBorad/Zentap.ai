@@ -41,6 +41,7 @@ import {
 } from "@/lib/hubDesignStore";
 import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import { getGoogleMapsEmbedUrl } from "@/lib/googleMaps";
+import { parseOpeningHoursLine } from "@/lib/openingHours";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
 
 interface ZenTapHubPageProps {
@@ -1058,25 +1059,27 @@ export default function ZenTapHubPage({
             {openingHoursList.length > 0 && (
               <div className={`rounded-2xl ${hubTheme.card} p-4 sm:p-5 flex flex-col gap-2.5 shadow-lg border`}>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-cyan-400 shrink-0" />
+                  <Clock className="w-5 h-5 shrink-0" style={{ color: finalAccentHex }} />
                   <h2 className={`${sizeScaleClasses.cardTitle} ${hubTheme.textColor || "text-white"}`}>Opening Hours</h2>
                 </div>
                 <div className="flex flex-col gap-2 pt-1 text-xs">
                   {openingHoursList.map((line: string, idx: number) => {
-                    const parts = line.split(":");
-                    if (parts.length >= 2) {
-                      const dayLabel = parts[0].trim();
-                      const timeLabel = parts.slice(1).join(":").trim();
-                      return (
-                        <div key={idx} className={`flex items-center justify-between py-2 px-3 rounded-xl ${hubTheme.inner} border`}>
-                          <span className={`${hubTheme.textColor || "text-white"} font-medium`}>{dayLabel}</span>
-                          <span className="font-semibold" style={{ color: finalAccentHex }}>{timeLabel}</span>
-                        </div>
-                      );
-                    }
+                    const parsed = parseOpeningHoursLine(line);
+                    if (!parsed) return null;
+                    const { day, time, isClosed } = parsed;
+
                     return (
-                      <div key={idx} className={`py-1.5 px-3 rounded-xl ${hubTheme.inner} font-medium border`} style={{ color: finalAccentHex }}>
-                        {line}
+                      <div key={idx} className={`flex items-center justify-between py-2 px-3 rounded-xl ${hubTheme.inner} border transition-colors`}>
+                        <span className={`${hubTheme.textColor || "text-white"} font-medium`}>{day}</span>
+                        {time ? (
+                          <span
+                            className={`font-semibold shrink-0 ${isClosed ? "text-rose-400 dark:text-rose-400 flex items-center gap-1.5" : ""}`}
+                            style={!isClosed ? { color: finalAccentHex } : undefined}
+                          >
+                            {isClosed && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />}
+                            {time}
+                          </span>
+                        ) : null}
                       </div>
                     );
                   })}

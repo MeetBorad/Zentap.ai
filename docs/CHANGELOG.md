@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.31] — 2026-11-22
+### Fixed (Opening Hours Matrix Parsing, Uneven Splits & Theme Accent Consistency)
+- **Eliminated Uneven Time Splits across Operating Hours Matrix (`ZenTapHubPage.tsx`, `openingHours.ts`)**:
+  - Replaced naive colon-based splitting (`line.split(":")`) with a robust parser (`parseOpeningHoursLine`).
+  - Fixed bug where time lines formatted with hyphens or dashes (e.g. `Monday to Saturday - 09:00 AM to 06:00 PM`) had their time cut in half, leaving `Monday to Saturday - 09` on the day side and `00 AM to 06:00 PM` on the hours side.
+  - Now accurately detects day ranges (`Monday to Saturday`, `Mon - Fri`) and isolates start/end times across all standard separators (`:`, `-`, `–`, `—`, `|`, tabs, spaces).
+- **Consistent Color & Layout Alignment Across All Rows**:
+  - Fixed bug where closed rows (e.g. `Sunday - Closed`) fell through to an un-split fallback container with uneven padding and full-width cyan coloring, causing Sunday to be cyan while weekday labels were white.
+  - All opening hours rows now share the exact same structural container (`flex items-center justify-between py-2 px-3 rounded-xl`), with days aligned on the left in the theme text color (`text-white`) and times/status aligned on the right.
+  - "Closed" / "Holiday" / "Off" days now consistently display a subtle rose status indicator (`text-rose-400` with status dot) rather than miscoloring the entire day label.
+  - Replaced hardcoded `text-cyan-400` on the Clock icon with the client's configured theme accent (`style={{ color: finalAccentHex }}`), ensuring perfect color harmony across Obsidian, Emerald, Sunset, Royal Indigo, Champagne Gold, and Custom themes.
+- **Synchronized Admin Live Preview Mockup (`PageEditorWebpageTab.tsx`)**:
+  - Upgraded Page Editor mockup preview to use `parseOpeningHoursLine`, mirroring the customer-facing hub layout with dynamic theme accent colors and two-column alignment.
+  - Added helpful format documentation beneath the Opening Hours Matrix textarea in the Page Editor modal.
+
 ## [1.54.30] — 2026-11-16
 ### Fixed (Unified City / Location in Page Editor & Strict Client Single Source of Truth)
 - **Eliminated Duplicate Location Inputs in Page Editor Design Modal (`PageEditorWebpageTab.tsx`)**:
