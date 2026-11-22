@@ -1,7 +1,11 @@
 # ZenTap — Changelog
 
 ## [1.54.31] — 2026-11-22
-### Fixed (Opening Hours Matrix Parsing, Uneven Splits & Theme Accent Consistency)
+### Fixed (Opening Hours Matrix Parsing, Redundant Direction Link Removal & Theme Accent Consistency)
+- **Removed Redundant Directions Link Underneath Subtitle (`ZenTapHubPage.tsx`, `PageEditorWebpageTab.tsx`, `r/[slug]/page.tsx`)**:
+  - Completely eliminated the extra truncated link line (`{address && <a ...>}`) between the subtitle and Quick Action buttons, as users already have the dedicated full-width `[Directions]` button directly below.
+  - Resolved bug in `r/[slug]/page.tsx` where raw Google Maps URLs (`directions_link`) were passed into `effectiveBiz.address`, causing raw coordinate links to leak into the UI.
+  - Aligned `<Navigation />` icon in the Quick Action Bar with the dynamic theme accent color (`style={{ color: finalAccentHex }}`).
 - **Eliminated Uneven Time Splits across Operating Hours Matrix (`ZenTapHubPage.tsx`, `openingHours.ts`)**:
   - Replaced naive colon-based splitting (`line.split(":")`) with a robust parser (`parseOpeningHoursLine`).
   - Fixed bug where time lines formatted with hyphens or dashes (e.g. `Monday to Saturday - 09:00 AM to 06:00 PM`) had their time cut in half, leaving `Monday to Saturday - 09` on the day side and `00 AM to 06:00 PM` on the hours side.

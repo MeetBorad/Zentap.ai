@@ -3227,12 +3227,6 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                               {editSubtitle && (
                                 <p className={`text-[10px] ${currentP.textMuted} truncate`}>{editSubtitle}</p>
                               )}
-                              {editAddress && (
-                                <p className={`text-[9px] ${currentP.accentText} truncate flex items-center justify-center gap-0.5 mt-0.5`}>
-                                  <MapPin className="w-2.5 h-2.5 shrink-0" />
-                                  <span>{editAddress}</span>
-                                </p>
-                              )}
                             </div>
 
                             {/* Quick Actions (Call / Directions) */}

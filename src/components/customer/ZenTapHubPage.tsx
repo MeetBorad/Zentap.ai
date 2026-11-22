@@ -754,18 +754,6 @@ export default function ZenTapHubPage({
                       {subtitle}
                     </span>
                   )}
-                  {address && (
-                    <a
-                      className={`mt-1 inline-flex items-center gap-1 ${hubTheme.accentText} hover:opacity-80 text-[11px] font-medium transition-colors`}
-                      href={mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      onClick={() => trackClick("address_pin")}
-                    >
-                      <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: finalAccentHex }} />
-                      <span className="truncate">{address}</span>
-                    </a>
-                  )}
                 </div>
 
                 {/* Quick Action Bar (Call Us & Directions) */}
@@ -789,7 +777,7 @@ export default function ZenTapHubPage({
                         target="_blank"
                         onClick={() => trackClick("directions_quick")}
                       >
-                        <Navigation className="w-4 h-4 text-cyan-400" />
+                        <Navigation className="w-4 h-4" style={{ color: finalAccentHex }} />
                         <span>Directions</span>
                       </a>
                     )}
