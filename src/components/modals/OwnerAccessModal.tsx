@@ -889,7 +889,7 @@ export default function OwnerAccessModal({
                       required
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder="e.g. Zentap Digital Solutions"
+                      placeholder="e.g. ZenTap Digital Solutions"
                       className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-amber-400"
                     />
                   </div>

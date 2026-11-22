@@ -201,7 +201,7 @@ export default function ZenTapHubPage({
   const cfg = localConfig || {};
   const isZenTapDemo = (liveBusiness.slug || "").toLowerCase() === "zentap" || liveBusiness.id === "sample-demo-biz-01";
 
-  const businessName = liveBusiness.name || cfg.title || "ZenTap Digital Solutions";
+  const businessName = (liveBusiness.name || cfg.title || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap");
   const subtitle = liveBusiness.category || cfg.subtitle || cfg.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
   const address = liveBusiness.address || cfg.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
@@ -1442,7 +1442,7 @@ export default function ZenTapHubPage({
         <div className="max-w-[480px] mx-auto px-4 py-6 flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
             <ShieldCheck className="w-4 h-4 text-[#ffc174]" />
-            <span>Powered by ZenTap Digital Systems</span>
+            <span>Powered by ZenTap Digital Solutions</span>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
             <button
@@ -1466,7 +1466,7 @@ export default function ZenTapHubPage({
             </div>
           </div>
           <span className="text-[11px] text-[#94A3B8]/70">
-            © 2025 ZenTap Solutions. All rights reserved.
+            © 2026 ZenTap Digital Solutions. All rights reserved.
           </span>
         </div>
       </footer>

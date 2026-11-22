@@ -210,7 +210,7 @@ const INITIAL_CLIENTS: ClientRecord[] = [
   {
     id: "cl_04",
     business_id: "ZT-0004",
-    business_name: "Zentap Digital Solutions",
+    business_name: "ZenTap Digital Solutions",
     owner_name: "Meet",
     owner_phone: "+91 96627 60880",
     contact_phone: "+91 92745 60880",
@@ -276,7 +276,7 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     tag_id: "ST3",
     product_type: "Counter Standee",
     business_id: "ZT-0004",
-    business_name: "Zentap Digital Solutions",
+    business_name: "ZenTap Digital Solutions",
     link: `${DOMAIN_BASE}/t/ST3`,
     destination: "business_page",
     scans_count: 36,
@@ -365,7 +365,7 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     id: "gl_03",
     tag_id: "ST3",
     business_id: "ZT-0004",
-    business_name: "Zentap Digital Solutions",
+    business_name: "ZenTap Digital Solutions",
     link_of_tag_id: `${DOMAIN_BASE}/t/ST3`,
     business_google_review_link: "https://g.page/r/CdJX2OGu1yhoEAI/review",
     destination: "business_page",
@@ -483,13 +483,13 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
     id: "pe_03",
     tag_id: "ST3",
     business_id: "ZT-0004",
-    business_name: "Zentap Digital Solutions",
+    business_name: "ZenTap Digital Solutions",
     link_url: `${DOMAIN_BASE}/t/ST3`,
     setup_status: "completed",
     config_data: {
       theme: "obsidian",
       accent_color: "#38bdf8",
-      title: "Zentap Digital Solutions",
+      title: "ZenTap Digital Solutions",
       subtitle: "Customer Satisfaction Hub",
       category: "Customer Satisfaction Hub",
       cover_image: "/covers/zentap_cover.png",
@@ -903,7 +903,7 @@ export interface StandardClientColumnDef {
 }
 
 export const STANDARD_CLIENT_COLUMNS: StandardClientColumnDef[] = [
-  { id: "business_name", label: "Business Name", category: "basic", type: "text", placeholder: "e.g. Zentap Digital Solutions", description: "Official business title displayed across client cards and hub." },
+  { id: "business_name", label: "Business Name", category: "basic", type: "text", placeholder: "e.g. ZenTap Digital Solutions", description: "Official business title displayed across client cards and hub." },
   { id: "category", label: "Category", category: "basic", type: "text", placeholder: "e.g. Customer Satisfaction Hub", description: "Business category and tagline displayed on public pages." },
   { id: "city", label: "City / Location", category: "basic", type: "text", placeholder: "e.g. Ahmedabad", description: "Primary operating city or jurisdiction." },
   { id: "owner_name", label: "Owner Name", category: "contact", type: "text", placeholder: "e.g. Meet Borad", description: "Full legal or operating name of the business owner." },

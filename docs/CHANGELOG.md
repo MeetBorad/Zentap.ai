@@ -1,7 +1,14 @@
 # ZenTap — Changelog
 
 ## [1.54.31] — 2026-11-22
-### Fixed (Language Pill Cleanliness, Opening Hours Matrix Parsing, Redundant Direction Link Removal & Theme Accent Consistency)
+### Fixed (Brand Name Consistency "ZenTap", Footer Branding & Language Pill Cleanliness)
+- **Universal Brand Name Normalization to "ZenTap" (`ZenTapHubPage.tsx`, `ZenTapReviewAssistant.tsx`, `r/[slug]/page.tsx`, `adminPlatformStore.ts`)**:
+  - Enforced strict CamelCase `ZenTap` across all business title resolution layers, replacing legacy `Zentap` occurrences.
+  - Added runtime brand name sanitizer (`.replace(/\bZentap\b/g, "ZenTap")`) in `ZenTapHubPage.tsx`, `ZenTapReviewAssistant.tsx`, and `page.tsx` so even stale database titles or cached records render consistently as **ZenTap**.
+  - Synchronized default fleet store entries in `adminPlatformStore.ts` and credential routes.
+- **Updated Footer Branding & Copyright Notices**:
+  - Replaced `Powered by ZenTap Digital Systems` with `Powered by ZenTap Digital Solutions` across both Hub and Review Assistant footers.
+  - Replaced `© 2025 ZenTap Solutions` / `© 2026 ZenTap Solution` with `© 2026 ZenTap Digital Solutions. All rights reserved.`
 - **Purged "(Hinglish)" and "(Gujlish)" Suffixes from Language Selectors (`ZenTapReviewAssistant.tsx`)**:
   - Simplified the Review Language buttons to display pure, professional language names: **"English"**, **"Hindi"**, and **"Gujarati"**.
   - Retained intelligent server-side Latin-script generation in the background while ensuring the customer-facing interface remains clean and distraction-free.

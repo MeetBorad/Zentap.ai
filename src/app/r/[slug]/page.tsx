@@ -242,7 +242,7 @@ export default async function Page({
 
   const effectiveBiz: BusinessRecord = {
     id: clientRecord?.business_id || pageConfig?.business_id || biz?.id || pageConfig?.tag_id || "ZT-0004",
-    name: clientRecord?.business_name || cfg.title || pageConfig?.business_name || biz?.name || "ZenTap Digital Solutions",
+    name: (clientRecord?.business_name || cfg.title || pageConfig?.business_name || biz?.name || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap"),
     slug: (clientRecord?.business_id || pageConfig?.business_id || biz?.slug || pageConfig?.tag_id || "zentap").toLowerCase(),
     review_url: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
     google_review_link: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
@@ -432,7 +432,7 @@ export default async function Page({
       <ZenTapHubPage
         business={{
           ...effectiveBiz,
-          name: clientRecord?.business_name || cfg.title || effectiveBiz.name,
+          name: (clientRecord?.business_name || cfg.title || effectiveBiz.name).replace(/\bZentap\b/g, "ZenTap"),
         }}
         design={customDesign}
         buttons={getPageButtons(effectiveBiz.id)}

@@ -48,7 +48,7 @@ export async function GET() {
     // Fallback sample clients if DB returned empty
     if (clients.length === 0) {
       clients = [
-        { business_id: "ZT-0004", business_name: "Zentap Digital Solutions", city: "Ahmedabad", owner_name: "Meet", owner_phone: "+91 92745 60880", owner_email: "meetborad@hotmail.com" },
+        { business_id: "ZT-0004", business_name: "ZenTap Digital Solutions", city: "Ahmedabad", owner_name: "Meet", owner_phone: "+91 92745 60880", owner_email: "meetborad@hotmail.com" },
         { business_id: "ZT-0001", business_name: "Café Aroma Bodakdev", city: "Ahmedabad", owner_name: "Aarav Sharma", owner_phone: "+91 98250 12345", owner_email: "contact@cafearoma.in" },
         { business_id: "ZT-0002", business_name: "Smile Dental Clinic", city: "Surat", owner_name: "Dr. Priya Patel", owner_phone: "+91 98251 23456", owner_email: "smiledental@gmail.com" },
         { business_id: "ZT-0003", business_name: "Urban Hair Salon", city: "Vadodara", owner_name: "Rohan Mehta", owner_phone: "+91 98252 34567", owner_email: "urbanhairsalon@gmail.com" },

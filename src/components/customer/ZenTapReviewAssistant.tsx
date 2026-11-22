@@ -103,7 +103,7 @@ export default function ZenTapReviewAssistant({
   }, []);
 
   // Consistent business details from database/client record
-  const businessName = liveBusiness.name || pageConfig?.title || "ZenTap Digital Solutions";
+  const businessName = (liveBusiness.name || pageConfig?.title || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap");
   const city = liveBusiness.city || "Ahmedabad";
   const cleanPhone = (liveBusiness.phone || pageConfig?.phone || "+919274560880").replace(/\s+/g, "");
   const cleanWa = (liveBusiness.whatsapp || liveBusiness.whatsapp_number || pageConfig?.whatsapp || "919274560880").replace(/\D/g, "");
@@ -1023,7 +1023,7 @@ export default function ZenTapReviewAssistant({
         <div className="max-w-[480px] mx-auto px-4 flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-1.5 text-xs opacity-75">
             <ShieldCheck className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-            <span>Powered by ZenTap Digital Systems</span>
+            <span>Powered by ZenTap Digital Solutions</span>
           </div>
           <div className="flex flex-col items-center gap-1 pt-1">
             <button
@@ -1046,7 +1046,7 @@ export default function ZenTapReviewAssistant({
             </div>
           </div>
           <span className="text-[10px] opacity-40">
-            © {new Date().getFullYear()} ZenTap Solutions. All rights reserved.
+            © 2026 ZenTap Digital Solutions. All rights reserved.
           </span>
         </div>
       </footer>
