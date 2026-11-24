@@ -254,6 +254,10 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
       return;
     }
     const cleanTagId = manualTagId.trim().toUpperCase() || `ST${links.length + 1}`;
+    if (cleanTagId.toLowerCase() === targetBiz.business_id.toLowerCase()) {
+      onShowToast("Tag ID cannot be the Business ID. Please enter a hardware Standee Tag ID (e.g., ST4).");
+      return;
+    }
 
     const created = addManualGoogleReviewLink({
       tag_id: cleanTagId,
@@ -304,11 +308,23 @@ export default function GoogleLinksWebpageTab({ onShowToast, onNavigateToPageEdi
     onShowToast(`✓ Downloaded QR Code for ${item.tag_id}`);
   };
 
-  // Search filter
+  // Search filter and strict deduplication
   const q = searchQuery.toLowerCase().trim();
+  const seenTags = new Set<string>();
   const filteredLinks = links.filter((item) => {
     // Hide 'zentap' demo tag from the displayed list as it mirrors ST3
     if (item.tag_id && item.tag_id.toLowerCase() === "zentap") return false;
+
+    // Strict case-insensitive Tag ID deduplication
+    const normalizedTag = (item.tag_id || "").trim().toUpperCase();
+    if (seenTags.has(normalizedTag)) return false;
+    seenTags.add(normalizedTag);
+
+    // Suppress entries where tag_id was mistakenly saved as business_id (e.g. ZT-0004) if a real tag exists
+    if (item.business_id && item.tag_id.toLowerCase() === item.business_id.toLowerCase()) {
+      const hasRealTag = links.some((x) => x.business_id === item.business_id && x.tag_id.toLowerCase() !== item.business_id.toLowerCase());
+      if (hasRealTag) return false;
+    }
 
     if (!q) return true;
     return (

@@ -142,13 +142,19 @@ export async function GET(req: Request) {
         };
       });
 
-    // Merge view items with any existing standalone rows ensuring tag_id deduplication
+    // Merge view items with any existing standalone rows ensuring tag_id deduplication (case-insensitive)
     const googleLinks = [...googleLinksFromTags];
     (activeGoogleLinksRes.data || []).forEach((row) => {
-      if (!googleLinks.some((g) => g.tag_id === row.tag_id)) {
-        const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "active" : "pending";
-        googleLinks.push({ ...row, setup_status, destination: row.destination || "not_assigned" });
-      }
+      const isDuplicateTag = googleLinks.some((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+      if (isDuplicateTag) return;
+
+      // Prevent Business ID (e.g. ZT-0004) from masquerading as a standee tag if standee already exists for business
+      const isBusinessIdAsTag = row.business_id && row.tag_id.toLowerCase() === row.business_id.toLowerCase();
+      const hasStandeeForBiz = googleLinks.some((g) => g.business_id && g.business_id.toLowerCase() === row.business_id?.toLowerCase());
+      if (isBusinessIdAsTag && hasStandeeForBiz) return;
+
+      const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "active" : "pending";
+      googleLinks.push({ ...row, setup_status, destination: row.destination || "not_assigned" });
     });
 
     const socialLinks = [...socialLinksFromTags];
@@ -198,7 +204,14 @@ export async function GET(req: Request) {
 
     const pageEditorConfigs = [...pageEditorFromTags];
     (activePageEditorRes.data || []).forEach((row) => {
-      if (!pageEditorConfigs.some((p) => p.tag_id === row.tag_id)) {
+      const isDuplicateTag = pageEditorConfigs.some((p) => p.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+      if (isDuplicateTag) return;
+
+      const isBusinessIdAsTag = row.business_id && row.tag_id.toLowerCase() === row.business_id.toLowerCase();
+      const hasConfigForBiz = pageEditorConfigs.some((p) => p.business_id && p.business_id.toLowerCase() === row.business_id?.toLowerCase());
+      if (isBusinessIdAsTag && hasConfigForBiz) return;
+
+      if (!pageEditorConfigs.some((p) => p.tag_id.toLowerCase() === row.tag_id.toLowerCase())) {
         const matchingTag = tags.find((t) => t.tag_id.toLowerCase() === row.tag_id.toLowerCase());
         const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
         const dest = matchingTag?.destination || matchingGLink?.destination || row.destination;
