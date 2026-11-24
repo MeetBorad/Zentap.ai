@@ -112,12 +112,20 @@ export default async function Page({
             : Promise.resolve({ data: null })))
         : Promise.resolve({ data: clientRecord });
 
-      const [pageConfigRes, bizFetchRes, grlRes, tagRes, clientRes] = await Promise.all([
-        pageQuery,
-        isLikelyTag ? Promise.resolve(null) : fetchPublicBusinessBySlug(cleanCode),
-        db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
-        db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
-        clientQuery,
+      const [pageConfigRes, bizFetchRes, grlRes, tagRes, clientRes] = await Promise.race([
+        Promise.all([
+          pageQuery,
+          isLikelyTag ? Promise.resolve(null) : fetchPublicBusinessBySlug(cleanCode),
+          db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
+          db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
+          clientQuery,
+        ]),
+        new Promise<any[]>((resolve) =>
+          setTimeout(() => {
+            console.warn(`Parallel page query timed out (2s) for ${lookupKey}. Falling back to memory index.`);
+            resolve([{ data: null }, null, { data: null }, { data: null }, { data: null }]);
+          }, 2000)
+        ),
       ]);
 
       if (!pageConfig && pageConfigRes?.data) pageConfig = pageConfigRes.data;
@@ -202,23 +210,36 @@ export default async function Page({
     try {
       const candidates = Array.from(new Set([cleanCode, candidateBizId].filter(Boolean)));
       const orExpr = candidates.map((c) => `business_id.ilike.${c}`).join(",");
-      const { data: cData } = await db
-        .from('clients')
-        .select('*')
-        .or(orExpr)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
+      const { data: cData } = await Promise.race([
+        db
+          .from('clients')
+          .select('*')
+          .or(orExpr)
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle(),
+        new Promise<any>((resolve) =>
+          setTimeout(() => {
+            console.warn(`Client lookup timed out (1.5s) for ${orExpr}`);
+            resolve({ data: null });
+          }, 1500)
+        ),
+      ]);
       if (cData) {
         clientRecord = cData;
       } else if (isDemoOrZentap) {
-        const { data: demoData } = await db
-          .from('clients')
-          .select('*')
-          .ilike('business_id', 'ZT-0004')
-          .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle();
+        const { data: demoData } = await Promise.race([
+          db
+            .from('clients')
+            .select('*')
+            .ilike('business_id', 'ZT-0004')
+            .is('deleted_at', null)
+            .limit(1)
+            .maybeSingle(),
+          new Promise<any>((resolve) =>
+            setTimeout(() => resolve({ data: null }), 1500)
+          ),
+        ]);
         if (demoData) clientRecord = demoData;
       }
     } catch (e) {

@@ -69,44 +69,51 @@ export default async function ReviewPage({
       const tagQuery = via || cleanSlug;
       const isSharedDemo = cleanSlug === "zentap" || cleanSlug === "st3" || via?.toLowerCase() === "st3" || cleanSlug === "zt-0004";
 
-      if (isSharedDemo) {
-        const { data: sharedCfg } = await db
-          .from("page_editor_configs")
-          .select("*")
-          .or("tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004")
-          .is("deleted_at", null)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        pageConfig = sharedCfg;
-      } else {
-        const { data: vData } = await db
-          .from("page_editor_configs")
-          .select("*")
-          .or(`business_id.ilike.${cleanSlug},tag_id.ilike.${cleanSlug}${via ? `,tag_id.ilike.${via},business_id.ilike.${via}` : ''}`)
-          .is("deleted_at", null)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        pageConfig = vData;
-      }
+      const cfgPromise = isSharedDemo
+        ? db
+            .from("page_editor_configs")
+            .select("*")
+            .or("tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004")
+            .is("deleted_at", null)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : db
+            .from("page_editor_configs")
+            .select("*")
+            .or(`business_id.ilike.${cleanSlug},tag_id.ilike.${cleanSlug}${via ? `,tag_id.ilike.${via},business_id.ilike.${via}` : ''}`)
+            .is("deleted_at", null)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-      // Query tag and google review links to determine effective destination
-      const { data: tData } = await db
+      const tagPromise = db
         .from("qr_nfc_tags")
         .select("*")
         .ilike("tag_id", tagQuery)
         .is("deleted_at", null)
         .maybeSingle();
-      tagRow = tData;
 
-      const { data: gData } = await db
+      const grlPromise = db
         .from("google_review_links")
         .select("*")
         .ilike("tag_id", tagQuery)
         .is("deleted_at", null)
         .maybeSingle();
-      grlRow = gData;
+
+      const [cfgRes, tRes, gRes] = await Promise.race([
+        Promise.all([cfgPromise, tagPromise, grlPromise]),
+        new Promise<any[]>((resolve) =>
+          setTimeout(() => {
+            console.warn(`Review page query timed out (2s) for ${tagQuery}`);
+            resolve([{ data: null }, { data: null }, { data: null }]);
+          }, 2000)
+        ),
+      ]);
+
+      pageConfig = cfgRes?.data || null;
+      tagRow = tRes?.data || null;
+      grlRow = gRes?.data || null;
     } catch (e) {
       console.warn("Error fetching data for review page:", e);
     }

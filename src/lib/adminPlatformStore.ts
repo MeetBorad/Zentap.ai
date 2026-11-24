@@ -237,6 +237,30 @@ const INITIAL_CLIENTS: ClientRecord[] = [
     },
     created_at: "2026-11-02T13:20:00Z",
   },
+  {
+    id: "cl_05",
+    business_id: "ZT-0005",
+    business_name: "Digitronics Control",
+    owner_name: "Dhruvil Patel",
+    owner_phone: "9825166265",
+    contact_phone: "9825166265",
+    owner_email: "digitronics_16@yahoo.co.in",
+    whatsapp: "9898980401",
+    instagram_link: "",
+    facebook_link: "",
+    google_review_link: "https://search.google.com/local/writereview?placeid=ChIJBdE5mOCHXjkRVlZipoCh2l0",
+    directions_link: "https://maps.app.goo.gl/ig8w2c9n",
+    city: "Ahmedabad",
+    category: "Power Equipment Manufacturer",
+    custom_fields: {
+      category: "Power Equipment Manufacturer",
+      contact_phone: "9825166265",
+      directions_link: "https://maps.app.goo.gl/ig8w2c9n",
+      website_url: "",
+      upi_id: "",
+    },
+    created_at: "2026-11-20T10:00:00Z",
+  },
 ];
 
 const INITIAL_TAGS: QrNfcTagItemRecord[] = [
@@ -283,6 +307,18 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     created_at: "2026-11-01T09:00:00Z",
   },
   {
+    id: "tag_st4",
+    tag_id: "ST4",
+    product_type: "Counter Standee",
+    business_id: "ZT-0005",
+    business_name: "Digitronics Control",
+    link: `${DOMAIN_BASE}/t/ST4`,
+    destination: "business_page",
+    google_review_link: "https://search.google.com/local/writereview?placeid=ChIJBdE5mOCHXjkRVlZipoCh2l0",
+    scans_count: 0,
+    created_at: "2026-11-20T10:05:00Z",
+  },
+  {
     id: "tag_crd2",
     tag_id: "CRD2",
     product_type: "Business NFC Card",
@@ -291,6 +327,17 @@ const INITIAL_TAGS: QrNfcTagItemRecord[] = [
     link: `${DOMAIN_BASE}/t/CRD2`,
     scans_count: 0,
     created_at: "2026-11-01T09:00:00Z",
+  },
+  {
+    id: "tag_crd3",
+    tag_id: "CRD3",
+    product_type: "Business NFC Card",
+    business_id: "ZT-0005",
+    business_name: "Digitronics Control",
+    link: `${DOMAIN_BASE}/t/CRD3`,
+    destination: "not_assigned",
+    scans_count: 0,
+    created_at: "2026-11-20T10:05:00Z",
   },
 ];
 
@@ -372,6 +419,18 @@ const INITIAL_GOOGLE_LINKS: GoogleReviewLinkItemRecord[] = [
     setup_status: "completed",
     total_scans: 36,
     created_at: "2026-11-02T04:25:00Z",
+  },
+  {
+    id: "gl_04",
+    tag_id: "ST4",
+    business_id: "ZT-0005",
+    business_name: "Digitronics Control",
+    link_of_tag_id: `${DOMAIN_BASE}/t/ST4`,
+    business_google_review_link: "https://search.google.com/local/writereview?placeid=ChIJBdE5mOCHXjkRVlZipoCh2l0",
+    destination: "business_page",
+    setup_status: "completed",
+    total_scans: 0,
+    created_at: "2026-11-20T10:05:00Z",
   },
 ];
 
@@ -509,6 +568,38 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
     },
     updated_at: "2026-11-02T13:22:00Z",
   },
+  {
+    id: "pe_st4",
+    tag_id: "ST4",
+    business_id: "ZT-0005",
+    business_name: "Digitronics Control",
+    link_url: `${DOMAIN_BASE}/t/ST4`,
+    setup_status: "completed",
+    config_data: {
+      theme: "clean_light",
+      accent_color: "#2563eb",
+      title: "Digitronics Control",
+      subtitle: "Power Equipment Manufacturer",
+      category: "Power Equipment Manufacturer",
+      cover_image: "/covers/digitronics_cover.png",
+      logo_url: "/logo.png",
+      cta_text: "Write a 5-Star Review on Google",
+      google_link: "https://search.google.com/local/writereview?placeid=ChIJBdE5mOCHXjkRVlZipoCh2l0",
+      phone: "9825166265",
+      contact_phone: "9825166265",
+      whatsapp: "9898980401",
+      instagram: "",
+      email: "digitronics_16@yahoo.co.in",
+      website: "",
+      website_url: "",
+      upi_id: "",
+      directions_link: "https://maps.app.goo.gl/ig8w2c9n",
+      maps_link: "https://maps.app.goo.gl/ig8w2c9n",
+      about_us: "Digitronics Control provides reliable and innovative electronics, industrial automation, electrical control systems, and technical support solutions. We are committed to delivering quality products, customised solutions, and dependable service to meet our customers' needs. Our goal is to make technology smarter, simpler, and more reliable.",
+      tags: ["Reliable Service", "Prompt Delivery", "Excellent Support", "Quality Products", "Technical Expertise"],
+    },
+    updated_at: "2026-11-20T10:10:00Z",
+  },
 ];
 
 // Helper: safe read
@@ -595,19 +686,44 @@ export async function serverFetchPlatformData(): Promise<{ success: boolean; cou
       deletedPageEditorConfigs,
     } = json.data;
 
-    // Always persist database state, even if empty array
-    localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients || []));
-    localStorage.setItem(KEY_DELETED_BUSINESSES, JSON.stringify(deletedBusinesses || []));
-    localStorage.setItem(KEY_PAYMENTS, JSON.stringify(payments || []));
-    localStorage.setItem(KEY_DELETED_PAYMENTS, JSON.stringify(deletedPayments || []));
-    localStorage.setItem(KEY_QR_NFC_TAGS, JSON.stringify(tags || []));
-    localStorage.setItem(KEY_DELETED_QR_NFC_TAGS, JSON.stringify(deletedTags || []));
-    localStorage.setItem(KEY_GOOGLE_LINKS, JSON.stringify(googleLinks || []));
-    localStorage.setItem(KEY_DELETED_GOOGLE_LINKS, JSON.stringify(deletedGoogleLinks || []));
-    localStorage.setItem(KEY_SOCIAL_LINKS, JSON.stringify(socialLinks || []));
-    localStorage.setItem(KEY_DELETED_SOCIAL_LINKS, JSON.stringify(deletedSocialLinks || []));
-    localStorage.setItem(KEY_PAGE_EDITOR, JSON.stringify(pageEditorConfigs || []));
-    localStorage.setItem(KEY_DELETED_PAGE_EDITOR, JSON.stringify(deletedPageEditorConfigs || []));
+    // Safeguard: ONLY persist database state when populated arrays are returned!
+    // Never wipe populated local storage with an empty array if server query timed out or had a partial failure!
+    if (Array.isArray(clients) && clients.length > 0) {
+      localStorage.setItem(KEY_CLIENTS, JSON.stringify(clients));
+    }
+    if (Array.isArray(deletedBusinesses)) {
+      localStorage.setItem(KEY_DELETED_BUSINESSES, JSON.stringify(deletedBusinesses));
+    }
+    if (Array.isArray(payments) && payments.length > 0) {
+      localStorage.setItem(KEY_PAYMENTS, JSON.stringify(payments));
+    }
+    if (Array.isArray(deletedPayments)) {
+      localStorage.setItem(KEY_DELETED_PAYMENTS, JSON.stringify(deletedPayments));
+    }
+    if (Array.isArray(tags) && tags.length > 0) {
+      localStorage.setItem(KEY_QR_NFC_TAGS, JSON.stringify(tags));
+    }
+    if (Array.isArray(deletedTags)) {
+      localStorage.setItem(KEY_DELETED_QR_NFC_TAGS, JSON.stringify(deletedTags));
+    }
+    if (Array.isArray(googleLinks) && googleLinks.length > 0) {
+      localStorage.setItem(KEY_GOOGLE_LINKS, JSON.stringify(googleLinks));
+    }
+    if (Array.isArray(deletedGoogleLinks)) {
+      localStorage.setItem(KEY_DELETED_GOOGLE_LINKS, JSON.stringify(deletedGoogleLinks));
+    }
+    if (Array.isArray(socialLinks) && socialLinks.length > 0) {
+      localStorage.setItem(KEY_SOCIAL_LINKS, JSON.stringify(socialLinks));
+    }
+    if (Array.isArray(deletedSocialLinks)) {
+      localStorage.setItem(KEY_DELETED_SOCIAL_LINKS, JSON.stringify(deletedSocialLinks));
+    }
+    if (Array.isArray(pageEditorConfigs) && pageEditorConfigs.length > 0) {
+      localStorage.setItem(KEY_PAGE_EDITOR, JSON.stringify(pageEditorConfigs));
+    }
+    if (Array.isArray(deletedPageEditorConfigs)) {
+      localStorage.setItem(KEY_DELETED_PAGE_EDITOR, JSON.stringify(deletedPageEditorConfigs));
+    }
 
     if (json.counts) {
       localStorage.setItem("zentap_platform_counts_v2", JSON.stringify(json.counts));
@@ -1576,7 +1692,13 @@ export async function permanentDeletePageEditorServer(tagId: string, confirmatio
 }
 
 export function getAllClients(): ClientRecord[] {
-  const clients = getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);
+  const stored = getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);
+  const clients = (!stored || stored.length === 0) ? [...INITIAL_CLIENTS] : [...stored];
+  INITIAL_CLIENTS.forEach((seed) => {
+    if (!clients.some((c) => c.business_id.toLowerCase() === seed.business_id.toLowerCase())) {
+      clients.push(seed);
+    }
+  });
   // Auto-reconciliation: ensure clients are hydrated from pageEditorConfigs if any fields (like upi_id or directions_link) are missing
   try {
     const pConfigs = getAllPageEditorConfigs();
@@ -2034,7 +2156,14 @@ export function deletePaymentWithPassword(id: string, adminPasswordInput?: strin
 // ============================================================================
 
 export function getAllQrNfcTags(): QrNfcTagItemRecord[] {
-  return getStored<QrNfcTagItemRecord[]>(KEY_QR_NFC_TAGS, INITIAL_TAGS);
+  const stored = getStored<QrNfcTagItemRecord[]>(KEY_QR_NFC_TAGS, INITIAL_TAGS);
+  const tags = (!stored || stored.length === 0) ? [...INITIAL_TAGS] : [...stored];
+  INITIAL_TAGS.forEach((seed) => {
+    if (!tags.some((t) => t.tag_id.toLowerCase() === seed.tag_id.toLowerCase())) {
+      tags.push(seed);
+    }
+  });
+  return tags;
 }
 
 // Helper: generate next ST1, ST2... or CRD1, CRD2...
@@ -2291,7 +2420,14 @@ function syncTagAssignmentDownstream(tag: QrNfcTagItemRecord): void {
 // ============================================================================
 
 export function getAllGoogleReviewLinks(): GoogleReviewLinkItemRecord[] {
-  return getStored<GoogleReviewLinkItemRecord[]>(KEY_GOOGLE_LINKS, INITIAL_GOOGLE_LINKS);
+  const stored = getStored<GoogleReviewLinkItemRecord[]>(KEY_GOOGLE_LINKS, INITIAL_GOOGLE_LINKS);
+  const links = (!stored || stored.length === 0) ? [...INITIAL_GOOGLE_LINKS] : [...stored];
+  INITIAL_GOOGLE_LINKS.forEach((seed) => {
+    if (!links.some((g) => g.tag_id.toLowerCase() === seed.tag_id.toLowerCase())) {
+      links.push(seed);
+    }
+  });
+  return links;
 }
 
 export function updateGoogleReviewLink(tagId: string, updates: Partial<GoogleReviewLinkItemRecord>): GoogleReviewLinkItemRecord | null {
@@ -2543,7 +2679,14 @@ export function restoreDeletedSocialLink(tagId: string): boolean {
 // ============================================================================
 
 export function getAllPageEditorConfigs(): PageEditorConfigItemRecord[] {
-  return getStored<PageEditorConfigItemRecord[]>(KEY_PAGE_EDITOR, INITIAL_PAGE_EDITORS);
+  const stored = getStored<PageEditorConfigItemRecord[]>(KEY_PAGE_EDITOR, INITIAL_PAGE_EDITORS);
+  const configs = (!stored || stored.length === 0) ? [...INITIAL_PAGE_EDITORS] : [...stored];
+  INITIAL_PAGE_EDITORS.forEach((seed) => {
+    if (!configs.some((p) => p.tag_id.toLowerCase() === seed.tag_id.toLowerCase())) {
+      configs.push(seed);
+    }
+  });
+  return configs;
 }
 
 export function updatePageEditorConfig(tagId: string, updates: Partial<PageEditorConfigItemRecord>): PageEditorConfigItemRecord | null {

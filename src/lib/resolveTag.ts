@@ -73,19 +73,27 @@ export async function resolveScan(
   if (db) {
     try {
       const codeUpper = code.toUpperCase();
-      const [tagRes, grlRes] = await Promise.all([
-        db.from('qr_nfc_tags')
-          .select('id, tag_id, product_type, business_id, destination, google_review_link, social_platform, social_link, scans_count')
-          .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
-          .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle(),
-        db.from('google_review_links')
-          .select('id, tag_id, destination, business_id, business_google_review_link')
-          .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
-          .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle(),
+      const [tagRes, grlRes] = await Promise.race([
+        Promise.all([
+          db.from('qr_nfc_tags')
+            .select('id, tag_id, product_type, business_id, destination, google_review_link, social_platform, social_link, scans_count')
+            .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
+            .is('deleted_at', null)
+            .limit(1)
+            .maybeSingle(),
+          db.from('google_review_links')
+            .select('id, tag_id, destination, business_id, business_google_review_link')
+            .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
+            .is('deleted_at', null)
+            .limit(1)
+            .maybeSingle(),
+        ]),
+        new Promise<any[]>((resolve) =>
+          setTimeout(() => {
+            console.warn(`resolveScan timeout (1.5s) for ${code}. Falling back to memory index.`);
+            resolve([{ data: null }, { data: null }]);
+          }, 1500)
+        ),
       ]);
 
       const tagRow = tagRes?.data;

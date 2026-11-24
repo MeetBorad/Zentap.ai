@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { invalidateCachedTag } from "@/lib/tagCache";
 import { notifyFounderOwnerCredentials, generateDeterministicPassword } from "@/lib/telegram";
+import {
+  getAllClients,
+  getAllQrNfcTags,
+  getAllGoogleReviewLinks,
+  getAllSocialLinks,
+  getAllPageEditorConfigs,
+  getAllPayments,
+} from "@/lib/adminPlatformStore";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +22,22 @@ const ALLOWED_PLATFORM_TABLES = [
   "page_editor_configs",
 ] as const;
 
+let cachedPlatformData: { timestamp: number; payload: any } | null = null;
+const CACHE_TTL_MS = 10000; // 10-second fast cache
+
+function invalidatePlatformCache() {
+  cachedPlatformData = null;
+}
+
 export async function GET(req: Request) {
   const supabase = createAdminClient();
   if (!supabase) {
     return NextResponse.json({ error: "Supabase admin client unconfigured" }, { status: 500 });
+  }
+
+  // Fast cache return
+  if (cachedPlatformData && Date.now() - cachedPlatformData.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(cachedPlatformData.payload);
   }
 
   try {
@@ -25,47 +45,95 @@ export async function GET(req: Request) {
     const requestedTable = searchParams.get("table");
     const requestedStatus = searchParams.get("status"); // "all" | "deleted" | null
 
+    // Consolidated, single-query parallel fetch with strict 3-second timeout protection
     const [
-      activeClientsRes,
-      deletedClientsRes,
-      activePaymentsRes,
-      deletedPaymentsRes,
-      activeTagsRes,
-      deletedTagsRes,
-      activeGoogleLinksRes,
-      deletedGoogleLinksRes,
-      activeSocialLinksRes,
-      deletedSocialLinksRes,
-      activePageEditorRes,
-      deletedPageEditorRes,
-    ] = await Promise.all([
-      supabase.from("clients").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
-      supabase.from("clients").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+      allClientsRes,
+      allPaymentsRes,
+      allTagsRes,
+      allGoogleLinksRes,
+      allSocialLinksRes,
+      allPageEditorRes,
+    ] = await Promise.race([
+      Promise.all([
+        supabase
+          .from("clients")
+          .select("id, business_id, business_name, owner_name, owner_phone, owner_email, whatsapp, instagram_link, facebook_link, city, google_review_link, created_at, updated_at, deleted_at, deleted_by")
+          .order("created_at", { ascending: false }),
 
-      supabase.from("payments").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
-      supabase.from("payments").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+        supabase
+          .from("payments")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      supabase.from("qr_nfc_tags").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
-      supabase.from("qr_nfc_tags").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+        supabase
+          .from("qr_nfc_tags")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      supabase.from("google_review_links").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
-      supabase.from("google_review_links").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+        supabase
+          .from("google_review_links")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      supabase.from("social_links").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
-      supabase.from("social_links").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+        supabase
+          .from("social_links")
+          .select("*")
+          .order("created_at", { ascending: false }),
 
-      supabase.from("page_editor_configs").select("*").is("deleted_at", null).order("updated_at", { ascending: false }),
-      supabase.from("page_editor_configs").select("*").not("deleted_at", "is", null).order("deleted_at", { ascending: false }),
+        supabase
+          .from("page_editor_configs")
+          .select("id, tag_id, business_id, business_name, link_url, setup_status, created_at, updated_at, deleted_at, deleted_by, config_data")
+          .order("updated_at", { ascending: false }),
+      ]),
+      new Promise<any[]>((resolve) =>
+        setTimeout(() => {
+          console.warn("GET /api/admin/platform timeout (3s). Returning available or cached state.");
+          resolve([{ data: null }, { data: null }, { data: null }, { data: null }, { data: null }, { data: null }]);
+        }, 3000)
+      ),
     ]);
 
-    const clients = activeClientsRes.data || [];
-    const deletedBusinesses = deletedClientsRes.data || [];
+    const rawClients = allClientsRes?.data || [];
+    let clients = rawClients.filter((c: any) => !c.deleted_at);
+    const deletedBusinesses = rawClients.filter((c: any) => !!c.deleted_at);
+    if (clients.length === 0) {
+      clients = getAllClients();
+    }
 
-    const payments = activePaymentsRes.data || [];
-    const deletedPayments = deletedPaymentsRes.data || [];
+    const rawPayments = allPaymentsRes?.data || [];
+    let payments = rawPayments.filter((p: any) => !p.deleted_at);
+    const deletedPayments = rawPayments.filter((p: any) => !!p.deleted_at);
+    if (payments.length === 0) {
+      payments = getAllPayments();
+    }
 
-    const tags = activeTagsRes.data || [];
-    const deletedTags = deletedTagsRes.data || [];
+    const rawTags = allTagsRes?.data || [];
+    let tags = rawTags.filter((t: any) => !t.deleted_at);
+    const deletedTags = rawTags.filter((t: any) => !!t.deleted_at);
+    if (tags.length === 0) {
+      tags = getAllQrNfcTags();
+    }
+
+    const rawGoogleLinks = allGoogleLinksRes?.data || [];
+    let activeGoogleLinksData = rawGoogleLinks.filter((g: any) => !g.deleted_at);
+    const deletedGoogleLinks = rawGoogleLinks.filter((g: any) => !!g.deleted_at);
+    if (activeGoogleLinksData.length === 0) {
+      activeGoogleLinksData = getAllGoogleReviewLinks();
+    }
+
+    const rawSocialLinks = allSocialLinksRes?.data || [];
+    let activeSocialLinksData = rawSocialLinks.filter((s: any) => !s.deleted_at);
+    const deletedSocialLinks = rawSocialLinks.filter((s: any) => !!s.deleted_at);
+    if (activeSocialLinksData.length === 0) {
+      activeSocialLinksData = getAllSocialLinks();
+    }
+
+    const rawPageEditor = allPageEditorRes?.data || [];
+    let activePageEditorData = rawPageEditor.filter((p: any) => !p.deleted_at);
+    const deletedPageEditorConfigs = rawPageEditor.filter((p: any) => !!p.deleted_at);
+    if (activePageEditorData.length === 0) {
+      activePageEditorData = getAllPageEditorConfigs();
+    }
 
     // =========================================================================
     // SINGLE SOURCE OF TRUTH (qr_nfc_tags):
@@ -90,12 +158,12 @@ export async function GET(req: Request) {
     };
 
     const clientMap = new Map<string, any>();
-    clients.forEach((c) => clientMap.set(c.business_id, c));
+    clients.forEach((c: any) => clientMap.set(c.business_id, c));
 
     // Active Google Links View: derived purely from assigned standees
     const googleLinksFromTags = tags
-      .filter((t) => t.product_type === "Counter Standee" && t.business_id)
-      .map((t) => {
+      .filter((t: any) => t.product_type === "Counter Standee" && t.business_id)
+      .map((t: any) => {
         const client = clientMap.get(t.business_id);
         const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
         const setup_status: "active" | "pending" = isValidGoogleUrl(googleUrl) ? "active" : "pending";
@@ -118,8 +186,8 @@ export async function GET(req: Request) {
 
     // Active Social Links View: derived purely from assigned cards
     const socialLinksFromTags = tags
-      .filter((t) => t.product_type === "Business NFC Card" && t.business_id)
-      .map((t) => {
+      .filter((t: any) => t.product_type === "Business NFC Card" && t.business_id)
+      .map((t: any) => {
         const client = clientMap.get(t.business_id);
         const platform = t.social_platform || "N/A";
         const socialUrl = (t.social_link || "").trim();
@@ -144,13 +212,13 @@ export async function GET(req: Request) {
 
     // Merge view items with any existing standalone rows ensuring tag_id deduplication (case-insensitive)
     const googleLinks = [...googleLinksFromTags];
-    (activeGoogleLinksRes.data || []).forEach((row) => {
-      const isDuplicateTag = googleLinks.some((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+    activeGoogleLinksData.forEach((row: any) => {
+      const isDuplicateTag = googleLinks.some((g: any) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
       if (isDuplicateTag) return;
 
       // Prevent Business ID (e.g. ZT-0004) from masquerading as a standee tag if standee already exists for business
       const isBusinessIdAsTag = row.business_id && row.tag_id.toLowerCase() === row.business_id.toLowerCase();
-      const hasStandeeForBiz = googleLinks.some((g) => g.business_id && g.business_id.toLowerCase() === row.business_id?.toLowerCase());
+      const hasStandeeForBiz = googleLinks.some((g: any) => g.business_id && g.business_id.toLowerCase() === row.business_id?.toLowerCase());
       if (isBusinessIdAsTag && hasStandeeForBiz) return;
 
       const setup_status = isValidGoogleUrl(row.business_google_review_link) ? "active" : "pending";
@@ -158,25 +226,38 @@ export async function GET(req: Request) {
     });
 
     const socialLinks = [...socialLinksFromTags];
-    (activeSocialLinksRes.data || []).forEach((row) => {
-      if (!socialLinks.some((s) => s.tag_id === row.tag_id)) {
+    activeSocialLinksData.forEach((row: any) => {
+      if (!socialLinks.some((s: any) => s.tag_id === row.tag_id)) {
         const setup_status = isValidSocialUrl(row.social_platform, row.social_link) ? "active" : "pending";
         socialLinks.push({ ...row, setup_status });
       }
     });
 
-    const deletedGoogleLinks = deletedGoogleLinksRes.data || [];
-    const deletedSocialLinks = deletedSocialLinksRes.data || [];
-
     // Page Editor configs: strictly derived from Standees whose Destination is 'zentap_google' or 'business_page' and has assigned business
     const pageEditorFromTags = tags
-      .filter((t) => t.product_type === "Counter Standee" && t.business_id && (t.destination === "zentap_google" || t.destination === "business_page"))
-      .map((t) => {
+      .filter((t: any) => t.product_type === "Counter Standee" && t.business_id && (t.destination === "zentap_google" || t.destination === "business_page"))
+      .map((t: any) => {
         const client = clientMap.get(t.business_id);
         const googleUrl = (t.google_review_link || client?.google_review_link || "").trim();
-        const existingConfig = (activePageEditorRes.data || []).find((p) => p.tag_id === t.tag_id);
+        const existingConfig = activePageEditorData.find((p: any) => p.tag_id.toLowerCase() === t.tag_id.toLowerCase());
         // Setup status / Status of Design: completed when designed and saved; pending otherwise
         const setup_status: "completed" | "pending" = existingConfig?.setup_status === "completed" ? "completed" : "pending";
+        
+        // Clean giant base64 images from list view config_data to keep payload < 20KB
+        let cfg = existingConfig?.config_data || {
+          theme: "obsidian",
+          title: client?.business_name || t.business_name || "Welcome",
+          subtitle: "Rate your experience on Google",
+          cta_text: "Write a 5-Star Review on Google",
+          google_link: googleUrl,
+          phone: client?.owner_phone || "",
+          whatsapp: client?.whatsapp || client?.owner_phone || "",
+          instagram: client?.instagram_link || "",
+        };
+        if (typeof cfg === "object" && cfg !== null && typeof cfg.logo_url === "string" && cfg.logo_url.startsWith("data:image/") && cfg.logo_url.length > 500) {
+          cfg = { ...cfg, logo_url: "/logo.png" };
+        }
+
         return {
           id: existingConfig?.id || t.id,
           tag_id: t.tag_id,
@@ -185,16 +266,7 @@ export async function GET(req: Request) {
           link_url: t.link,
           destination: t.destination || "business_page",
           setup_status,
-          config_data: existingConfig?.config_data || {
-            theme: "obsidian",
-            title: client?.business_name || t.business_name || "Welcome",
-            subtitle: "Rate your experience on Google",
-            cta_text: "Write a 5-Star Review on Google",
-            google_link: googleUrl,
-            phone: client?.owner_phone || "",
-            whatsapp: client?.whatsapp || client?.owner_phone || "",
-            instagram: client?.instagram_link || "",
-          },
+          config_data: cfg,
           created_at: existingConfig?.created_at || t.created_at,
           updated_at: existingConfig?.updated_at || t.updated_at,
           deleted_at: t.deleted_at,
@@ -203,7 +275,7 @@ export async function GET(req: Request) {
       });
 
     const pageEditorConfigs = [...pageEditorFromTags];
-    (activePageEditorRes.data || []).forEach((row) => {
+    activePageEditorData.forEach((row: any) => {
       const isDuplicateTag = pageEditorConfigs.some((p) => p.tag_id.toLowerCase() === row.tag_id.toLowerCase());
       if (isDuplicateTag) return;
 
@@ -211,21 +283,22 @@ export async function GET(req: Request) {
       const hasConfigForBiz = pageEditorConfigs.some((p) => p.business_id && p.business_id.toLowerCase() === row.business_id?.toLowerCase());
       if (isBusinessIdAsTag && hasConfigForBiz) return;
 
-      if (!pageEditorConfigs.some((p) => p.tag_id.toLowerCase() === row.tag_id.toLowerCase())) {
-        const matchingTag = tags.find((t) => t.tag_id.toLowerCase() === row.tag_id.toLowerCase());
-        const matchingGLink = googleLinks.find((g) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
-        const dest = matchingTag?.destination || matchingGLink?.destination || row.destination;
-        if (dest === "zentap_google" || dest === "business_page") {
-          pageEditorConfigs.push({
-            ...row,
-            destination: dest,
-            setup_status: row.setup_status === "completed" ? "completed" : "pending",
-          });
+      const matchingTag = tags.find((t: any) => t.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+      const matchingGLink = googleLinks.find((g: any) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
+      const dest = matchingTag?.destination || matchingGLink?.destination || row.destination || "business_page";
+      if (dest === "zentap_google" || dest === "business_page") {
+        let cfg = row.config_data;
+        if (typeof cfg === "object" && cfg !== null && typeof cfg.logo_url === "string" && cfg.logo_url.startsWith("data:image/") && cfg.logo_url.length > 500) {
+          cfg = { ...cfg, logo_url: "/logo.png" };
         }
+        pageEditorConfigs.push({
+          ...row,
+          destination: dest,
+          config_data: cfg,
+          setup_status: row.setup_status === "completed" ? "completed" : "pending",
+        });
       }
     });
-
-    const deletedPageEditorConfigs = deletedPageEditorRes.data || [];
 
     const counts = {
       clients: {
@@ -234,8 +307,8 @@ export async function GET(req: Request) {
       },
       payments: {
         all: payments.length,
-        paid: payments.filter((p) => p.payment_status === "Completed paid").length,
-        unpaid: payments.filter((p) => p.payment_status !== "Completed paid").length,
+        paid: payments.filter((p: any) => p.payment_status === "Completed paid").length,
+        unpaid: payments.filter((p: any) => p.payment_status !== "Completed paid").length,
         deleted: deletedPayments.length,
       },
       tags: {
@@ -305,7 +378,7 @@ export async function GET(req: Request) {
       };
     });
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       counts,
       data: {
@@ -322,7 +395,16 @@ export async function GET(req: Request) {
         pageEditorConfigs,
         deletedPageEditorConfigs,
       },
-    });
+    };
+
+    if (mappedClients.length > 0 || tags.length > 0) {
+      cachedPlatformData = {
+        timestamp: Date.now(),
+        payload: responsePayload,
+      };
+    }
+
+    return NextResponse.json(responsePayload);
   } catch (err: any) {
     console.error("GET /api/admin/platform error:", err);
     return NextResponse.json({ error: err.message || "Failed to fetch platform tables" }, { status: 500 });
@@ -330,6 +412,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  invalidatePlatformCache();
   const supabase = createAdminClient();
   if (!supabase) {
     return NextResponse.json({ error: "Supabase admin client unconfigured" }, { status: 500 });
@@ -658,7 +741,6 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     "deleted_at",
     "deleted_by",
     "google_review_link",
-    "custom_fields",
   ],
   payments: [
     "id",
@@ -743,25 +825,6 @@ function sanitizeRowForTable(item: any, table: string) {
   if (!item || typeof item !== "object") return item;
   const copy: any = {};
   const allowed = TABLE_COLUMNS[table];
-
-  if (table === "clients") {
-    const existingCf = typeof item.custom_fields === "object" && item.custom_fields !== null ? { ...item.custom_fields } : {};
-    if (item.contact_phone !== undefined) existingCf.contact_phone = item.contact_phone;
-    if (item.google_business_page !== undefined) existingCf.google_business_page = item.google_business_page;
-    if (item.twitter_link !== undefined || item.twitter !== undefined) existingCf.twitter_link = item.twitter_link || item.twitter;
-    if (item.upi_id !== undefined) existingCf.upi_id = item.upi_id;
-    if (item.directions_link !== undefined || item.directions !== undefined) {
-      const d = item.directions_link || item.directions;
-      existingCf.directions_link = d;
-      existingCf.directions = d;
-    }
-    if (item.website_url !== undefined || item.website !== undefined) {
-      const w = item.website_url || item.website;
-      existingCf.website_url = w;
-      existingCf.website = w;
-    }
-    copy.custom_fields = existingCf;
-  }
 
   for (const [key, value] of Object.entries(item)) {
     if (allowed && !allowed.includes(key)) {
