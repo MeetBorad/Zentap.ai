@@ -319,9 +319,10 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     if (res.success) {
       onShowToast(`✓ Google Review Modal Tags & FAQs updated for "${reviewModalClient.business_name}"!`);
       setReviewModalClient(null);
-      await refreshData();
+      refreshData();
     } else {
       onShowToast(res.error || "Failed to update review tags and FAQs");
+      await refreshData();
     }
   };
 
@@ -414,7 +415,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       faqs: JSON.stringify(editFaqs),
     };
 
-    const res = await updateClientServer(editTarget.business_id, {
+    const updatedClientData: Partial<ClientRecord> = {
       id: editTarget.id,
       business_id: editBusinessId.trim() || editTarget.business_id,
       business_name: editBizName.trim(),
@@ -437,16 +438,27 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       review_tags: editReviewTags.trim() || undefined,
       faqs: editFaqs,
       custom_fields: mergedFields,
-    });
+    };
+
+    // Optimistic UI update: instantly update table in UI
+    setClients((prev) =>
+      prev.map((c) =>
+        c.business_id === editTarget.business_id ? ({ ...c, ...updatedClientData } as ClientRecord) : c
+      )
+    );
+
+    const res = await updateClientServer(editTarget.business_id, updatedClientData);
     setIsSubmitting(false);
 
     if (res.success) {
       onShowToast(`✓ Updated "${editBizName.trim()}" (${editTarget.business_id}) successfully!`);
       setIsEditModalOpen(false);
       setEditTarget(null);
-      await refreshData();
+      // Run background sync without blocking the UI
+      refreshData();
     } else {
       onShowToast(res.error || "Failed to update business in database");
+      await refreshData();
     }
   };
 

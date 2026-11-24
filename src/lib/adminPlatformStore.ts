@@ -1116,7 +1116,8 @@ export async function updateClientServer(
       return { success: true, data: localUpdated || (payload as ClientRecord), error: json.error };
     }
 
-    await serverFetchPlatformData();
+    // Non-blocking background sync so the save returns instantly
+    serverFetchPlatformData().catch((e) => console.warn("Background sync notice:", e));
     return { success: true, data: json.data?.[0] || localUpdated };
   } catch (err: any) {
     console.warn("Network error during updateClientServer:", err);

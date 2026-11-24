@@ -861,12 +861,12 @@ function sanitizeRowForTable(item: any, table: string) {
             ]);
           }
 
-          // Two-Way Sync: Cascade all updated fields to linked page_editor_configs in Supabase
+          // Two-Way Sync: Cascade all updated fields to linked page_editor_configs in Supabase (parallelized)
           try {
             const rawInput: any = { ...checkItem, ...(checkItem.custom_fields || {}) };
             const isDemoFleet = targetBizId?.toLowerCase() === "zt-0004" || newBizId?.toLowerCase() === "zt-0004";
             const queryTarget = isDemoFleet
-              ? `business_id.eq.${targetBizId},business_id.eq.${newBizId},tag_id.eq.st3,tag_id.eq.zentap,tag_id.eq.ZT-0004`
+              ? `business_id.eq.${targetBizId},business_id.eq.${newBizId},tag_id.eq.st3,tag_id.eq.ST3,tag_id.eq.zentap`
               : `business_id.eq.${targetBizId},business_id.eq.${newBizId}`;
 
             const { data: linkedPages } = await (supabase as any)
@@ -875,7 +875,7 @@ function sanitizeRowForTable(item: any, table: string) {
               .or(queryTarget);
 
             if (linkedPages && linkedPages.length > 0) {
-              for (const lp of linkedPages) {
+              const pageUpdates = linkedPages.map((lp: any) => {
                 const cfg = typeof lp.config_data === "string" ? JSON.parse(lp.config_data) : { ...(lp.config_data || {}) };
                 if (newName) cfg.title = newName;
                 if (rawInput.owner_name) cfg.owner_name = rawInput.owner_name;
@@ -927,7 +927,7 @@ function sanitizeRowForTable(item: any, table: string) {
                   }
                 }
 
-                await (supabase as any)
+                return (supabase as any)
                   .from("page_editor_configs")
                   .update({
                     business_name: newName,
@@ -936,7 +936,8 @@ function sanitizeRowForTable(item: any, table: string) {
                     updated_at: new Date().toISOString(),
                   })
                   .eq("id", lp.id);
-              }
+              });
+              await Promise.allSettled(pageUpdates);
             } else {
               // Create page_editor_config entry for this client so custom fields and rich page data are permanently preserved
               const defaultCfg: any = {
