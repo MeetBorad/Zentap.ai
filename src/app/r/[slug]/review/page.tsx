@@ -54,20 +54,22 @@ export default async function ReviewPage({
 
   const cleanSlug = (slug || "").replace(/[|%#?&\s/]+$/g, "").toLowerCase().trim();
   const via = rawVia ? rawVia.replace(/[|%#?&\s/]+$/g, "").trim() : undefined;
+  const isTagOrClientId = cleanSlug.startsWith("zt-") || cleanSlug.startsWith("st") || cleanSlug.startsWith("crd") || cleanSlug.startsWith("tag_");
 
-  // Find business
-  const rawBiz = getBusinessBySlug(cleanSlug) || (await fetchPublicBusinessBySlug(cleanSlug));
+  // Fast memory business lookup (avoids hanging on remote database for client IDs)
+  let rawBiz: any = getBusinessBySlug(cleanSlug);
 
-  // Check if customized in Page Editor (page_editor_configs)
+  // Check if customized in Page Editor (page_editor_configs) and clients table
   const db = createAdminClient();
   let pageConfig: any = null;
   let tagRow: any = null;
   let grlRow: any = null;
+  let clientRecord: any = null;
 
   if (db) {
     try {
       const tagQuery = via || cleanSlug;
-      const isSharedDemo = cleanSlug === "zentap" || cleanSlug === "st3" || via?.toLowerCase() === "st3" || cleanSlug === "zt-0004";
+      const isSharedDemo = cleanSlug === "zentap" || cleanSlug === "st3" || (via || "").toLowerCase() === "st3" || cleanSlug === "zt-0004";
 
       const cfgPromise = isSharedDemo
         ? db
@@ -101,19 +103,30 @@ export default async function ReviewPage({
         .is("deleted_at", null)
         .maybeSingle();
 
-      const [cfgRes, tRes, gRes] = await Promise.race([
-        Promise.all([cfgPromise, tagPromise, grlPromise]),
+      const clientPromise = isSharedDemo
+        ? db.from("clients").select("*").ilike("business_id", "ZT-0004").is("deleted_at", null).limit(1).maybeSingle()
+        : db.from("clients").select("*").or(`business_id.ilike.${cleanSlug}${via ? `,business_id.ilike.${via}` : ''}`).is("deleted_at", null).limit(1).maybeSingle();
+
+      const bizPromise = (rawBiz || isTagOrClientId)
+        ? Promise.resolve(null)
+        : fetchPublicBusinessBySlug(cleanSlug).catch(() => null);
+
+      // Single parallel round trip with strict 1.5s timeout guard to prevent 504 Vercel timeouts
+      const [cfgRes, tRes, gRes, cRes, bRes] = await Promise.race([
+        Promise.all([cfgPromise, tagPromise, grlPromise, clientPromise, bizPromise]),
         new Promise<any[]>((resolve) =>
           setTimeout(() => {
-            console.warn(`Review page query timed out (2s) for ${tagQuery}`);
-            resolve([{ data: null }, { data: null }, { data: null }]);
-          }, 2000)
+            console.warn(`Review page query timed out (1.5s) for ${tagQuery}. Using instant local fallback.`);
+            resolve([{ data: null }, { data: null }, { data: null }, { data: null }, null]);
+          }, 1500)
         ),
       ]);
 
       pageConfig = cfgRes?.data || null;
       tagRow = tRes?.data || null;
       grlRow = gRes?.data || null;
+      clientRecord = cRes?.data || null;
+      if (!rawBiz && bRes) rawBiz = bRes;
     } catch (e) {
       console.warn("Error fetching data for review page:", e);
     }
@@ -125,10 +138,10 @@ export default async function ReviewPage({
   if (isHardwareTag) {
     let assignedBizId = pageConfig?.business_id || tagRow?.business_id || grlRow?.business_id;
     if (!assignedBizId) {
-      const localT = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === cleanSlug);
+      const localT = getAllQrNfcTags().find((t) => (t.tag_id || "").toLowerCase() === cleanSlug);
       if (localT?.business_id) assignedBizId = localT.business_id;
     }
-    if (assignedBizId && assignedBizId.toLowerCase() !== cleanSlug) {
+    if (assignedBizId && (assignedBizId || "").toLowerCase() !== cleanSlug) {
       const canonicalSlug = assignedBizId.toLowerCase().trim();
       const qParams = new URLSearchParams();
       qParams.set('via', via || cleanSlug);
@@ -138,33 +151,13 @@ export default async function ReviewPage({
     }
   }
 
-  // 1. Fetch Client Record from clients table (Master Source of Truth)
-  let clientRecord: any = null;
-  const candidateBizId = pageConfig?.business_id || (cleanSlug === "st3" || cleanSlug === "zentap" || via?.toLowerCase() === "st3" ? "ZT-0004" : cleanSlug);
-
-  if (db) {
-    try {
-      const candidates = Array.from(new Set([cleanSlug, candidateBizId, "ZT-0004"].filter(Boolean)));
-      const orExpr = candidates.map((c) => `business_id.ilike.${c}`).join(",");
-      const { data: cData } = await db
-        .from('clients')
-        .select('*')
-        .or(orExpr)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
-      if (cData) clientRecord = cData;
-    } catch (e) {
-      console.warn("Review page client lookup notice:", e);
-    }
-  }
-
+  // Fallback to local memory store if database timed out or was empty
   if (!clientRecord) {
     const allClients = getAllClients();
     clientRecord = allClients.find(
       (c) =>
-        c.business_id.toLowerCase() === cleanSlug.toLowerCase() ||
-        c.business_id.toLowerCase() === candidateBizId.toLowerCase() ||
+        (c.business_id || "").toLowerCase() === cleanSlug ||
+        (via && (c.business_id || "").toLowerCase() === via.toLowerCase()) ||
         (cleanSlug === "st3" && c.business_id === "ZT-0004")
     ) || null;
   }
@@ -172,11 +165,11 @@ export default async function ReviewPage({
   if (!pageConfig) {
     const local = getAllPageEditorConfigs().find(
       (p) =>
-        (via && p.tag_id.toLowerCase() === via.toLowerCase()) ||
-        p.tag_id.toLowerCase() === cleanSlug ||
-        p.business_id.toLowerCase() === cleanSlug ||
-        (rawBiz && p.business_id.toLowerCase() === rawBiz.id.toLowerCase()) ||
-        (cleanSlug === "zentap" && (p.tag_id.toLowerCase() === "zentap" || p.business_id.toLowerCase() === "sample-demo-biz-01" || p.tag_id.toLowerCase() === "st1"))
+        (via && (p.tag_id || "").toLowerCase() === via.toLowerCase()) ||
+        (p.tag_id || "").toLowerCase() === cleanSlug ||
+        (p.business_id || "").toLowerCase() === cleanSlug ||
+        (rawBiz && (p.business_id || "").toLowerCase() === (rawBiz.id || "").toLowerCase()) ||
+        (cleanSlug === "zentap" && ((p.tag_id || "").toLowerCase() === "zentap" || (p.business_id || "").toLowerCase() === "sample-demo-biz-01" || (p.tag_id || "").toLowerCase() === "st1"))
     );
     if (local) {
       pageConfig = local;
@@ -246,8 +239,8 @@ export default async function ReviewPage({
   } : fallbackBiz;
 
   // Determine effective destination
-  const localGrl = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === (via || cleanSlug));
-  const localTag = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === (via || cleanSlug));
+  const localGrl = getAllGoogleReviewLinks().find((g) => (g.tag_id || "").toLowerCase() === (via || cleanSlug).toLowerCase());
+  const localTag = getAllQrNfcTags().find((t) => (t.tag_id || "").toLowerCase() === (via || cleanSlug).toLowerCase());
 
   const effectiveDest =
     grlRow?.destination ||

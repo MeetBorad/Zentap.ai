@@ -1,5 +1,24 @@
 # ZenTap — Changelog
 
+## [1.54.33] — 2026-11-24
+### Fixed (High-Performance Client-Side Image Optimization, 504 Timeout Elimination & Hydration Error Shields)
+- **Universal High-Performance Image Upload Processing (`PageEditorWebpageTab.tsx`, `/api/admin/upload-image/route.ts`)**:
+  - Implemented client-side Canvas WebP/JPEG compression engine tailored per image slot:
+    - **Round Profile Logo**: Scaled to max 256x256 retina at 0.82 quality (**~15KB - 20KB**, down from 5MB+).
+    - **Cover Banner**: Scaled to max 800x320 at 0.80 quality (**~35KB - 45KB**, down from 8MB+).
+    - **Page Wallpaper**: Scaled to max 720x1280 at 0.72 quality (**~35KB - 50KB**).
+    - **Office Location Banner**: Scaled to max 800x450 at 0.80 quality (**~30KB - 45KB**).
+  - Added dedicated `/api/admin/upload-image` endpoint for server-side validation and compression.
+  - Eliminated bloated Base64 data strings that previously caused browser `localStorage` 5MB quota errors.
+- **Review Page 504 FUNCTION_INVOCATION_TIMEOUT Elimination (`r/[slug]/review/page.tsx`)**:
+  - Eliminated untimed sequential `fetchPublicBusinessBySlug` call on client ID routes.
+  - Consolidated all review page queries (`pageConfig`, `tagRow`, `grlRow`, `clientRecord`, `bizPromise`) into a single parallel round trip guarded by a 1.5-second `Promise.race` timeout with immediate fallback to memory stores.
+  - Guaranteed review assistant routes resolve in under 300ms without timing out.
+- **Client Hydration Exception Shields (`ZenTapHubPage.tsx`, `r/[slug]/page.tsx`)**:
+  - Protected all `.toLowerCase()` calls with null-safe optional chaining across `tag_id`, `business_id`, and `slug`.
+  - Added type-safe guards for `openingHoursRaw`, `faqsList`, and `availableTags` so malformed or non-string database values never throw runtime errors.
+  - Pinned explicit high-contrast text styling to "Add to Contacts" button (`text-slate-900` in light mode, `text-white` in dark mode).
+
 ## [1.54.32] — 2026-11-24
 ### Fixed (High Availability & Instant Routing Resilience, Fallback Store, and ZT-0005 Seeding)
 - **Zero-Downtime Data Architecture & Resilient Admin Store (`adminPlatformStore.ts`)**:

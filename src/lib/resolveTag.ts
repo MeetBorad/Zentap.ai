@@ -135,7 +135,7 @@ export async function resolveScan(
           db.from('qr_nfc_tags')
             .update({ scans_count: (tagRow.scans_count || 0) + 1 })
             .eq('id', tagRow.id)
-        ).catch(() => {});
+        ).catch(() => { });
       }
 
       // 1. Direct Google review:
@@ -162,10 +162,10 @@ export async function resolveScan(
           }
         }
 
-        return { 
-          kind: 'page', 
-          slug, 
-          target: effectiveDest === 'zentap_google' ? 'review' : 'business_page' 
+        return {
+          kind: 'page',
+          slug,
+          target: effectiveDest === 'zentap_google' ? 'review' : 'business_page'
         };
       }
 
@@ -212,8 +212,8 @@ export async function resolveScan(
           const peConfigs = getAllPageEditorConfigs();
           const pe = peConfigs.find((p) => p.tag_id.toLowerCase() === code);
           if (pe && pe.setup_status === 'completed') {
-            return { 
-              kind: 'page', 
+            return {
+              kind: 'page',
               slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap',
               target: gLink.destination === 'zentap_google' ? 'review' : 'business_page'
             };
@@ -221,8 +221,8 @@ export async function resolveScan(
           if (gLink.destination === 'business_page') {
             return { kind: 'unavailable', unassigned: false };
           }
-          return { 
-            kind: 'page', 
+          return {
+            kind: 'page',
             slug: matchedPlatformTag.business_id?.toLowerCase() || 'zentap',
             target: 'review'
           };
@@ -306,13 +306,13 @@ export async function resolveScan(
 
   // Check validity & payment confirmation gate (standees remain inactive until payment is confirmed)
   if (
-    !tag || 
-    !tag.active || 
-    !tag.type || 
-    !biz || 
-    biz.deleted_at || 
-    biz.is_deleted || 
-    biz.active === false || 
+    !tag ||
+    !tag.active ||
+    !tag.type ||
+    !biz ||
+    biz.deleted_at ||
+    biz.is_deleted ||
+    biz.active === false ||
     biz.payment_status === 'pending'
   ) {
     return { kind: 'unavailable' };

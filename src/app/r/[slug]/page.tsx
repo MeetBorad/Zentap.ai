@@ -12,10 +12,10 @@ import { getAllPageEditorConfigs, getAllGoogleReviewLinks, getAllQrNfcTags, getA
 import { getCachedTagData, setCachedTagData } from "@/lib/tagCache";
 import ReviewAssistantClient from "./ReviewAssistantClient";
 import ZenTapHubPage from "@/components/customer/ZenTapHubPage";
-import { 
-  getPageDesign, 
-  getPageButtons, 
-  getPageSections, 
+import {
+  getPageDesign,
+  getPageButtons,
+  getPageSections,
   getPagePhotos,
   PageDesignRecord,
   PageButtonRecord
@@ -99,7 +99,7 @@ export default async function Page({
       const isClientCode = cleanCode.startsWith('zt-');
       const isLikelyTag = cleanCode.startsWith('st') || cleanCode.startsWith('tag_') || cleanCode.length <= 6 || isClientCode;
       const isSharedDemo = cleanCode === 'zentap' || cleanCode === 'st3' || via?.toLowerCase() === 'st3' || lookupKey.toLowerCase() === 'st3' || cleanCode === 'zt-0004';
-      
+
       const pageQuery = !pageConfig ? (isSharedDemo
         ? db.from('page_editor_configs').select('*').or('tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004').is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle()
         : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}${via ? `,tag_id.ilike.${via},business_id.ilike.${via}` : ''}`).is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle())
@@ -108,8 +108,8 @@ export default async function Page({
       const clientQuery = !clientRecord ? (isSharedDemo
         ? db.from('clients').select('*').ilike('business_id', 'ZT-0004').is('deleted_at', null).limit(1).maybeSingle()
         : (isClientCode
-            ? db.from('clients').select('*').ilike('business_id', cleanCode).is('deleted_at', null).limit(1).maybeSingle()
-            : Promise.resolve({ data: null })))
+          ? db.from('clients').select('*').ilike('business_id', cleanCode).is('deleted_at', null).limit(1).maybeSingle()
+          : Promise.resolve({ data: null })))
         : Promise.resolve({ data: clientRecord });
 
       const [pageConfigRes, bizFetchRes, grlRes, tagRes, clientRes] = await Promise.race([
@@ -163,7 +163,7 @@ export default async function Page({
       if (st3Data) {
         pageConfig = st3Data;
       }
-    } catch {}
+    } catch { }
   }
 
   // Canonicalization: If cleanCode is a hardware tag (e.g. st3, crd1, tag_),
@@ -180,14 +180,14 @@ export default async function Page({
           .ilike('tag_id', cleanCode)
           .maybeSingle();
         if (tRow?.business_id) assignedBizId = tRow.business_id;
-      } catch {}
+      } catch { }
     }
     if (!assignedBizId) {
-      const localT = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === cleanCode);
+      const localT = getAllQrNfcTags().find((t) => (t.tag_id || "").toLowerCase() === cleanCode);
       if (localT?.business_id) assignedBizId = localT.business_id;
     }
 
-    if (assignedBizId && assignedBizId.toLowerCase() !== cleanCode) {
+    if (assignedBizId && (assignedBizId || "").toLowerCase() !== cleanCode) {
       const canonicalSlug = assignedBizId.toLowerCase().trim();
       const qParams = new URLSearchParams();
       qParams.set('via', via || cleanCode);
@@ -275,8 +275,8 @@ export default async function Page({
   let cfg: any = {};
   if (pageConfig?.config_data) {
     try {
-      cfg = typeof pageConfig.config_data === 'string' 
-        ? JSON.parse(pageConfig.config_data) 
+      cfg = typeof pageConfig.config_data === 'string'
+        ? JSON.parse(pageConfig.config_data)
         : (pageConfig.config_data || {});
     } catch {
       cfg = pageConfig.config_data || {};
@@ -325,31 +325,31 @@ export default async function Page({
     ...defaultDesign,
     hub_enabled: true,
     theme_preset: cfg.theme === 'slate' ? 'modern_slate'
-                : cfg.theme === 'emerald' ? 'emerald_luxe'
-                : cfg.theme === 'sunset' ? 'midnight_amber'
-                : cfg.theme === 'clean_light' ? 'clean_minimal'
-                : cfg.theme === 'royal_indigo' ? 'royal_indigo'
-                : cfg.theme === 'midnight_rose' ? 'midnight_rose'
+      : cfg.theme === 'emerald' ? 'emerald_luxe'
+        : cfg.theme === 'sunset' ? 'midnight_amber'
+          : cfg.theme === 'clean_light' ? 'clean_minimal'
+            : cfg.theme === 'royal_indigo' ? 'royal_indigo'
+              : cfg.theme === 'midnight_rose' ? 'midnight_rose'
                 : cfg.theme === 'champagne_gold' ? 'champagne_gold'
-                : 'modern_slate',
+                  : 'modern_slate',
     primary_color: cfg.accent_color || (
       cfg.theme === 'sunset' ? '#f97316' :
-      cfg.theme === 'emerald' ? '#10b981' :
-      cfg.theme === 'slate' ? '#38bdf8' :
-      cfg.theme === 'royal_indigo' ? '#818cf8' :
-      cfg.theme === 'midnight_rose' ? '#fb7185' :
-      cfg.theme === 'champagne_gold' ? '#eab308' :
-      cfg.theme === 'clean_light' ? '#ea580c' :
-      '#ffc174'
+        cfg.theme === 'emerald' ? '#10b981' :
+          cfg.theme === 'slate' ? '#38bdf8' :
+            cfg.theme === 'royal_indigo' ? '#818cf8' :
+              cfg.theme === 'midnight_rose' ? '#fb7185' :
+                cfg.theme === 'champagne_gold' ? '#eab308' :
+                  cfg.theme === 'clean_light' ? '#ea580c' :
+                    '#ffc174'
     ),
     bg_color: cfg.theme === 'clean_light' ? '#ffffff'
-            : cfg.theme === 'slate' ? '#0f172a'
-            : cfg.theme === 'emerald' ? '#062016'
-            : cfg.theme === 'sunset' ? '#1c0d06'
+      : cfg.theme === 'slate' ? '#0f172a'
+        : cfg.theme === 'emerald' ? '#062016'
+          : cfg.theme === 'sunset' ? '#1c0d06'
             : cfg.theme === 'royal_indigo' ? '#0c0f24'
-            : cfg.theme === 'midnight_rose' ? '#1a0b16'
-            : cfg.theme === 'champagne_gold' ? '#12100b'
-            : '#0B0F17',
+              : cfg.theme === 'midnight_rose' ? '#1a0b16'
+                : cfg.theme === 'champagne_gold' ? '#12100b'
+                  : '#0B0F17',
     dark_mode: cfg.theme === 'clean_light' ? 'light' : 'dark',
     cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
     logo_url: cfg.logo_url || defaultDesign.logo_url,

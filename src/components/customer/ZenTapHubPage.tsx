@@ -179,9 +179,13 @@ export default function ZenTapHubPage({
 
           const matchingConfig = allEditorConfigs.find(
             (c) =>
-              c.tag_id.toLowerCase() === cleanSlug ||
-              c.business_id.toLowerCase() === bizId ||
-              (cleanSlug === "zentap" && (c.tag_id.toLowerCase() === "zentap" || c.business_id.toLowerCase() === "sample-demo-biz-01" || c.tag_id.toLowerCase() === "st1"))
+              (c?.tag_id && (c.tag_id || "").toLowerCase() === cleanSlug) ||
+              (c?.business_id && (c.business_id || "").toLowerCase() === bizId) ||
+              (cleanSlug === "zentap" && (
+                (c?.tag_id && (c.tag_id || "").toLowerCase() === "zentap") ||
+                (c?.business_id && (c.business_id || "").toLowerCase() === "sample-demo-biz-01") ||
+                (c?.tag_id && (c.tag_id || "").toLowerCase() === "st1")
+              ))
           );
 
           if (matchingConfig?.config_data) {
@@ -297,36 +301,47 @@ export default function ZenTapHubPage({
   const aboutUsText = cfg.about_us || business.about_us || (isZenTapDemo ? "Welcome to ZenTap Digital Solutions! We take pride in delivering premier service, top craftsmanship, and genuine hospitality to every visitor." : "");
 
   const openingHoursRaw = cfg.opening_hours || business.opening_hours || (isZenTapDemo ? "Monday – Saturday: 10:00 AM – 09:00 PM\nSunday: 11:00 AM – 06:00 PM" : "");
-  const openingHoursList = openingHoursRaw
+  const openingHoursList = typeof openingHoursRaw === "string"
     ? openingHoursRaw.split("\n").map((line: string) => line.trim()).filter(Boolean)
-    : [];
+    : Array.isArray(openingHoursRaw)
+      ? openingHoursRaw.map((line: any) => typeof line === "string" ? line.trim() : JSON.stringify(line)).filter(Boolean)
+      : [];
 
   const rawFaqs = cfg.faqs || business.faqs;
-  const faqsList: { question: string; answer: string }[] =
-    Array.isArray(rawFaqs) && rawFaqs.length > 0
-      ? rawFaqs
-      : isZenTapDemo
-        ? DEFAULT_FAQS
-        : [];
+  const faqsList: { question: string; answer: string }[] = useMemo(() => {
+    if (Array.isArray(rawFaqs) && rawFaqs.length > 0) {
+      return rawFaqs
+        .filter((f) => f && typeof f === "object" && (f.question || f.q))
+        .map((f: any) => ({
+          question: String(f.question || f.q || "").trim(),
+          answer: String(f.answer || f.a || "").trim(),
+        }));
+    }
+    return isZenTapDemo ? DEFAULT_FAQS : [];
+  }, [rawFaqs, isZenTapDemo]);
 
   const locationImage = cfg.location_image || business.location_image || (isZenTapDemo ? "https://lh3.googleusercontent.com/aida-public/AB6AXuBntBRRtvFsUDBYuSpyCqOKOrww8i3Jra2cvrOlya4dusW8PVtI8vY7kNlQT6oWsIbi_RxEvnxmKef0KVtOB85lYnw8jONF_Iq3ZThxyxk6mZACXbKDiXpMZyAsooT3GYU_dpN4F5OQ6bwFzaHC988imjfe9wnu2h5NOQPefD_KjMN5mLgmOXi2e77FzabIrI3F4X9mEWZg-Dd5qiEghoie3wXTVnHyKlrg9B18etzc" : "");
   const locationTitle = cfg.location_title || business.location_title || (isZenTapDemo ? "Ahmedabad Central Hub" : address);
 
   const availableTags: string[] = useMemo(() => {
-    const raw = cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags;
-    let customList: string[] = [];
-    if (Array.isArray(raw) && raw.length > 0) {
-      const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
-      const clean = raw.map((s: string) => String(s).trim()).filter((s: string) => Boolean(s) && !catSet.has(s));
-      customList = clean.length > 0 ? clean : raw.map((s: string) => String(s).trim()).filter(Boolean);
-    } else if (typeof raw === "string" && raw.trim()) {
-      customList = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
-    } else if (Array.isArray(business.custom_chips) && business.custom_chips.length > 0) {
-      customList = business.custom_chips.map((s: string) => String(s).trim()).filter(Boolean);
-    }
+    try {
+      const raw = cfg.review_tags !== undefined ? cfg.review_tags : cfg.tags;
+      let customList: string[] = [];
+      if (Array.isArray(raw) && raw.length > 0) {
+        const catSet = new Set(Array.isArray(cfg.categories) ? cfg.categories : []);
+        const clean = raw.map((s: string) => String(s || "").trim()).filter((s: string) => Boolean(s) && !catSet.has(s));
+        customList = clean.length > 0 ? clean : raw.map((s: string) => String(s || "").trim()).filter(Boolean);
+      } else if (typeof raw === "string" && raw.trim()) {
+        customList = raw.split(",").map((s: string) => s.trim()).filter(Boolean);
+      } else if (Array.isArray(business.custom_chips) && business.custom_chips.length > 0) {
+        customList = business.custom_chips.map((s: string) => String(s || "").trim()).filter(Boolean);
+      }
 
-    if (customList.length > 0) {
-      return customList;
+      if (customList.length > 0) {
+        return customList;
+      }
+    } catch (e) {
+      console.warn("availableTags parse error:", e);
     }
 
     return DEFAULT_TAGS;
@@ -706,8 +721,12 @@ export default function ZenTapHubPage({
                   alt={businessName}
                   className="w-full h-full object-cover"
                   loading="eager"
+                  decoding="async"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/locations/st3.jpg";
+                    const el = e.target as HTMLImageElement;
+                    if (el.src && !el.src.includes("/locations/st3.jpg")) {
+                      el.src = "/locations/st3.jpg";
+                    }
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -718,16 +737,21 @@ export default function ZenTapHubPage({
               <div className="relative px-4 pb-4 pt-0 flex flex-col">
                 <div className="relative flex items-end justify-center -mt-12 sm:-mt-14 z-10">
                   {/* Centered Circular Avatar */}
-                  <div className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-full ${hubTheme.inner} p-1 shadow-2xl border-4 border-[#0B0F17] flex items-center justify-center shrink-0`}>
+                  <div className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-full ${hubTheme.inner} p-1 shadow-2xl border-4 ${isLightMode ? "border-slate-200" : "border-[#0B0F17]"} flex items-center justify-center shrink-0`}>
                     <img
                       src={logoUrl}
                       alt={businessName}
                       className="w-full h-full object-contain rounded-full bg-zinc-950"
+                      loading="eager"
+                      decoding="async"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/logo.png";
+                        const el = e.target as HTMLImageElement;
+                        if (el.src && !el.src.includes("/logo.png")) {
+                          el.src = "/logo.png";
+                        }
                       }}
                     />
-                    <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center shadow-md border-2 border-[#0B0F17]">
+                    <div className={`absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#10B981] flex items-center justify-center shadow-md border-2 ${isLightMode ? "border-white" : "border-[#0B0F17]"}`}>
                       <Check className="w-3.5 h-3.5 text-[#0B0F17] font-black stroke-[3]" />
                     </div>
                   </div>
@@ -739,13 +763,13 @@ export default function ZenTapHubPage({
                       onClick={handleDownloadVCard}
                       className={`tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-bold shadow-md transition-all active:scale-[0.978] cursor-pointer border ${
                         isLightMode
-                          ? "bg-slate-100/95 hover:bg-slate-200 border-slate-300 text-slate-800 shadow-xs"
+                          ? "bg-slate-100/95 hover:bg-slate-200 border-slate-300 text-slate-900 shadow-xs"
                           : "bg-white/10 hover:bg-white/15 backdrop-blur-md border-white/15 text-white"
                       }`}
                       title="Save contact vCard directly to your phone"
                     >
                       <Plus className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span>Add to Contacts</span>
+                      <span className={isLightMode ? "text-slate-900 font-bold" : "text-white font-bold"}>Add to Contacts</span>
                     </button>
                   </div>
                 </div>

@@ -205,10 +205,15 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
   const locationImgInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileToUrl = (file: File, setter: (url: string) => void, label: string) => {
+  const handleFileToUrl = (
+    file: File,
+    setter: (url: string) => void,
+    label: string,
+    slot: "logo" | "banner" | "wallpaper" | "location" = "banner"
+  ) => {
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      onShowToast("Image size exceeds 8MB. Please choose a smaller image.");
+    if (file.size > 15 * 1024 * 1024) {
+      onShowToast("Image size exceeds 15MB. Please choose a smaller image.");
       return;
     }
     const reader = new FileReader();
@@ -216,36 +221,64 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
       const result = e.target?.result;
       if (typeof result !== "string") return;
 
-      // Automatically compress & downscale client-side for ultra-fast mobile loads (<100KB)
+      // High-performance client-side image processing for instant desktop and mobile loads (<30-50KB)
       const img = new Image();
       img.onload = () => {
-        const MAX_DIM = 1400;
-        let { width, height } = img;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          if (width > height) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          } else {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
+        // Precise dimension boundaries tailored for each slot
+        let maxW = 800;
+        let maxH = 340;
+        let quality = 0.80;
+
+        if (slot === "logo") {
+          maxW = 256;
+          maxH = 256;
+          quality = 0.82;
+        } else if (slot === "banner") {
+          maxW = 800;
+          maxH = 320;
+          quality = 0.80;
+        } else if (slot === "wallpaper") {
+          maxW = 720;
+          maxH = 1280;
+          quality = 0.72;
+        } else if (slot === "location") {
+          maxW = 800;
+          maxH = 450;
+          quality = 0.80;
         }
+
+        let { width, height } = img;
+        const ratio = Math.min(maxW / width, maxH / height, 1);
+        const targetW = Math.max(1, Math.round(width * ratio));
+        const targetH = Math.max(1, Math.round(height * ratio));
+
         const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = targetW;
+        canvas.height = targetH;
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(img, 0, 0, width, height);
-          const mimeType = file.type === "image/png" && file.size < 400 * 1024 ? "image/png" : "image/jpeg";
-          const compressedDataUrl = canvas.toDataURL(mimeType, 0.85);
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+
+          // Test if browser supports webp canvas export; fallback to jpeg
+          let compressedDataUrl = "";
+          try {
+            compressedDataUrl = canvas.toDataURL("image/webp", quality);
+            if (!compressedDataUrl.startsWith("data:image/webp")) {
+              compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+            }
+          } catch {
+            compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+          }
+
+          const estSizeKb = Math.round((compressedDataUrl.length * 3) / 4 / 1024);
           setter(compressedDataUrl);
-          onShowToast(`✓ ${label} optimized & uploaded successfully!`);
+          onShowToast(`✓ ${label} processed & optimized (${estSizeKb} KB) for instant mobile loading!`);
           return;
         }
         setter(result);
-        onShowToast(`✓ ${label} uploaded successfully!`);
+        onShowToast(`✓ ${label} uploaded!`);
       };
       img.onerror = () => {
         setter(result);
@@ -2093,7 +2126,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileToUrl(file, setEditBannerUrl, "Cover Banner");
+                      if (file) handleFileToUrl(file, setEditBannerUrl, "Cover Banner", "banner");
                     }}
                   />
                   <input
@@ -2103,7 +2136,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileToUrl(file, setEditLogoUrl, "Round Profile Logo");
+                      if (file) handleFileToUrl(file, setEditLogoUrl, "Round Profile Logo", "logo");
                     }}
                   />
                   <input
@@ -2113,7 +2146,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileToUrl(file, setEditWallpaperUrl, "Page Wallpaper");
+                      if (file) handleFileToUrl(file, setEditWallpaperUrl, "Page Wallpaper", "wallpaper");
                     }}
                   />
                   <input
@@ -2123,7 +2156,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleFileToUrl(file, setEditLocationImage, "Office Location Banner");
+                      if (file) handleFileToUrl(file, setEditLocationImage, "Office Location Banner", "location");
                     }}
                   />
 

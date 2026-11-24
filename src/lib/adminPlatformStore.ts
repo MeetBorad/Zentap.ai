@@ -581,7 +581,7 @@ const INITIAL_PAGE_EDITORS: PageEditorConfigItemRecord[] = [
       title: "Digitronics Control",
       subtitle: "Power Equipment Manufacturer",
       category: "Power Equipment Manufacturer",
-      cover_image: "/covers/digitronics_cover.png",
+      cover_image: "/covers/zentap_cover.png",
       logo_url: "/logo.png",
       cta_text: "Write a 5-Star Review on Google",
       google_link: "https://search.google.com/local/writereview?placeid=ChIJBdE5mOCHXjkRVlZipoCh2l0",
