@@ -122,6 +122,7 @@ export interface PageEditorConfigItemRecord {
   destination?: string;
   setup_status: "pending" | "completed";
   config_data: Record<string, any>;
+  created_at?: string;
   updated_at: string;
 }
 
@@ -1670,6 +1671,72 @@ export async function savePageEditorConfigServer(
         upi_id: configData?.upi_id,
         city: configData?.address,
       });
+    }
+
+    // Sync to local browser store so immediate navigations/hydration have the exact updated config
+    const currentEditorConfigs = getAllPageEditorConfigs();
+    const existingIdx = currentEditorConfigs.findIndex((p) => p.tag_id.toLowerCase() === tagId.toLowerCase());
+    const updatedRecord: PageEditorConfigItemRecord = {
+      id: existingIdx !== -1 ? currentEditorConfigs[existingIdx].id : `pe_${tagId.toLowerCase()}`,
+      tag_id: tagId,
+      business_id: extra?.business_id || (existingIdx !== -1 ? currentEditorConfigs[existingIdx].business_id : tagId),
+      business_name: payload.business_name || (existingIdx !== -1 ? currentEditorConfigs[existingIdx].business_name : "Business"),
+      link_url: payload.link_url,
+      setup_status: "completed",
+      config_data: configData,
+      updated_at: new Date().toISOString(),
+      created_at: existingIdx !== -1 ? currentEditorConfigs[existingIdx].created_at : new Date().toISOString(),
+    };
+    if (existingIdx !== -1) {
+      currentEditorConfigs[existingIdx] = updatedRecord;
+    } else {
+      currentEditorConfigs.push(updatedRecord);
+    }
+
+    // If business_id is different from tag_id (e.g. ST4 vs ZT-0005), also update the business_id config record
+    if (extra?.business_id && extra.business_id.toLowerCase() !== tagId.toLowerCase()) {
+      const bizIdx = currentEditorConfigs.findIndex((p) => p.tag_id.toLowerCase() === extra.business_id!.toLowerCase());
+      const bizRecord: PageEditorConfigItemRecord = {
+        id: bizIdx !== -1 ? currentEditorConfigs[bizIdx].id : `pe_${extra.business_id.toLowerCase()}`,
+        tag_id: extra.business_id,
+        business_id: extra.business_id,
+        business_name: payload.business_name || (bizIdx !== -1 ? currentEditorConfigs[bizIdx].business_name : "Business"),
+        link_url: `${DOMAIN_BASE}/r/${extra.business_id.toLowerCase()}?preview=1`,
+        setup_status: "completed",
+        config_data: configData,
+        updated_at: new Date().toISOString(),
+        created_at: bizIdx !== -1 ? currentEditorConfigs[bizIdx].created_at : new Date().toISOString(),
+      };
+      if (bizIdx !== -1) {
+        currentEditorConfigs[bizIdx] = bizRecord;
+      } else {
+        currentEditorConfigs.push(bizRecord);
+      }
+
+      fetch("/api/admin/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upsert",
+          table: "page_editor_configs",
+          data: {
+            tag_id: extra.business_id,
+            business_id: extra.business_id,
+            business_name: payload.business_name,
+            link_url: `${DOMAIN_BASE}/r/${extra.business_id.toLowerCase()}?preview=1`,
+            config_data: configData,
+            setup_status: "completed",
+            updated_at: new Date().toISOString(),
+          },
+          onConflict: "tag_id",
+        }),
+      }).catch(() => {});
+    }
+
+    setStored(KEY_PAGE_EDITOR, currentEditorConfigs);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zentap_page_editor_updated", { detail: { tagId, configData } }));
+      window.dispatchEvent(new CustomEvent("zentap_platform_updated"));
     }
 
     await serverFetchPlatformData();

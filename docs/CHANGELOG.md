@@ -1,5 +1,18 @@
 # ZenTap — Changelog
 
+## [1.54.34] — 2026-11-24
+### Fixed (Cover & Logo Visual Asset Persistence, Dual-Tag Sync, Removal of Wallpaper & Review Support Card)
+- **Cover Banner & Round Profile Logo Persistence (`route.ts`, `adminPlatformStore.ts`, `PageEditorWebpageTab.tsx`, `ZenTapHubPage.tsx`)**:
+  - Removed aggressive server-side sanitization bug in `/api/admin/platform/route.ts` that previously wiped out uploaded base64 data URIs to `"/logo.png"`.
+  - Implemented dual-tag synchronization in `savePageEditorConfigServer` and `handleSaveDesign`: saving a design for hardware tag `ST4` automatically synchronizes and updates the canonical business entry `ZT-0005` in both Supabase and local cache.
+  - Enhanced client hydration in `ZenTapHubPage.tsx` so newly saved cover banner and logo appear instantly on live visits across desktop and mobile.
+- **Removed "Background Wallpaper for the Page" Option Globally (`PageEditorWebpageTab.tsx`)**:
+  - Completely removed the Background Wallpaper UI card, upload triggers, presets, input refs, and state from the Page Editor tab and admin panel.
+- **Removed Private Feedback / Support Card from Review Pages (`ZenTapReviewAssistant.tsx`)**:
+  - Completely removed the bottom card ("Need assistance or prefer private feedback instead of a public review? Chat with our team directly." with WhatsApp Support and Call Us buttons) from all review assistant pages (e.g. `/r/zt-0005/review?via=st4`).
+  - Added real-time theme hydration to `ZenTapReviewAssistant.tsx` so changing the theme to white (`clean_light`) in the Page Editor immediately reflects on the Google Review page.
+
+
 ## [1.54.33] — 2026-11-24
 ### Fixed (High-Performance Client-Side Image Optimization, 504 Timeout Elimination & Hydration Error Shields)
 - **Universal High-Performance Image Upload Processing (`PageEditorWebpageTab.tsx`, `/api/admin/upload-image/route.ts`)**:

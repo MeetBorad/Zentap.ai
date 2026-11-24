@@ -163,43 +163,43 @@ export default function ZenTapHubPage({
     };
   }, []);
 
-  // Client hydration: fetch latest config from local storage ONLY when in admin preview mode
-  // or when initialPageConfig was not preloaded by the server. On live public scans (mobile NFC/QR),
-  // initialPageConfig from the database is the authoritative single source of truth.
+  // Client hydration: fetch latest config from local storage or Page Editor store
+  // Ensures immediate visual reflection when user tests or saves in admin on desktop or mobile
   useEffect(() => {
     if (typeof window !== "undefined" && business?.id) {
-      if (isPreview || !initialPageConfig || Object.keys(initialPageConfig).length === 0) {
-        try {
-          const localDesign = getPageDesign(business.id);
-          if (localDesign) setDesign(localDesign);
+      try {
+        const localDesign = getPageDesign(business.id) || (business.slug ? getPageDesign(business.slug) : null);
+        if (localDesign) setDesign(localDesign);
 
-          const allEditorConfigs = getAllPageEditorConfigs();
-          const cleanSlug = (business.slug || "").toLowerCase();
-          const bizId = (business.id || "").toLowerCase();
+        const allEditorConfigs = getAllPageEditorConfigs();
+        const cleanSlug = (business.slug || "").toLowerCase();
+        const bizId = (business.id || "").toLowerCase();
+        const urlParams = new URLSearchParams(window.location.search);
+        const viaParam = (urlParams.get("via") || "").toLowerCase();
 
-          const matchingConfig = allEditorConfigs.find(
-            (c) =>
-              (c?.tag_id && (c.tag_id || "").toLowerCase() === cleanSlug) ||
-              (c?.business_id && (c.business_id || "").toLowerCase() === bizId) ||
-              (cleanSlug === "zentap" && (
-                (c?.tag_id && (c.tag_id || "").toLowerCase() === "zentap") ||
-                (c?.business_id && (c.business_id || "").toLowerCase() === "sample-demo-biz-01") ||
-                (c?.tag_id && (c.tag_id || "").toLowerCase() === "st1")
-              ))
-          );
+        const matchingConfig = allEditorConfigs.find(
+          (c) =>
+            (c?.tag_id && (c.tag_id || "").toLowerCase() === cleanSlug) ||
+            (c?.business_id && (c.business_id || "").toLowerCase() === bizId) ||
+            (viaParam && c?.tag_id && (c.tag_id || "").toLowerCase() === viaParam) ||
+            (cleanSlug === "zentap" && (
+              (c?.tag_id && (c.tag_id || "").toLowerCase() === "zentap") ||
+              (c?.business_id && (c.business_id || "").toLowerCase() === "sample-demo-biz-01") ||
+              (c?.tag_id && (c.tag_id || "").toLowerCase() === "st1")
+            ))
+        );
 
-          if (matchingConfig?.config_data) {
-            const parsed = typeof matchingConfig.config_data === "string"
-              ? JSON.parse(matchingConfig.config_data)
-              : matchingConfig.config_data;
-            setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
-          }
-        } catch (e) {
-          console.warn("Hydrating hub design error:", e);
+        if (matchingConfig?.config_data) {
+          const parsed = typeof matchingConfig.config_data === "string"
+            ? JSON.parse(matchingConfig.config_data)
+            : matchingConfig.config_data;
+          setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
         }
+      } catch (e) {
+        console.warn("Hydrating hub design error:", e);
       }
     }
-  }, [business?.id, business?.slug, isPreview, initialPageConfig]);
+  }, [business?.id, business?.slug]);
 
   // Merge attributes from page config, business record, or default showcase
   const cfg = localConfig || {};

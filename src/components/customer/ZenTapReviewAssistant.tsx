@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BusinessRecord } from "@/lib/businessStore";
+import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
 import {
   generateReviewSuggestions,
   REVIEW_RATING_METAS,
@@ -17,7 +18,6 @@ import {
   Clock,
   ShieldCheck,
   MessageCircle,
-  Phone,
   ArrowLeft,
   ExternalLink,
   AlertTriangle,
@@ -102,20 +102,44 @@ export default function ZenTapReviewAssistant({
     };
   }, []);
 
-  // Consistent business details from database/client record
-  const businessName = (liveBusiness.name || pageConfig?.title || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap");
-  const city = liveBusiness.city || "Ahmedabad";
-  const cleanPhone = (liveBusiness.phone || pageConfig?.phone || "+919274560880").replace(/\s+/g, "");
-  const cleanWa = (liveBusiness.whatsapp || liveBusiness.whatsapp_number || pageConfig?.whatsapp || "919274560880").replace(/\D/g, "");
-  const logoUrl = pageConfig?.logo_url || liveBusiness.logo_url || "/logo.png";
-  const locationImg = pageConfig?.location_image || liveBusiness.location_image || "https://lh3.googleusercontent.com/aida-public/AB6AXuBn_TEaXs-VF4rFe0stnQgCYg0MynH2oOZeU9dQHGHuoFh5E1v447bVapRPDHEz1ipdX4vPRxNVokhF77GwXNQOBUmj2bF9oe3C9v4c8fmxU_3FFVdsBS5kiipfsNb3M4Va0GalihDkxwsGJYQ1UAhu0dnfybRD-0AXXNrCoLX5185-7q2BnTbJiEPNztNk2SqgMiYh9fYG9ajLfLogd4E4g_d8_f6s0AfohHb_Em7G";
-
   // Sanitize tagCode and slug to avoid stray character bugs (e.g. '|' or '%7C')
   const cleanTagCode = (tagCode || "").replace(/[|%#?&\s/]+$/g, "").trim();
   const cleanBusinessSlug = (liveBusiness.slug || "").replace(/[|%#?&\s/]+$/g, "").trim();
 
-  // Active theme styling mapped from pageConfig
-  const rawTheme = pageConfig?.theme || pageConfig?.theme_preset || "obsidian";
+  // Hydrate current config from local store if available
+  const [currentConfig, setCurrentConfig] = useState<any>(pageConfig || {});
+  useEffect(() => {
+    setCurrentConfig(pageConfig || {});
+    if (typeof window !== "undefined" && (liveBusiness.id || cleanTagCode)) {
+      try {
+        const allEditorConfigs = getAllPageEditorConfigs();
+        const bizId = (liveBusiness.id || "").toLowerCase();
+        const bSlug = (liveBusiness.slug || "").toLowerCase();
+        const tCode = cleanTagCode.toLowerCase();
+        const match = allEditorConfigs.find(
+          (c) =>
+            (c.tag_id && c.tag_id.toLowerCase() === tCode) ||
+            (c.tag_id && c.tag_id.toLowerCase() === bSlug) ||
+            (c.business_id && c.business_id.toLowerCase() === bizId)
+        );
+        if (match?.config_data) {
+          const cfgData = typeof match.config_data === "string" ? JSON.parse(match.config_data) : match.config_data;
+          setCurrentConfig((prev: any) => ({ ...prev, ...cfgData }));
+        }
+      } catch (e) {
+        console.warn("Review assistant config hydration notice:", e);
+      }
+    }
+  }, [liveBusiness.id, liveBusiness.slug, cleanTagCode, pageConfig]);
+
+  // Consistent business details from database/client record
+  const businessName = (liveBusiness.name || currentConfig?.title || pageConfig?.title || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap");
+  const city = liveBusiness.city || "Ahmedabad";
+  const cleanWa = (liveBusiness.whatsapp || liveBusiness.whatsapp_number || currentConfig?.whatsapp || pageConfig?.whatsapp || "919274560880").replace(/\D/g, "");
+  const logoUrl = currentConfig?.logo_url || pageConfig?.logo_url || liveBusiness.logo_url || "/logo.png";
+
+  // Active theme styling mapped from currentConfig / pageConfig
+  const rawTheme = currentConfig?.theme || currentConfig?.theme_preset || pageConfig?.theme || pageConfig?.theme_preset || "obsidian";
   const activeTheme =
     rawTheme === "clean_light" || rawTheme === "clean_minimal" || rawTheme === "white" || rawTheme === "light"
       ? "clean_light"
@@ -1017,59 +1041,6 @@ export default function ZenTapReviewAssistant({
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-semibold">Direct Review</span>
                     <span className="text-[10px] opacity-60 truncate">Direct Google Maps link</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Business Context Banner with Photo & WhatsApp Assistance */}
-              <div className={`rounded-xl ${themeClasses.inner} overflow-hidden flex flex-col border ${themeClasses.innerBorder} mt-1`}>
-                <div
-                  className="relative h-28 w-full bg-cover bg-center"
-                  style={{ backgroundImage: `url('${locationImg}')` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={logoUrl}
-                        alt={businessName}
-                        className="h-8 w-8 object-contain rounded-lg bg-black/40 p-0.5 border border-white/10"
-                      />
-                      <span className="text-xs font-bold text-white truncate max-w-[200px]">
-                        {businessName}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3.5 flex flex-col gap-2">
-                  <p className="text-[11px] opacity-75 leading-normal">
-                    Need assistance or prefer private feedback instead of a public review? Chat with our team directly.
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    <a
-                      href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${businessName} Team, I have feedback regarding my recent visit.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border ${
-                        isLightMode
-                          ? "bg-slate-200/90 hover:bg-slate-300 text-slate-900 border-slate-300"
-                          : "bg-[#1B2232] hover:bg-[#262a33] text-white border-white/5"
-                      }`}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                      <span>WhatsApp Support</span>
-                    </a>
-                    <a
-                      href={`tel:${cleanPhone}`}
-                      className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border ${
-                        isLightMode
-                          ? "bg-slate-200/90 hover:bg-slate-300 text-slate-900 border-slate-300"
-                          : "bg-[#1B2232] hover:bg-[#262a33] text-white border-white/5"
-                      }`}
-                    >
-                      <Phone className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
-                      <span>Call Us</span>
-                    </a>
                   </div>
                 </div>
               </div>

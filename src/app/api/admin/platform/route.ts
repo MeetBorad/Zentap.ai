@@ -254,9 +254,6 @@ export async function GET(req: Request) {
           whatsapp: client?.whatsapp || client?.owner_phone || "",
           instagram: client?.instagram_link || "",
         };
-        if (typeof cfg === "object" && cfg !== null && typeof cfg.logo_url === "string" && cfg.logo_url.startsWith("data:image/") && cfg.logo_url.length > 500) {
-          cfg = { ...cfg, logo_url: "/logo.png" };
-        }
 
         return {
           id: existingConfig?.id || t.id,
@@ -288,9 +285,6 @@ export async function GET(req: Request) {
       const dest = matchingTag?.destination || matchingGLink?.destination || row.destination || "business_page";
       if (dest === "zentap_google" || dest === "business_page") {
         let cfg = row.config_data;
-        if (typeof cfg === "object" && cfg !== null && typeof cfg.logo_url === "string" && cfg.logo_url.startsWith("data:image/") && cfg.logo_url.length > 500) {
-          cfg = { ...cfg, logo_url: "/logo.png" };
-        }
         pageEditorConfigs.push({
           ...row,
           destination: dest,
@@ -1327,6 +1321,23 @@ function sanitizeRowForTable(item: any, table: string) {
             }
 
             invalidateCachedTag(checkItem.tag_id);
+            if (targetBizId && targetBizId.toLowerCase() !== checkItem.tag_id.toLowerCase()) {
+              invalidateCachedTag(targetBizId);
+              // Also sync page_editor_configs for the canonical business_id so both resolve identically
+              try {
+                await (supabase as any)
+                  .from("page_editor_configs")
+                  .update({
+                    business_name: clean.business_name,
+                    config_data: clean.config_data,
+                    setup_status: clean.setup_status || "completed",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("tag_id", targetBizId);
+              } catch (bizConfigSyncErr) {
+                console.warn("Notice: canonical business page editor sync:", bizConfigSyncErr);
+              }
+            }
             return NextResponse.json({ success: true, data: updated });
           }
         }
