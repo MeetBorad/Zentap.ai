@@ -261,11 +261,13 @@ export default function ExperienceNoteBox({
     emitChange("", selectedLang);
   };
 
+  const isLight = innerBgClass.includes("slate-100") || innerBgClass.includes("white") || innerBorderClass.includes("slate");
+
   return (
     <div className="flex flex-col gap-2">
       {/* Header bar: Label, Speak mic & Clear button */}
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold flex items-center gap-1.5">
+        <label className={`text-xs font-semibold flex items-center gap-1.5 ${isLight ? "text-slate-900" : ""}`}>
           <span className="text-base">✍️</span>
           <span>Write about your experience in short</span>
           <span className="text-[10px] font-normal opacity-60">(Optional)</span>
@@ -292,6 +294,8 @@ export default function ExperienceNoteBox({
                 ? "opacity-40 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-400"
                 : isListening
                 ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse"
+                : isLight
+                ? "bg-slate-200/90 hover:bg-slate-300 border-slate-300 text-slate-800"
                 : "bg-white/5 hover:bg-white/10 border-white/10 text-slate-200"
             }`}
             title={!isSpeechSupported ? "Voice input not supported in this browser" : undefined}
@@ -328,7 +332,7 @@ export default function ExperienceNoteBox({
           rows={3}
           maxLength={500}
           placeholder="Type or speak what you bought, ordered, or experienced — e.g. 'Bought smart business card, fast delivery and very polite owner!'"
-          className={`w-full ${innerBgClass} rounded-xl px-3.5 py-2.5 pb-6 text-base sm:text-xs placeholder:opacity-40 border ${innerBorderClass} focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all resize-none shadow-inner leading-relaxed`}
+          className={`w-full ${innerBgClass} rounded-xl px-3.5 py-2.5 pb-6 text-base sm:text-xs placeholder:opacity-40 border ${innerBorderClass} ${isLight ? "text-slate-900 placeholder:text-slate-400" : "text-slate-100"} focus:outline-none focus:ring-1 focus:ring-amber-500/50 transition-all resize-none shadow-inner leading-relaxed`}
         />
         <div className="absolute bottom-2 right-3 flex items-center gap-2 pointer-events-none text-[10px] opacity-50">
           {isListening && (

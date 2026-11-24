@@ -102,9 +102,7 @@ export default async function Page({
       
       const pageQuery = !pageConfig ? (isSharedDemo
         ? db.from('page_editor_configs').select('*').or('tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004').is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle()
-        : (via
-            ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).limit(1).maybeSingle()
-            : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle()))
+        : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}${via ? `,tag_id.ilike.${via},business_id.ilike.${via}` : ''}`).is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle())
         : Promise.resolve({ data: pageConfig });
 
       const clientQuery = !clientRecord ? (isSharedDemo
@@ -287,10 +285,10 @@ export default async function Page({
     payment_status: "paid",
     created_at: clientRecord?.created_at || pageConfig?.created_at || new Date().toISOString(),
     redirect_mode: "interactive_profile",
-    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp_number || "9274560880",
-    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp || "9274560880",
-    instagram: clientRecord?.instagram_link || cfg.instagram || biz?.instagram || "https://www.instagram.com/zenttap/",
-    instagram_url: clientRecord?.instagram_link || cfg.instagram || biz?.instagram_url || "https://www.instagram.com/zenttap/",
+    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp_number || (isDemoOrZentap ? "9274560880" : ""),
+    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || biz?.whatsapp || (isDemoOrZentap ? "9274560880" : ""),
+    instagram: clientRecord?.instagram_link || cfg.instagram || biz?.instagram || (isDemoOrZentap ? "https://www.instagram.com/zenttap/" : ""),
+    instagram_url: clientRecord?.instagram_link || cfg.instagram || biz?.instagram_url || (isDemoOrZentap ? "https://www.instagram.com/zenttap/" : ""),
     facebook: clientRecord?.facebook_link || cfg.facebook || biz?.facebook || "",
     website: clientRecord?.website_url || clientRecord?.website || clientRecord?.custom_fields?.website_url || clientRecord?.custom_fields?.website || cfg.website || cfg.website_url || biz?.website || "",
     about_us: (clientRecord?.custom_fields as any)?.about_us || cfg.about_us || biz?.about_us,

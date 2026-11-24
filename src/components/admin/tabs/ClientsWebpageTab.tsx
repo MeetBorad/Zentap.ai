@@ -440,26 +440,35 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       custom_fields: mergedFields,
     };
 
-    // Optimistic UI update: instantly update table in UI
+    // Optimistic UI update: instantly update table in UI and close modal immediately
     setClients((prev) =>
       prev.map((c) =>
         c.business_id === editTarget.business_id ? ({ ...c, ...updatedClientData } as ClientRecord) : c
       )
     );
 
-    const res = await updateClientServer(editTarget.business_id, updatedClientData);
-    setIsSubmitting(false);
+    const savedBizName = editBizName.trim();
+    const savedBizId = editTarget.business_id;
+    setIsEditModalOpen(false);
+    setEditTarget(null);
+    onShowToast(`✓ Saving "${savedBizName}" (${savedBizId})...`);
 
-    if (res.success) {
-      onShowToast(`✓ Updated "${editBizName.trim()}" (${editTarget.business_id}) successfully!`);
-      setIsEditModalOpen(false);
-      setEditTarget(null);
-      // Run background sync without blocking the UI
-      refreshData();
-    } else {
-      onShowToast(res.error || "Failed to update business in database");
-      await refreshData();
-    }
+    // Asynchronously commit to server and reconcile in background
+    updateClientServer(savedBizId, updatedClientData)
+      .then((res) => {
+        setIsSubmitting(false);
+        if (res.success) {
+          onShowToast(`✓ Saved "${savedBizName}" (${savedBizId}) successfully!`);
+          refreshData();
+        } else {
+          onShowToast(res.error || "Failed to update business in database");
+          refreshData();
+        }
+      })
+      .catch((err) => {
+        setIsSubmitting(false);
+        onShowToast(err.message || "Failed to save changes");
+      });
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {

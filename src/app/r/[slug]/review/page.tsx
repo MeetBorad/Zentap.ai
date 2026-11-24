@@ -83,21 +83,12 @@ export default async function ReviewPage({
         const { data: vData } = await db
           .from("page_editor_configs")
           .select("*")
-          .ilike("tag_id", tagQuery)
+          .or(`business_id.ilike.${cleanSlug},tag_id.ilike.${cleanSlug}${via ? `,tag_id.ilike.${via},business_id.ilike.${via}` : ''}`)
           .is("deleted_at", null)
+          .order("updated_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
-        if (vData) {
-          pageConfig = vData;
-        } else {
-          const q = db
-            .from("page_editor_configs")
-            .select("*")
-            .or(`tag_id.ilike.${cleanSlug},business_id.ilike.${cleanSlug}`)
-            .is("deleted_at", null)
-            .maybeSingle();
-          const { data } = await q;
-          pageConfig = data;
-        }
+        pageConfig = vData;
       }
 
       // Query tag and google review links to determine effective destination
@@ -197,6 +188,8 @@ export default async function ReviewPage({
     }
   }
 
+  const isDemoOrZentap = cleanSlug === "st3" || cleanSlug === "zentap" || via?.toLowerCase() === "st3" || cleanSlug === "zt-0004" || cleanSlug === "sample";
+
   // Fallback business record if not in businesses table (prioritizing clients table)
   const fallbackBiz: BusinessRecord = {
     id: clientRecord?.business_id || pageConfig?.business_id || pageConfig?.tag_id || cleanSlug,
@@ -207,23 +200,23 @@ export default async function ReviewPage({
     active: true,
     is_deleted: false,
     owner_user_id: "",
-    email: clientRecord?.owner_email || cfg.email || "meetborad@hotmail.com",
-    phone: clientRecord?.owner_phone || cfg.phone || "9662760880",
+    email: clientRecord?.owner_email || cfg.email || (isDemoOrZentap ? "meetborad@hotmail.com" : ""),
+    phone: clientRecord?.owner_phone || cfg.phone || (isDemoOrZentap ? "9662760880" : ""),
     city: clientRecord?.city || cfg.address || "Ahmedabad",
     state: "Gujarat",
     country: "India",
     pincode: "",
     address: clientRecord?.custom_fields?.directions || cfg.address || "Ahmedabad",
     category: clientRecord?.custom_fields?.category || cfg.subtitle || cfg.category || "Service",
-    gbp_link: clientRecord?.google_review_link || cfg.google_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    gbp_link: clientRecord?.google_review_link || cfg.google_link || (isDemoOrZentap ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : ""),
     plan: "standee_1500",
     payment_status: "paid",
     created_at: clientRecord?.created_at || pageConfig?.created_at || new Date().toISOString(),
     redirect_mode: "interactive_profile",
-    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || "9274560880",
-    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || "9274560880",
-    instagram: clientRecord?.instagram_link || cfg.instagram || "https://www.instagram.com/zenttap/",
-    website: clientRecord?.custom_fields?.website || cfg.website || "https://www.zentapdigitalsolutions.com/",
+    whatsapp_number: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || (isDemoOrZentap ? "9274560880" : ""),
+    whatsapp: clientRecord?.whatsapp || cfg.whatsapp || cfg.phone || (isDemoOrZentap ? "9274560880" : ""),
+    instagram: clientRecord?.instagram_link || cfg.instagram || (isDemoOrZentap ? "https://www.instagram.com/zenttap/" : ""),
+    website: clientRecord?.custom_fields?.website || cfg.website || (isDemoOrZentap ? "https://www.zentapdigitalsolutions.com/" : ""),
     location_image: cfg.location_image || "",
     logo_url: cfg.logo_url || "/logo.png",
   };
@@ -275,10 +268,12 @@ export default async function ReviewPage({
     effectiveGoogleLink = "https://g.page/r/CdJX2OGu1yhoEAI/review";
   }
 
+  const effectiveTheme = cfg.theme || pageConfig?.theme || pageConfig?.config_data?.theme || "clean_light";
+
   return (
     <ZenTapReviewAssistant
       business={biz}
-      pageConfig={{ ...pageConfig, ...cfg }}
+      pageConfig={{ ...pageConfig, ...cfg, theme: effectiveTheme }}
       tagCode={via || cleanSlug}
       googleReviewUrl={effectiveGoogleLink}
       allowBusinessPageAccess={allowBusinessPageAccess}

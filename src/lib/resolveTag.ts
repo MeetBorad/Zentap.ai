@@ -68,44 +68,50 @@ export async function resolveScan(
     }
   }
 
-  // 1. Direct Supabase Query in Parallel (eliminating sequential waterfalls)
+  // 1. Direct Supabase Query in Parallel (ultra-fast indexed lookup with lightweight columns)
   const db = createAdminClient();
   if (db) {
     try {
-      const [tagRes, grlRes, pageConfigRes] = await Promise.all([
-        db.from('qr_nfc_tags').select('*').ilike('tag_id', code).is('deleted_at', null).maybeSingle(),
-        db.from('google_review_links').select('*').ilike('tag_id', code).is('deleted_at', null).maybeSingle(),
-        db.from('page_editor_configs').select('*').or(`tag_id.ilike.${code},business_id.ilike.${code}`).is('deleted_at', null).maybeSingle(),
+      const codeUpper = code.toUpperCase();
+      const [tagRes, grlRes] = await Promise.all([
+        db.from('qr_nfc_tags')
+          .select('id, tag_id, product_type, business_id, destination, google_review_link, social_platform, social_link, scans_count')
+          .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle(),
+        db.from('google_review_links')
+          .select('id, tag_id, destination, business_id, business_google_review_link')
+          .or(`tag_id.eq.${code},tag_id.eq.${codeUpper},tag_id.ilike.${code}`)
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       const tagRow = tagRes?.data;
       const grlRow = grlRes?.data;
-      const pageConfig = pageConfigRes?.data;
 
       const localGrl = getAllGoogleReviewLinks().find((g) => g.tag_id.toLowerCase() === code);
-      const localCfg = getAllPageEditorConfigs().find(
-        (p) => p.tag_id.toLowerCase() === code || (tagRow?.business_id && p.business_id.toLowerCase() === tagRow.business_id.toLowerCase())
-      );
+      const localTag = getAllQrNfcTags().find((t) => t.tag_id.toLowerCase() === code);
 
       const effectiveDest =
         grlRow?.destination ||
         tagRow?.destination ||
         localGrl?.destination ||
-        (pageConfig?.setup_status === 'completed' || localCfg?.setup_status === 'completed' ? 'business_page' : null) ||
-        'not_assigned';
+        localTag?.destination ||
+        'business_page';
 
       const effectiveGoogleLink =
         (tagRow?.google_review_link || '').trim() ||
         (grlRow?.business_google_review_link || '').trim() ||
         (localGrl?.business_google_review_link || '').trim() ||
-        (pageConfig?.config_data?.google_link || '').trim() ||
-        (localCfg?.config_data?.google_link || '').trim();
+        (localTag?.google_review_link || '').trim();
 
       const effectiveBusinessId =
         tagRow?.business_id ||
         grlRow?.business_id ||
-        pageConfig?.business_id ||
-        localCfg?.business_id;
+        localTag?.business_id ||
+        localGrl?.business_id;
 
       // Cache resolved tag data for instant subsequent requests (e.g. /t/[code] -> /r/[slug] handover)
       setCachedTagData(code, {
@@ -113,11 +119,10 @@ export async function resolveScan(
         businessId: effectiveBusinessId,
         destination: effectiveDest,
         googleLink: effectiveGoogleLink,
-        pageConfig: pageConfig || localCfg,
       });
 
       if (tagRow) {
-        // Increment scans_count asynchronously
+        // Increment scans_count asynchronously (fire-and-forget, zero latency)
         Promise.resolve(
           db.from('qr_nfc_tags')
             .update({ scans_count: (tagRow.scans_count || 0) + 1 })
@@ -138,14 +143,6 @@ export async function resolveScan(
 
       // 2. Business Page or ZenTap Google Review:
       if (effectiveDest === 'business_page' || effectiveDest === 'zentap_google') {
-        const effectiveStatus = pageConfig?.setup_status || localCfg?.setup_status;
-        const isDesigned = effectiveStatus === 'completed' || Boolean(pageConfig?.config_data || localCfg?.config_data);
-
-        if (!isDesigned && effectiveDest === 'business_page') {
-          // Setup status is Pending for Business Page: show "Business Profile Under Process" (/unavailable)
-          return { kind: 'unavailable', unassigned: false };
-        }
-
         let slug = (effectiveBusinessId || code).toLowerCase().trim();
         if (effectiveBusinessId) {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveBusinessId);

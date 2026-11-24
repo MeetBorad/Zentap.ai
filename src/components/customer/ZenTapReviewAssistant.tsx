@@ -115,10 +115,60 @@ export default function ZenTapReviewAssistant({
   const cleanBusinessSlug = (liveBusiness.slug || "").replace(/[|%#?&\s/]+$/g, "").trim();
 
   // Active theme styling mapped from pageConfig
-  const activeTheme = pageConfig?.theme || "obsidian";
+  const rawTheme = pageConfig?.theme || pageConfig?.theme_preset || "obsidian";
+  const activeTheme =
+    rawTheme === "clean_light" || rawTheme === "clean_minimal" || rawTheme === "white" || rawTheme === "light"
+      ? "clean_light"
+      : rawTheme === "emerald" || rawTheme === "emerald_luxe" || rawTheme === "emerald_luxury"
+      ? "emerald_luxury"
+      : rawTheme === "sunset" || rawTheme === "midnight_amber" || rawTheme === "amber"
+      ? "midnight_amber"
+      : rawTheme === "slate" || rawTheme === "modern_slate"
+      ? "modern_slate"
+      : rawTheme === "midnight_sapphire" || rawTheme === "sapphire"
+      ? "midnight_sapphire"
+      : rawTheme === "royal_indigo"
+      ? "royal_indigo"
+      : rawTheme === "midnight_rose" || rawTheme === "rose_gold"
+      ? "rose_gold"
+      : rawTheme === "champagne_gold"
+      ? "champagne_gold"
+      : "obsidian";
+
+  const isLightMode = activeTheme === "clean_light" || activeTheme === "modern_slate";
 
   const themeClasses = useMemo(() => {
     switch (activeTheme) {
+      case "clean_light":
+        return {
+          wrapper: "bg-[#f8fafc] text-slate-900",
+          card: "bg-white border-slate-200/90 shadow-xl text-slate-900",
+          inner: "bg-slate-100/90 text-slate-900",
+          innerBorder: "border-slate-200",
+          accentLine: "via-amber-500",
+          accentText: "text-amber-600",
+          glow1: "bg-amber-500/5",
+          glow2: "bg-slate-300/40",
+          chipActive: "bg-amber-500/15 text-amber-900 border-amber-500/60 font-bold shadow-xs",
+          chipInactive: "bg-slate-100 text-slate-700 hover:text-slate-950 border-slate-200",
+          btnGradient: "from-amber-500 via-amber-400 to-amber-500 text-slate-950",
+          footerBg: "bg-slate-100",
+        };
+      case "midnight_amber":
+        return {
+          wrapper: "bg-[#180d05] text-amber-100",
+          card: "bg-[#281508]/95 border-orange-500/25",
+          inner: "bg-[#3d1f0a]",
+          innerBorder: "border-orange-500/15",
+          accentLine: "via-orange-400",
+          accentText: "text-orange-400",
+          glow1: "bg-orange-500/15",
+          glow2: "bg-amber-500/10",
+          chipActive: "bg-orange-500/20 text-white border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.25)]",
+          chipInactive: "bg-[#3d1f0a] text-slate-300 hover:text-white border-white/5",
+          btnGradient: "from-orange-500 via-amber-400 to-orange-600 text-slate-950",
+          footerBg: "bg-[#0f0703]",
+        };
       case "emerald_luxury":
         return {
           wrapper: "bg-[#06140f] text-emerald-100",
@@ -590,6 +640,8 @@ export default function ZenTapReviewAssistant({
                           className={`w-9 h-9 transition-all ${
                             isFilled
                               ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.65)]"
+                              : isLightMode
+                              ? "text-slate-300 hover:text-slate-400"
                               : "text-zinc-600 hover:text-zinc-500"
                           }`}
                         />
@@ -715,7 +767,7 @@ export default function ZenTapReviewAssistant({
                           className={`tactile-btn py-2 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
                             isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
-                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                              : `${themeClasses.inner} ${themeClasses.innerBorder} ${isLightMode ? "text-slate-700 hover:text-slate-950" : "opacity-70 hover:opacity-100"}`
                           }`}
                         >
                           <div className="text-xs font-semibold leading-tight">{l.label}</div>
@@ -726,7 +778,7 @@ export default function ZenTapReviewAssistant({
                 </div>
 
                 {/* Length Selector */}
-                <div className="flex flex-col gap-1.5 pt-1 border-t border-white/5">
+                <div className={`flex flex-col gap-1.5 pt-1 border-t ${themeClasses.innerBorder}`}>
                   <div className="flex items-center justify-between px-0.5">
                     <span className="text-[11px] font-semibold opacity-85 flex items-center gap-1.5">
                       <Sliders className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
@@ -756,7 +808,7 @@ export default function ZenTapReviewAssistant({
                           className={`tactile-btn py-1.5 px-2 rounded-xl text-center border cursor-pointer transition-all duration-150 active:scale-[0.978] ${
                             isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-xs font-bold`
-                              : `${themeClasses.inner} border-white/5 opacity-70 hover:opacity-100 hover:border-white/15`
+                              : `${themeClasses.inner} ${themeClasses.innerBorder} ${isLightMode ? "text-slate-700 hover:text-slate-950" : "opacity-70 hover:opacity-100"}`
                           }`}
                         >
                           <div className="text-xs font-semibold leading-tight">{opt.label}</div>
@@ -823,16 +875,16 @@ export default function ZenTapReviewAssistant({
                           className={`min-w-[245px] max-w-[275px] flex-1 shrink-0 snap-start p-3 rounded-xl text-left text-xs transition-all duration-200 border cursor-pointer relative flex flex-col justify-between active:scale-[0.978] ${
                             isSelected
                               ? `${themeClasses.chipActive} ring-1 ring-amber-500/50 shadow-md`
-                              : `${themeClasses.inner} border-white/5 opacity-80 hover:opacity-100 hover:border-white/15`
+                              : `${themeClasses.inner} ${themeClasses.innerBorder} ${isLightMode ? "text-slate-800" : "opacity-80 hover:opacity-100"}`
                           }`}
                         >
                           <div>
-                            <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
+                            <div className={`flex items-center justify-between pb-1.5 mb-2 border-b ${themeClasses.innerBorder}`}>
                               <span className={`text-[10px] font-bold uppercase tracking-wider ${themeClasses.accentText} flex items-center gap-1`}>
                                 <span>Option {idx + 1}: {currentPersona.label}</span>
                               </span>
                               <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                                isSelected ? "bg-amber-500 text-slate-950 font-bold" : "bg-white/10 opacity-75"
+                                isSelected ? "bg-amber-500 text-slate-950 font-bold" : isLightMode ? "bg-slate-200 text-slate-700 font-medium" : "bg-white/10 opacity-75"
                               }`}>
                                 {isSelected ? "Active" : "Use"}
                               </span>
@@ -844,7 +896,7 @@ export default function ZenTapReviewAssistant({
                               {sug}
                             </p>
                           </div>
-                          <div className="pt-2 flex items-center justify-between text-[10px] opacity-50 border-t border-white/5 mt-2">
+                          <div className={`pt-2 flex items-center justify-between text-[10px] opacity-60 border-t ${themeClasses.innerBorder} mt-2`}>
                             <span>{isSelected ? "Loaded in draft box" : "Tap to select"}</span>
                             {isSelected && <Check className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />}
                           </div>
@@ -998,14 +1050,22 @@ export default function ZenTapReviewAssistant({
                       href={`https://wa.me/${cleanWa}?text=${encodeURIComponent(`Hello ${businessName} Team, I have feedback regarding my recent visit.`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-2 px-3 rounded-lg bg-[#1B2232] hover:bg-[#262a33] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-white/5"
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border ${
+                        isLightMode
+                          ? "bg-slate-200/90 hover:bg-slate-300 text-slate-900 border-slate-300"
+                          : "bg-[#1B2232] hover:bg-[#262a33] text-white border-white/5"
+                      }`}
                     >
                       <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
                       <span>WhatsApp Support</span>
                     </a>
                     <a
                       href={`tel:${cleanPhone}`}
-                      className="py-2 px-3 rounded-lg bg-[#1B2232] hover:bg-[#262a33] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-white/5"
+                      className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border ${
+                        isLightMode
+                          ? "bg-slate-200/90 hover:bg-slate-300 text-slate-900 border-slate-300"
+                          : "bg-[#1B2232] hover:bg-[#262a33] text-white border-white/5"
+                      }`}
                     >
                       <Phone className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />
                       <span>Call Us</span>
@@ -1019,7 +1079,7 @@ export default function ZenTapReviewAssistant({
       </main>
 
       {/* Dynamic Footer with Current Year (Part G) */}
-      <footer className={`w-full ${themeClasses.footerBg} border-t border-white/5 py-6 transition-colors`}>
+      <footer className={`w-full ${themeClasses.footerBg} border-t ${themeClasses.innerBorder} py-6 transition-colors`}>
         <div className="max-w-[480px] mx-auto px-4 flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-1.5 text-xs opacity-75">
             <ShieldCheck className={`w-3.5 h-3.5 ${themeClasses.accentText}`} />

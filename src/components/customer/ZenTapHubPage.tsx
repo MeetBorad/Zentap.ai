@@ -343,6 +343,8 @@ export default function ZenTapHubPage({
                   'obsidian'
   );
 
+  const isLightMode = effectiveTheme === "clean_light";
+
   const hubTheme = useMemo(() => {
     switch (effectiveTheme) {
       case "slate":
@@ -735,10 +737,14 @@ export default function ZenTapHubPage({
                     <button
                       type="button"
                       onClick={handleDownloadVCard}
-                      className="tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 text-white text-[10px] sm:text-[11px] font-bold shadow-md transition-all active:scale-[0.978] cursor-pointer"
+                      className={`tactile-btn inline-flex items-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-bold shadow-md transition-all active:scale-[0.978] cursor-pointer border ${
+                        isLightMode
+                          ? "bg-slate-100/95 hover:bg-slate-200 border-slate-300 text-slate-800 shadow-xs"
+                          : "bg-white/10 hover:bg-white/15 backdrop-blur-md border-white/15 text-white"
+                      }`}
                       title="Save contact vCard directly to your phone"
                     >
-                      <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <Plus className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>Add to Contacts</span>
                     </button>
                   </div>
@@ -1107,14 +1113,16 @@ export default function ZenTapHubPage({
                       Our Office Location
                     </span>
                     {locationImage && (
-                      <div className="inline-flex items-center rounded-lg bg-white/5 p-0.5 border border-white/10 text-[10px]">
+                      <div className={`inline-flex items-center rounded-lg p-0.5 border text-[10px] ${
+                        isLightMode ? "bg-slate-100 border-slate-300" : "bg-white/5 border-white/10"
+                      }`}>
                         <button
                           type="button"
                           onClick={() => setLocationViewMode("map")}
                           className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
                             locationViewMode === "map"
-                              ? "bg-white/20 text-white font-bold shadow-xs"
-                              : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
+                              ? isLightMode ? "bg-white text-slate-900 font-bold shadow-xs border border-slate-200" : "bg-white/20 text-white font-bold shadow-xs"
+                              : isLightMode ? "text-slate-600 hover:text-slate-900" : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
                           }`}
                         >
                           Map
@@ -1124,8 +1132,8 @@ export default function ZenTapHubPage({
                           onClick={() => setLocationViewMode("photo")}
                           className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
                             locationViewMode === "photo"
-                              ? "bg-white/20 text-white font-bold shadow-xs"
-                              : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
+                              ? isLightMode ? "bg-white text-slate-900 font-bold shadow-xs border border-slate-200" : "bg-white/20 text-white font-bold shadow-xs"
+                              : isLightMode ? "text-slate-600 hover:text-slate-900" : `${hubTheme.textMuted || "text-zinc-400"} hover:text-white`
                           }`}
                         >
                           Photo
@@ -1185,15 +1193,23 @@ export default function ZenTapHubPage({
             )}
 
             {/* 8. Business Portal Trigger */}
-            <div className={`rounded-2xl ${hubTheme.inner} p-3.5 flex items-center justify-between shadow-md border`}>
+            <div className={`rounded-2xl ${hubTheme.inner} p-3.5 flex items-center justify-between shadow-md border ${
+              isLightMode ? "border-slate-200" : "border-white/5"
+            }`}>
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0" style={{ color: finalAccentHex }}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  isLightMode ? "bg-slate-200/80 text-slate-800" : "bg-white/10 text-white"
+                }`} style={{ color: finalAccentHex }}>
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <span className={`text-xs ${hubTheme.textColor || "text-white"} font-medium`}>Business owner? Manage this card</span>
               </div>
               <button
-                className={`px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 ${hubTheme.textColor || "text-white"} text-xs font-semibold transition-colors cursor-pointer border border-white/10`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                  isLightMode
+                    ? "bg-white hover:bg-slate-50 text-slate-900 border-slate-300 shadow-xs"
+                    : `bg-white/10 hover:bg-white/15 ${hubTheme.textColor || "text-white"} border-white/10`
+                }`}
                 type="button"
                 onClick={() => setOwnerModalOpen(true)}
               >
