@@ -1196,6 +1196,7 @@ export async function updateClientServer(
     if (updates.twitter_link) mergedCustomFields.twitter_link = updates.twitter_link;
     if (updates.upi_id) mergedCustomFields.upi_id = updates.upi_id;
     if (updates.directions_link) mergedCustomFields.directions_link = updates.directions_link;
+    if ((updates as any).category) mergedCustomFields.category = (updates as any).category;
     if (updates.website_url || updates.website) {
       const web = (updates.website_url || updates.website || "").trim();
       mergedCustomFields.website_url = web;
@@ -2037,9 +2038,10 @@ export function updateClient(businessId: string, updates: Partial<ClientRecord>)
       if (updatedClient.city) cfg.address = updatedClient.city;
       if (updatedClient.custom_fields?.about_us) cfg.about_us = updatedClient.custom_fields.about_us;
       if (updatedClient.custom_fields?.opening_hours) cfg.opening_hours = updatedClient.custom_fields.opening_hours;
-      if (updatedClient.custom_fields?.category) {
-        cfg.category = updatedClient.custom_fields.category;
-        cfg.subtitle = updatedClient.custom_fields.category;
+      const effectiveCategory = (updatedClient as any).category || updatedClient.custom_fields?.category;
+      if (effectiveCategory) {
+        cfg.category = effectiveCategory;
+        cfg.subtitle = effectiveCategory;
       }
       if (updatedClient.custom_fields?.review_tags || updatedClient.custom_fields?.tags) {
         const rt = updatedClient.custom_fields?.review_tags || updatedClient.custom_fields?.tags;
@@ -2753,6 +2755,24 @@ export function getAllPageEditorConfigs(): PageEditorConfigItemRecord[] {
       configs.push(seed);
     }
   });
+
+  // Reconcile category from clients table (authoritative source of truth)
+  try {
+    const storedClients = getStored<ClientRecord[]>(KEY_CLIENTS, INITIAL_CLIENTS);
+    const clientsList = (!storedClients || storedClients.length === 0) ? INITIAL_CLIENTS : storedClients;
+    configs.forEach((p) => {
+      if (!p.business_id) return;
+      const client = clientsList.find((c) => (c.business_id || "").toLowerCase() === (p.business_id || "").toLowerCase());
+      const clientCat = (client as any)?.category || client?.custom_fields?.category;
+      if (clientCat && p.config_data) {
+        p.config_data.category = clientCat;
+        if (!p.config_data.subtitle || p.config_data.subtitle === "Customer Satisfaction Hub") {
+          p.config_data.subtitle = clientCat;
+        }
+      }
+    });
+  } catch {}
+
   return configs;
 }
 

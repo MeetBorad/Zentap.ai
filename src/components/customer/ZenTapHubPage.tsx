@@ -39,7 +39,7 @@ import {
   getPageSections,
   getPagePhotos
 } from "@/lib/hubDesignStore";
-import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllClients } from "@/lib/adminPlatformStore";
 import { getGoogleMapsEmbedUrl } from "@/lib/googleMaps";
 import { parseOpeningHoursLine } from "@/lib/openingHours";
 import OwnerAccessModal from "@/components/modals/OwnerAccessModal";
@@ -172,10 +172,19 @@ export default function ZenTapHubPage({
         if (localDesign) setDesign(localDesign);
 
         const allEditorConfigs = getAllPageEditorConfigs();
+        const allClients = getAllClients();
         const cleanSlug = (business.slug || "").toLowerCase();
         const bizId = (business.id || "").toLowerCase();
         const urlParams = new URLSearchParams(window.location.search);
         const viaParam = (urlParams.get("via") || "").toLowerCase();
+
+        const matchingClient = allClients.find(
+          (c) =>
+            (c.business_id && c.business_id.toLowerCase() === bizId) ||
+            (c.business_id && c.business_id.toLowerCase() === cleanSlug) ||
+            (viaParam && c.business_id && c.business_id.toLowerCase() === viaParam)
+        );
+        const clientCat = (matchingClient as any)?.category || matchingClient?.custom_fields?.category;
 
         const matchingConfig = allEditorConfigs.find(
           (c) =>
@@ -193,7 +202,15 @@ export default function ZenTapHubPage({
           const parsed = typeof matchingConfig.config_data === "string"
             ? JSON.parse(matchingConfig.config_data)
             : matchingConfig.config_data;
-          setLocalConfig((prev: any) => ({ ...prev, ...parsed }));
+          setLocalConfig((prev: any) => ({
+            ...prev,
+            ...parsed,
+            ...(clientCat ? { category: clientCat, subtitle: (parsed.subtitle && parsed.subtitle !== "Customer Satisfaction Hub") ? parsed.subtitle : clientCat } : {}),
+          }));
+        }
+
+        if (clientCat) {
+          setLiveBusiness((prev: any) => ({ ...prev, category: clientCat }));
         }
       } catch (e) {
         console.warn("Hydrating hub design error:", e);
@@ -206,7 +223,7 @@ export default function ZenTapHubPage({
   const isZenTapDemo = (liveBusiness.slug || "").toLowerCase() === "zentap" || liveBusiness.id === "sample-demo-biz-01";
 
   const businessName = (liveBusiness.name || cfg.title || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap");
-  const subtitle = liveBusiness.category || cfg.subtitle || cfg.category || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
+  const subtitle = liveBusiness.category || cfg.category || cfg.subtitle || (isZenTapDemo ? "Ahmedabad • Welcome to our official digital hub" : "");
   const address = liveBusiness.address || cfg.address || (isZenTapDemo ? "Ahmedabad, Gujarat, India" : "");
 
   const rawMaps = liveBusiness.maps_link || cfg.maps_link || "";

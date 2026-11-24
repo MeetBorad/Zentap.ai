@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BusinessRecord } from "@/lib/businessStore";
-import { getAllPageEditorConfigs } from "@/lib/adminPlatformStore";
+import { getAllPageEditorConfigs, getAllClients } from "@/lib/adminPlatformStore";
 import {
   generateReviewSuggestions,
   REVIEW_RATING_METAS,
@@ -113,9 +113,19 @@ export default function ZenTapReviewAssistant({
     if (typeof window !== "undefined" && (liveBusiness.id || cleanTagCode)) {
       try {
         const allEditorConfigs = getAllPageEditorConfigs();
+        const allClients = getAllClients();
         const bizId = (liveBusiness.id || "").toLowerCase();
         const bSlug = (liveBusiness.slug || "").toLowerCase();
         const tCode = cleanTagCode.toLowerCase();
+
+        const matchingClient = allClients.find(
+          (c) =>
+            (c.business_id && c.business_id.toLowerCase() === bizId) ||
+            (c.business_id && c.business_id.toLowerCase() === bSlug) ||
+            (tCode && c.business_id && c.business_id.toLowerCase() === tCode)
+        );
+        const clientCat = (matchingClient as any)?.category || matchingClient?.custom_fields?.category;
+
         const match = allEditorConfigs.find(
           (c) =>
             (c.tag_id && c.tag_id.toLowerCase() === tCode) ||
@@ -125,6 +135,10 @@ export default function ZenTapReviewAssistant({
         if (match?.config_data) {
           const cfgData = typeof match.config_data === "string" ? JSON.parse(match.config_data) : match.config_data;
           setCurrentConfig((prev: any) => ({ ...prev, ...cfgData }));
+        }
+
+        if (clientCat) {
+          setLiveBusiness((prev) => ({ ...prev, category: clientCat }));
         }
       } catch (e) {
         console.warn("Review assistant config hydration notice:", e);

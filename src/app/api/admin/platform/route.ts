@@ -242,18 +242,27 @@ export async function GET(req: Request) {
         const existingConfig = activePageEditorData.find((p: any) => p.tag_id.toLowerCase() === t.tag_id.toLowerCase());
         // Setup status / Status of Design: completed when designed and saved; pending otherwise
         const setup_status: "completed" | "pending" = existingConfig?.setup_status === "completed" ? "completed" : "pending";
+        const clientCategory = (client as any)?.category || (client?.custom_fields as any)?.category || "";
         
-        // Clean giant base64 images from list view config_data to keep payload < 20KB
         let cfg = existingConfig?.config_data || {
           theme: "obsidian",
           title: client?.business_name || t.business_name || "Welcome",
-          subtitle: "Rate your experience on Google",
+          subtitle: clientCategory || (t.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "Rate your experience on Google"),
+          category: clientCategory || (t.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : ""),
           cta_text: "Write a 5-Star Review on Google",
           google_link: googleUrl,
           phone: client?.owner_phone || "",
           whatsapp: client?.whatsapp || client?.owner_phone || "",
           instagram: client?.instagram_link || "",
         };
+
+        if (clientCategory) {
+          cfg = {
+            ...cfg,
+            category: clientCategory,
+            subtitle: (cfg.subtitle && cfg.subtitle !== "Customer Satisfaction Hub" && !cfg.subtitle.includes("Customer Satisfaction Hub")) ? cfg.subtitle : clientCategory,
+          };
+        }
 
         return {
           id: existingConfig?.id || t.id,
@@ -284,7 +293,16 @@ export async function GET(req: Request) {
       const matchingGLink = googleLinks.find((g: any) => g.tag_id.toLowerCase() === row.tag_id.toLowerCase());
       const dest = matchingTag?.destination || matchingGLink?.destination || row.destination || "business_page";
       if (dest === "zentap_google" || dest === "business_page") {
-        let cfg = row.config_data;
+        let cfg = row.config_data || {};
+        const client = row.business_id ? clientMap.get(row.business_id) : null;
+        const clientCategory = (client as any)?.category || (client?.custom_fields as any)?.category || "";
+        if (clientCategory) {
+          cfg = {
+            ...cfg,
+            category: clientCategory,
+            subtitle: (cfg.subtitle && cfg.subtitle !== "Customer Satisfaction Hub" && !cfg.subtitle.includes("Customer Satisfaction Hub")) ? cfg.subtitle : clientCategory,
+          };
+        }
         pageEditorConfigs.push({
           ...row,
           destination: dest,
@@ -730,6 +748,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     "instagram_link",
     "facebook_link",
     "city",
+    "category",
     "created_at",
     "updated_at",
     "deleted_at",

@@ -1,5 +1,20 @@
 # ZenTap — Changelog
 
+## [1.54.35] — 2026-11-24
+### Fixed (Universal Category Synchronization with Clients Table as Single Source of Truth)
+- **Hardcoded Category Overwrite Elimination (`PageEditorWebpageTab.tsx`)**:
+  - Fixed `handleAutoFetchFromClient`: previously line 380 hardcoded `setEditSubtitle(`${client.city} • Customer Satisfaction Hub`)`, wiping out custom client categories whenever "Auto-fetch data from Client Profile" was clicked.
+  - Updated auto-fetch to dynamically retrieve `client.category` (e.g. `Power Equipment Manufacturer` for Digitronics Control `ZT-0005`) directly from the client profile.
+- **Client Directory Authority in Page Editor (`PageEditorWebpageTab.tsx`, `adminPlatformStore.ts`)**:
+  - `openDesignerModal`, `openEditWholeModal`, and table view category badges now strictly prioritize `client.category` from the `clients` table over stale fallback defaults.
+  - Reconciled category in `getAllPageEditorConfigs()` and `updateClient()` so any update to a client's category immediately cascades to linked standees and page editor configurations.
+- **Customer Hub & Review Pages Category Grounding (`r/[slug]/page.tsx`, `ZenTapHubPage.tsx`, `ZenTapReviewAssistant.tsx`)**:
+  - Synchronized `effectiveBiz.category`, `customDesign.tagline`, and `<ZenTapHubPage />` subtitle directly with `clientRecord.category`.
+  - Added authoritative client directory reconciliation in client hydration so public views always render the merchant's true industry category (`Power Equipment Manufacturer`).
+- **Supabase Whitelist Alignment (`route.ts`)**:
+  - Added `"category"` to `TABLE_COLUMNS.clients` in `/api/admin/platform/route.ts` so updates directly write to the remote Postgres column.
+
+
 ## [1.54.34] — 2026-11-24
 ### Fixed (Cover & Logo Visual Asset Persistence, Dual-Tag Sync, Removal of Wallpaper & Review Support Card)
 - **Cover Banner & Round Profile Logo Persistence (`route.ts`, `adminPlatformStore.ts`, `PageEditorWebpageTab.tsx`, `ZenTapHubPage.tsx`)**:

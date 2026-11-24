@@ -376,8 +376,16 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     if (client.business_name) {
       setEditTitle(client.business_name);
     }
+    const resolvedCategory = (client as any)?.category || cf.category || cf.subtitle;
+    if (resolvedCategory) {
+      const cleanCat = resolvedCategory.includes("•") ? resolvedCategory.split("•").slice(1).join("•").trim() || resolvedCategory : resolvedCategory;
+      setEditSubtitle(cleanCat);
+    } else if (client.business_id === "ZT-0004") {
+      setEditSubtitle("Customer Satisfaction Hub");
+    } else {
+      setEditSubtitle("");
+    }
     if (client.city) {
-      setEditSubtitle(`${client.city} • Customer Satisfaction Hub`);
       setEditAddress(client.city);
       setEditLocationTitle(client.city);
     }
@@ -638,7 +646,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
 
     // Prioritize latest Client Profile values so Design Review Page is always in sync with Clients Table:
     setEditTitle(client?.business_name || cfg.title || item.business_name || (isZenTap ? "ZenTap Digital Solutions" : "Business Name"));
-    const rawCategory = (client as any)?.category || cf.category || cf.subtitle || cfg.category || cfg.subtitle || "Customer Satisfaction Hub";
+    const rawCategory = (client as any)?.category || cf.category || cf.subtitle || (item.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : (cfg.category || cfg.subtitle || ""));
     const cleanSub = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
     setEditSubtitle(cleanSub);
     setEditBannerUrl(cfg.cover_image || cfg.cover_url || "/standees/standee_01.jpg");
@@ -983,7 +991,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
     });
 
     setEditWholeBusinessName(client?.business_name || item.business_name);
-    const rawCat = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+    const rawCat = (client as any)?.category || client?.custom_fields?.category || (item.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : (item.config_data?.category || item.config_data?.subtitle || ""));
     const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
     setEditWholeCategory(cleanCat);
     setCategoryInputText("");
@@ -1346,7 +1354,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                           return (cleanBId && (cBid === cleanBId || cId === cleanBId)) || (cleanTagId && (cBid === cleanTagId || cId === cleanTagId));
                         });
                         const displayBizName = client?.business_name || item.business_name;
-                        const rawCategory = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                        const rawCategory = (client as any)?.category || client?.custom_fields?.category || (item.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : (item.config_data?.category || item.config_data?.subtitle || "—"));
                         const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                         const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 
@@ -1562,7 +1570,7 @@ export default function PageEditorWebpageTab({ onShowToast }: PageEditorWebpageT
                       return (cleanBId && (cBid === cleanBId || cId === cleanBId)) || (cleanTagId && (cBid === cleanTagId || cId === cleanTagId));
                     });
                     const displayBizName = client?.business_name || item.business_name;
-                    const rawCategory = (client as any)?.category || client?.custom_fields?.category || item.config_data?.category || item.config_data?.subtitle || "Customer Satisfaction Hub";
+                    const rawCategory = (client as any)?.category || client?.custom_fields?.category || (item.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : (item.config_data?.category || item.config_data?.subtitle || "—"));
                     const currentCategory = rawCategory.includes("•") ? rawCategory.split("•").slice(1).join("•").trim() || rawCategory : rawCategory;
                     const currentDest = matchingGLink?.destination || item.destination || "zentap_google";
 

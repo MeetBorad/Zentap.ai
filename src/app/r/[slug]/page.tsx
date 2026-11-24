@@ -300,7 +300,7 @@ export default async function Page({
     pincode: "380001",
     address: clientRecord?.city || cfg.address || biz?.address || "Ahmedabad, Gujarat, India",
     maps_link: clientRecord?.directions_link || clientRecord?.custom_fields?.directions_link || cfg.directions_link || cfg.maps_link || biz?.maps_link || "",
-    category: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || cfg.category || cfg.subtitle || biz?.category || (isDemoOrZentap ? "Customer Satisfaction Hub" : ""),
+    category: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || (isDemoOrZentap ? "Customer Satisfaction Hub" : (cfg.category || cfg.subtitle || biz?.category || "")),
     gbp_link: clientRecord?.google_review_link || cfg.google_link || biz?.gbp_link || (isDemoOrZentap ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : ""),
     plan: "metal_reply",
     payment_status: "paid",
@@ -354,7 +354,7 @@ export default async function Page({
     cover_url: cfg.cover_image || cfg.cover_url || defaultDesign.cover_url,
     logo_url: cfg.logo_url || defaultDesign.logo_url,
     wallpaper_url: cfg.wallpaper_url,
-    tagline: cfg.subtitle || defaultDesign.tagline,
+    tagline: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || (isDemoOrZentap ? "Customer Satisfaction Hub" : (cfg.subtitle || defaultDesign.tagline)),
     texts: {
       ...defaultDesign.texts,
       write_review_btn: cfg.cta_text || "Loved your visit? Tap to write a rapid 5-Star Google Review",
