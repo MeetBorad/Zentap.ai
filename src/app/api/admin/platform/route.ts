@@ -274,7 +274,7 @@ export async function GET(req: Request) {
       const resolvedGoogleBiz = c.google_business_page || cf.google_business_page || cf.google_business || cf.google_maps_link || cf.maps_link || pageCfg.google_business_page || "";
       const resolvedPhone = c.contact_phone || cf.contact_phone || cf.phone || pageCfg.contact_phone || pageCfg.phone || (c.business_id === "ZT-0004" ? "+91 92745 60880" : "");
       const resolvedTwitter = c.twitter_link || cf.twitter_link || cf.twitter || pageCfg.twitter || pageCfg.twitter_link || "";
-      const rawCat = c.category || cf.category || pageCfg.category || pageCfg.subtitle || (c.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "Customer Satisfaction Hub");
+      const rawCat = c.category || cf.category || pageCfg.category || pageCfg.subtitle || (c.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "");
       const resolvedCategory = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
       const resolvedReviewTags = c.review_tags || cf.review_tags || cf.tags || pageCfg.review_tags || pageCfg.tags || (c.business_id === "ZT-0004" ? ["NFC Standees", "Google Reviews", "Instant Tap", "Fast Setup"] : []);
       const resolvedFaqs = c.faqs || cf.faqs || pageCfg.faqs || [];
@@ -1286,10 +1286,59 @@ function sanitizeRowForTable(item: any, table: string) {
         return NextResponse.json({ error: error.message || `Failed to save to ${table}` }, { status: 500 });
       }
 
-      // Invalidate tag resolution cache if a tag or page was modified
-      if (table === "page_editor_configs" || table === "google_review_links" || table === "qr_nfc_tags") {
+      // When updating a client, two-way sync to page_editor_configs so category, business name, and links stay in sync
+      if (table === "clients") {
         const item = Array.isArray(data) ? data[0] : data;
-        invalidateCachedTag(item?.tag_id || item?.business_id);
+        const bizId = item.business_id || body.oldBusinessId;
+        if (bizId) {
+          try {
+            const { data: linkedConfigs } = await (supabase as any)
+              .from("page_editor_configs")
+              .select("id, config_data, business_name")
+              .or(`business_id.ilike.${bizId},tag_id.ilike.${bizId}`)
+              .is("deleted_at", null);
+
+            for (const pe of linkedConfigs || []) {
+              const existingCfg = typeof pe.config_data === "string" ? JSON.parse(pe.config_data) : (pe.config_data || {});
+              const updatedCfg = { ...existingCfg };
+              if (item.business_name) updatedCfg.title = item.business_name;
+              if (item.category) {
+                updatedCfg.category = item.category;
+                updatedCfg.subtitle = item.category;
+              }
+              if (item.directions_link) updatedCfg.directions_link = item.directions_link;
+              if (item.website_url || item.website) updatedCfg.website = item.website_url || item.website;
+              if (item.google_review_link) updatedCfg.google_link = item.google_review_link;
+              if (item.owner_phone || item.contact_phone) {
+                const ph = item.contact_phone || item.owner_phone;
+                updatedCfg.phone = ph;
+                updatedCfg.contact_phone = ph;
+              }
+              if (item.whatsapp) updatedCfg.whatsapp = item.whatsapp;
+              if (item.city) {
+                updatedCfg.address = item.city;
+                updatedCfg.location_title = item.city;
+              }
+
+              await (supabase as any)
+                .from("page_editor_configs")
+                .update({
+                  business_name: item.business_name || pe.business_name,
+                  config_data: updatedCfg,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", pe.id);
+            }
+          } catch (peSyncErr) {
+            console.warn("Notice: page editor config sync from client update in DB:", peSyncErr);
+          }
+        }
+      }
+
+      // Invalidate tag resolution cache if a tag, client or page was modified
+      if (table === "page_editor_configs" || table === "google_review_links" || table === "qr_nfc_tags" || table === "clients") {
+        const item = Array.isArray(data) ? data[0] : data;
+        invalidateCachedTag(item?.tag_id || item?.business_id || body.oldBusinessId);
       }
 
       return NextResponse.json({ success: true, data: res });

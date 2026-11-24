@@ -9,6 +9,7 @@ interface CachedTagData {
   googleLink?: string;
   pageConfig?: any;
   business?: any;
+  clientRecord?: any;
   timestamp: number;
 }
 

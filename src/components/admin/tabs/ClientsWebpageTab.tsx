@@ -236,7 +236,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
     setEditUpiId(client.upi_id || cf.upi_id || cfg.upi_id || (client.business_id === "ZT-0004" ? "mbborad143bmb@okicici" : ""));
     setEditCity(client.city || cfg.address || "Ahmedabad");
 
-    const rawCat = (client as any).category || cf.category || cfg.category || cfg.subtitle || (client.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "Customer Satisfaction Hub");
+    const rawCat = (client as any).category || cf.category || cfg.category || cfg.subtitle || (client.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "");
     const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
     setEditCategory(cleanCat);
     setEditArea(cf.area || (client as any).area || "");
@@ -406,7 +406,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: editWebsite.trim(),
       website: editWebsite.trim(),
       upi_id: editUpiId.trim(),
-      category: editCategory.trim() || "Customer Satisfaction Hub",
+      category: editCategory.trim() || (editTarget.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : ""),
       area: editArea.trim(),
       services: editServices.trim(),
       keywords: editKeywords.trim(),
@@ -434,7 +434,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website: editWebsite.trim() || undefined,
       upi_id: editUpiId.trim() || undefined,
       city: editCity.trim() || "India",
-      category: editCategory.trim() || "Customer Satisfaction Hub",
+      category: editCategory.trim() || (editTarget.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : ""),
       review_tags: editReviewTags.trim() || undefined,
       faqs: editFaqs,
       custom_fields: mergedFields,
@@ -479,7 +479,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website_url: newWebsite.trim(),
       website: newWebsite.trim(),
       upi_id: newUpiId.trim(),
-      category: newCategory.trim() || "Customer Satisfaction Hub",
+      category: newCategory.trim() || "",
       area: newArea.trim(),
       services: newServices.trim(),
       keywords: newKeywords.trim(),
@@ -505,7 +505,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
       website: newWebsite.trim() || undefined,
       upi_id: newUpiId.trim() || undefined,
       city: newCity.trim() || "India",
-      category: newCategory.trim() || "Customer Satisfaction Hub",
+      category: newCategory.trim() || "",
       review_tags: newReviewTags.trim() || undefined,
       faqs: newFaqs,
       custom_fields: mergedFields,
@@ -764,7 +764,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                         {/* 2b. Category */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {(() => {
-                            const rawCat = (client as any).category || cf.category || cfg.category || "Customer Satisfaction Hub";
+                            const rawCat = (client as any).category || cf.category || cfg.category || (client.business_id === "ZT-0004" ? "Customer Satisfaction Hub" : "—");
                             const cleanCat = rawCat.includes("•") ? rawCat.split("•").slice(1).join("•").trim() || rawCat : rawCat;
                             return (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 border border-purple-200/80 text-[11px] font-semibold">
@@ -1300,7 +1300,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Customer Satisfaction Hub / Cafe"
+                    placeholder="e.g. Power Equipment Manufacturer / Cafe"
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-purple-50/40 border border-purple-200 text-xs text-zinc-900 font-semibold placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white"
@@ -1715,7 +1715,7 @@ export default function ClientsWebpageTab({ onShowToast, onNavigateToSettings }:
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Customer Satisfaction Hub"
+                    placeholder="e.g. Power Equipment Manufacturer / Cafe"
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-purple-50/40 border border-purple-200 text-xs text-zinc-900 font-semibold placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-600 focus:bg-white"

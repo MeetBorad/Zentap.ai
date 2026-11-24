@@ -91,37 +91,50 @@ export default async function Page({
   let pageConfig: any = cached?.pageConfig || null;
   let rawBiz: any = cached?.business || null;
   let cachedDest: string | undefined = cached?.destination;
+  let clientRecord: any = cached?.clientRecord || null;
 
   // If not cached, fetch all required records in a single parallel round trip (eliminating waterfalls)
-  if (!pageConfig && db) {
+  if ((!pageConfig || !clientRecord) && db) {
     try {
-      const isLikelyTag = cleanCode.startsWith('st') || cleanCode.startsWith('tag_') || cleanCode.length <= 6;
+      const isClientCode = cleanCode.startsWith('zt-');
+      const isLikelyTag = cleanCode.startsWith('st') || cleanCode.startsWith('tag_') || cleanCode.length <= 6 || isClientCode;
       const isSharedDemo = cleanCode === 'zentap' || cleanCode === 'st3' || via?.toLowerCase() === 'st3' || lookupKey.toLowerCase() === 'st3' || cleanCode === 'zt-0004';
       
-      const pageQuery = isSharedDemo
+      const pageQuery = !pageConfig ? (isSharedDemo
         ? db.from('page_editor_configs').select('*').or('tag_id.ilike.st3,tag_id.ilike.zentap,business_id.ilike.zt-0004').is('deleted_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle()
         : (via
             ? db.from('page_editor_configs').select('*').ilike('tag_id', via).is('deleted_at', null).limit(1).maybeSingle()
-            : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle());
+            : db.from('page_editor_configs').select('*').or(`business_id.ilike.${cleanCode},tag_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle()))
+        : Promise.resolve({ data: pageConfig });
 
-      const [pageConfigRes, bizFetchRes, grlRes, tagRes] = await Promise.all([
+      const clientQuery = !clientRecord ? (isSharedDemo
+        ? db.from('clients').select('*').ilike('business_id', 'ZT-0004').is('deleted_at', null).limit(1).maybeSingle()
+        : (isClientCode
+            ? db.from('clients').select('*').ilike('business_id', cleanCode).is('deleted_at', null).limit(1).maybeSingle()
+            : Promise.resolve({ data: null })))
+        : Promise.resolve({ data: clientRecord });
+
+      const [pageConfigRes, bizFetchRes, grlRes, tagRes, clientRes] = await Promise.all([
         pageQuery,
         isLikelyTag ? Promise.resolve(null) : fetchPublicBusinessBySlug(cleanCode),
         db.from('google_review_links').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
         db.from('qr_nfc_tags').select('destination').or(`tag_id.ilike.${lookupKey},business_id.ilike.${cleanCode}`).is('deleted_at', null).limit(1).maybeSingle(),
+        clientQuery,
       ]);
 
-      pageConfig = pageConfigRes?.data || null;
-      rawBiz = bizFetchRes || getBusinessBySlug(cleanCode);
-      cachedDest = grlRes?.data?.destination || tagRes?.data?.destination;
+      if (!pageConfig && pageConfigRes?.data) pageConfig = pageConfigRes.data;
+      if (!rawBiz) rawBiz = bizFetchRes || getBusinessBySlug(cleanCode);
+      if (!cachedDest) cachedDest = grlRes?.data?.destination || tagRes?.data?.destination;
+      if (!clientRecord && (clientRes as any)?.data) clientRecord = (clientRes as any).data;
 
-      if (pageConfig) {
+      if (pageConfig || clientRecord) {
         setCachedTagData(lookupKey, {
-          tagId: pageConfig.tag_id || lookupKey,
-          businessId: pageConfig.business_id,
+          tagId: pageConfig?.tag_id || lookupKey,
+          businessId: pageConfig?.business_id || clientRecord?.business_id,
           destination: cachedDest || 'business_page',
           pageConfig,
           business: rawBiz,
+          clientRecord,
         });
       }
     } catch (e) {
@@ -184,12 +197,12 @@ export default async function Page({
   const biz = rawBiz ? toBusinessRecord(rawBiz) : null;
 
   // 1. Fetch Client Record from clients table (Master Source of Truth)
-  let clientRecord: any = null;
-  const candidateBizId = pageConfig?.business_id || (cleanCode === "st3" || cleanCode === "zentap" || via?.toLowerCase() === "st3" ? "ZT-0004" : cleanCode);
+  const isDemoOrZentap = cleanCode === "st3" || cleanCode === "zentap" || via?.toLowerCase() === "st3" || cleanCode === "zt-0004";
+  const candidateBizId = pageConfig?.business_id || (isDemoOrZentap ? "ZT-0004" : cleanCode);
 
-  if (db) {
+  if (!clientRecord && db) {
     try {
-      const candidates = Array.from(new Set([cleanCode, candidateBizId, "ZT-0004"].filter(Boolean)));
+      const candidates = Array.from(new Set([cleanCode, candidateBizId].filter(Boolean)));
       const orExpr = candidates.map((c) => `business_id.ilike.${c}`).join(",");
       const { data: cData } = await db
         .from('clients')
@@ -198,7 +211,18 @@ export default async function Page({
         .is('deleted_at', null)
         .limit(1)
         .maybeSingle();
-      if (cData) clientRecord = cData;
+      if (cData) {
+        clientRecord = cData;
+      } else if (isDemoOrZentap) {
+        const { data: demoData } = await db
+          .from('clients')
+          .select('*')
+          .ilike('business_id', 'ZT-0004')
+          .is('deleted_at', null)
+          .limit(1)
+          .maybeSingle();
+        if (demoData) clientRecord = demoData;
+      }
     } catch (e) {
       console.warn("Client table lookup notice:", e);
     }
@@ -210,7 +234,7 @@ export default async function Page({
       (c) =>
         c.business_id.toLowerCase() === cleanCode.toLowerCase() ||
         c.business_id.toLowerCase() === candidateBizId.toLowerCase() ||
-        (cleanCode === "st3" && c.business_id === "ZT-0004")
+        (isDemoOrZentap && c.business_id === "ZT-0004")
     ) || null;
   }
 
@@ -241,24 +265,24 @@ export default async function Page({
   }
 
   const effectiveBiz: BusinessRecord = {
-    id: clientRecord?.business_id || pageConfig?.business_id || biz?.id || pageConfig?.tag_id || "ZT-0004",
-    name: (clientRecord?.business_name || cfg.title || pageConfig?.business_name || biz?.name || "ZenTap Digital Solutions").replace(/\bZentap\b/g, "ZenTap"),
-    slug: (clientRecord?.business_id || pageConfig?.business_id || biz?.slug || pageConfig?.tag_id || "zentap").toLowerCase(),
-    review_url: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
-    google_review_link: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    id: clientRecord?.business_id || pageConfig?.business_id || biz?.id || pageConfig?.tag_id || (isDemoOrZentap ? "ZT-0004" : cleanCode),
+    name: (clientRecord?.business_name || cfg.title || pageConfig?.business_name || biz?.name || (isDemoOrZentap ? "ZenTap Digital Solutions" : cleanCode)).replace(/\bZentap\b/g, "ZenTap"),
+    slug: (clientRecord?.business_id || pageConfig?.business_id || biz?.slug || pageConfig?.tag_id || cleanCode).toLowerCase(),
+    review_url: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || (isDemoOrZentap ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : ""),
+    google_review_link: clientRecord?.google_review_link || cfg.google_link || biz?.google_review_link || (isDemoOrZentap ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : ""),
     active: true,
     is_deleted: false,
     owner_user_id: biz?.owner_user_id || "",
-    email: clientRecord?.owner_email || cfg.email || biz?.email || "meetborad@hotmail.com",
-    phone: clientRecord?.owner_phone || cfg.phone || biz?.phone || "+91 96627 60880",
+    email: clientRecord?.owner_email || cfg.email || biz?.email || (isDemoOrZentap ? "meetborad@hotmail.com" : ""),
+    phone: clientRecord?.owner_phone || cfg.phone || biz?.phone || (isDemoOrZentap ? "+91 96627 60880" : ""),
     city: clientRecord?.city || cfg.city || biz?.city || "Ahmedabad",
     state: "Gujarat",
     country: "India",
     pincode: "380001",
     address: clientRecord?.city || cfg.address || biz?.address || "Ahmedabad, Gujarat, India",
     maps_link: clientRecord?.directions_link || clientRecord?.custom_fields?.directions_link || cfg.directions_link || cfg.maps_link || biz?.maps_link || "",
-    category: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || cfg.category || cfg.subtitle || biz?.category || "Customer Satisfaction Hub",
-    gbp_link: clientRecord?.google_review_link || cfg.google_link || biz?.gbp_link || "https://g.page/r/CdJX2OGu1yhoEAI/review",
+    category: (clientRecord as any)?.category || clientRecord?.custom_fields?.category || cfg.category || cfg.subtitle || biz?.category || (isDemoOrZentap ? "Customer Satisfaction Hub" : ""),
+    gbp_link: clientRecord?.google_review_link || cfg.google_link || biz?.gbp_link || (isDemoOrZentap ? "https://g.page/r/CdJX2OGu1yhoEAI/review" : ""),
     plan: "metal_reply",
     payment_status: "paid",
     created_at: clientRecord?.created_at || pageConfig?.created_at || new Date().toISOString(),
@@ -322,27 +346,6 @@ export default async function Page({
   // Rule: "when the destination is only Zentap Google Review it will not give access to Business Page"
   if (!isPreview) {
     let dest = pageConfig?.destination || cachedDest;
-    if (!dest && db) {
-      try {
-        const { data: grlRow } = await db
-          .from('google_review_links')
-          .select('destination')
-          .or(`tag_id.ilike.${via || cleanCode},business_id.ilike.${cleanCode}`)
-          .is('deleted_at', null)
-          .maybeSingle();
-        dest = grlRow?.destination;
-
-        if (!dest) {
-          const { data: tagRow } = await db
-            .from('qr_nfc_tags')
-            .select('destination')
-            .or(`tag_id.ilike.${via || cleanCode},business_id.ilike.${cleanCode}`)
-            .is('deleted_at', null)
-            .maybeSingle();
-          dest = tagRow?.destination;
-        }
-      } catch {}
-    }
     if (!dest) {
       const localGrl = getAllGoogleReviewLinks().find(
         (g) => g.tag_id.toLowerCase() === (via || cleanCode) || g.business_id.toLowerCase() === cleanCode

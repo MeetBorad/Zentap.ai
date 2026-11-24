@@ -149,12 +149,11 @@ export async function resolveScan(
         let slug = (effectiveBusinessId || code).toLowerCase().trim();
         if (effectiveBusinessId) {
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveBusinessId);
-          const bizQuery = isUuid
-            ? db.from('businesses').select('slug').eq('id', effectiveBusinessId).maybeSingle()
-            : db.from('businesses').select('slug').eq('slug', effectiveBusinessId.toLowerCase()).maybeSingle();
-          const { data: bizRow } = await bizQuery;
-          if (bizRow?.slug) {
-            slug = bizRow.slug.toLowerCase().trim();
+          if (isUuid) {
+            const { data: bizRow } = await db.from('businesses').select('slug').eq('id', effectiveBusinessId).maybeSingle();
+            if (bizRow?.slug) {
+              slug = bizRow.slug.toLowerCase().trim();
+            }
           }
         }
 

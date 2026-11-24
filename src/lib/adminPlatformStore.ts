@@ -1029,7 +1029,7 @@ export async function addClientServer(params: {
     directions_link: params.directions_link?.trim() || "",
     website_url: params.website_url?.trim() || params.website?.trim() || "",
     website: params.website?.trim() || params.website_url?.trim() || "",
-    category: params.category?.trim() || "Customer Satisfaction Hub",
+    category: params.category?.trim() || "",
     review_tags: params.review_tags,
     faqs: params.faqs,
     custom_fields: mergedCustomFields,
